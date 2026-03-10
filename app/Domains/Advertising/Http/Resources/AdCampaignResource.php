@@ -1,0 +1,1 @@
+<?php namespace App\Domains\Advertising\Http\Resources; use Illuminate\Http\Resources\Json\JsonResource; class AdCampaignResource extends JsonResource { public function toArray($request): array { return ['id' => $this->id, 'name' => $this->name, 'budget' => $this->budget, 'status' => $this->is_active ? 'active' : 'inactive', 'vertical' => $this->vertical]; } }

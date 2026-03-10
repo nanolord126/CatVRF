@@ -1,0 +1,1 @@
+<?php namespace App\Domains\Communication\Http\Resources; use Illuminate\Http\Resources\Json\JsonResource; class MessageResource extends JsonResource { public function toArray($request): array { return ['id' => $this->id, 'from' => $this->user_id, 'to' => $this->recipient_id, 'content' => $this->content, 'read' => $this->read_at ? true : false]; } }

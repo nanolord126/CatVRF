@@ -1,0 +1,1 @@
+<?php namespace App\Domains\Clinic\Http\Resources; use Illuminate\Http\Resources\Json\JsonResource; class MedicalCardResource extends JsonResource { public function toArray($request): array { return ['id' => $this->id, 'patient' => $this->patient_id, 'blood_type' => $this->blood_type, 'allergies' => $this->allergies]; } }

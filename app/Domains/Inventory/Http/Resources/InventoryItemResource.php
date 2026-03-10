@@ -1,0 +1,1 @@
+<?php namespace App\Domains\Inventory\Http\Resources; use Illuminate\Http\Resources\Json\JsonResource; class InventoryItemResource extends JsonResource { public function toArray($request): array { return ['id' => $this->id, 'sku' => $this->sku, 'name' => $this->name, 'stock' => $this->stock]; } }
