@@ -2,6 +2,10 @@
 
 namespace App\Domains\Advertising\Models;
 
+use App\Domains\Advertising\Enums\CampaignStatus;
+use App\Domains\Advertising\Enums\CampaignType;
+use App\Domains\Advertising\Enums\BudgetType;
+use App\Domains\Advertising\Enums\BiddingStrategy;
 use App\Traits\Common\HasEcosystemFeatures;
 use App\Traits\Common\HasEcosystemAuth;
 use App\Traits\Common\HasEcosystemMedia;
@@ -32,6 +36,10 @@ class AdCampaign extends Model
     protected $guarded = [];
 
     protected $casts = [
+        'status' => CampaignStatus::class,
+        'campaign_type' => CampaignType::class,
+        'budget_type' => BudgetType::class,
+        'bidding_strategy' => BiddingStrategy::class,
         'targeting_geo' => 'array',
         'budget' => 'decimal:2',
         'spent' => 'decimal:2',
@@ -99,7 +107,7 @@ class AdCampaign extends Model
     public function activate(): bool
     {
         try {
-            $result = $this->update(['status' => 'active', 'started_at' => now()]);
+            $result = $this->update(['status' => CampaignStatus::ACTIVE, 'started_at' => now()]);
             Log::info('Ad campaign activated', ['campaign_id' => $this->id]);
             return $result;
         } catch (\Exception $e) {
@@ -110,7 +118,7 @@ class AdCampaign extends Model
 
     public function pause(): bool
     {
-        return $this->update(['status' => 'paused']);
+        return $this->update(['status' => CampaignStatus::PAUSED]);
     }
 
     public function getRemainingBudgetAttribute(): float
