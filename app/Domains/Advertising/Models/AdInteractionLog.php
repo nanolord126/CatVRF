@@ -190,11 +190,27 @@ class AdInteractionLog extends Model
     {
         $score = 0;
 
-        // Проверка IP-адреса на подозрительность (заглушка для интеграции с fraud API)
+        // Проверка IP-адреса на подозрительность через БД датацентров/VPN провайдеров
         if (!empty($data['ip_address'])) {
-            // TODO: Интеграция с MaxMind GeoIP2 или аналогом для VPN/proxy detection
-            // Текущая версия: базовая реализация
-            $score += 0;
+            $ip = $data['ip_address'];
+            
+            // Проверить в БД датацентров (AWS, GCP, Azure, DigitalOcean и т.д.)
+            $datacenter = \DB::table('ip_datacenters')
+                ->whereRaw('INET_ATON(?) BETWEEN start_ip AND end_ip', [$ip])
+                ->first();
+            
+            if ($datacenter) {
+                $score += 20; // Датацентр - подозрительно (боты часто используют облачные IP)
+            }
+            
+            // Проверить в БД VPN провайдеров (ExpressVPN, NordVPN, Surfshark и т.д.)
+            $vpn = \DB::table('ip_vpn_providers')
+                ->whereRaw('INET_ATON(?) BETWEEN start_ip AND end_ip', [$ip])
+                ->first();
+            
+            if ($vpn) {
+                $score += 25; // VPN - высокий риск мошенничества
+            }
         }
 
         // Проверка user-agent на bot-подобность

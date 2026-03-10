@@ -28,7 +28,27 @@ class RecommendationEngine
 
     private function getUserEnrolledCourses(User $user): array
     {
-        // Placeholder for real logic from education module progress
-        return [];
+        // Получить все завершённые курсы пользователя из модуля Education
+        // Рассчитать процент завершения на основе прогресса студента
+        $courses = \DB::table('education_enrollments')
+            ->where('user_id', $user->id)
+            ->where('status', 'completed')
+            ->join('education_courses', 'education_enrollments.course_id', '=', 'education_courses.id')
+            ->select(
+                'education_courses.id',
+                'education_courses.title',
+                'education_courses.category',
+                'education_enrollments.progress',
+                'education_enrollments.completed_at'
+            )
+            ->get()
+            ->toArray();
+        
+        return array_map(fn($course) => [
+            'id' => $course->id,
+            'title' => $course->title,
+            'category' => $course->category,
+            'completion_rate' => (float) $course->progress,
+        ], $courses);
     }
 }

@@ -188,11 +188,8 @@ class AdShieldProtection
                 return $cached;
             }
 
-            // === Проверка через MaxMind GeoLite2 API (если настроена) ===
-            // TODO: Интеграция с MaxMind для определения VPN/Proxy
-            // Временно: базовая проверка на известные датацентры AWS, GCP, Azure
-            
-            $result = ['is_suspicious' => false, 'score' => 0.0, 'reason' => 'Network OK'];
+            // === Проверка через локальную базу данных датацентров и VPN провайдеров ===
+            $result = $this->checkDatacenterAndVPN($ip);
 
             // Кеширование на 24 часа
             Cache::put($cacheKey, $result, 86400);
@@ -286,9 +283,40 @@ class AdShieldProtection
      */
     private function detectGeoAnomaly(string $ip, array $data): float
     {
-        // TODO: Интеграция с предыдущей гео-локацией из сессии
-        // Пример: если последний клик был в Moscow, а сейчас Singapore в течение 1 минуты - impossible travel
-        
+        // Получить последнюю активность этого IP
+        $lastActivity = \DB::table('ad_interaction_logs')
+            ->where('ip_address', $ip)
+            ->whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->latest('interacted_at')
+            ->first();
+
+        if (!$lastActivity) {
+            return 0.0; // Нет истории
+        }
+
+        // Если текущие координаты указаны в данных
+        if (!isset($data['latitude'], $data['longitude'])) {
+            return 0.0;
+        }
+
+        $currentLat = (float)$data['latitude'];
+        $currentLon = (float)$data['longitude'];
+        $lastLat = (float)$lastActivity->latitude;
+        $lastLon = (float)$lastActivity->longitude;
+
+        // Вычислить расстояние и время между кликами
+        $distance = $this->calculateDistance($lastLat, $lastLon, $currentLat, $currentLon);
+        $timeDiffMinutes = now()->diffInMinutes($lastActivity->interacted_at);
+
+        // Максимальная скорость самолета = 900 км/ч
+        $maxDistanceAllowed = (900 / 60) * $timeDiffMinutes;
+
+        // Если расстояние больше, чем можно пройти за это время - impossible travel
+        if ($distance > $maxDistanceAllowed) {
+            return 20.0; // Высокий скор за невозможное перемещение
+        }
+
         return 0.0;
     }
 
@@ -301,10 +329,79 @@ class AdShieldProtection
      */
     private function analyzeDeviceFingerprint(string $fingerprint, string $ip): float
     {
-        // TODO: Сравнение fingerprint с историческими данными IP
+        if (!$fingerprint) {
+            return 0.0;
+        }
+
+        // Получить историю device fingerprint для этого IP
+        $differentFingerprintCount = \DB::table('ad_interaction_logs')
+            ->where('ip_address', $ip)
+            ->where('device_fingerprint', '!=', $fingerprint)
+            ->where('device_fingerprint', '!=', null)
+            ->where('interacted_at', '>=', now()->subDays(7))
+            ->distinct('device_fingerprint')
+            ->count();
+
         // Если один IP часто меняет fingerprint - подозрительно
-        
+        // Если 3+ разных device за неделю с одного IP - score 10
+        if ($differentFingerprintCount >= 3) {
+            return 10.0 + min(5.0, $differentFingerprintCount - 3);
+        }
+
         return 0.0;
+    }
+
+    /**
+     * Рассчитать расстояние между двумя координатами (км).
+     */
+    private function calculateDistance(float $lat1, float $lon1, float $lat2, float $lon2): float
+    {
+        $earthRadius = 6371; // км
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLon = deg2rad($lon2 - $lon1);
+        $a = sin($dLat / 2) * sin($dLat / 2) +
+            cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
+            sin($dLon / 2) * sin($dLon / 2);
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+        return $earthRadius * $c;
+    }
+
+    /**
+     * Проверить IP адрес на наличие в датацентре или VPN провайдере.
+     */
+    private function checkDatacenterAndVPN(string $ip): array
+    {
+        // Проверить в локальной БД датацентров
+        $datacenter = \DB::table('ip_datacenters')
+            ->whereRaw('INET_ATON(?) BETWEEN start_ip AND end_ip', [$ip])
+            ->first();
+
+        if ($datacenter) {
+            return [
+                'is_suspicious' => true,
+                'score' => 15.0,
+                'reason' => 'Datacenter IP: ' . $datacenter->provider
+            ];
+        }
+
+        // Проверить в базе VPN провайдеров
+        $vpn = \DB::table('ip_vpn_providers')
+            ->whereRaw('INET_ATON(?) BETWEEN start_ip AND end_ip', [$ip])
+            ->first();
+
+        if ($vpn) {
+            return [
+                'is_suspicious' => true,
+                'score' => 20.0,
+                'reason' => 'VPN Provider: ' . $vpn->provider
+            ];
+        }
+
+        return [
+            'is_suspicious' => false,
+            'score' => 0.0,
+            'reason' => 'Network OK'
+        ];
     }
 
     /**
