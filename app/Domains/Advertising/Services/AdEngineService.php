@@ -7,8 +7,11 @@ use App\Domains\Advertising\Models\AdPlacement;
 use App\Domains\Advertising\Models\AdInteractionLog;
 use App\Domains\Common\Services\Marketing\DeviceIntelligenceService;
 use App\Domains\Common\Services\Performance\HighLoadTrafficOrchestrator;
-use Illuminate\Support\{Carbon, Collection};
-use Illuminate\Support\Facades\{Auth, Cache, Log};
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**

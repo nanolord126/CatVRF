@@ -2,11 +2,13 @@
 
 namespace App\Domains\Advertising\Models;
 
-use App\Traits\Common\{HasEcosystemFeatures, HasEcosystemAuth};
+use App\Traits\Common\HasEcosystemFeatures;
+use App\Traits\Common\HasEcosystemAuth;
 use App\Models\AuditLog;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\{Auth, Log};
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 /**
  * AdAuctionBid Model - Ставка в аукционе за размещение (Production 2026).

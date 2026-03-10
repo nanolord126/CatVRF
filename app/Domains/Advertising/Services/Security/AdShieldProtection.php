@@ -4,7 +4,10 @@ namespace App\Domains\Advertising\Services\Security;
 
 use App\Domains\Advertising\Models\AdInteractionLog;
 use App\Models\AuditLog;
-use Illuminate\Support\Facades\{Log, Http, Cache};
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -284,7 +287,7 @@ class AdShieldProtection
     private function detectGeoAnomaly(string $ip, array $data): float
     {
         // Получить последнюю активность этого IP
-        $lastActivity = \DB::table('ad_interaction_logs')
+        $lastActivity = DB::table('ad_interaction_logs')
             ->where('ip_address', $ip)
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
@@ -334,7 +337,7 @@ class AdShieldProtection
         }
 
         // Получить историю device fingerprint для этого IP
-        $differentFingerprintCount = \DB::table('ad_interaction_logs')
+        $differentFingerprintCount = DB::table('ad_interaction_logs')
             ->where('ip_address', $ip)
             ->where('device_fingerprint', '!=', $fingerprint)
             ->where('device_fingerprint', '!=', null)
@@ -372,7 +375,7 @@ class AdShieldProtection
     private function checkDatacenterAndVPN(string $ip): array
     {
         // Проверить в локальной БД датацентров
-        $datacenter = \DB::table('ip_datacenters')
+        $datacenter = DB::table('ip_datacenters')
             ->whereRaw('INET_ATON(?) BETWEEN start_ip AND end_ip', [$ip])
             ->first();
 
@@ -385,7 +388,7 @@ class AdShieldProtection
         }
 
         // Проверить в базе VPN провайдеров
-        $vpn = \DB::table('ip_vpn_providers')
+        $vpn = DB::table('ip_vpn_providers')
             ->whereRaw('INET_ATON(?) BETWEEN start_ip AND end_ip', [$ip])
             ->first();
 

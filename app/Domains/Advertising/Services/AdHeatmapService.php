@@ -2,7 +2,9 @@
 
 namespace App\Domains\Advertising\Services;
 
-use App\Domains\Advertising\Models\{AdInteractionLog, AdPlacement, AdBanner};
+use App\Domains\Advertising\Models\AdInteractionLog;
+use App\Domains\Advertising\Models\AdPlacement;
+use App\Domains\Advertising\Models\AdBanner;
 use App\Domains\Advertising\Services\Security\AdShieldProtection;
 use App\Models\AuditLog;
 use Illuminate\Support\Collection;

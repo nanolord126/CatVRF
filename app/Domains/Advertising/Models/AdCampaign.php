@@ -2,12 +2,15 @@
 
 namespace App\Domains\Advertising\Models;
 
-use App\Traits\Common\{HasEcosystemFeatures, HasEcosystemAuth, HasEcosystemMedia};
+use App\Traits\Common\HasEcosystemFeatures;
+use App\Traits\Common\HasEcosystemAuth;
+use App\Traits\Common\HasEcosystemMedia;
 use App\Models\AuditLog;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\{Auth, Log};
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 

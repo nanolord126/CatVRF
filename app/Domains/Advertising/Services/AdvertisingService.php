@@ -2,7 +2,8 @@
 
 namespace App\Domains\Advertising\Services;
 
-use App\Domains\Advertising\Models\{AdCampaign, AdBanner};
+use App\Domains\Advertising\Models\AdCampaign;
+use App\Domains\Advertising\Models\AdBanner;
 use App\Models\AuditLog;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;

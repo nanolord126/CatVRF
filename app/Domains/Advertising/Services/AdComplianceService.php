@@ -6,8 +6,10 @@ use App\Domains\Advertising\Models\AdBanner;
 use App\Domains\Advertising\Jobs\RegisterAdCreativeJob;
 use App\Domains\Common\Services\AI\ContentShieldService;
 use App\Models\AuditLog;
-use Illuminate\Support\{Carbon, Facades, Str};
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Illuminate\Http\UploadedFile;
 use Throwable;
 

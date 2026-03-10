@@ -2,7 +2,10 @@
 
 namespace App\Domains\Advertising\Services\AI;
 
-use Illuminate\Support\Facades\{Http, Log, Cache};
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
+use Intervention\Image\Laravel\Facades\Image;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -176,7 +179,7 @@ class AdGenerativeStudio
 
             // Загрузить изображение и наложить метку ERID
             try {
-                $image = \Intervention\Image\Facades\Image::make($imageUrl);
+                $image = Image::make($imageUrl);
                 
                 // Получить размеры изображения
                 $width = $image->width();

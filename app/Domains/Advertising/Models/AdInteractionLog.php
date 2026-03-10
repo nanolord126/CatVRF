@@ -2,11 +2,14 @@
 
 namespace App\Domains\Advertising\Models;
 
-use App\Traits\Common\{HasEcosystemFeatures, HasEcosystemAuth};
+use App\Traits\Common\HasEcosystemFeatures;
+use App\Traits\Common\HasEcosystemAuth;
 use App\Models\AuditLog;
-use App\Domains\Advertising\Models\{AdBanner, AdPlacement};
+use App\Domains\Advertising\Models\AdBanner;
+use App\Domains\Advertising\Models\AdPlacement;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -195,7 +198,7 @@ class AdInteractionLog extends Model
             $ip = $data['ip_address'];
             
             // Проверить в БД датацентров (AWS, GCP, Azure, DigitalOcean и т.д.)
-            $datacenter = \DB::table('ip_datacenters')
+            $datacenter = DB::table('ip_datacenters')
                 ->whereRaw('INET_ATON(?) BETWEEN start_ip AND end_ip', [$ip])
                 ->first();
             
@@ -204,7 +207,7 @@ class AdInteractionLog extends Model
             }
             
             // Проверить в БД VPN провайдеров (ExpressVPN, NordVPN, Surfshark и т.д.)
-            $vpn = \DB::table('ip_vpn_providers')
+            $vpn = DB::table('ip_vpn_providers')
                 ->whereRaw('INET_ATON(?) BETWEEN start_ip AND end_ip', [$ip])
                 ->first();
             
