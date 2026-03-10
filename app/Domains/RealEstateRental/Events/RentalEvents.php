@@ -1,0 +1,1 @@
+<?php namespace App\Domains\RealEstateRental\Events; class ResidentialRentalCreated { public function __construct(public $rental) {} } class CommercialRentalCreated { public function __construct(public $rental) {} } class LandRentalCreated { public function __construct(public $rental) {} } class EnterpriseRentalCreated { public function __construct(public $rental) {} }

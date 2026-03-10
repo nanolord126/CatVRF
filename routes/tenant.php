@@ -103,5 +103,14 @@ Route::middleware([
         
         // Construction
         Route::apiResource('construction', \App\Domains\Construction\Http\Controllers\ProjectController::class);
+        
+        // Real Estate Rental
+        Route::apiResource('rental', \App\Domains\RealEstateRental\Http\Controllers\RentalController::class);
+        
+        // Real Estate Sales
+        Route::apiResource('sales', \App\Domains\RealEstateSales\Http\Controllers\SalesController::class);
+        
+        // Beauty Shop (Cosmetics & Perfumery)
+        Route::apiResource('beauty-shop', \App\Domains\BeautyShop\Http\Controllers\BeautyProductController::class);
     });
 });

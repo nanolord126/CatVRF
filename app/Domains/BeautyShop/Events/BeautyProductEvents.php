@@ -1,0 +1,1 @@
+<?php namespace App\Domains\BeautyShop\Events; class BeautyProductCreated { public function __construct(public $product) {} } class BeautyProductUpdated { public function __construct(public $product) {} } class BeautyProductDeleted { public function __construct(public $product) {} }
