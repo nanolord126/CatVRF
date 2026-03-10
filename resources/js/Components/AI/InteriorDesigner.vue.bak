@@ -1,0 +1,111 @@
+<template>
+  <div class="p-6 bg-gray-900/80 backdrop-blur-xl text-white rounded-2xl shadow-2xl border border-white/5 relative overflow-hidden group">
+    <!-- Background Sparkles -->
+    <div class="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 blur-3xl rounded-full"></div>
+    
+    <div class="flex justify-between items-center mb-6 relative z-10">
+      <div>
+        <h2 class="text-2xl font-black bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-500 bg-clip-text text-transparent uppercase tracking-tighter">
+          AI Дизайнер Интерьера 2026
+        </h2>
+        <p class="text-[10px] text-gray-500 uppercase tracking-widest mt-1">Industrial-Grade Neural Engine v.4.0</p>
+      </div>
+      <div class="status-badge px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-[10px] font-bold border border-blue-500/30 uppercase tracking-tight">
+        Анализ активен
+      </div>
+    </div>
+
+    <!-- Upload Section -->
+    <div v-if="!sessionContent" 
+         class="upload-zone border-2 border-dashed border-white/10 rounded-2xl p-12 text-center hover:border-blue-500/50 transition-all cursor-pointer bg-white/5 group" 
+         @click="simulateUpload">
+      <div class="w-16 h-16 bg-blue-600/20 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform">
+        <i class="fas fa-camera text-2xl text-blue-400"></i>
+      </div>
+      <h3 class="text-lg font-bold">Загрузите фото пространства</h3>
+      <p class="text-sm text-gray-400 mt-2 max-w-[200px] mx-auto leading-relaxed">AI проанализирует габариты и предложит готовый проект</p>
+    </div>
+
+    <!-- AI Result Section -->
+    <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-6 relative z-10">
+      <!-- 3D Preview -->
+      <div class="lg:col-span-2 relative aspect-[16/10] bg-black/40 rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
+        <canvas ref="canvas3d" class="w-full h-full"></canvas>
+        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent pointer-events-none"></div>
+        <div class="absolute bottom-4 left-4 p-4 rounded-xl bg-black/40 backdrop-blur-md border border-white/10 text-[11px]">
+          <div class="flex gap-4">
+            <div>
+              <span class="text-gray-500 block uppercase">Стиль</span>
+              <span class="font-bold">{{ sessionContent.analysis.style }}</span>
+            </div>
+            <div class="border-l border-white/10 pl-4">
+              <span class="text-gray-500 block uppercase">Площадь</span>
+              <span class="font-bold">{{ sessionContent.analysis.dimensions.width * sessionContent.analysis.dimensions.length }} м²</span>
+            </div>
+          </div>
+        </div>
+        <!-- AR Toggle -->
+        <button class="absolute top-4 right-4 p-3 bg-white/10 backdrop-blur-md rounded-full border border-white/20 text-white">
+            <i class="fas fa-vr-cardboard"></i>
+        </button>
+      </div>
+
+      <!-- Inventory Suggestions -->
+      <div class="sidebar flex flex-col h-full">
+        <div class="flex items-center justify-between mb-4 mt-2">
+            <h3 class="text-xs font-black uppercase tracking-widest text-gray-400">Компоненты AI</h3>
+            <span class="text-[10px] text-blue-400 font-bold px-2 py-0.5 bg-blue-400/10 rounded">Smart Match</span>
+        </div>
+        <div class="space-y-3 flex-grow overflow-y-auto no-scrollbar max-h-[300px]">
+          <div v-for="item in sessionContent.suggestions" :key="item.id" 
+               class="item-card p-3 bg-white/5 rounded-xl flex gap-4 items-center border border-white/5 hover:bg-white/10 hover:border-white/10 transition-all cursor-pointer">
+            <div class="w-10 h-10 bg-gradient-to-br from-gray-800 to-gray-700 rounded-lg flex items-center justify-center text-lg shadow-lg">🛋️</div>
+            <div class="flex-grow min-w-0">
+              <h4 class="text-xs font-bold truncate">{{ item.name }}</h4>
+              <span class="text-blue-400 text-[10px] font-mono">{{ item.price }} ₽</span>
+            </div>
+            <button @click="addToCart(item)" class="w-8 h-8 rounded-full bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white transition-all flex items-center justify-center">
+              <i class="fas fa-plus text-xs"></i>
+            </button>
+          </div>
+        </div>
+        
+        <div class="pt-6 mt-auto">
+            <button @click="submitOrder" class="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl font-black uppercase text-[10px] tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-blue-600/20">
+              Оформить проект <span class="opacity-50 ml-1">(+5% AI Fee)</span>
+            </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted } from 'vue';
+
+const sessionContent = ref(null);
+const canvas3d = ref(null);
+
+const simulateUpload = () => {
+    sessionContent.value = {
+        analysis: { style: 'Скандинавский Минимализм', dimensions: { width: 4.5, length: 5.2 } },
+        suggestions: [
+            { id: 1, name: 'Диван Nordic Pro', price: '45 000' },
+            { id: 2, name: 'Стол AI Smart Table', price: '12 500' },
+            { id: 3, name: 'Торшер Minimalist', price: '8 900' }
+        ]
+    };
+};
+
+const addToCart = (item) => {
+    console.log('Added to AI Order:', item);
+};
+
+const submitOrder = () => {
+    alert('Заказ сформирован с учетом 5% комиссии AI');
+};
+</script>
+
+<style scoped>
+.no-scrollbar::-webkit-scrollbar { display: none; }
+</style>

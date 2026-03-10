@@ -1,0 +1,11 @@
+[Interface]
+PrivateKey = ${WG_PRIVATE_KEY}
+Address = 10.10.10.2/32
+DNS = 1.1.1.1
+
+# CORE TO RU-CORE (Secure data localization flow)
+[Peer]
+PublicKey = ${RU_CORE_WG_PUBLIC_KEY}
+Endpoint = ru-gateway.yandexcloud.net:51820
+AllowedIPs = 10.10.10.1/32, 192.168.10.0/24
+PersistentKeepalive = 25

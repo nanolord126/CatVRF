@@ -1,0 +1,37 @@
+services:
+  # RU-CORE: Локализация персональных данных (ФЗ-152) и платежных шлюзов
+  database-ru:
+    image: postgres:16-alpine
+    container_name: database-ru-pdn
+    restart: always
+    environment:
+      POSTGRES_DB: pdn_storage
+      POSTGRES_USER_FILE: /run/secrets/db_user
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    volumes:
+      - pdn_data:/var/lib/postgresql/data
+    networks:
+      - internal-tunnel
+
+  redis-auth:
+    image: redis:7-alpine
+    container_name: redis-ru-sessions
+    command: redis-server --appendonly yes
+    networks:
+      - internal-tunnel
+
+  # Sidecar для работы с АТОЛ/СБЕР (платежи и ККТ в РФ)
+  fiscal-proxy:
+    image: nginx:alpine
+    container_name: fiscal-ru-proxy
+    volumes:
+      - ./docker/nginx/fiscal.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - internal-tunnel
+
+volumes:
+  pdn_data:
+
+networks:
+  internal-tunnel:
+    external: true

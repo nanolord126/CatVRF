@@ -1,0 +1,58 @@
+services:
+  # Наш основной Laravel-бэкенд с AI и ML на борту
+  app-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: catvrf-core-app:latest
+    container_name: cat-core-app
+    restart: always
+    environment:
+      DOPPLER_CONFIG: production_core
+      APP_ZONE: core
+    volumes:
+      - .:/var/www/html
+      - storage_data:/var/www/html/storage
+    depends_on:
+      - vector-search
+    networks:
+      - core-network
+      - internal-tunnel
+
+  # Typesense для сверхбыстрого векторного поиска
+  vector-search:
+    image: typesense/typesense:26.0
+    container_name: cat-vector-search
+    restart: always
+    environment:
+      TYPESENSE_DATA_DIR: /data
+      TYPESENSE_API_KEY: ${TYPESENSE_API_KEY}
+    volumes:
+      - vector_data:/data
+    networks:
+      - core-network
+
+  # Redis для кэша и очередей (не содержит ПДн)
+  redis-cache:
+    image: redis:7-alpine
+    container_name: redis-core-cache
+    networks:
+      - core-network
+
+  # Scribe API Docs
+  api-docs:
+    image: nginx:alpine
+    container_name: api-docs-server
+    volumes:
+      - ./public/docs:/usr/share/nginx/html:ro
+    networks:
+      - core-network
+
+volumes:
+  storage_data:
+  vector_data:
+
+networks:
+  core-network:
+  internal-tunnel:
+    external: true

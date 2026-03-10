@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+@theme {
+    --color-primary-50: #eef2ff;
+    --color-primary-100: #e0e7ff;
+    --color-primary-200: #c7d2fe;
+    --color-primary-300: #a5b4fc;
+    --color-primary-400: #818cf8;
+    --color-primary-500: #6366f1;
+    --color-primary-600: #4f46e5;
+    --color-primary-700: #4338ca;
+    --color-primary-800: #3730a3;
+    --color-primary-900: #312e81;
+    --color-primary-950: #4F46E5;
+    
+    --bg-background: #050505;
+}
+
+/* Glassmorphism Utilities 2026 */
+.fi-sidebar {
+    background: rgba(5, 5, 5, 0.8) !important;
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    border-right: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+.fi-main-container {
+    background-color: #050505 !important;
+}
+
+.fi-section, .fi-card, .fi-ta-content, .fi-modal-window {
+    background: rgba(255, 255, 255, 0.02) !important;
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    border-radius: 20px !important;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4) !important;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.fi-section:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* Sidebar Transitions */
+.fi-sidebar-item-button {
+    border-radius: 12px !important;
+    transition: background 0.3s ease;
+}
+
+/* Fluid Typography Base */
+html {
+    font-size: clamp(14px, 1vw + 10px, 18px);
+    background: #050505;
+    color: #f6f6f6;
+}
+
+/* Custom Hide Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+}

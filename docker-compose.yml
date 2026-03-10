@@ -1,0 +1,66 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        user: catvrf
+        uid: 1000
+    image: hotelbeautycrm-app
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - .:/var/www
+    depends_on:
+      - db
+      - redis
+    networks:
+      - hotelbeautycrm
+
+  nginx:
+    image: nginx:alpine
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    volumes:
+      - .:/var/www
+      - ./docker/nginx/conf.d/:/etc/nginx/conf.d/
+    networks:
+      - hotelbeautycrm
+
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - hotelbeautycrm-db:/var/lib/postgresql/data
+    networks:
+      - hotelbeautycrm
+
+  redis:
+    image: redis:alpine
+    restart: unless-stopped
+    networks:
+      - hotelbeautycrm
+
+  mcp-github:
+    image: ghcr.io/mcp/github:latest
+    container_name: mcp-github
+    environment:
+      - GITHUB_TOKEN=$SHA256:VyZXtp9aTJauOWMNjJ5JqOmc7uA4js2lqchWj6ngUxg 
+    restart: unless-stopped
+    networks:
+      - hotelbeautycrm
+
+networks:
+  hotelbeautycrm:
+    driver: bridge
+
+volumes:
+  hotelbeautycrm-db:
+    driver: local

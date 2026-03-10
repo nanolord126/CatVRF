@@ -1,0 +1,326 @@
+<?php
+
+namespace App\Models;
+
+use App\Traits\HasEcosystemTracing;
+use App\Contracts\AIEnableEcosystemEntity;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Laravel\Scout\Searchable;
+
+class MarketplaceVenue extends Model implements AIEnableEcosystemEntity
+{
+    use HasFactory, SoftDeletes, HasEcosystemTracing, Searchable;
+
+    protected \ = 'venues';
+
+    public const TYPE_BILLIARDS = 'billiards';
+    public const TYPE_SAUNA = 'sauna';
+    public const TYPE_CLUB = 'club';
+    public const TYPE_KARAOKE = 'karaoke';
+
+    protected \ = ['name', 'address', 'type', 'geo_location', 'capacity', 'hall_layout'];
+
+    protected \ = [
+        'geo_location' => 'array',
+        'hall_layout' => 'array',
+    ];
+
+    public static function getTypes(): array
+    {
+        return [
+            self::TYPE_BILLIARDS => 'Бильярдный зал',
+            self::TYPE_SAUNA => 'Сауна / Баня',
+            self::TYPE_CLUB => 'Клуб / Ночное заведение',
+            self::TYPE_KARAOKE => 'Караоке',
+        ];
+    }
+
+    /**
+     * AI Adaptive Search & Hybrid Vector Representation
+     */
+    public function toSearchableArray(): array
+    {
+        return [
+            'id' => (int) \->id,
+            'name' => \->name,
+            'address' => \->address,
+            'type' => \->type,
+            '_geo' => \->geo_location,
+            '_embedding' => \->getAiVectorEmbedding(),
+        ];
+    }
+
+    public function getAiAdjustedPrice(float \, array \ = []): float
+    {
+        return \; 
+    }
+
+    public function getTrustScore(): float
+    {
+        return 0.95;
+    }
+
+    public function generateAiChecklist(): array
+    {
+        return ['Check Venue capacity', 'Validate Hall Layout'];
+    }
+
+    protected function getAiVectorEmbedding(): array
+    {
+        return \Illuminate\Support\Facades\DB::table('ai_recommendation_vectors')
+            ->where('entity_type', 'venue')
+            ->where('entity_id', \->id)
+            ->value('embedding_vector') ?? [];
+    }
+
+    public function events(): HasMany
+    {
+        return \->hasMany(MarketplaceEvent::class, 'venue_id');
+    }
+}
+
+class MarketplaceEvent extends Model implements AIEnableEcosystemEntity
+{
+    use HasFactory, SoftDeletes, HasEcosystemTracing, Searchable;
+
+    protected \ = 'events';
+
+    protected \ = ['venue_id', 'title', 'description', 'start_at', 'end_at', 'status', 'seating_data'];
+
+    protected \ = [
+        'start_at' => 'datetime',
+        'end_at' => 'datetime',
+        'seating_data' => 'array',
+    ];
+
+    public function venue(): BelongsTo
+    {
+        return \->belongsTo(MarketplaceVenue::class, 'venue_id');
+    }
+
+    public function getAiAdjustedPrice(float \, array \ = []): float
+    {
+        return \;
+    }
+
+    public function getTrustScore(): float
+    {
+        return 1.0;
+    }
+
+    public function generateAiChecklist(): array
+    {
+        return ['Confirm equipment availability', 'Check seating layout'];
+    }
+
+    public function tickets(): HasMany
+    {
+        return \->hasMany(MarketplaceTicket::class, 'event_id');
+    }
+
+    public function bookings(): HasMany
+    {
+        return \->hasMany(MarketplaceBooking::class, 'event_id');
+    }
+}
+
+class MarketplaceTicket extends Model
+{
+    use HasFactory, HasEcosystemTracing;
+
+    protected \ = ['event_id', 'category', 'price', 'quantity_available', 'meta_data'];
+
+    protected \ = [
+        'meta_data' => 'array',
+    ];
+
+    public function event(): BelongsTo
+    {
+        return \->belongsTo(MarketplaceEvent::class, 'event_id');
+    }
+}
+
+class MarketplaceBooking extends Model
+{
+    protected \ = 'bookings';
+    use HasFactory, HasEcosystemTracing;
+
+    protected \ = ['user_id', 'event_id', 'seat_numbers', 'total_price', 'payment_status', 'invoice_link'];
+
+    protected \ = [
+        'seat_numbers' => 'array',
+    ];
+
+    public function user(): BelongsTo
+    {
+        return \->belongsTo(User::class);
+    }
+
+    public function event(): BelongsTo
+    {
+        return \->belongsTo(MarketplaceEvent::class, 'event_id');
+    }
+}
+
+class MarketplaceGym extends Model
+{
+    use HasFactory, SoftDeletes, HasEcosystemTracing;
+
+    protected \ = 'gyms';
+
+    protected \ = ['name', 'address', 'geo_location', 'occupancy_data'];
+
+    protected \ = [
+        'geo_location' => 'array',
+        'occupancy_data' => 'array',
+    ];
+
+    public function schedules(): HasMany
+    {
+        return \->hasMany(TrainingSchedule::class);
+    }
+}
+
+class Coach extends Model
+{
+    use HasFactory, HasEcosystemTracing;
+
+    protected \ = ['user_id', 'specialization', 'bio', 'hourly_rate'];
+
+    public function user(): BelongsTo
+    {
+        return \->belongsTo(User::class);
+    }
+
+    public function schedules(): HasMany
+    {
+        return \->hasMany(TrainingSchedule::class);
+    }
+}
+
+class TrainingSchedule extends Model
+{
+    use HasFactory, HasEcosystemTracing;
+
+    protected \ = ['gym_id', 'coach_id', 'training_type', 'start_at', 'end_at', 'max_participants', 'inventory_id'];
+
+    protected \ = [
+        'start_at' => 'datetime',
+        'end_at' => 'datetime',
+    ];
+
+    public function gym(): BelongsTo
+    {
+        return \->belongsTo(MarketplaceGym::class, 'gym_id');
+    }
+
+    public function coach(): BelongsTo
+    {
+        return \->belongsTo(Coach::class);
+    }
+}
+
+class NutritionPlan extends Model
+{
+    use HasFactory, HasEcosystemTracing;
+
+    protected \ = ['user_id', 'coach_id', 'title', 'plan_details', 'start_date', 'end_date'];
+
+    protected \ = [
+        'plan_details' => 'array',
+        'start_date' => 'date',
+        'end_date' => 'date',
+    ];
+
+    public function user(): BelongsTo
+    {
+        return \->belongsTo(User::class);
+    }
+
+    public function coach(): BelongsTo
+    {
+        return \->belongsTo(Coach::class);
+    }
+}
+
+class MarketplaceCourse extends Model
+{
+    use HasFactory, SoftDeletes, HasEcosystemTracing;
+
+    protected \ = 'courses';
+
+    protected \ = ['title', 'description', 'category', 'price'];
+
+    public function modules(): HasMany
+    {
+        return \->hasMany(CourseModule::class, 'course_id');
+    }
+}
+
+class CourseModule extends Model
+{
+    use HasFactory, HasEcosystemTracing;
+
+    protected \ = ['course_id', 'title', 'sort_order'];
+
+    public function course(): BelongsTo
+    {
+        return \->belongsTo(MarketplaceCourse::class, 'course_id');
+    }
+
+    public function lessons(): HasMany
+    {
+        return \->hasMany(Lesson::class, 'module_id');
+    }
+}
+
+class Lesson extends Model
+{
+    use HasFactory, HasEcosystemTracing;
+
+    protected \ = ['module_id', 'title', 'video_url', 'content', 'sort_order'];
+
+    public function module(): BelongsTo
+    {
+        return \->belongsTo(CourseModule::class);
+    }
+}
+
+class EducationProgress extends Model
+{
+    use HasFactory, HasEcosystemTracing;
+
+    protected \ = 'education_progress';
+
+    protected \ = ['user_id', 'lesson_id', 'progress_percentage', 'is_completed'];
+
+    public function user(): BelongsTo
+    {
+        return \->belongsTo(User::class);
+    }
+
+    public function lesson(): BelongsTo
+    {
+        return \->belongsTo(Lesson::class);
+    }
+}
+
+class CallSession extends Model
+{
+    use HasFactory, HasEcosystemTracing;
+
+    protected \ = ['user_id', 'room_id', 'scheduled_at', 'duration_minutes'];
+
+    protected \ = [
+        'scheduled_at' => 'datetime',
+    ];
+
+    public function user(): BelongsTo
+    {
+        return \->belongsTo(User::class);
+    }
+}

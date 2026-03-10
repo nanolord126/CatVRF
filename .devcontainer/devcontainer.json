@@ -1,0 +1,27 @@
+{
+  "name": "HotelBeautyCRM Dev Container",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/var/www",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "GitHub.copilot",
+        "ms-azuretools.vscode-docker",
+        "amiralizadeh94.laravel-extra-intellisense",
+        "onecentlin.laravel-blade",
+        "bmewburn.vscode-intelephense-client"
+      ],
+      "settings": {
+        "http.systemCertificatesNode": true,
+        "mcp.servers": {
+          "github": {
+            "command": "docker",
+            "args": ["exec", "-i", "mcp-github"]
+          }
+        }
+      }
+    }
+  },
+  "remoteUser": "catvrf"
+}
