@@ -57,7 +57,7 @@ Route::middleware([
         Route::apiResource('clinic', \App\Domains\Clinic\Http\Controllers\ClinicController::class);
         
         // Advertising
-        Route::apiResource('advertising', \App\Domains\Advertising\Http\Controllers\AdvertisingController::class);
+        Route::apiResource('advertising', \App\Domains\Advertising\Http\Controllers\AdCampaignController::class);
         
         // Geo
         Route::apiResource('geo', \App\Domains\Geo\Http\Controllers\GeoController::class);
