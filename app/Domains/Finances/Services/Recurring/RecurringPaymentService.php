@@ -155,7 +155,7 @@ class RecurringPaymentService
     /**
      * Отменить подписку.
      */
-    public function cancelSubscription(Subscription $subscription, string $reason = null): void
+    public function cancelSubscription(Subscription $subscription, ?string $reason = null): void
     {
         try {
             $subscription->cancel($reason);

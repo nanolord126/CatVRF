@@ -52,7 +52,7 @@ class PaymentService
         ]);
     }
 
-    public function handleWebhook(array $payload, string $correlationId = null): void
+    public function handleWebhook(array $payload, ?string $correlationId = null): void
     {
         try {
             $correlationId = $correlationId ?? Str::uuid();
@@ -204,5 +204,42 @@ class PaymentService
                 }
             }
         });
+    }
+
+    /**
+     * Выполнить платёж по токену карты (для подписок и повторяющихся платежей).
+     */
+    public function chargeByToken(string $token, float $amount, array $metadata = []): array
+    {
+        try {
+            // Инициировать платёж через шлюз используя токен карты
+            $result = $this->gateway->chargeToken($token, $amount, $metadata);
+
+            // Создать транзакцию
+            $tx = PaymentTransaction::create([
+                'payment_id' => $result['id'] ?? null,
+                'amount' => $amount,
+                'status' => 'settled',
+                'correlation_id' => $metadata['correlation_id'] ?? request()->header('X-Correlation-ID', uniqid()),
+                'metadata' => $metadata,
+            ]);
+
+            Log::channel('payments')->info('Payment by token processed successfully', [
+                'transaction_id' => $tx->id,
+                'amount' => $amount,
+            ]);
+
+            return [
+                'status' => 'settled',
+                'transaction_id' => $tx->id,
+                'amount' => $amount,
+            ];
+        } catch (Throwable $e) {
+            Log::error('Payment by token failed', [
+                'amount' => $amount,
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
+        }
     }
 }
