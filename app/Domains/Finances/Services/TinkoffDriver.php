@@ -5,6 +5,7 @@ namespace App\Domains\Finances\Services;
 use App\Domains\Finances\Interfaces\PaymentGatewayInterface;
 use App\Domains\Finances\Models\PaymentTransaction;
 use Illuminate\Support\Facades\{Http, Log};
+use Illuminate\Support\Str;
 use Exception;
 
 /**
@@ -88,7 +89,7 @@ class TinkoffDriver implements PaymentGatewayInterface
     /**
      * Захватить средства (финализировать платёж при 2-stage).
      */
-    public function capture(string $paymentId, float $amount = null): array
+    public function capture(string $paymentId, float $amount = null): bool
     {
         try {
             $payload = [
@@ -116,20 +117,17 @@ class TinkoffDriver implements PaymentGatewayInterface
                 'amount' => $amount,
             ]);
 
-            return [
-                'status' => 'settled',
-                'confirmation_id' => $response['ConfirmationId'] ?? null,
-            ];
+            return true;
         } catch (Exception $e) {
             Log::error('Tinkoff capture failed', ['payment_id' => $paymentId, 'error' => $e->getMessage()]);
-            throw $e;
+            return false;
         }
     }
 
     /**
      * Возврат средств.
      */
-    public function refund(string $paymentId, float $amount): array
+    public function refund(string $paymentId, float $amount, array $data = []): array
     {
         try {
             $payload = [
@@ -168,21 +166,48 @@ class TinkoffDriver implements PaymentGatewayInterface
     /**
      * Выплата на счёт (банковский перевод).
      */
-    public function payout(array $recipient, float $amount): array
+    public function payout(array $recipient, float $amount, array $data = []): array
     {
         try {
-            // Tinkoff поддерживает выплаты через отдельный API
-            // Это заглушка - реальная реализация требует отдельного эндпоинта
+            // Tinkoff поддерживает выплаты через выделенный API
+            // Реальная реализация использует отдельный эндпоинт для переводов
             
-            Log::info('Tinkoff payout initiated', [
-                'recipient' => $recipient['account'] ?? null,
-                'amount' => $amount,
-            ]);
-
-            return [
-                'status' => 'pending',
-                'payout_id' => 'payout_' . \Illuminate\Support\Str::random(20),
+            $payoutData = [
+                'TerminalKey' => $this->config['terminal_id'],
+                'Phone' => $recipient['phone'] ?? null,
+                'Account' => $recipient['account'] ?? null,
+                'Amount' => (int)($amount * 100), // В копейках
+                'OrderId' => \Illuminate\Support\Str::uuid()->toString(),
+                'Description' => 'Пользовательская выплата',
             ];
+
+            $payoutData['Token'] = $this->generateSignature(array_filter($payoutData, fn($k) => !in_array($k, ['Token']), ARRAY_FILTER_USE_KEY));
+
+            $response = Http::withHeaders([
+                'Content-Type' => 'application/json',
+            ])->post($this->endpoint . 'SendPayment/', $payoutData);
+
+            if ($response->failed()) {
+                throw new Exception('Payout request failed: ' . $response->status());
+            }
+
+            $result = $response->json();
+
+            if (($result['Success'] ?? false) || ($result['Status'] === 'SENT')) {
+                Log::channel('tinkoff')->info('Tinkoff payout successful', [
+                    'recipient' => $recipient['account'] ?? null,
+                    'amount' => $amount,
+                    'order_id' => $payoutData['OrderId'],
+                ]);
+
+                return [
+                    'status' => 'success',
+                    'payout_id' => $result['OrderId'] ?? $payoutData['OrderId'],
+                    'transaction_id' => $result['TransactionId'] ?? null,
+                ];
+            } else {
+                throw new Exception($result['Message'] ?? 'Payout failed');
+            }
         } catch (Exception $e) {
             Log::error('Tinkoff payout failed', ['error' => $e->getMessage()]);
             throw $e;
@@ -364,7 +389,7 @@ class TinkoffDriver implements PaymentGatewayInterface
     /**
      * Проверить здоровье API.
      */
-    public function healthCheck(): bool
+    public function healthCheck(): array
     {
         try {
             $response = Http::timeout(5)
@@ -372,10 +397,18 @@ class TinkoffDriver implements PaymentGatewayInterface
                 ->successful();
 
             Log::info('Tinkoff health check', ['available' => $response]);
-            return $response;
+            return [
+                'status' => $response ? 'healthy' : 'unhealthy',
+                'provider' => 'tinkoff',
+                'timestamp' => now(),
+            ];
         } catch (Exception $e) {
             Log::warning('Tinkoff health check failed', ['error' => $e->getMessage()]);
-            return false;
+            return [
+                'status' => 'unhealthy',
+                'provider' => 'tinkoff',
+                'error' => $e->getMessage(),
+            ];
         }
     }
 
