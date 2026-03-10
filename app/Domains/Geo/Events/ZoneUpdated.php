@@ -1,0 +1,1 @@
+<?php namespace App\Domains\Geo\Events; use Illuminate\Broadcasting\Channel; use Illuminate\Foundation\Events\Dispatchable; use Illuminate\Broadcasting\InteractsWithSockets; class ZoneUpdated { use Dispatchable, InteractsWithSockets; public function __construct(public $zone) {} public function broadcastOn(): Channel { return new Channel('geo'); } }

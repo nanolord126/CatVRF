@@ -1,0 +1,1 @@
+<?php namespace App\Domains\Delivery\Events; use Illuminate\Broadcasting\Channel; use Illuminate\Foundation\Events\Dispatchable; use Illuminate\Broadcasting\InteractsWithSockets; class OrderUpdated { use Dispatchable, InteractsWithSockets; public function __construct(public $order) {} public function broadcastOn(): Channel { return new Channel('delivery'); } }

@@ -1,0 +1,1 @@
+<?php namespace App\Domains\Sports\Events; use Illuminate\Broadcasting\Channel; use Illuminate\Foundation\Events\Dispatchable; use Illuminate\Broadcasting\InteractsWithSockets; class MembershipUpdated { use Dispatchable, InteractsWithSockets; public function __construct(public $membership) {} public function broadcastOn(): Channel { return new Channel('sports'); } }

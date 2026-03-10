@@ -1,0 +1,1 @@
+<?php namespace App\Domains\RealEstate\Events; use Illuminate\Broadcasting\Channel; use Illuminate\Foundation\Events\Dispatchable; use Illuminate\Broadcasting\InteractsWithSockets; class PropertyCreated { use Dispatchable, InteractsWithSockets; public function __construct(public $property) {} public function broadcastOn(): Channel { return new Channel('realestate'); } }

@@ -1,0 +1,1 @@
+<?php namespace App\Domains\Insurance\Events; use Illuminate\Broadcasting\Channel; use Illuminate\Foundation\Events\Dispatchable; use Illuminate\Broadcasting\InteractsWithSockets; class PolicyUpdated { use Dispatchable, InteractsWithSockets; public function __construct(public $policy) {} public function broadcastOn(): Channel { return new Channel('insurance'); } }

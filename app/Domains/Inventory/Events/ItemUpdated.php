@@ -1,0 +1,1 @@
+<?php namespace App\Domains\Inventory\Events; use Illuminate\Broadcasting\Channel; use Illuminate\Foundation\Events\Dispatchable; use Illuminate\Broadcasting\InteractsWithSockets; class ItemUpdated { use Dispatchable, InteractsWithSockets; public function __construct(public $item) {} public function broadcastOn(): Channel { return new Channel('inventory'); } }

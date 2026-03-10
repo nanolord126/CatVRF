@@ -1,0 +1,1 @@
+<?php namespace App\Domains\Events\Events; use Illuminate\Broadcasting\Channel; use Illuminate\Foundation\Events\Dispatchable; use Illuminate\Broadcasting\InteractsWithSockets; class EventUpdated { use Dispatchable, InteractsWithSockets; public function __construct(public $event) {} public function broadcastOn(): Channel { return new Channel('events'); } }
