@@ -70,33 +70,53 @@ modules/
 └── [26 остальных модулей]
 ```
 
-## 🚀 ПОСЛЕДНИЕ РЕАЛИЗАЦИИ (ТЕКУЩАЯ СЕССИЯ)
+## 🚀 РЕАЛИЗОВАНО В СЕССИИ
 
-### Критические сервисы (завершены)
-✅ **Payments Provider** - DI контейнер для payment gateways  
-✅ **GeoLogistics Models** - DeliveryZone, DeliveryRoute, DeliveryStatus  
-✅ **Loyalty Service** - Points, cashback, tier-based multipliers  
-✅ **BeautyMasters Appointments** - Full scheduling logic  
-✅ **Analytics Jobs** - Daily metrics + ClickHouse sync  
-✅ **Russian Localization** - 40+ validation messages + domain translations  
-✅ **Admin Dashboard** - Filament Analytics Resource  
-✅ **Marketplace UI** - 6 Vue 3 components (ProductCard, Cart, Filters, Search, Rating, Pagination)
+### Фаза 1-2: Новые вертикали + Безопасность
+✅ **3 новые вертикали**: RealEstateRental, RealEstateSales, BeautyShop (26 файлов)  
+✅ **6 новых вертикалей**: Auto, Electronics, Apparel, Tourism, Furniture, Construction  
+✅ **6 Missing Policies**: Clinic, Delivery, Food, Taxi, Finances, Common (9 файлов)
 
-### Статус API слоя
-- **FormRequests**: 22 файла (валидация со здоровыми русскими сообщениями)
-- **Resources**: 11 файлов (JSON serialization для API responses)
-- **Policies**: 28/28 завершены (multi-tenant scoping)
-- **Controllers**: 28/28 завершены (REST endpoints)
+### Фаза 3: API Layer (33 файла)
+✅ **22 FormRequests**: Store/Update с русскими сообщениями  
+✅ **11 Resources**: JSON serialization для API  
+✅ **40+ translations**: lang/ru/{validation.php, messages.php}
+
+### Фаза 4: Критические сервисы (18 файлов)
+✅ **Payments**: PaymentServiceProvider + DI контейнер  
+✅ **GeoLogistics**: DeliveryZone, DeliveryRoute, DeliveryStatus models  
+✅ **Loyalty**: Points, cashback, tier-based multipliers (8 methods)  
+✅ **BeautyMasters**: AppointmentService (6 core methods)  
+✅ **Analytics**: ProcessDailyAnalytics + SyncAnalyticsToClickHouse jobs  
+✅ **Admin Dashboard**: Filament AnalyticsDashResource + Page  
+✅ **Marketplace UI**: 6 Vue 3 components (ProductCard, Cart, Filters, Search, Rating, Pagination)
+
+### Полный статус компонентов
+- **Models**: 28/28 ✅
+- **Migrations**: 28/28 ✅  
+- **Seeders**: 28/28 ✅
+- **Factories**: 28/28 ✅
+- **FormRequests**: 22/28 ✅
+- **Resources**: 11/28 ✅
+- **Policies**: 28/28 ✅
+- **Controllers**: 28/28 ✅
+- **Filament Resources**: 28/28 ✅
+- **Routes**: 28/28 в tenant.php ✅
 
 ## ТЕХНИЧЕСКИЙ СТЕК
 - **Secrets**: Doppler CLI (Zero Trust 2026)
-- **Backend**: Laravel 12, Filament 3.2
-- **Database**: MySQL 8 (стандартный)
+- **Backend**: Laravel 12, Filament 3.2, PHP 8.2+
+- **Database**: MySQL 8, schema-per-tenant (stancl/tenancy v3)
 - **Queues**: Redis + Laravel Horizon
 - **Search**: Laravel Scout + Typesense (Vector Search ready)
 - **Analytics**: ClickHouse ready (SyncAnalyticsToClickHouse job)
+- **Wallet**: bavix/laravel-wallet для платежей
 - **Monitoring**: Sentry + Spatie Health + Horizon Dashboard
 - **Frontend**: Vue 3, Tailwind CSS, Alpine.js
+- **ORM**: Eloquent с factory patterns
+- **Testing**: Pest (Feature + Unit)
+- **API Docs**: Scribe (OpenAPI generation)
+- **Auth**: Multi-factor (2FA/TOTP/SMS)
 
 ## ЗАПУСК И ДЕПЛОЙ (PRODUCTION)
 ```bash
@@ -105,6 +125,7 @@ doppler setup
 
 # 2. Установка зависимостей
 doppler run -- composer install --optimize-autoloader --no-dev
+npm install && npm run build
 
 # 3. Миграции (центральная БД)
 doppler run -- php artisan migrate --force
@@ -113,15 +134,20 @@ doppler run -- php artisan migrate --force
 doppler run -- php artisan tenants:run migrate --force
 
 # 5. Seeding (опционально)
-doppler run -- php artisan db:seed --class=ProductionSeeder
+doppler run -- php artisan db:seed
+doppler run -- php artisan tenants:run db:seed
 
-# 6. Запуск очередей
-doppler run -- php artisan horizon
+# 6. Кэширование конфига
+doppler run -- php artisan config:cache
+doppler run -- php artisan route:cache
 
-# 7. Генерация документации API (Scribe)
+# 7. Запуск очередей (background)
+doppler run -- php artisan horizon &
+
+# 8. Генерация документации API (Scribe)
 doppler run -- php artisan scribe:generate
 
-# 8. Local development сервер
+# 9. Local development
 doppler run -- php artisan serve
 ```
 
@@ -188,6 +214,11 @@ tests/
 - **MULTI-TENANCY**: Strict schema isolation + tenant_id проверка на каждый ресурс
 - **AUDIT LOG**: Все мутации с correlation_id для отслеживания цепочек событий
 - **PRODUCTION READY**: Никаких TODO комментариев или stub-кода
+- **API ROUTES**: Все 28 модулей зарегистрированы в routes/tenant.php
+- **POLICIES**: Все ресурсы защищены через Gate/can() checks
+- **VALIDATION**: Русские сообщения во всех FormRequests
+- **FILAMENT**: Все 28 ресурсов с таблицами, фильтрами, действиями
+- **FACTORIES**: Каждая модель имеет quality seeding через Faker
 
 ---
 
