@@ -99,7 +99,19 @@ class B2BAndHRMatchingService
         $reliability = $manufacturer->getTrustScore() / 100.0;
 
         // 2. Pricing Match (Based on Category and historical data)
-        $pricing = 0.8; // Placeholder: In production, compare against tenant average procurement cost
+        $avgCost = DB::table('purchase_orders')
+            ->where('supplier_id', $manufacturer->id)
+            ->where('created_at', '>=', now()->subMonths(3))
+            ->avg('total_amount') ?? 1000;
+        
+        $tenantAvgCost = DB::table('purchase_orders')
+            ->where('tenant_id', auth('tenant')->user()->id)
+            ->where('created_at', '>=', now()->subMonths(3))
+            ->avg('total_amount') ?? 1000;
+        
+        // Чем ближе цена к средней, тем лучше (0-1)
+        $priceDiff = abs($avgCost - $tenantAvgCost) / $tenantAvgCost;
+        $pricing = max(0, 1 - $priceDiff);
 
         // 3. Geo-logistics
         $geoScore = 1.0;
@@ -131,12 +143,42 @@ class B2BAndHRMatchingService
 
     private function getVectorSimilarity(string $textA, string $textB): float
     {
-        // In reality, we would fetch embeddings from EcosystemAIService and do cosine similarity
-        // Mocking similarity for now based on keyword overlap for speed, 
-        // but the architecture expects vector call.
+        // Генерируем embeddings для обоих текстов
         $embA = $this->aiService->generateEmbeddings(substr($textA, 0, 500));
-        // Simulate similarity score since we don't have a real vector DB here
-        return (float) mt_rand(50, 95) / 100; 
+        $embB = $this->aiService->generateEmbeddings(substr($textB, 0, 500));
+
+        // Вычисляем косинусное сходство
+        if (empty($embA) || empty($embB)) {
+            return 0.5; // Fallback если embedding не сгенерирована
+        }
+
+        return $this->cosineSimilarity($embA, $embB);
+    }
+
+    /**
+     * Вычислить косинусное сходство между двумя vectors.
+     */
+    private function cosineSimilarity(array $vecA, array $vecB): float
+    {
+        $dotProduct = 0;
+        $normA = 0;
+        $normB = 0;
+
+        foreach (array_keys($vecA) as $key) {
+            $a = $vecA[$key] ?? 0;
+            $b = $vecB[$key] ?? 0;
+            
+            $dotProduct += $a * $b;
+            $normA += $a * $a;
+            $normB += $b * $b;
+        }
+
+        $denominator = sqrt($normA) * sqrt($normB);
+        if ($denominator == 0) {
+            return 0;
+        }
+
+        return ($dotProduct / $denominator);
     }
 
     private function calculateDistance($lat1, $lon1, $lat2, $lon2)

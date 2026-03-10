@@ -101,12 +101,24 @@ class B2BAIAnalyticsService
 
     private function getMarketplaceTrendImpact(string $context): float
     {
-        // In 2026, this would call a Vector Search or External API
-        // Simulated: Medical supplies are surging due to "Global Health Forum 2026"
-        if (stripos($context, 'Medical') !== false || stripos($context, 'Clinic') !== false) {
-            return 500.0; // Bonus volume
+        // Получить текущие тренды из базы данных для этого категория/контекста
+        $trend = DB::table('ai_market_trends')
+            ->whereRaw("MATCH(keyword) AGAINST(? IN NATURAL LANGUAGE MODE)", [$context])
+            ->latest('updated_at')
+            ->first();
+
+        if ($trend) {
+            // Вернуть реальное значение тренда из БД
+            return (float)$trend->impact_multiplier * 100.0;
         }
-        return mt_rand(0, 100) / 10;
+
+        // Fallback: поискать базовый тренд по типу контекста
+        $baseImpact = DB::table('b2b_category_trends')
+            ->where('category_name', 'like', "%{$context}%")
+            ->latest('trend_score')
+            ->value('trend_score') ?? 50.0;
+
+        return $baseImpact;
     }
 
     private function generatePricingReasoning(float $demand, float $comp): string

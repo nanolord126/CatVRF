@@ -5,8 +5,7 @@ namespace App\Services\Taxi;
 use App\Models\Tenants\TaxiTrip;
 use App\Models\Taxi\TaxiSurgeZone;
 use Illuminate\Support\{Carbon, Facades};
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\{DB, Log, Cache, Http};
 
 /**
  * Сервис предиктивной аналитики спроса и адаптивного размещения флота.
@@ -42,22 +41,70 @@ class TaxiDemandForecastingService
             ->limit(10)
             ->get();
 
-        // 2. Интеграция с OpenAI (Placeholder для Embeddings/Marketplace Logic 2026)
-        // В реальном 2026 году здесь мы отправляем текущие события города (концерты, погода) 
-        // в LLM для корректировки коэффициентов прогноза.
+        // 2. Интеграция с OpenAI для корректировки прогноза на основе текущих событий
+        $contextAdjustment = $this->getOpenAIContextAdjustment($coordinates);
         
-        return $historicalDemand->map(function($hotspot) {
+        return $historicalDemand->map(function($hotspot) use ($contextAdjustment) {
             $recommendationWeight = ($hotspot->trip_count * 0.4) + ($hotspot->avg_profit * 0.6);
+            
+            // Применить корректировку на основе текущих событий (концерты, погода и т.д.)
+            $adjustedDemand = $recommendationWeight * $contextAdjustment;
             
             return [
                 'lat' => $hotspot->lat_cluster,
                 'lng' => $hotspot->lng_cluster,
                 'predicted_demand_level' => $this->mapDemandLevel($hotspot->trip_count),
                 'expected_avg_fare' => round($hotspot->avg_profit, 2),
-                'recommendation_score' => round($recommendationWeight, 1),
-                'reason' => "Высокая концентрация заказов категории 'Бизнес' в этот период",
+                'recommendation_score' => round($adjustedDemand, 1),
+                'context_adjustment' => round($contextAdjustment, 2),
+                'reason' => "Исторически высокая концентрация заказов в этот период и время",
             ];
         })->toArray();
+    }
+
+    /**
+     * Получить корректировку контекста из OpenAI на основе текущих событий.
+     */
+    private function getOpenAIContextAdjustment(array $coordinates): float
+    {
+        try {
+            $cached = Cache::remember(
+                'taxi_context_adjustment:' . json_encode($coordinates),
+                3600, // 1 час
+                function() use ($coordinates) {
+                    $response = Http::withHeader('Authorization', 'Bearer ' . config('services.openai.api_key'))
+                        ->post('https://api.openai.com/v1/chat/completions', [
+                            'model' => 'gpt-4',
+                            'messages' => [
+                                [
+                                    'role' => 'system',
+                                    'content' => 'Ты - аналитик такси-спроса. Дай мультипликатор спроса (0.8-1.5) на основе текущих событий.',
+                                ],
+                                [
+                                    'role' => 'user',
+                                    'content' => "Координаты: {$coordinates['lat']}, {$coordinates['lng']}. Сейчас " .
+                                        now()->format('l H:i') . ". Какой мультипликатор спроса? Ответь числом (0.8-1.5)",
+                                ]
+                            ],
+                            'max_tokens' => 50,
+                            'temperature' => 0.3,
+                        ]);
+
+                    if ($response->successful()) {
+                        $text = $response->json('choices.0.message.content');
+                        preg_match('/(\d+\.\d+)/', $text, $matches);
+                        return (float)($matches[1] ?? 1.0);
+                    }
+
+                    return 1.0;
+                }
+            );
+
+            return $cached;
+        } catch (\Exception $e) {
+            \Log::warning('OpenAI context adjustment failed', ['error' => $e->getMessage()]);
+            return 1.0; // Fallback to no adjustment
+        }
     }
 
     private function mapDemandLevel(int $count): string

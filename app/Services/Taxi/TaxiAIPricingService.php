@@ -73,10 +73,12 @@ class TaxiAIPricingService
 
     private function getActiveSurge(float $lat, float $lng): float
     {
-        // Поиск активной зоны "всплеска спроса" вокруг точки
-        // В реальной жизни: ST_Contains или ST_Distance
+        // Поиск активной зоны "всплеска спроса" вокруг точки с использованием гео-расстояния
         return TaxiSurgeZone::where('is_active', true)
-            ->where('radius', '>', 500) // Заглушка логики гео-дистанции
+            ->whereRaw(
+                'ST_Distance_Sphere(center_point, ST_GeomFromText(?, 4326)) < radius',
+                ["POINT($lng $lat)"]
+            )
             ->orderBy('multiplier', 'desc')
             ->first()?->multiplier ?? 1.0;
     }

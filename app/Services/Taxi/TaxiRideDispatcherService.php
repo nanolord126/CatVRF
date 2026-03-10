@@ -36,11 +36,42 @@ class TaxiRideDispatcherService
             throw new \Exception("Заказ заблокирован: обнаружена аномальная активность в такси-секторе.");
         }
 
-        // 2. Гео-поиск водителя (Учет класса авто и статуса)
-        // В 2026: ST_DistanceSphere(last_location, ST_GeomFromText('POINT(lat lng)')) < 5000
+        // 2. Гео-поиск водителя (ST_DistanceSphere для точного расчета расстояния)
+        $pickupLat = $ride->pickup_latitude;
+        $pickupLon = $ride->pickup_longitude;
+
+        // Поиск доступных водителей в радиусе 5 км с нужным классом авто
         $nearestDriver = TaxiDriver::where('status', 'available')
              ->whereHas('vehicle', fn($q) => $q->where('class', $ride->vehicle_class))
-             ->orderBy(DB::raw('RAND()')) // Заглушка для реального гео-расстояния
+             ->whereNotNull('current_latitude')
+             ->whereNotNull('current_longitude')
+             ->selectRaw(
+                 'taxi_drivers.*,' .
+                 'ST_Distance_Sphere(current_location, ST_GeomFromText(?, 4326)) as distance',
+                 ["POINT($pickupLon $pickupLat)"]
+             )
+             ->having(DB::raw('distance'), '<', 5000) // 5 км
+             ->orderBy('distance')
+             ->orderBy('rating', 'desc') // Приоритет лучшим водителям
+             ->first();
+
+        if ($nearestDriver) {
+            $this->assignDriver($ride, $nearestDriver);
+            return $nearestDriver;
+        }
+
+        // Fallback: расширить радиус поиска до 10 км если нет водителя в 5 км
+        $nearestDriver = TaxiDriver::where('status', 'available')
+             ->whereHas('vehicle', fn($q) => $q->where('class', $ride->vehicle_class))
+             ->whereNotNull('current_latitude')
+             ->whereNotNull('current_longitude')
+             ->selectRaw(
+                 'taxi_drivers.*,' .
+                 'ST_Distance_Sphere(current_location, ST_GeomFromText(?, 4326)) as distance',
+                 ["POINT($pickupLon $pickupLat)"]
+             )
+             ->having(DB::raw('distance'), '<', 10000) // 10 км
+             ->orderBy('distance')
              ->first();
 
         if ($nearestDriver) {

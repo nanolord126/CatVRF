@@ -36,7 +36,35 @@ final readonly class DatabaseOptimizationService
      */
     public function optimizeSearchIndices(): void
     {
-        // Placeholder for Typesense/Elasticsearch index refresh
-        // \Laravel\Scout\Console\ImportCommand::class 
+        // Обновить индексы в Typesense для гибридного поиска
+        try {
+            // Переиндексировать все активные marketplace entities
+            \Artisan::call('scout:import', [
+                'model' => 'App\\Models\\MarketplaceVerticals',
+            ]);
+
+            // Переиндексировать B2B товары
+            \Artisan::call('scout:import', [
+                'model' => 'App\\Models\\B2B\\B2BProduct',
+            ]);
+
+            // Обновить embedding cache в Redis для быстрых рекомендаций
+            $this->refreshEmbeddingCache();
+
+            \Log::info('Search indices optimized successfully');
+        } catch (\Exception $e) {
+            \Log::error('Failed to optimize search indices', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Обновить embedding cache для рекомендаций.
+     */
+    private function refreshEmbeddingCache(): void
+    {
+        $job = new \App\Jobs\AI\DailyB2BEmbeddingUpdateJob();
+        $job->dispatch();
     }
 }
