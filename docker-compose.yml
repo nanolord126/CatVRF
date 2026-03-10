@@ -29,16 +29,17 @@ services:
       - hotelbeautycrm
 
   db:
-    image: postgres:16
+    image: mysql:8.0
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${DB_DATABASE}
-      POSTGRES_USER: ${DB_USERNAME}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
     ports:
-      - "5432:5432"
+      - "3306:3306"
     volumes:
-      - hotelbeautycrm-db:/var/lib/postgresql/data
+      - hotelbeautycrm-db:/var/lib/mysql
     networks:
       - hotelbeautycrm
 
