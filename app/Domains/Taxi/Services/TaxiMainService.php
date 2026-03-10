@@ -67,7 +67,22 @@ class TaxiMainService
 
     private function calculateDistance(array $point1, array $point2): float
     {
-        // В 2026: ST_DistanceSphere или интеграция с Google/OSM
-        return 5.4; // Заглушка для демонстрации
+        // Использовать формулу Хаверсина для расчета расстояния между двумя точками
+        $earthRadius = 6371; // км
+        
+        $lat1 = deg2rad($point1['latitude'] ?? $point1['lat'] ?? 0);
+        $lon1 = deg2rad($point1['longitude'] ?? $point1['lng'] ?? 0);
+        $lat2 = deg2rad($point2['latitude'] ?? $point2['lat'] ?? 0);
+        $lon2 = deg2rad($point2['longitude'] ?? $point2['lng'] ?? 0);
+        
+        $dLat = $lat2 - $lat1;
+        $dLon = $lon2 - $lon1;
+        
+        $a = sin($dLat / 2) * sin($dLat / 2) +
+            cos($lat1) * cos($lat2) *
+            sin($dLon / 2) * sin($dLon / 2);
+        
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+        return $earthRadius * $c;
     }
 }

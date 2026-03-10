@@ -216,10 +216,41 @@ class FraudMLService
                 'predicted_fraud' => $prediction->is_fraud,
             ]);
 
-            // TODO: Использовать это для переобучения модели
+            // Квалифицировать feedback и запланировать переобучение
+            $this->recordFeedback($prediction, $wasFraud);
+            
+            // Если накопилось достаточно feedback'а, инициировать переобучение
+            $feedbackCount = DB::table('fraud_ml_feedback')
+                ->where('model_version_id', $prediction->model_version_id)
+                ->where('processed_at', null)
+                ->count();
+
+            if ($feedbackCount >= 1000) { // После каждых 1000 feedback'ов переобучить
+                \App\Jobs\Finances\Security\TrainFraudModelJob::dispatch($prediction->model_version_id);
+                
+                Log::info('Fraud model retraining scheduled', [
+                    'model_version_id' => $prediction->model_version_id,
+                    'feedback_count' => $feedbackCount,
+                ]);
+            }
         } catch (Exception $e) {
             Log::error('Failed to update ML model with feedback', ['error' => $e->getMessage()]);
         }
+    }
+
+    /**
+     * Записать feedback для обучения модели.
+     */
+    private function recordFeedback($prediction, bool $wasFraud): void
+    {
+        DB::table('fraud_ml_feedback')->insert([
+            'prediction_id' => $prediction->id,
+            'model_version_id' => $prediction->model_version_id,
+            'actual_is_fraud' => $wasFraud,
+            'predicted_is_fraud' => $prediction->is_fraud,
+            'is_correct' => ($wasFraud === $prediction->is_fraud),
+            'created_at' => Carbon::now(),
+        ]);
     }
 
     /**

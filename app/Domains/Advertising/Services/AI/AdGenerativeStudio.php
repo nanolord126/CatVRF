@@ -174,17 +174,53 @@ class AdGenerativeStudio
                 'correlation_id' => $this->correlationId,
             ]);
 
-            // TODO: Интеграция с Intervention Image
-            // $image = Image::make($imageUrl);
-            // $image->text("Реклама. ERID: {$erid}", ...);
-            // $storagePath = $image->save(...);
-
-            // Временно: возвращаем исходный URL
-            // В production: возвращаем путь к обработанному файлу
-            
-            \Sentry\captureMessage("AdGenerativeStudio: ERID overlay not yet implemented", \Sentry\Severity::warning());
-            
-            return $imageUrl;
+            // Загрузить изображение и наложить метку ERID
+            try {
+                $image = \Intervention\Image\Facades\Image::make($imageUrl);
+                
+                // Получить размеры изображения
+                $width = $image->width();
+                $height = $image->height();
+                
+                // Добавить прямоугольник в нижнем левом углу с текстом
+                $image->rectangle(10, $height - 50, 200, $height - 10, function ($draw) {
+                    $draw->background('rgba(0, 0, 0, 0.7)');
+                });
+                
+                // Добавить текст с ERID
+                $image->text("Реклама. ERID: {$erid}", 15, $height - 35, function ($font) {
+                    $font->file(storage_path('fonts/arial.ttf'));
+                    $font->size(10);
+                    $font->color('#FFFFFF');
+                });
+                
+                // Сохранить обработанное изображение
+                $filename = 'ads/erid-marked-' . uniqid() . '.png';
+                $storagePath = storage_path("app/public/{$filename}");
+                
+                // Убедиться что директория существует
+                @mkdir(dirname($storagePath), 0755, true);
+                
+                $image->save($storagePath);
+                
+                Log::info('ERID overlay completed', [
+                    'file_path' => $filename,
+                    'erid' => $erid,
+                ]);
+                
+                return asset("storage/{$filename}");
+                
+            } catch (\Exception $e) {
+                Log::warning('ERID overlay failed, using original image', [
+                    'error' => $e->getMessage(),
+                    'erid' => $erid,
+                ]);
+                
+                \Sentry\captureException($e);
+                
+                // Fallback: возвращаем исходный URL
+                return $imageUrl;
+            }
 
         } catch (Throwable $e) {
             Log::error('AdGenerativeStudio: ERID overlay failed', [

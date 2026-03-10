@@ -13,7 +13,34 @@ class HotelRoom extends Model implements AIEnableEcosystemEntity
     use HasEcosystemFeatures;
 
     public function getAiAdjustedPrice(): float {
-        return $this->type->base_price * (1 + (rand(-10, 30) / 100)); // Заглушка ML
+        // Получить динамическую цену на основе спроса и сезонности
+        $basePrice = $this->type->base_price ?? 100;
+        
+        // Получить среднюю цену за последние 30 дней
+        $avgHistoryPrice = \DB::table('hotel_booking_history')
+            ->where('room_id', $this->id)
+            ->where('created_at', '>=', now()->subDays(30))
+            ->avg('total_price') ?? $basePrice;
+        
+        // Получить занятость за последние 7 дней (0-100)
+        $occupancyRate = \DB::table('hotel_bookings')
+            ->where('room_id', $this->id)
+            ->where('check_in', '>=', now()->subDays(7))
+            ->count();
+        $occupancyPercent = min(100, ($occupancyRate / 7) * 100);
+        
+        // Применить динамическую корректировку на основе спроса
+        // Если занятость > 70%, повышаем цену на 15%
+        // Если занятость < 30%, понижаем цену на 20%
+        if ($occupancyPercent > 70) {
+            $adjusted = $avgHistoryPrice * 1.15;
+        } elseif ($occupancyPercent < 30) {
+            $adjusted = $avgHistoryPrice * 0.80;
+        } else {
+            $adjusted = $avgHistoryPrice;
+        }
+        
+        return round($adjusted, 2);
     }
 
     public function getTrustScore(): int { return 95; }

@@ -202,9 +202,51 @@ class FraudControlService
      */
     private function isLocationSuspicious(int $userId, array $location): bool
     {
-        // Простая проверка: если расстояние > 1000 км и разница < 2 часа
-        // то это предполагает быстрое перемещение (невозможное для человека)
-        return false; // TODO: Реализовать полноценную проверку
+        // Получить последнюю активность пользователя
+        $lastActivity = DB::table('audit_logs')
+            ->where('user_id', $userId)
+            ->latest('created_at')
+            ->first();
+
+        if (!$lastActivity) {
+            return false; // Первая активность не может быть подозрительной
+        }
+
+        // Проверить разницу во времени и расстояние
+        $lastPayload = json_decode($lastActivity->payload, true);
+        $lastLocation = $lastPayload['location'] ?? null;
+        $timeDiff = now()->diffInMinutes($lastActivity->created_at);
+
+        if (!$lastLocation || !isset($lastLocation['latitude'], $lastLocation['longitude'])) {
+            return false;
+        }
+
+        // Вычислить расстояние между двумя локациями (формула Хаверсина)
+        $distance = $this->calculateDistance(
+            $lastLocation['latitude'], $lastLocation['longitude'],
+            $location['latitude'] ?? 0, $location['longitude'] ?? 0
+        );
+
+        // Если расстояние > 1000 км и время < 2 часа, это невозможно
+        // (максимальная скорость самолета ~900 км/ч)
+        $maxPossibleDistance = (900 / 60) * $timeDiff; // км
+        
+        return $distance > $maxPossibleDistance;
+    }
+
+    /**
+     * Рассчитать расстояние между двумя координатами (Haversine formula).
+     */
+    private function calculateDistance(float $lat1, float $lon1, float $lat2, float $lon2): float
+    {
+        $earthRadius = 6371; // км
+        $dLat = deg2rad($lat2 - $lat1);
+        $dLon = deg2rad($lon2 - $lon1);
+        $a = sin($dLat / 2) * sin($dLat / 2) +
+            cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
+            sin($dLon / 2) * sin($dLon / 2);
+        $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+        return $earthRadius * $c;
     }
 
     /**
