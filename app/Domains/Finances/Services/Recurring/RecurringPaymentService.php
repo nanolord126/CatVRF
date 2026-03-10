@@ -4,8 +4,9 @@ namespace App\Domains\Finances\Services\Recurring;
 
 use App\Domains\Finances\Models\{Subscription, WalletCard};
 use App\Domains\Finances\Services\PaymentService;
+use App\Models\User;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\{Log, DB};
+use Illuminate\Support\Facades\{Log, DB, Auth};
 use Exception;
 
 /**
@@ -127,8 +128,14 @@ class RecurringPaymentService
                 throw new Exception('Invalid subscription amount');
             }
 
+            /** @var User|null $user */
+            $user = Auth::user();
+            if (!$user) {
+                throw new Exception('User not authenticated');
+            }
+
             $subscription = Subscription::create([
-                'user_id' => auth()->id(),
+                'user_id' => $user->id,
                 'wallet_card_id' => $data['wallet_card_id'],
                 'amount' => $data['amount'],
                 'frequency' => $data['frequency'],
