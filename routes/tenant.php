@@ -38,4 +38,52 @@ Route::middleware([
         // Интеграция с платежным шлюзом
         return response()->json(['url' => '/payment/mock?amount=' . ($item->price_at_addition - $item->collected_amount)]);
     })->name('wishlist.pay');
+
+    // API Routes для всех вертикалей (Filament)
+    Route::middleware(['auth:sanctum', 'throttle:api'])->group(function () {
+        // Taxi
+        Route::apiResource('taxi', \App\Domains\Taxi\Http\Controllers\TaxiRideController::class);
+        
+        // Food
+        Route::apiResource('food', \App\Domains\Food\Http\Controllers\FoodOrderController::class);
+        
+        // Hotel
+        Route::apiResource('hotel', \App\Domains\Hotel\Http\Controllers\HotelBookingController::class);
+        
+        // Sports
+        Route::apiResource('sports', \App\Domains\Sports\Http\Controllers\SportsController::class);
+        
+        // Clinic
+        Route::apiResource('clinic', \App\Domains\Clinic\Http\Controllers\ClinicController::class);
+        
+        // Advertising
+        Route::apiResource('advertising', \App\Domains\Advertising\Http\Controllers\AdvertisingController::class);
+        
+        // Geo
+        Route::apiResource('geo', \App\Domains\Geo\Http\Controllers\GeoController::class);
+        
+        // Delivery
+        Route::apiResource('delivery', \App\Domains\Delivery\Http\Controllers\DeliveryController::class);
+        
+        // Inventory
+        Route::apiResource('inventory', \App\Domains\Inventory\Http\Controllers\InventoryController::class);
+        
+        // Education
+        Route::apiResource('education', \App\Domains\Education\Http\Controllers\EducationController::class);
+        
+        // Events
+        Route::apiResource('events', \App\Domains\Events\Http\Controllers\EventController::class);
+        
+        // Beauty
+        Route::apiResource('beauty', \App\Domains\Beauty\Http\Controllers\BeautyController::class);
+        
+        // RealEstate
+        Route::apiResource('real-estate', \App\Domains\RealEstate\Http\Controllers\RealEstateController::class);
+        
+        // Insurance
+        Route::apiResource('insurance', \App\Domains\Insurance\Http\Controllers\InsuranceController::class);
+        
+        // Communication
+        Route::apiResource('communication', \App\Domains\Communication\Http\Controllers\CommunicationController::class);
+    });
 });
