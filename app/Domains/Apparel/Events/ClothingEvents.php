@@ -1,0 +1,1 @@
+<?php namespace App\Domains\Apparel\Events; class ClothingCreated { public function __construct(public $clothing) {} } class ClothingUpdated { public function __construct(public $clothing) {} } class ClothingDeleted { public function __construct(public $clothing) {} }

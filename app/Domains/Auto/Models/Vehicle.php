@@ -1,0 +1,1 @@
+<?php namespace App\Domains\Auto\Models; use Illuminate\Database\Eloquent\Model; class Vehicle extends Model { protected $table = 'vehicles'; protected $fillable = ['tenant_id','owner_id','brand','model','year','vin','plate','price','status','correlation_id']; protected $casts = ['status' => 'string','price' => 'decimal:2','created_at' => 'datetime','updated_at' => 'datetime']; }

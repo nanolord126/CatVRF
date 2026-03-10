@@ -85,5 +85,23 @@ Route::middleware([
         
         // Communication
         Route::apiResource('communication', \App\Domains\Communication\Http\Controllers\CommunicationController::class);
+        
+        // Auto (Vehicles)
+        Route::apiResource('auto', \App\Domains\Auto\Http\Controllers\VehicleController::class);
+        
+        // Electronics
+        Route::apiResource('electronics', \App\Domains\Electronics\Http\Controllers\ElectronicProductController::class);
+        
+        // Apparel
+        Route::apiResource('apparel', \App\Domains\Apparel\Http\Controllers\ClothingController::class);
+        
+        // Tourism
+        Route::apiResource('tourism', \App\Domains\Tourism\Http\Controllers\PackageController::class);
+        
+        // Furniture
+        Route::apiResource('furniture', \App\Domains\Furniture\Http\Controllers\FurnitureItemController::class);
+        
+        // Construction
+        Route::apiResource('construction', \App\Domains\Construction\Http\Controllers\ProjectController::class);
     });
 });
