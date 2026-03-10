@@ -14,12 +14,13 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Central Admin User
+        // Central Admin User (no tenant_id for platform admins)
         User::updateOrCreate(
             ['email' => 'admin@hotelbeauty.crm'],
             [
                 'name' => 'Super Admin',
                 'password' => Hash::make('password'),
+                'tenant_id' => null,
             ]
         );
 
@@ -48,17 +49,22 @@ class DatabaseSeeder extends Seeder
         $this->command->info('Tenants created: hotel.localhost, beauty.localhost');
 
         $this->call([
-            BaseFilterSeeder::class,
+            // BaseFilterSeeder::class,  // TODO: Fix filter table structure
+            TaxiRideSeeder::class,
+            FoodOrderSeeder::class,
+            HotelBookingSeeder::class,
+            SportsMembershipSeeder::class,
+            MedicalCardSeeder::class,
+            DeliveryOrderSeeder::class,
+            InventoryItemSeeder::class,
+            AdCampaignSeeder::class,
+            GeoZoneSeeder::class,
+            CourseSeeder::class,
+            EventSeeder::class,
+            SalonSeeder::class,
+            PropertySeeder::class,
+            InsurancePolicySeeder::class,
+            MessageSeeder::class,
         ]);
-
-        // $this->call([
-
-        // Run Tenant Specific Seeds for Grand Hotel
-        // if ($tenant = Tenant::find('grand-hotel')) {
-        //     $tenant->run(function () {
-        //         $this->call(Tenant\CoreVerticalSeeder::class);
-        //         $this->call(Tenant\ConsumerBehaviorSeeder::class);
-        //     });
-        // }
     }
 }
