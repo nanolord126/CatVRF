@@ -8,14 +8,12 @@ use App\Contracts\Common\AIEnableEcosystemEntity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class RestaurantOrder extends Model implements AIEnableEcosystemEntity
 {
     use HasEcosystemFeatures, HasEcosystemAuth;
-
-    public function getAiAdjustedPrice(): float { return $this->total_amount; }
-    public function getTrustScore(): int { return 90; }
-    public function generateAiChecklist(): array { return ['All items prepared', 'Correct table number']; }
 
     protected $guarded = [];
 
@@ -24,6 +22,68 @@ class RestaurantOrder extends Model implements AIEnableEcosystemEntity
         'paid_at' => 'datetime',
         'is_tax_inclusive' => 'boolean',
     ];
+
+    /**
+     * Получить динамически скорректированную цену от AI движка.
+     */
+    public function getAiAdjustedPrice(float $basePrice, array $context = []): float
+    {
+        try {
+            // Получить историческую среднюю цену заказов за последние 30 дней
+            $avgHistoryPrice = DB::table('restaurant_orders')
+                ->where('created_at', '>=', now()->subDays(30))
+                ->avg('total_amount') ?? $basePrice;
+            
+            // Скорректировать по времени суток (ужин дороже, чем завтрак)
+            $hour = now()->hour;
+            $timeMultiplier = match (true) {
+                $hour >= 19 && $hour <= 23 => 1.15,  // Ужин: +15%
+                $hour >= 12 && $hour <= 14 => 1.10,  // Обед: +10%
+                default => 1.0,
+            };
+            
+            // Скорректировать по спросу (выходные дороже)
+            $dayOfWeek = now()->dayOfWeek;
+            $dayMultiplier = in_array($dayOfWeek, [0, 6]) ? 1.08 : 1.0; // Выходные: +8%
+            
+            $adjustedPrice = $avgHistoryPrice * $timeMultiplier * $dayMultiplier;
+            
+            Log::channel('food')->info('RestaurantOrder price adjusted', [
+                'base_price' => $basePrice,
+                'adjusted_price' => $adjustedPrice,
+                'time_multiplier' => $timeMultiplier,
+                'day_multiplier' => $dayMultiplier,
+            ]);
+            
+            return (float) $adjustedPrice;
+        } catch (\Exception $e) {
+            Log::error('Failed to calculate adjusted price', ['error' => $e->getMessage()]);
+            return $basePrice;
+        }
+    }
+
+    /**
+     * Получить оценку надежности заказа (0-100).
+     */
+    public function getTrustScore(): int
+    {
+        // Базовая оценка для ресторана: 85 (высокая надежность)
+        return 85;
+    }
+
+    /**
+     * Сгенерировать AI чек-лист для выполнения заказа.
+     */
+    public function generateAiChecklist(): array
+    {
+        return [
+            'Все блюда подготовлены',
+            'Правильный номер стола',
+            'Качество приготовления проверено',
+            'Напитки подано',
+            'Готовность к подаче',
+        ];
+    }
 
     public function table(): BelongsTo
     {
