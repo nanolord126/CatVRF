@@ -11,6 +11,20 @@ use Throwable;
 
 /**
  * Модель для сохранённых карт (токенизированные платёжные реквизиты).
+ * 
+ * @property int $id
+ * @property int $user_id
+ * @property int $tenant_id
+ * @property string $token
+ * @property string $card_last_four
+ * @property string $card_brand
+ * @property int $exp_month
+ * @property int $exp_year
+ * @property bool $is_active
+ * @property bool $is_default
+ * @property string|null $correlation_id
+ * @property \Illuminate\Support\Carbon $created_at
+ * @property \Illuminate\Support\Carbon $updated_at
  */
 class WalletCard extends Model
 {
@@ -66,6 +80,22 @@ class WalletCard extends Model
 
 /**
  * Модель повторяющихся подписок (автоплатежи).
+ * 
+ * @property int $id
+ * @property int $user_id
+ * @property int $tenant_id
+ * @property int $wallet_card_id
+ * @property float $amount
+ * @property string $frequency
+ * @property string $status
+ * @property \Illuminate\Support\Carbon $starts_at
+ * @property \Illuminate\Support\Carbon|null $ends_at
+ * @property \Illuminate\Support\Carbon|null $last_payment_at
+ * @property \Illuminate\Support\Carbon $next_payment_at
+ * @property string|null $correlation_id
+ * @property array $metadata
+ * @property \Illuminate\Support\Carbon $created_at
+ * @property \Illuminate\Support\Carbon $updated_at
  */
 class Subscription extends Model
 {
