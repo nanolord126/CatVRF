@@ -212,8 +212,7 @@ class PaymentService
     public function chargeByToken(string $token, float $amount, array $metadata = []): array
     {
         try {
-            // Инициировать платёж через шлюз используя токен карты
-            $result = $this->gateway->chargeToken($token, $amount, $metadata);
+            // Инициировать платёж через шлюз используя токен карты            /** @var array<string, mixed> $result */            $result = $this->gateway->chargeToken($token, $amount, $metadata);
 
             // Создать транзакцию
             $tx = PaymentTransaction::create([
@@ -237,6 +236,57 @@ class PaymentService
         } catch (Throwable $e) {
             Log::error('Payment by token failed', [
                 'amount' => $amount,
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Обработать платёж с разделением средств между участниками.
+     */
+    private function processSplitPayment(array $data): array
+    {
+        try {
+            $amount = (float) ($data['amount'] ?? 0);
+            $splits = $data['splits'] ?? [];
+            $metadata = $data['metadata'] ?? [];
+
+            if ($amount <= 0) {
+                throw new \InvalidArgumentException("Invalid payment amount: {$amount}");
+            }
+
+            // Инициализация платежа через шлюз
+            $res = $this->gateway->initPayment([
+                'amount' => $amount,
+                'description' => $data['description'] ?? 'Payment',
+                'metadata' => $metadata,
+            ], false);
+
+            // Создание записи транзакции со сплитами
+            $tx = PaymentTransaction::create([
+                'payment_id' => $res['id'] ?? null,
+                'amount' => $amount,
+                'status' => 'pending',
+                'correlation_id' => $metadata['correlation_id'] ?? request()->header('X-Correlation-ID', uniqid()),
+                'metadata' => array_merge($metadata, ['splits' => $splits]),
+            ]);
+
+            Log::channel('payments')->info('Split payment initialized', [
+                'transaction_id' => $tx->id,
+                'amount' => $amount,
+                'split_count' => count($splits),
+            ]);
+
+            return [
+                'status' => 'pending',
+                'payment_id' => $tx->id,
+                'amount' => $amount,
+                'payment_url' => $res['url'] ?? null,
+            ];
+        } catch (Throwable $e) {
+            Log::error('Split payment initialization failed', [
+                'amount' => $data['amount'] ?? null,
                 'error' => $e->getMessage(),
             ]);
             throw $e;
