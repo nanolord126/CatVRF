@@ -3,7 +3,7 @@
 namespace App\Domains\Finances\Services\Security;
 
 use App\Domains\Finances\Models\PaymentTransaction;
-use Illuminate\Support\Facades\{Cache, Log};
+use Illuminate\Support\Facades\{Cache, Log, DB};
 
 /**
  * Сервис управления правилами и лимитами для защиты от мошенничества.
