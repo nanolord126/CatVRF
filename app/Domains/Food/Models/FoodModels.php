@@ -15,11 +15,22 @@ class RestaurantOrder extends Model implements AIEnableEcosystemEntity
 {
     use HasEcosystemFeatures, HasEcosystemAuth;
 
+    // Статусы заказа
+    public const STATUS_PENDING = 'pending';
+    public const STATUS_PAYMENT_PENDING = 'payment_pending';
+    public const STATUS_PAID = 'paid';
+    public const STATUS_READY = 'ready';
+    public const STATUS_COMPLETED = 'completed';
+    public const STATUS_CANCELLED = 'cancelled';
+
     protected $guarded = [];
 
     protected $casts = [
         'total_amount' => 'decimal:2',
         'paid_at' => 'datetime',
+        'prepared_at' => 'datetime',
+        'completed_at' => 'datetime',
+        'cancelled_at' => 'datetime',
         'is_tax_inclusive' => 'boolean',
     ];
 

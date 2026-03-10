@@ -45,7 +45,7 @@ class FoodService
                 'table_id' => $data['table_id'],
                 'waiter_id' => Auth::id() ?? $data['waiter_id'],
                 'total_amount' => $data['total_amount'],
-                'status' => RestaurantOrder::STATUS_PENDING ?? 'pending',
+                'status' => RestaurantOrder::STATUS_PENDING,
                 'correlation_id' => $correlationId,
                 'is_tax_inclusive' => $data['is_tax_inclusive'] ?? true,
                 'tenant_id' => Auth::guard('tenant')->id(),
@@ -107,7 +107,7 @@ class FoodService
     {
         DB::beginTransaction();
         try {
-            if ($order->status !== 'pending') {
+            if ($order->status !== RestaurantOrder::STATUS_PENDING) {
                 throw new Exception("Заказ уже обработан (статус: {$order->status})");
             }
 
@@ -133,7 +133,7 @@ class FoodService
                 }
 
                 $order->update([
-                    'status' => 'paid',
+                    'status' => RestaurantOrder::STATUS_PAID,
                     'paid_at' => now(),
                     'payment_method' => 'wallet',
                 ]);
@@ -168,7 +168,7 @@ class FoodService
                 ]);
 
                 $order->update([
-                    'status' => 'payment_pending',
+                    'status' => RestaurantOrder::STATUS_PAYMENT_PENDING,
                     'payment_method' => 'card',
                     'correlation_id' => $correlationId,
                 ]);
@@ -207,12 +207,12 @@ class FoodService
     public function markOrderReady(RestaurantOrder $order): RestaurantOrder
     {
         try {
-            if ($order->status !== 'paid') {
+            if ($order->status !== RestaurantOrder::STATUS_PAID) {
                 throw new Exception("Заказ должен быть оплачен перед подготовкой (текущий статус: {$order->status})");
             }
 
             $order->update([
-                'status' => 'ready',
+                'status' => RestaurantOrder::STATUS_READY,
                 'prepared_at' => now(),
             ]);
 
@@ -238,12 +238,12 @@ class FoodService
     public function completeOrder(RestaurantOrder $order): RestaurantOrder
     {
         try {
-            if ($order->status !== 'ready') {
+            if ($order->status !== RestaurantOrder::STATUS_READY) {
                 throw new Exception("Заказ должен быть готов перед завершением (текущий статус: {$order->status})");
             }
 
             $order->update([
-                'status' => 'completed',
+                'status' => RestaurantOrder::STATUS_COMPLETED,
                 'completed_at' => now(),
             ]);
 
@@ -255,7 +255,7 @@ class FoodService
                 'user_id' => Auth::id(),
                 'tenant_id' => $order->tenant_id,
                 'correlation_id' => $order->correlation_id,
-                'changes' => ['status' => 'completed', 'completed_at' => $order->completed_at],
+                'changes' => ['status' => RestaurantOrder::STATUS_COMPLETED, 'completed_at' => $order->completed_at],
             ]);
 
             Log::channel('food')->info('Order completed', [
@@ -281,12 +281,12 @@ class FoodService
     {
         DB::beginTransaction();
         try {
-            if (in_array($order->status, ['completed', 'cancelled'])) {
+            if (in_array($order->status, [RestaurantOrder::STATUS_COMPLETED, RestaurantOrder::STATUS_CANCELLED])) {
                 throw new Exception("Невозможно отменить заказ со статусом: {$order->status}");
             }
 
             // Если заказ уже оплачен - вернуть средства
-            if ($order->status === 'paid' && $order->payment_method === 'wallet') {
+            if ($order->status === RestaurantOrder::STATUS_PAID && $order->payment_method === 'wallet') {
                 $user = $order->waiter;
                 $this->walletService->credit(
                     $user,
@@ -297,7 +297,7 @@ class FoodService
             }
 
             $order->update([
-                'status' => 'cancelled',
+                'status' => RestaurantOrder::STATUS_CANCELLED,
                 'cancelled_at' => now(),
                 'cancellation_reason' => $reason,
             ]);
@@ -311,7 +311,7 @@ class FoodService
                 'tenant_id' => $order->tenant_id,
                 'correlation_id' => $order->correlation_id,
                 'changes' => [
-                    'status' => 'cancelled',
+                    'status' => RestaurantOrder::STATUS_CANCELLED,
                     'cancelled_at' => $order->cancelled_at,
                     'cancellation_reason' => $reason,
                 ],
