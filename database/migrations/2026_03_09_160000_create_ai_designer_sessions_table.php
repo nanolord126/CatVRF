@@ -20,6 +20,7 @@ return new class extends Migration
             $table->string("status")->default("draft"); // draft, generated, ordered
             $table->string("correlation_id")->index();
             $table->timestamps();
+            $table->softDeletes();
 
             $table->foreign("tenant_id")->references("id")->on("tenants")->onDelete("cascade");
         });
@@ -36,6 +37,7 @@ return new class extends Migration
             $table->json("used_inventory_items")->comment("ID расходников из Inventory");
             $table->string("correlation_id")->index();
             $table->timestamps();
+            $table->softDeletes();
 
             $table->foreign("tenant_id")->references("id")->on("tenants")->onDelete("cascade");
         });

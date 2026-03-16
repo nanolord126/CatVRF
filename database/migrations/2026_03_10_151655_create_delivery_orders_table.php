@@ -20,13 +20,14 @@ return new class extends Migration
             $table->text('delivery_address');
             $table->decimal('distance', 10, 2)->nullable();
             $table->decimal('amount', 10, 2);
+            $table->string('correlation_id')->nullable()->index();
             $table->enum('status', ['pending', 'assigned', 'in_transit', 'delivered', 'cancelled'])->default('pending');
             $table->timestamp('delivered_at')->nullable();
             $table->timestamps();
+            $table->softDeletes();
             $table->index('tenant_id');
             $table->index('status');
-
-            $table->string('correlation_id')->nullable()->index();        });
+        });
     }
 
     /**

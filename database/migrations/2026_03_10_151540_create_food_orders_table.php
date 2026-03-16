@@ -17,14 +17,15 @@ return new class extends Migration
             $table->foreignId('restaurant_id')->constrained('users');
             $table->foreignId('customer_id')->constrained('users');
             $table->decimal('total_amount', 10, 2);
+            $table->string('correlation_id')->nullable()->index();
             $table->enum('status', ['pending', 'confirmed', 'delivered', 'cancelled'])->default('pending');
             $table->json('items')->nullable();
             $table->text('delivery_address')->nullable();
             $table->timestamps();
+            $table->softDeletes();
             $table->index('tenant_id');
             $table->index('status');
-
-            $table->string('correlation_id')->nullable()->index();        });
+        });
     }
 
     /**

@@ -21,6 +21,7 @@ return new class extends Migration
             $table->text('notes')->nullable();
             $table->timestamp('last_check_up')->nullable();
             $table->timestamps();
+            $table->softDeletes();
             $table->index('tenant_id');
 
             $table->string('correlation_id')->nullable()->index();        });

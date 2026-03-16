@@ -20,12 +20,13 @@ return new class extends Migration
             $table->date('check_in');
             $table->date('check_out');
             $table->decimal('total_price', 10, 2);
+            $table->string('correlation_id')->nullable()->index();
             $table->enum('status', ['pending', 'confirmed', 'checked_in', 'checked_out', 'cancelled'])->default('pending');
             $table->timestamps();
+            $table->softDeletes();
             $table->index('tenant_id');
             $table->index('status');
-
-            $table->string('correlation_id')->nullable()->index();        });
+        });
     }
 
     /**

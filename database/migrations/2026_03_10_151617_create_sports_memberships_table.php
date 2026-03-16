@@ -20,6 +20,7 @@ return new class extends Migration
             $table->timestamp('expires_at');
             $table->decimal('monthly_fee', 10, 2)->default(0);
             $table->timestamps();
+            $table->softDeletes();
             $table->index('tenant_id');
             $table->index('status');
 

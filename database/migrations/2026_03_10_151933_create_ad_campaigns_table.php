@@ -22,11 +22,12 @@ return new class extends Migration
             $table->decimal('spent', 10, 2)->default(0);
             $table->date('start_date');
             $table->date('end_date')->nullable();
+            $table->string('correlation_id')->nullable()->index();
             $table->timestamps();
+            $table->softDeletes();
             $table->index('tenant_id');
             $table->index('status');
-
-            $table->string('correlation_id')->nullable()->index();        });
+        });
     }
 
     /**

@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('tenant_id')->constrained('tenants')->cascadeOnDelete();
             $table->string('sku')->unique();
+            $table->string('correlation_id')->nullable()->index();
             $table->string('name');
             $table->text('description')->nullable();
             $table->decimal('cost_price', 10, 2);
@@ -23,11 +24,11 @@ return new class extends Migration
             $table->integer('reorder_level')->default(10);
             $table->enum('status', ['active', 'inactive', 'discontinued'])->default('active');
             $table->timestamps();
+            $table->softDeletes();
             $table->index('tenant_id');
             $table->index('sku');
             $table->index('status');
-
-            $table->string('correlation_id')->nullable()->index();        });
+        });
     }
 
     /**

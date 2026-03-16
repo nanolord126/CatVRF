@@ -15,6 +15,7 @@ return new class extends Migration {
             $table->integer('stock')->default(0);
             $table->json('images')->nullable();
             $table->timestamps();
+            $table->softDeletes();
 
             $table->string('correlation_id')->nullable()->index();        });
 
@@ -28,6 +29,7 @@ return new class extends Migration {
             $table->foreignId('created_by')->constrained('users');
             $table->foreignId('activated_by')->nullable()->constrained('users');
             $table->timestamps();
+            $table->softDeletes();
 
             $table->string('correlation_id')->nullable()->index();        });
 
@@ -53,6 +55,7 @@ return new class extends Migration {
             $table->decimal('milestone_turnover', 15, 2)->default(0);
             $table->boolean('bonus_paid_50k')->default(false);
             $table->timestamps();
+            $table->softDeletes();
 
             $table->string('correlation_id')->nullable()->index();        });
 
