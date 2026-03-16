@@ -1,11 +1,21 @@
 <?php
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
-    public function up(): void {
-        Schema::create('ad_campaigns', function (Blueprint $t) {
+declare(strict_types=1);
+
+use Illuminate\Database\Migrations\Migration;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        // Stub: advertising tables handled in root migrations
+    }
+
+    public function down(): void
+    {
+        // Intentionally left empty
+    }
+};
             $t->id(); $t->string('tenant_id')->index(); $t->string('name');
             $t->decimal('budget', 12, 2)->default(0); $t->string('vertical');
             $t->boolean('is_active')->default(1); $t->string('erid')->nullable();

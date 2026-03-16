@@ -1,15 +1,21 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
     public function up(): void
     {
-        // Таблица персональных рекомендаций и чеклистов здоровья/ухода
-        Schema::create('user_health_recommendations', function (Blueprint $table) {
+        // Stub: health recommendations handling in root migrations
+    }
+
+    public function down(): void
+    {
+        // Intentionally left empty
+    }
+};
             $table->id();
             $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
             $table->enum('target_type', ['HUMAN', 'ANIMAL'])->default('HUMAN');

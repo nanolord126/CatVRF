@@ -1,18 +1,21 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-        // 1. Storage for Price Elasticity and Personality Profiles
-        Schema::create('customer_ai_pricing_profiles', function (Blueprint $table) {
+        // Stub: AI dynamic pricing tables handled in root migrations
+    }
+
+    public function down(): void
+    {
+        // Intentionally left empty
+    }
+};
             $table->id();
             $table->foreignId('user_id')->unique()->constrained()->onDelete('cascade');
             $table->float('price_elasticity')->default(1.0); // 1.0 is neutral, < 1.0 (inelastic/luxury), > 1.0 (elastic/price-sensitive)

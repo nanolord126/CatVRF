@@ -1,11 +1,21 @@
 <?php
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
-    public function up(): void {
-        Schema::create('automotives', function (Blueprint $table) {
+declare(strict_types=1);
+
+use Illuminate\Database\Migrations\Migration;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        // Stub: new verticals tables handled in root migrations
+    }
+
+    public function down(): void
+    {
+        // Intentionally left empty
+    }
+};
             $table->id(); $table->string('name');
             $table->string('type'); $table->string('inn')->nullable();
             $table->string('tenant_id'); $table->timestamps();

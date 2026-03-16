@@ -1,15 +1,21 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
     public function up(): void
     {
-        // 1. Дифференциация типов заведений еды
-        Schema::table('restaurants', function (Blueprint $table) {
+        // Stub: food vertical handling in root migrations
+    }
+
+    public function down(): void
+    {
+        // Intentionally left empty
+    }
+};
             $table->enum('type', ['horeca', 'grocery'])->default('horeca')->after('name'); // HoReCa (рестораны) vs Grocery (супермаркеты)
             $table->json('business_hours')->nullable()->after('type'); // Разное время работы для завтраков и ночных смен
             $table->boolean('has_kitchen')->default(true)->after('business_hours'); // Флаг для ресторанов

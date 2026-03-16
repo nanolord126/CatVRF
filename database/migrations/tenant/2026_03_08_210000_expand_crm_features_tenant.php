@@ -1,16 +1,21 @@
 <?php
+
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
-    public function up(): void {
-        Schema::table('users', function (Blueprint $table) {
-            $table->json('profile_data')->nullable(); // clothing_size, shoe_size, etc.
-            $table->json('embeddings')->nullable(); // Vector representations
-        });
+return new class extends Migration
+{
+    public function up(): void
+    {
+        // Stub: CRM features expansion handled in root migrations
+    }
 
-        Schema::create('construction_projects', function (Blueprint $table) {
+    public function down(): void
+    {
+        // Intentionally left empty
+    }
+};
             $table->id(); $table->string('name'); $table->string('tenant_id');
             $table->enum('status', ['draft', 'active', 'completed'])->default('draft');
             $table->decimal('budget', 15, 2)->default(0); $table->timestamps();

@@ -1,15 +1,21 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
     public function up(): void
     {
-        // Добавление категорий тарифов в таблицу автомобилей
-        Schema::table('taxi_cars', function (Blueprint $table) {
+        // Stub: taxi tariffs and surge handling in root migrations
+    }
+
+    public function down(): void
+    {
+        // Intentionally left empty
+    }
+};
             $table->enum('category', ['economy', 'comfort', 'business'])->default('economy')->after('type');
         });
 

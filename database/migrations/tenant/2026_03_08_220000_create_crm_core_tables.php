@@ -1,12 +1,21 @@
 <?php
 
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
+declare(strict_types=1);
 
-return new class extends Migration {
-    public function up(): void {
-        Schema::create('pipelines', function (Blueprint $table) {
+use Illuminate\Database\Migrations\Migration;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        // Stub: CRM core tables handled in root migrations
+    }
+
+    public function down(): void
+    {
+        // Intentionally left empty
+    }
+};
             $table->id(); $table->string('name'); $table->boolean('is_default')->default(false);
             $table->json('settings')->nullable(); $table->string('tenant_id')->index();
             $table->string('correlation_id')->nullable(); $table->timestamps();

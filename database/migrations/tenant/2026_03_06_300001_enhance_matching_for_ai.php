@@ -1,20 +1,21 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     * Updates tenant-specific tables for AI Matching & Recommendations.
-     */
     public function up(): void
     {
-        // 1. HR Vacancy Matches enhancements
-        if (Schema::hasTable('hr_vacancy_matches')) {
-            Schema::table('hr_vacancy_matches', function (Blueprint $table) {
+        // Stub: AI matching enhancement handled in root migrations
+    }
+
+    public function down(): void
+    {
+        // Intentionally left empty
+    }
+};
                 if (!Schema::hasColumn('hr_vacancy_matches', 'semantic_score')) {
                     $table->float('semantic_score')->default(0)->after('match_score');
                 }

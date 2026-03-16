@@ -1,13 +1,21 @@
 <?php
 
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
+declare(strict_types=1);
 
-return new class extends Migration {
-    public function up(): void {
-        if (!Schema::hasTable('restaurants')) {
-            Schema::create('restaurants', function (Blueprint $table) {
+use Illuminate\Database\Migrations\Migration;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        // Stub: basic verticals tables handled in root migrations
+    }
+
+    public function down(): void
+    {
+        // Intentionally left empty
+    }
+};
                 $table->id();
                 $table->string('name');
                 $table->string('address')->nullable();

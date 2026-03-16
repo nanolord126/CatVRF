@@ -1,17 +1,21 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations for the Staff Prediction Engine.
-     */
     public function up(): void
     {
-        Schema::create('staff_demand_predictions', function (Blueprint $blueprint) {
+        // Stub: staff prediction tables handled in root migrations
+    }
+
+    public function down(): void
+    {
+        // Intentionally left empty
+    }
+};
             $blueprint->id();
             $blueprint->string('vertical'); // Sports, Education, Events
             $blueprint->string('role_type'); // Coach, Tutor, Security, etc.

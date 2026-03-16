@@ -1,16 +1,21 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
     public function up(): void
     {
-        // 1. Управление столами в зале
-        if (!Schema::hasTable('restaurant_tables')) {
-            Schema::create('restaurant_tables', function (Blueprint $table) {
+        // Stub: restaurant floor and KDS handling in root migrations
+    }
+
+    public function down(): void
+    {
+        // Intentionally left empty
+    }
+};
                 $table->id();
                 $table->string('number'); // Номер стола
                 $table->integer('capacity')->default(2); // Вместимость

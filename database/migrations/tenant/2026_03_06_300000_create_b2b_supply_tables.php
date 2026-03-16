@@ -1,15 +1,21 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
     public function up(): void
     {
-        // 1. Поставщики (Suppliers)
-        Schema::create('suppliers', function (Blueprint $table) {
+        // Stub: B2B supply tables handled in root migrations
+    }
+
+    public function down(): void
+    {
+        // Intentionally left empty
+    }
+};
             $table->id();
             $table->string('name')->index();
             $table->string('email')->nullable();

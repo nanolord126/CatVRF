@@ -1,15 +1,21 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
     public function up(): void
     {
-        // 1. Таблица рейтингов и отзывов на HR-бирже
-        Schema::create('hr_exchange_reviews', function (Blueprint $table) {
+        // Stub: HR reputation tables handled in root migrations
+    }
+
+    public function down(): void
+    {
+        // Intentionally left empty
+    }
+};
             $table->id();
             $table->foreignId('hr_exchange_task_id')->constrained('hr_exchange_tasks')->onDelete('cascade');
             $table->foreignId('response_id')->constrained('hr_exchange_responses')->onDelete('cascade');

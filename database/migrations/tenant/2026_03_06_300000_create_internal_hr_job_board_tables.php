@@ -1,19 +1,21 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     * Use tenant schema as per stancl/tenancy.
-     */
     public function up(): void
     {
-        // 1. HR Job Vacancies Table
-        Schema::create('hr_job_vacancies', function (Blueprint $blueprint) {
+        // Stub: internal HR job board tables handled in root migrations
+    }
+
+    public function down(): void
+    {
+        // Intentionally left empty
+    }
+};
             $blueprint->id();
             $blueprint->string('title')->index();
             $blueprint->text('description');

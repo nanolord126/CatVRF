@@ -1,16 +1,21 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
     public function up(): void
     {
-        // 1. Биржа HR (Internal HR Marketplace Tasks)
-        // Предложения о временной работе или обмене персоналом между тенантами
-        Schema::create('hr_exchange_tasks', function (Blueprint $table) {
+        // Stub: HR exchange platform tables handled in root migrations
+    }
+
+    public function down(): void
+    {
+        // Intentionally left empty
+    }
+};
             $table->id();
             $table->foreignId('tenant_id')->constrained('tenants')->onDelete('cascade'); // Кто ищет
             $table->string('title'); // Например: "Нужен официант на банкет 07.03"

@@ -1,18 +1,21 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Полноценная инфраструктура ТАКСИ 2026 (Tenanted)
-     */
     public function up(): void
     {
-        // 1. Автомобили (Автопарк Тенанта)
-        Schema::create('taxi_vehicles', function (Blueprint $table) {
+        // Stub: full taxi vertical tables handled in root migrations
+    }
+
+    public function down(): void
+    {
+        // Intentionally left empty
+    }
+};
             $table->id();
             $table->string('brand');
             $table->string('model');
