@@ -16,12 +16,3 @@ return new class extends Migration
         // Intentionally left empty
     }
 };
-    {
-        return (new Wallet())->getTable();
-    }
-
-    private function transactionTable(): string
-    {
-        return (new Transaction())->getTable();
-    }
-};
