@@ -1,1 +1,0 @@
-<?php namespace App\Domains\Communication\Events; use Illuminate\Broadcasting\Channel; use Illuminate\Foundation\Events\Dispatchable; use Illuminate\Broadcasting\InteractsWithSockets; class MessageUpdated { use Dispatchable, InteractsWithSockets; public function __construct(public $message) {} public function broadcastOn(): Channel { return new Channel('communication'); } }

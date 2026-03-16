@@ -1,1 +1,0 @@
-<?php namespace App\Domains\Clinic\Events; use Illuminate\Broadcasting\Channel; use Illuminate\Foundation\Events\Dispatchable; use Illuminate\Broadcasting\InteractsWithSockets; class MedicalCardCreated { use Dispatchable, InteractsWithSockets; public function __construct(public $card) {} public function broadcastOn(): Channel { return new Channel('clinic'); } }

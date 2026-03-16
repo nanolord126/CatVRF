@@ -1,0 +1,67 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "name": "Admin User",
+      "email": "admin@test.local",
+      "role": "admin",
+      "permissions": ["*"]
+    },
+    {
+      "id": 2,
+      "name": "Manager User",
+      "email": "manager@test.local",
+      "role": "manager",
+      "permissions": [
+        "inventory.view",
+        "inventory.create",
+        "inventory.edit",
+        "inventory.delete",
+        "payroll.view",
+        "payroll.create",
+        "hr.view",
+        "hr.edit"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Viewer User",
+      "email": "viewer@test.local",
+      "role": "viewer",
+      "permissions": [
+        "inventory.view",
+        "payroll.view",
+        "hr.view"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Inventory Manager",
+      "email": "inventory@test.local",
+      "role": "custom",
+      "permissions": [
+        "inventory.view",
+        "inventory.create",
+        "inventory.edit",
+        "inventory.delete"
+      ]
+    }
+  ],
+  "roles": [
+    {
+      "id": 1,
+      "name": "admin",
+      "description": "Full system access"
+    },
+    {
+      "id": 2,
+      "name": "manager",
+      "description": "Manager level access"
+    },
+    {
+      "id": 3,
+      "name": "viewer",
+      "description": "Read-only access"
+    }
+  ]
+}

@@ -1,1 +1,0 @@
-<?php`n`nnamespace App\Models;`n`nuse Illuminate\Database\Eloquent\Model;`nuse Stancl\Tenancy\Database\Concerns\BelongsToTenant;`n`nclass ActiveDevice extends Model`n{`n    use BelongsToTenant;`n    protected $guarded = [];`n}

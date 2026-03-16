@@ -1,0 +1,9 @@
+﻿<?php    declare(strict_types=1);
+
+
+namespace Database\Seeders;
+use App\Models\Tenants\CustomerAddress;
+use App\Models\Tenants\CustomerAccount;
+use Illuminate\Database\Seeder;    final 
+
+final class CustomerAddressSeeder extends Seeder  {      public function run(): void      {          $customer = CustomerAccount::first();            if (!$customer) {              return;          }            $addresses = [              [                  'customer_account_id' => $customer->id,                  'label' => 'Дом',                  'full_name' => 'Иван Петров',                  'phone' => '+7-999-123-45-67',                  'email' => 'ivan@example.com',                  'country' => 'Россия',                  'city' => 'Москва',                  'postal_code' => '101000',                  'street' => 'Тверская',                  'house_number' => '1',                  'apartment' => '42',                  'address_type' => 'residential',                  'is_default' => true,              ],              [                  'customer_account_id' => $customer->id,                  'label' => 'Работа',                  'full_name' => 'Иван Петров',                  'phone' => '+7-999-123-45-67',                  'email' => 'ivan@company.com',                  'country' => 'Россия',                  'city' => 'Москва',                  'postal_code' => '101001',                  'street' => 'Камергерский переулок',                  'house_number' => '3',                  'address_type' => 'office',                  'is_default' => false,              ],          ];            foreach ($addresses as $address) {              CustomerAddress::create([                  ...$address,                  'correlation_id' => \Illuminate\Support\Str::uuid(),              ]);          }      }  }  

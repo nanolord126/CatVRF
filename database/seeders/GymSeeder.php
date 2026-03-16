@@ -1,0 +1,8 @@
+﻿<?php  declare(strict_types=1);
+
+
+namespace Database\Seeders;
+use App\Models\Tenants\Gym;
+use Illuminate\Database\Seeder;  final 
+
+final class GymSeeder extends Seeder { 	public function run(): void 	{ 		Gym::create([ 			'name' => 'Fit & Strong Gym', 			'address' => '321 Fitness Street, Athletic District', 			'phone' => '+1-555-0301', 			'email' => 'info@fitstrong.com', 			'geo_lat' => 40.7549, 			'geo_lng' => -73.9840, 			'occupancy_data' => json_encode(['max_capacity' => 200, 'current_occupancy' => 45]), 			'amenities' => json_encode(['free_wifi', 'parking', 'sauna', 'pool']), 			'status' => 'active', 		]);  		Gym::create([ 			'name' => 'CrossFit Pro Box', 			'address' => '654 Training Avenue, Sport Zone', 			'phone' => '+1-555-0302', 			'email' => 'contact@crossfitpro.com', 			'geo_lat' => 40.7614, 			'geo_lng' => -73.9776, 			'occupancy_data' => json_encode(['max_capacity' => 100, 'current_occupancy' => 25]), 			'amenities' => json_encode(['coaching', 'group_classes', 'locker_rooms']), 			'status' => 'active', 		]);  		Gym::create([ 			'name' => 'Premium Elite Fitness', 			'address' => '987 Wellness Road, Luxury District', 			'phone' => '+1-555-0303', 			'email' => 'premium@elitefitness.com', 			'geo_lat' => 40.7489, 			'geo_lng' => -73.9680, 			'occupancy_data' => json_encode(['max_capacity' => 300, 'current_occupancy' => 120]), 			'amenities' => json_encode(['steam_room', 'sauna', 'spa', 'personal_training', 'nutrition_coaching']), 			'status' => 'active', 		]); 	} }

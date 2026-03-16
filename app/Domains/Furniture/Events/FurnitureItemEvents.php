@@ -1,1 +1,0 @@
-<?php namespace App\Domains\Furniture\Events; class FurnitureItemCreated { public function __construct(public $furniture) {} } class FurnitureItemUpdated { public function __construct(public $furniture) {} } class FurnitureItemDeleted { public function __construct(public $furniture) {} }

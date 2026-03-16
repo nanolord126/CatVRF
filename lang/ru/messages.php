@@ -1,0 +1,48 @@
+<?php
+
+return [
+    'api' => [
+        'success' => 'Операция успешно завершена',
+        'error' => 'При выполнении операции произошла ошибка',
+        'unauthorized' => 'Требуется авторизация',
+        'forbidden' => 'Доступ запрещен',
+        'not_found' => 'Ресурс не найден',
+        'validation_error' => 'Ошибка валидации данных',
+    ],
+    'auth' => [
+        'login' => 'Вход',
+        'logout' => 'Выход',
+        'register' => 'Регистрация',
+        'forgot_password' => 'Забыли пароль?',
+        'reset_password' => 'Восстановить пароль',
+        'remember_me' => 'Запомнить меня',
+    ],
+    'domains' => [
+        'taxi' => 'Такси',
+        'food' => 'Доставка еды',
+        'hotel' => 'Отели',
+        'sports' => 'Спорт',
+        'clinic' => 'Клиники',
+        'beauty' => 'Красота',
+        'delivery' => 'Доставка',
+        'advertising' => 'Реклама',
+        'insurance' => 'Страхование',
+        'real_estate' => 'Недвижимость',
+        'inventory' => 'Инвентарь',
+        'education' => 'Образование',
+        'events' => 'События',
+        'auto' => 'Автомобили',
+        'electronics' => 'Электроника',
+        'apparel' => 'Одежда',
+        'tourism' => 'Туризм',
+        'furniture' => 'Мебель',
+        'construction' => 'Строительство',
+    ],
+    'statuses' => [
+        'active' => 'Активен',
+        'inactive' => 'Неактивен',
+        'pending' => 'В ожидании',
+        'completed' => 'Завершено',
+        'cancelled' => 'Отменено',
+    ],
+];

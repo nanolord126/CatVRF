@@ -1,0 +1,42 @@
+{
+  "payroll_month": "2024-01",
+  "employees": [
+    {
+      "id": "EMP001",
+      "name": "John Doe",
+      "email": "john.doe@test.local",
+      "salary": 50000,
+      "allowances": 2000,
+      "deductions": 5000,
+      "tax": 9000,
+      "net_salary": 38000,
+      "status": "draft"
+    },
+    {
+      "id": "EMP002",
+      "name": "Jane Smith",
+      "email": "jane.smith@test.local",
+      "salary": 55000,
+      "allowances": 2500,
+      "deductions": 6000,
+      "tax": 10000,
+      "net_salary": 41500,
+      "status": "draft"
+    },
+    {
+      "id": "EMP003",
+      "name": "Mike Johnson",
+      "email": "mike.johnson@test.local",
+      "salary": 45000,
+      "allowances": 1500,
+      "deductions": 4500,
+      "tax": 8000,
+      "net_salary": 34000,
+      "status": "draft"
+    }
+  ],
+  "total_gross_salary": 150000,
+  "total_net_salary": 113500,
+  "total_tax": 27000,
+  "created_at": "2024-01-15T10:00:00Z"
+}

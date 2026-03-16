@@ -1,1 +1,0 @@
-<?php namespace App\Domains\Advertising\Events; use Illuminate\Broadcasting\Channel; use Illuminate\Foundation\Events\Dispatchable; use Illuminate\Broadcasting\InteractsWithSockets; class CampaignCreated { use Dispatchable, InteractsWithSockets; public function __construct(public $campaign) {} public function broadcastOn(): Channel { return new Channel('advertising'); } }

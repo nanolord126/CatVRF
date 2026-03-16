@@ -1,0 +1,116 @@
+{
+    "app/Console/Commands/Common/SendHealthReminders.php": [
+        "Missing: use Throwable"
+    ],
+    "app/Contracts/GymContract.php": [
+        "Duplicate method: createMembership (x2)",
+        "Duplicate method: getClasses (x2)",
+        "Duplicate method: bookClass (x2)"
+    ],
+    "app/Contracts/HRExchangeOfferContract.php": [
+        "Duplicate method: publishOffer (x2)"
+    ],
+    "app/Contracts/HelpdeskTicketContract.php": [
+        "Duplicate method: changeStatus (x2)",
+        "Duplicate method: addComment (x2)"
+    ],
+    "app/Filament/Admin/Pages/AIDashboard.php": [
+        "Missing: use Throwable"
+    ],
+    "app/Filament/Tenant/Pages/Dashboard.php": [
+        "Duplicate method: boot (x2)"
+    ],
+    "app/Filament/Tenant/Resources/BeautyProductResource/Pages/ListBeautyProducts.php": [
+        "Undefined Resource class: BeautyProductResource"
+    ],
+    "app/Filament/Tenant/Resources/BeautyProductResource.php": [
+        "Undefined Resource class: BeautyProductResource"
+    ],
+    "app/Filament/Tenant/Resources/HR/EmployeeResource/RelationManagers/HealthChecklistRelationManager.php": [
+        "Undefined Resource class: EmployeeResource"
+    ],
+    "app/Filament/Tenant/Resources/HR/EmployeeResource/RelationManagers/PetsRelationManager.php": [
+        "Undefined Resource class: EmployeeResource"
+    ],
+    "app/Filament/Tenant/Resources/Marketplace/Beauty/BeautyProductResource.php": [
+        "Undefined Resource class: BeautyProductResource"
+    ],
+    "app/Filament/Tenant/Resources/Marketplace/ConstructionResource/Pages/CreateConstruction.php": [
+        "Duplicate method: __construct (x2)"
+    ],
+    "app/Filament/Tenant/Resources/Marketplace/ConstructionResource/Pages/EditConstruction.php": [
+        "Duplicate method: __construct (x2)"
+    ],
+    "app/Filament/Tenant/Resources/Marketplace/CosmeticsResource/Pages/CreateCosmetics.php": [
+        "Duplicate method: __construct (x2)"
+    ],
+    "app/Filament/Tenant/Resources/Marketplace/CosmeticsResource/Pages/EditCosmetics.php": [
+        "Duplicate method: __construct (x2)"
+    ],
+    "app/Filament/Tenant/Resources/Marketplace/CosmeticsResource/Pages/ListCosmetics.php": [
+        "Duplicate method: __construct (x2)"
+    ],
+    "app/Filament/Tenant/Resources/Marketplace/ElectronicsResource/Pages/CreateElectronics.php": [
+        "Missing: use Throwable"
+    ],
+    "app/Filament/Tenant/Resources/Marketplace/ElectronicsResource/Pages/EditElectronics.php": [
+        "Missing: use Throwable"
+    ],
+    "app/Filament/Tenant/Resources/Marketplace/GymResource/Pages/CreateGym.php": [
+        "Duplicate method: __construct (x2)"
+    ],
+    "app/Filament/Tenant/Resources/Marketplace/GymResource/Pages/EditGym.php": [
+        "Duplicate method: __construct (x2)"
+    ],
+    "app/Filament/Tenant/Resources/Marketplace/HotelBookingResource/Pages/EditHotelBooking.php": [
+        "Duplicate method: __construct (x2)"
+    ],
+    "app/Filament/Tenant/Resources/Marketplace/MedicalCardResource/Pages/CreateMedicalCard.php": [
+        "Duplicate method: __construct (x2)"
+    ],
+    "app/Filament/Tenant/Resources/Marketplace/MedicalCardResource/Pages/EditMedicalCard.php": [
+        "Duplicate method: __construct (x2)"
+    ],
+    "app/Filament/Tenant/Resources/Marketplace/MedicalCardResource/Pages/ListMedicalCards.php": [
+        "Duplicate method: __construct (x2)"
+    ],
+    "app/Filament/Tenant/Resources/Marketplace/PerfumeryResource/Pages/CreatePerfumery.php": [
+        "Duplicate method: __construct (x2)"
+    ],
+    "app/Filament/Tenant/Resources/Marketplace/PerfumeryResource/Pages/EditPerfumery.php": [
+        "Duplicate method: __construct (x2)"
+    ],
+    "app/Filament/Tenant/Resources/Marketplace/PerfumeryResource/Pages/ListPerfumeries.php": [
+        "Duplicate method: __construct (x2)"
+    ],
+    "app/Filament/Tenant/Resources/Marketplace/PropertyResource/Pages/CreateProperty.php": [
+        "Duplicate method: __construct (x2)"
+    ],
+    "app/Filament/Tenant/Resources/Marketplace/PropertyResource/Pages/EditProperty.php": [
+        "Duplicate method: __construct (x2)"
+    ],
+    "app/Filament/Tenant/Resources/Marketplace/VetClinicResource/Pages/EditVetClinic.php": [
+        "Duplicate method: __construct (x2)"
+    ],
+    "app/Http/Controllers/Tenant/AlertController.php": [
+        "Duplicate method: destroy (x2)"
+    ],
+    "app/Http/Controllers/Tenant/AnswerController.php": [
+        "Duplicate method: accept (x2)"
+    ],
+    "app/Http/Middleware/MonitoringMiddleware.php": [
+        "Missing: use Throwable"
+    ],
+    "app/Jobs/Domains/Finances/Jobs/ProcessSbpWebhookJob.php": [
+        "Missing: use Throwable"
+    ],
+    "app/Providers/Infrastructure/DopplerServiceProvider.php": [
+        "Missing: use Throwable"
+    ],
+    "app/Services/OfflineSyncService.php": [
+        "Missing: use Throwable"
+    ],
+    "app/Services/RealtimeUpdatesService.php": [
+        "Duplicate method: getActiveUsers (x2)"
+    ]
+}

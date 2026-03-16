@@ -1,1 +1,0 @@
-<?php namespace App\Domains\RealEstateSales\Events; class ResidentialSaleCreated { public function __construct(public $sale) {} } class CommercialSaleCreated { public function __construct(public $sale) {} } class LandSaleCreated { public function __construct(public $sale) {} } class EnterpriseSaleCreated { public function __construct(public $sale) {} }

@@ -1,0 +1,39 @@
+declare(strict_types=1);
+
+return [
+
+    /*
+    |--------------------------------------------------------------------------
+    | PHPStan Configuration for Code Analysis
+    |--------------------------------------------------------------------------
+    |
+    | PHPStan performs static code analysis to find bugs in your code
+    | without running it. Configure strict analysis for production code.
+    |
+    */
+
+    'level' => 8,
+
+    'paths' => [
+        'app',
+    ],
+
+    'excludePaths' => [
+        'app/Console/Kernel.php',
+        'app/Http/Middleware',
+        'app/Providers',
+    ],
+
+    'ignoreErrors' => [
+        [
+            'message' => '#^Access to protected property .* of class .*#',
+            'path' => 'app/Models',
+            'count' => 5,
+        ],
+    ],
+
+    'typeAliases' => [
+        'ID' => 'int|string',
+    ],
+
+];

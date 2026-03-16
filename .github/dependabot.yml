@@ -1,0 +1,61 @@
+# yaml-language-server: $schema=https://json.schemastore.org/dependabot-2.0.json
+# GitHub Repository Configuration
+# 
+# DEPENDABOT configuration for automated dependency updates and security scanning
+
+version: 2
+
+updates:
+  # PHP Dependencies
+  - package-ecosystem: 'composer'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '04:00'
+    assignees:
+      - 'owner'
+    labels:
+      - 'dependencies'
+      - 'php'
+    allow:
+      - dependency-type: 'direct'
+      - dependency-type: 'indirect'
+    commit-message:
+      prefix: 'chore(deps):'
+      prefix-development: 'chore(deps-dev):'
+      include: 'scope'
+    open-pull-requests-limit: 5
+    pull-request-branch-name:
+      separator: '/'
+
+  # Node.js Dependencies
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '05:00'
+    labels:
+      - 'dependencies'
+      - 'javascript'
+    allow:
+      - dependency-type: 'direct'
+      - dependency-type: 'indirect'
+    commit-message:
+      prefix: 'chore(deps):'
+      prefix-development: 'chore(deps-dev):'
+      include: 'scope'
+    open-pull-requests-limit: 5
+
+  # GitHub Actions
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'tuesday'
+      time: '04:00'
+    labels:
+      - 'ci/cd'
+    commit-message:
+      prefix: 'ci:'

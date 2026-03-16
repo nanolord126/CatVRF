@@ -1,0 +1,191 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: catvrf_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      
+      redis:
+        image: redis:7
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: bcmath, ctype, json, mbstring, openssl, pdo, pdo_pgsql, tokenizer, xml
+          tools: composer:latest
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v3
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: Install PHP dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Setup Laravel environment
+        run: |
+          cp .env.ci .env
+          php artisan key:generate
+          php artisan config:cache
+
+      - name: Create test database
+        run: php artisan migrate:fresh --seed --env=testing
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: catvrf_test
+          DB_USERNAME: postgres
+          DB_PASSWORD: postgres
+
+      - name: Run Unit Tests
+        run: php artisan test --testsuite=Unit --coverage
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: catvrf_test
+          DB_USERNAME: postgres
+          DB_PASSWORD: postgres
+
+      - name: Run Feature Tests
+        run: php artisan test --testsuite=Feature
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: catvrf_test
+          DB_USERNAME: postgres
+          DB_PASSWORD: postgres
+
+      - name: Run Authorization Tests
+        run: php artisan test tests/Feature/Authorization
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: catvrf_test
+          DB_USERNAME: postgres
+          DB_PASSWORD: postgres
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+
+  code-quality:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: phpstan:latest, pint:latest
+
+      - name: Install PHP dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Run PHPStan analysis
+        run: phpstan analyse app --level=8
+
+      - name: Check code style with Pint
+        run: ./vendor/bin/pint --test
+
+  security:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Psalm security scanner
+        uses: docker://ghcr.io/psalm/psalm:latest
+        with:
+          args: --security-checks-only
+
+      - name: Check for known vulnerabilities
+        uses: symfonycorp/security-checker-action@v5
+
+  build:
+    needs: [test, code-quality, security]
+    runs-on: ubuntu-latest
+    if: success()
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+
+      - name: Install PHP dependencies
+        run: composer install --no-dev --prefer-dist --no-progress --no-interaction
+
+      - name: Optimize autoloader
+        run: composer dump-autoload --optimize
+
+      - name: Build assets
+        run: |
+          npm install
+          npm run build
+        continue-on-error: true
+
+      - name: Create artifact
+        run: |
+          mkdir -p build-artifacts
+          tar -czf build-artifacts/catvrf-${{ github.sha }}.tar.gz \
+            --exclude=.git \
+            --exclude=node_modules \
+            --exclude=.env \
+            --exclude=storage/logs \
+            --exclude=storage/app/debug \
+            .
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: catvrf-build-${{ github.sha }}
+          path: build-artifacts
+          retention-days: 7

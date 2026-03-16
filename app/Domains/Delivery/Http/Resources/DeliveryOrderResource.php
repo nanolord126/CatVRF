@@ -1,1 +1,0 @@
-<?php namespace App\Domains\Delivery\Http\Resources; use Illuminate\Http\Resources\Json\JsonResource; class DeliveryOrderResource extends JsonResource { public function toArray($request): array { return ['id' => $this->id, 'address' => $this->address, 'status' => $this->status, 'driver' => $this->driver_id]; } }

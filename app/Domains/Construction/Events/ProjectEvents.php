@@ -1,1 +1,0 @@
-<?php namespace App\Domains\Construction\Events; class ProjectCreated { public function __construct(public $project) {} } class ProjectUpdated { public function __construct(public $project) {} } class ProjectDeleted { public function __construct(public $project) {} }

@@ -1,0 +1,8 @@
+﻿<?php  declare(strict_types=1);
+
+
+namespace Database\Seeders;
+use App\Models\Tenants\Footwear;
+use Illuminate\Database\Seeder;  final 
+
+final class FootwearSeeder extends Seeder { 	public function run(): void 	{ 		Footwear::create([ 			'name' => 'Classic Running Shoes', 			'description' => 'Comfortable running shoes with excellent support', 			'size' => '10', 			'color' => 'black', 			'material' => 'mesh_rubber', 			'type' => 'sports', 			'price' => 89.99, 			'quantity_in_stock' => 120, 			'category' => 'mens_sports', 			'brand' => 'RunFast', 			'image_url' => 'https://example.com/running_shoes.jpg', 			'status' => 'published', 		]);  		Footwear::create([ 			'name' => 'Casual Sneakers', 			'description' => 'Stylish casual sneakers for everyday wear', 			'size' => '8', 			'color' => 'white', 			'material' => 'canvas_rubber', 			'type' => 'casual', 			'price' => 59.99, 			'quantity_in_stock' => 200, 			'category' => 'womens_casual', 			'brand' => 'Street Style', 			'image_url' => 'https://example.com/sneakers.jpg', 			'status' => 'published', 		]);  		Footwear::create([ 			'name' => 'Premium Leather Loafers', 			'description' => 'Elegant leather loafers for business casual', 			'size' => '11', 			'color' => 'brown', 			'material' => 'leather', 			'type' => 'formal', 			'price' => 129.99, 			'quantity_in_stock' => 60, 			'category' => 'mens_formal', 			'brand' => 'Leather Luxe', 			'image_url' => 'https://example.com/loafers.jpg', 			'status' => 'published', 		]); 	} }

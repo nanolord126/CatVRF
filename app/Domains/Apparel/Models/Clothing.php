@@ -1,1 +1,0 @@
-<?php namespace App\Domains\Apparel\Models; use Illuminate\Database\Eloquent\Model; class Clothing extends Model { protected $table = 'clothing'; protected $fillable = ['tenant_id','name','brand','size','color','price','stock','material','status','correlation_id']; protected $casts = ['price' => 'decimal:2','created_at' => 'datetime','updated_at' => 'datetime']; }

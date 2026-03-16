@@ -1,1 +1,0 @@
-<?php namespace App\Domains\Furniture\Models; use Illuminate\Database\Eloquent\Model; class FurnitureItem extends Model { protected $table = 'furniture_items'; protected $fillable = ['tenant_id','name','material','dimensions','color','price','stock','status','correlation_id']; protected $casts = ['price' => 'decimal:2','created_at' => 'datetime','updated_at' => 'datetime']; }

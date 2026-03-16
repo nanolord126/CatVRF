@@ -1,0 +1,95 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches: [ develop ]
+  workflow_run:
+    workflows: ["Tests"]
+    types: [completed]
+    branches: [ develop ]
+
+jobs:
+  deploy-staging:
+    runs-on: ubuntu-latest
+    if: |
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      (github.event_name == 'push')
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.STAGING_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.STAGING_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to staging server
+        run: |
+          ssh -i ~/.ssh/id_rsa ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} << 'EOF'
+            cd /var/www/catvrf
+            
+            # Pull latest code
+            git fetch origin develop
+            git checkout develop
+            git reset --hard origin/develop
+            
+            # Install dependencies
+            composer install --no-dev --optimize-autoloader
+            npm ci
+            npm run build
+            
+            # Database migrations
+            php artisan migrate --force
+            
+            # Cache optimization
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
+            
+            # Permissions
+            chmod -R 775 storage bootstrap/cache
+            chown -R www-data:www-data storage bootstrap/cache
+            
+            # Restart services
+            sudo systemctl restart php8.3-fpm
+            sudo systemctl restart nginx
+            
+            echo "✅ Deployment to staging completed successfully"
+          EOF
+
+      - name: Run smoke tests on staging
+        run: |
+          curl -f https://staging.catvrf.local/health || exit 1
+          curl -f https://staging.catvrf.local/api/health || exit 1
+
+      - name: Notify Slack
+        if: always()
+        uses: slackapi/slack-github-action@v1
+        with:
+          payload: |
+            {
+              "text": "Staging Deployment Status: ${{ job.status }}",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Staging Deployment*\nStatus: `${{ job.status }}`\nCommit: `${{ github.sha }}`\nAuthor: `${{ github.actor }}`"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+
+  notify:
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    if: always()
+    steps:
+      - name: Send notification
+        run: |
+          echo "Staging deployment completed with status: ${{ needs.deploy-staging.result }}"

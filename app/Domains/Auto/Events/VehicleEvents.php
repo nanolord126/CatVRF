@@ -1,1 +1,0 @@
-<?php namespace App\Domains\Auto\Events; class VehicleCreated { public function __construct(public $vehicle) {} } class VehicleUpdated { public function __construct(public $vehicle) {} } class VehicleDeleted { public function __construct(public $vehicle) {} }

@@ -1,0 +1,49 @@
+FOUND ISSUE: ListProperties.php
+FOUND ISSUE: CreateRoom.php
+FOUND ISSUE: EditRoom.php
+FOUND ISSUE: ListRooms.php
+FOUND ISSUE: ManageRooms.php
+FOUND ISSUE: ListSalarySlips.php
+FOUND ISSUE: ViewSalarySlip.php
+FOUND ISSUE: CreateStaffSchedule.php
+FOUND ISSUE: EditStaffSchedule.php
+FOUND ISSUE: ListStaffSchedules.php
+FOUND ISSUE: CreateStaffTask.php
+FOUND ISSUE: EditStaffTask.php
+FOUND ISSUE: ListStaffTasks.php
+FOUND ISSUE: ListStockMovements.php
+FOUND ISSUE: CreateVenue.php
+FOUND ISSUE: EditVenue.php
+FOUND ISSUE: ListVenues.php
+FOUND ISSUE: ManageVenues.php
+FOUND ISSUE: ManageWallets.php
+FOUND ISSUE: CreateWishlist.php
+FOUND ISSUE: EditWishlist.php
+FOUND ISSUE: ListWishlists.php
+=== WAVE 1: Duplicate Property Fix ===
+Files modified: 22
+
+  тЬУ Filament/Tenant/Resources/RealEstate/PropertyResource/Pages/ListProperties.php
+  тЬУ Filament/Tenant/Resources/RoomResource/Pages/CreateRoom.php
+  тЬУ Filament/Tenant/Resources/RoomResource/Pages/EditRoom.php
+  тЬУ Filament/Tenant/Resources/RoomResource/Pages/ListRooms.php
+  тЬУ Filament/Tenant/Resources/RoomResource/Pages/ManageRooms.php
+  тЬУ Filament/Tenant/Resources/SalarySlipResource/Pages/ListSalarySlips.php
+  тЬУ Filament/Tenant/Resources/SalarySlipResource/Pages/ViewSalarySlip.php
+  тЬУ Filament/Tenant/Resources/StaffScheduleResource/Pages/CreateStaffSchedule.php
+  тЬУ Filament/Tenant/Resources/StaffScheduleResource/Pages/EditStaffSchedule.php
+  тЬУ Filament/Tenant/Resources/StaffScheduleResource/Pages/ListStaffSchedules.php
+  тЬУ Filament/Tenant/Resources/StaffTaskResource/Pages/CreateStaffTask.php
+  тЬУ Filament/Tenant/Resources/StaffTaskResource/Pages/EditStaffTask.php
+  тЬУ Filament/Tenant/Resources/StaffTaskResource/Pages/ListStaffTasks.php
+  тЬУ Filament/Tenant/Resources/StockMovementResource/Pages/ListStockMovements.php
+  тЬУ Filament/Tenant/Resources/VenueResource/Pages/CreateVenue.php
+  тЬУ Filament/Tenant/Resources/VenueResource/Pages/EditVenue.php
+  тЬУ Filament/Tenant/Resources/VenueResource/Pages/ListVenues.php
+  тЬУ Filament/Tenant/Resources/VenueResource/Pages/ManageVenues.php
+  тЬУ Filament/Tenant/Resources/WalletResource/Pages/ManageWallets.php
+  тЬУ Filament/Tenant/Resources/WishlistResource/Pages/CreateWishlist.php
+  тЬУ Filament/Tenant/Resources/WishlistResource/Pages/EditWishlist.php
+  тЬУ Filament/Tenant/Resources/WishlistResource/Pages/ListWishlists.php
+
+Fixed files list: wave1_fixed.txt

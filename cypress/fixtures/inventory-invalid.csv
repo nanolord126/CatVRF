@@ -1,0 +1,6 @@
+name,sku,description,category,quantity,unit_price,reorder_level,supplier,warehouse
+Invalid Item 1,,Missing SKU,Electronics,100,29.99,20,Supplier A,Warehouse A
+Invalid Item 2,ITEM-002,,Electronics,invalid_qty,49.99,10,Supplier B,Warehouse A
+Invalid Item 3,ITEM-003,Test item,Electronics,50,-19.99,15,Supplier A,Warehouse B
+Invalid Item 4,ITEM-004,Test item,Electronics,100,49.99,invalid_level,Supplier C,Warehouse B
+Invalid Item 5,ITEM-005,Test item,Electronics,200,4.99,50,,Warehouse A

@@ -1,1 +1,0 @@
-<?php namespace App\Domains\RealEstate\Http\Resources; use Illuminate\Http\Resources\Json\JsonResource; class PropertyResource extends JsonResource { public function toArray($request): array { return ['id' => $this->id, 'address' => $this->address, 'price' => $this->price, 'area' => $this->area, 'published' => $this->published]; } }

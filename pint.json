@@ -1,0 +1,73 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * PHP Code Sniffer Configuration
+ * 
+ * This file configures the code quality standards for the project
+ */
+
+return [
+
+    /*
+    |--------------------------------------------------------------------------
+    | File Patterns
+    |--------------------------------------------------------------------------
+    */
+
+    'paths' => [
+        'app/',
+        'routes/',
+        'config/',
+    ],
+
+    'exclude' => [
+        'app/Console/Kernel.php',
+        'app/Http/Middleware',
+        'app/Providers',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Laravel Pint Rules
+    |--------------------------------------------------------------------------
+    */
+
+    'preset' => 'laravel',
+
+    'rules' => [
+        // Strict rules for production code
+        '@PSR12' => true,
+        '@Laravel' => true,
+        '@Laravel:risky' => true,
+
+        'no_unused_imports' => true,
+        'no_extra_blank_lines' => true,
+        'no_trailing_whitespace' => true,
+        'trailing_comma_in_multiline' => true,
+        'single_quote' => true,
+        'ordered_imports' => [
+            'sort_algorithm' => 'alpha',
+        ],
+        'ordered_class_elements' => [
+            'order' => [
+                'use_trait',
+                'constant',
+                'constant_public',
+                'constant_protected',
+                'constant_private',
+                'property_public',
+                'property_protected',
+                'property_private',
+                'method_public',
+                'method_protected',
+                'method_private',
+            ],
+        ],
+        'strict_param' => true,
+        'strict_types' => true,
+        'declare_strict_types' => true,
+    ],
+
+];

@@ -1,0 +1,6 @@
+employee_id,name,email,position,department,salary,hire_date,phone
+EMP001,John Doe,john.doe@test.local,Manager,Sales,50000,2023-01-15,+1234567890
+EMP002,Jane Smith,jane.smith@test.local,Developer,IT,55000,2022-06-20,+1234567891
+EMP003,Mike Johnson,mike.johnson@test.local,Designer,IT,45000,2023-03-10,+1234567892
+EMP004,Sarah Wilson,sarah.wilson@test.local,Analyst,Finance,48000,2022-11-05,+1234567893
+EMP005,Tom Brown,tom.brown@test.local,Intern,Sales,25000,2024-01-01,+1234567894

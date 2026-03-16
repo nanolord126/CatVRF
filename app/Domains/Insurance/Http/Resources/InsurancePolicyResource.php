@@ -1,1 +1,0 @@
-<?php namespace App\Domains\Insurance\Http\Resources; use Illuminate\Http\Resources\Json\JsonResource; class InsurancePolicyResource extends JsonResource { public function toArray($request): array { return ['id' => $this->id, 'policy_number' => $this->policy_number, 'holder' => $this->holder_id, 'amount' => $this->amount, 'status' => $this->status]; } }

@@ -1,0 +1,7 @@
+Resource map built: 79 resources
+
+PHP Fatal error:  Uncaught UnexpectedValueException: RecursiveDirectoryIterator::__construct(app/Filament/Tenant/Resources/*/Pages): ╨б╨╕╨╜╤В╨░╨║╤Б╨╕╤З╨╡╤Б╨║╨░╤П ╨╛╤И╨╕╨▒╨║╨░ ╨▓ ╨╕╨╝╨╡╨╜╨╕ ╤Д╨░╨╣╨╗╨░, ╨╕╨╝╨╡╨╜╨╕ ╨┐╨░╨┐╨║╨╕ ╨╕╨╗╨╕ ╨╝╨╡╤В╨║╨╡ ╤В╨╛╨╝ (code: 123) in C:\opt\kotvrf\CatVRF\fix_pages_final.php:45
+Stack trace:
+#0 C:\opt\kotvrf\CatVRF\fix_pages_final.php(45): RecursiveDirectoryIterator->__construct()
+#1 {main}
+  thrown in C:\opt\kotvrf\CatVRF\fix_pages_final.php on line 45

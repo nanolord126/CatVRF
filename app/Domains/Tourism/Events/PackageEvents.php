@@ -1,1 +1,0 @@
-<?php namespace App\Domains\Tourism\Events; class PackageCreated { public function __construct(public $package) {} } class PackageUpdated { public function __construct(public $package) {} } class PackageDeleted { public function __construct(public $package) {} }

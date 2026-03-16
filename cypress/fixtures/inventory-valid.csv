@@ -1,0 +1,6 @@
+name,sku,description,category,quantity,unit_price,reorder_level,supplier,warehouse
+Test Item 1,ITEM-001,Test inventory item 1,Electronics,100,29.99,20,Supplier A,Warehouse A
+Test Item 2,ITEM-002,Test inventory item 2,Electronics,50,49.99,10,Supplier B,Warehouse A
+Test Item 3,ITEM-003,Test inventory item 3,Office,75,19.99,15,Supplier A,Warehouse B
+Test Item 4,ITEM-004,Test inventory item 4,Office,120,9.99,25,Supplier C,Warehouse B
+Test Item 5,ITEM-005,Test inventory item 5,Supplies,200,4.99,50,Supplier B,Warehouse A

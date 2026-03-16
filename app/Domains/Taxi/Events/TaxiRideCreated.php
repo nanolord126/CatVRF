@@ -1,1 +1,0 @@
-<?php namespace App\Domains\Taxi\Events; use Illuminate\Broadcasting\Channel; use Illuminate\Foundation\Events\Dispatchable; use Illuminate\Broadcasting\InteractsWithSockets; class TaxiRideCreated { use Dispatchable, InteractsWithSockets; public function __construct(public $taxiRide) {} public function broadcastOn(): Channel { return new Channel('taxi'); } }

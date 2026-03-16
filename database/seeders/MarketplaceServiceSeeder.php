@@ -1,0 +1,8 @@
+﻿<?php    declare(strict_types=1);
+
+
+namespace Database\Seeders;
+use App\Models\Tenants\MarketplaceService;
+use Illuminate\Database\Seeder;    final 
+
+final class MarketplaceServiceSeeder extends Seeder  {      public function run(): void      {          $services = [              [                  'name' => 'Консультация парикмахера',                  'description' => 'Профессиональная консультация по уходу за волосами',                  'duration_minutes' => 30,                  'price' => 500.00,                  'availability_slots' => 10,                  'category' => 'beauty',                  'status' => 'active',                  'is_published' => true,              ],              [                  'name' => 'Персональная тренировка',                  'description' => 'Индивидуальная тренировка с тренером',                  'duration_minutes' => 60,                  'price' => 1500.00,                  'availability_slots' => 5,                  'category' => 'fitness',                  'status' => 'active',                  'is_published' => true,              ],              [                  'name' => 'Доставка цветов',                  'description' => 'Срочная доставка букетов по городу',                  'duration_minutes' => 120,                  'price' => 300.00,                  'availability_slots' => 20,                  'category' => 'delivery',                  'status' => 'active',                  'is_published' => true,              ],          ];            foreach ($services as $service) {              MarketplaceService::create([                  ...$service,                  'correlation_id' => \Illuminate\Support\Str::uuid(),              ]);          }      }  }  

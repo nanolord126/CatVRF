@@ -1,0 +1,74 @@
+{
+  "salons": [
+    {
+      "id": 1,
+      "name": "Beauty Salon Alpha",
+      "email": "salon1@test.local",
+      "phone": "+1234567890",
+      "address": "123 Main Street",
+      "city": "New York",
+      "country": "USA",
+      "latitude": 40.7128,
+      "longitude": -74.0060,
+      "description": "Premium beauty salon with experienced stylists"
+    },
+    {
+      "id": 2,
+      "name": "Style & Elegance",
+      "email": "salon2@test.local",
+      "phone": "+1234567891",
+      "address": "456 Park Avenue",
+      "city": "Los Angeles",
+      "country": "USA",
+      "latitude": 34.0522,
+      "longitude": -118.2437,
+      "description": "Modern salon with latest beauty trends"
+    }
+  ],
+  "services": [
+    {
+      "id": 1,
+      "salon_id": 1,
+      "name": "Haircut",
+      "description": "Professional haircut service",
+      "price": 50,
+      "duration": 30
+    },
+    {
+      "id": 2,
+      "salon_id": 1,
+      "name": "Hair Color",
+      "description": "Professional hair coloring",
+      "price": 120,
+      "duration": 90
+    },
+    {
+      "id": 3,
+      "salon_id": 1,
+      "name": "Manicure",
+      "description": "Professional manicure service",
+      "price": 40,
+      "duration": 45
+    }
+  ],
+  "stylists": [
+    {
+      "id": 1,
+      "salon_id": 1,
+      "name": "Maria Garcia",
+      "email": "maria@salon1.local",
+      "specialization": "Hair Cut",
+      "rating": 4.8,
+      "reviews": 245
+    },
+    {
+      "id": 2,
+      "salon_id": 1,
+      "name": "John Smith",
+      "email": "john@salon1.local",
+      "specialization": "Hair Color",
+      "rating": 4.7,
+      "reviews": 198
+    }
+  ]
+}

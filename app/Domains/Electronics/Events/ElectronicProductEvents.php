@@ -1,1 +1,0 @@
-<?php namespace App\Domains\Electronics\Events; class ElectronicProductCreated { public function __construct(public $product) {} } class ElectronicProductUpdated { public function __construct(public $product) {} } class ElectronicProductDeleted { public function __construct(public $product) {} }

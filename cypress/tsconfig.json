@@ -1,0 +1,14 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "isolatedModules": true,
+    "noEmit": true,
+    "strict": true,
+    "lib": ["ES2020", "DOM"],
+    "types": ["cypress", "chai", "mocha", "node"]
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx"
+  ]
+}
