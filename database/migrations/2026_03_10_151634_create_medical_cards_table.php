@@ -22,7 +22,8 @@ return new class extends Migration
             $table->timestamp('last_check_up')->nullable();
             $table->timestamps();
             $table->index('tenant_id');
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
     }
 
     /**
@@ -33,3 +34,4 @@ return new class extends Migration
         Schema::dropIfExists('medical_cards');
     }
 };
+

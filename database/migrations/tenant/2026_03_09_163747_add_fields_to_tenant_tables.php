@@ -18,7 +18,8 @@ return new class extends Migration
             $table->timestamps();
             
             $table->index(['type', 'report_date']);
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
 
         Schema::table('tenants', function (Blueprint $table) {
             $table->string('timezone')->default('Europe/Moscow');
@@ -42,3 +43,4 @@ return new class extends Migration
         });
     }
 };
+

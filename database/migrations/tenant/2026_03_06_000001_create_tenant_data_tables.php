@@ -19,7 +19,8 @@ return new class extends Migration
             $table->decimal('latitude', 10, 8)->nullable();
             $table->decimal('longitude', 11, 8)->nullable();
             $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
 
         Schema::create('beauty_salons', function (Blueprint $table) {
             $table->id();
@@ -29,7 +30,8 @@ return new class extends Migration
             $table->decimal('latitude', 10, 8)->nullable();
             $table->decimal('longitude', 11, 8)->nullable();
             $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
 
         Schema::create('wallets', function (Blueprint $table) {
             $table->id();
@@ -37,7 +39,8 @@ return new class extends Migration
             $table->decimal('balance', 15, 2)->default(0);
             $table->string('currency')->default('USD');
             $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
 
         Schema::create('bookings', function (Blueprint $table) {
             $table->id();
@@ -48,7 +51,8 @@ return new class extends Migration
             $table->string('status')->default('pending'); // pending, confirmed, cancelled, completed
             $table->decimal('total_price', 15, 2);
             $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
 
         Schema::create('geo_zones', function (Blueprint $table) {
             $table->id();
@@ -56,7 +60,8 @@ return new class extends Migration
             $table->string('type'); // radius, polygon
             $table->json('coordinates'); // center [lat, lng] + radius or coordinates array
             $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
 
         Schema::create('geo_events', function (Blueprint $table) {
             $table->id();
@@ -65,7 +70,8 @@ return new class extends Migration
             $table->decimal('lng', 11, 8);
             $table->unsignedBigInteger('intensity')->default(1);
             $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
     }
 
     /**
@@ -81,3 +87,4 @@ return new class extends Migration
         Schema::dropIfExists('geo_events');
     }
 };
+

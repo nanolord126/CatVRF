@@ -18,7 +18,8 @@ return new class extends Migration
             $table->enum('status', ['active', 'inactive'])->default('active');
             $table->timestamps();
             $table->index('tenant_id');
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
     }
 
     public function down(): void
@@ -26,3 +27,4 @@ return new class extends Migration
         Schema::dropIfExists('geo_zones');
     }
 };
+

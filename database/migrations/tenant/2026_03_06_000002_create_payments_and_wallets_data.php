@@ -16,7 +16,8 @@ return new class extends Migration
             $table->float('commission_percent');
             $table->morphs('owner'); // Hotel or Salon
             $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
 
         Schema::create('bonus_programs', function (Blueprint $table) {
             $table->id();
@@ -26,7 +27,8 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);
             $table->morphs('owner'); // Hotel or Salon
             $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
     }
 
     public function down(): void
@@ -35,3 +37,4 @@ return new class extends Migration
         Schema::dropIfExists('bonus_programs');
     }
 };
+

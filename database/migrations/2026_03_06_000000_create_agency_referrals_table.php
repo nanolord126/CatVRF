@@ -13,12 +13,14 @@ return new class extends Migration
     {
         Schema::create('agency_referrals', function (Blueprint $col) {
             $col->id();
+            $col->string('correlation_id')->nullable()->index();
             $col->string('name');
             $col->string('email');
             $col->string('company_name');
             $col->string('suggested_role')->nullable();
             $col->string('status')->default('pending');
             $col->timestamps();
+            $col->softDeletes();
         });
     }
 

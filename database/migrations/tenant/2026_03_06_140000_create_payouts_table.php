@@ -23,7 +23,8 @@ return new class extends Migration
             $table->string('status')->default('pending');
             $table->text('notes')->nullable();
             $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
     }
 
     public function down(): void
@@ -31,3 +32,4 @@ return new class extends Migration
         Schema::dropIfExists('payouts');
     }
 };
+

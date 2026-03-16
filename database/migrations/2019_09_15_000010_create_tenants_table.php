@@ -23,6 +23,8 @@ return new class extends Migration
             $table->dateTime('trial_ends_at')->nullable();
             $table->boolean('is_paid')->default(false);
             $table->json('data')->nullable();
+            $table->string('correlation_id')->nullable()->index();
+            $table->softDeletes();
             
             $table->timestamps();
         });

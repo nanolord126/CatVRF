@@ -26,7 +26,8 @@ return new class extends Migration
             $table->index('tenant_id');
             $table->index('sku');
             $table->index('status');
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
     }
 
     /**
@@ -37,3 +38,4 @@ return new class extends Migration
         Schema::dropIfExists('inventory_items');
     }
 };
+

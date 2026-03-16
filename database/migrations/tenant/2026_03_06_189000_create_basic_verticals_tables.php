@@ -14,7 +14,8 @@ return new class extends Migration {
                 $table->string('phone')->nullable();
                 $table->text('location')->nullable();
                 $table->timestamps();
-            });
+
+            $table->string('correlation_id')->nullable()->index();            });
         }
 
         if (!Schema::hasTable('restaurant_menus')) {
@@ -24,7 +25,8 @@ return new class extends Migration {
                 $table->string('name');
                 $table->decimal('price', 12, 2);
                 $table->timestamps();
-            });
+
+            $table->string('correlation_id')->nullable()->index();            });
         }
 
         if (!Schema::hasTable('restaurant_orders')) {
@@ -35,7 +37,8 @@ return new class extends Migration {
                 $table->decimal('total_amount', 12, 2);
                 $table->string('status')->default('pending');
                 $table->timestamps();
-            });
+
+            $table->string('correlation_id')->nullable()->index();            });
         }
 
         if (!Schema::hasTable('flowers_shops')) {
@@ -44,7 +47,8 @@ return new class extends Migration {
                 $table->string('name');
                 $table->string('address')->nullable();
                 $table->timestamps();
-            });
+
+            $table->string('correlation_id')->nullable()->index();            });
         }
     }
 
@@ -53,3 +57,4 @@ return new class extends Migration {
         Schema::dropIfExists('flowers_shops');
     }
 };
+

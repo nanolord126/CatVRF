@@ -24,7 +24,8 @@ return new class extends Migration
             $table->timestamps();
             $table->index('tenant_id');
             $table->index('status');
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
     }
 
     /**
@@ -35,3 +36,4 @@ return new class extends Migration
         Schema::dropIfExists('hotel_bookings');
     }
 };
+

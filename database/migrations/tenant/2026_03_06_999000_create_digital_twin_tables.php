@@ -16,7 +16,8 @@ return new class extends Migration
             $table->id();
             $table->string('scenario_name');
             $table->string('target_vertical'); // taxi, food, clinic, global
-            $table->json('input_parameters'); // { "tariff_change": 1.15, "staff_count_change": -5 }
+
+            $table->string('correlation_id')->nullable()->index();            $table->json('input_parameters'); // { "tariff_change": 1.15, "staff_count_change": -5 }
             $table->json('prediction_results')->nullable(); // { "predicted_revenue": 500000, "churn_delta": 0.05 }
             $table->string('status')->default('pending'); // pending, processing, completed, failed
             $table->float('confidence_interval')->default(0.95);
@@ -34,7 +35,8 @@ return new class extends Migration
             $table->integer('avg_staff_load');
             $table->float('avg_conversion_rate');
             $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
     }
 
     /**
@@ -46,3 +48,4 @@ return new class extends Migration
         Schema::dropIfExists('business_simulations');
     }
 };
+

@@ -17,7 +17,8 @@ return new class extends Migration
             $table->string('status')->default('available'); // available, maintenance, occupied
             $table->boolean('requires_housekeeping')->default(false);
             $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
 
         Schema::create('hotel_bookings', function (Blueprint $table) {
             $table->id();
@@ -27,7 +28,8 @@ return new class extends Migration
             $table->decimal('total_price', 15, 2);
             $table->string('status')->default('pending');
             $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
 
         // BeautyMasters Module
         Schema::create('beauty_masters', function (Blueprint $table) {
@@ -36,7 +38,8 @@ return new class extends Migration
             $table->string('category');
             $table->json('portfolio')->nullable(); // Images or Links
             $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
 
         Schema::create('beauty_services', function (Blueprint $table) {
             $table->id();
@@ -44,7 +47,8 @@ return new class extends Migration
             $table->decimal('price', 15, 2);
             $table->integer('duration_minutes');
             $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
 
         Schema::create('master_appointments', function (Blueprint $table) {
             $table->id();
@@ -54,7 +58,8 @@ return new class extends Migration
             $table->dateTime('ends_at');
             $table->string('status')->default('booked');
             $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
 
         // GeoLogistics & Delivery Module
         Schema::create('delivery_zones', function (Blueprint $table) {
@@ -65,7 +70,8 @@ return new class extends Migration
             $table->float('radius_km'); // Circle radius calculation
             $table->decimal('base_delivery_price', 15, 2);
             $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
 
         Schema::create('delivery_orders', function (Blueprint $table) {
             $table->id();
@@ -75,7 +81,8 @@ return new class extends Migration
             $table->string('status')->default('pending'); // in_progress, delivered
             $table->string('tracking_number')->unique();
             $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
     }
 
     public function down(): void
@@ -89,3 +96,4 @@ return new class extends Migration
         Schema::dropIfExists('rooms');
     }
 };
+

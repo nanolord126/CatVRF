@@ -16,7 +16,8 @@ return new class extends Migration
             $table->string('name');
             $table->boolean('is_default')->default(false);
             $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
 
         Schema::create('crm_stages', function (Blueprint $table) {
             $table->id();
@@ -25,7 +26,8 @@ return new class extends Migration
             $table->string('color')->nullable();
             $table->integer('sort')->default(0);
             $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
 
         Schema::create('crm_deals', function (Blueprint $table) {
             $table->id();
@@ -37,7 +39,8 @@ return new class extends Migration
             $table->foreignId('owner_id')->nullable()->constrained('users')->nullOnDelete();
             $table->json('custom_fields')->nullable();
             $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
 
         Schema::create('crm_tasks', function (Blueprint $table) {
             $table->id();
@@ -48,7 +51,8 @@ return new class extends Migration
             $table->foreignId('assigned_to')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('deal_id')->nullable()->constrained('crm_deals')->cascadeOnDelete();
             $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
 
         Schema::create('crm_robot_rules', function (Blueprint $table) {
             $table->id();
@@ -58,7 +62,8 @@ return new class extends Migration
             $table->json('settings')->nullable();
             $table->string('trigger_event')->default('entry'); // entry, time_offset, field_change
             $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
     }
 
     /**
@@ -73,3 +78,4 @@ return new class extends Migration
         Schema::dropIfExists('crm_pipelines');
     }
 };
+

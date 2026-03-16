@@ -18,7 +18,8 @@ return new class extends Migration
                 $table->string('qr_code')->nullable(); // Код для заказа гостем
                 $table->text('position')->nullable(); // Координаты на схеме зала [x, y]
                 $table->timestamps();
-            });
+
+            $table->string('correlation_id')->nullable()->index();            });
         }
 
         // 2. Связь заказа со столом и этапами кухни
@@ -40,7 +41,8 @@ return new class extends Migration
             $table->enum('status', ['waiting', 'cooking', 'ready'])->default('waiting');
             $table->text('comment')->nullable(); // "Без лука", "Прожарка Medium"
             $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
     }
 
     public function down(): void
@@ -53,3 +55,4 @@ return new class extends Migration
         Schema::dropIfExists('restaurant_tables');
     }
 };
+

@@ -21,7 +21,8 @@ return new class extends Migration
             $table->integer('order')->default(0);
             $table->boolean('is_active')->default(true);
             $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
 
         Schema::create('brands', function (Blueprint $table) {
             $table->id();
@@ -31,7 +32,8 @@ return new class extends Migration
             $table->string('country')->nullable();
             $table->text('description')->nullable();
             $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
 
         Schema::create('filters', function (Blueprint $table) {
             $table->id();
@@ -40,7 +42,8 @@ return new class extends Migration
             $table->enum('type', ['select', 'range', 'color', 'boolean']);
             $table->string('unit')->nullable();
             $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
 
         Schema::create('filter_values', function (Blueprint $table) {
             $table->id();
@@ -48,7 +51,8 @@ return new class extends Migration
             $table->string('value');
             $table->string('label');
             $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
 
         Schema::table('b2b_products', function (Blueprint $table) {
             $table->foreignId('category_id')->nullable()->constrained();
@@ -68,3 +72,4 @@ return new class extends Migration
         });
     }
 };
+

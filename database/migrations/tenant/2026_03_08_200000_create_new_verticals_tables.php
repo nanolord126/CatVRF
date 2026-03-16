@@ -9,16 +9,20 @@ return new class extends Migration {
             $table->id(); $table->string('name');
             $table->string('type'); $table->string('inn')->nullable();
             $table->string('tenant_id'); $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
         Schema::create('retail_categories', function (Blueprint $table) {
             $table->id(); $table->string('name');
             $table->string('category'); $table->string('sku_prefix');
             $table->string('tenant_id'); $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
         Schema::create('food_venues', function (Blueprint $table) {
             $table->id(); $table->string('name');
             $table->string('sub_type'); $table->string('cuisine_type')->nullable();
             $table->string('tenant_id'); $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
     }
 };
+

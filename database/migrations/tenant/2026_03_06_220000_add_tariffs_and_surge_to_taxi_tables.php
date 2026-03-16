@@ -22,7 +22,8 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);
             $table->timestamp('expires_at')->nullable();
             $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
 
         // Добавление тарификации и данных GPS в поездки
         Schema::table('taxi_trips', function (Blueprint $table) {
@@ -46,7 +47,8 @@ return new class extends Migration
             $table->decimal('per_minute_fee', 10, 2); // Цена за минуту
             $table->json('category_requirements'); // Требования к машине (год, бренд)
             $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
     }
 
     public function down(): void
@@ -61,3 +63,4 @@ return new class extends Migration
         });
     }
 };
+

@@ -32,7 +32,8 @@ return new class extends Migration
             $table->enum('target_type', ['restaurant', 'supermarket']);
             $table->string('icon')->nullable();
             $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
 
         // 4. Логика заказов (Resto vs Grocery)
         Schema::table('restaurant_orders', function (Blueprint $table) {
@@ -57,3 +58,4 @@ return new class extends Migration
         });
     }
 };
+

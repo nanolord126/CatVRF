@@ -20,7 +20,8 @@ return new class extends Migration
             $table->timestamps();
             
             $table->index(["subscribable_id", "subscribable_type"], "push_sub_idx");
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
     }
 
     public function down()
@@ -28,3 +29,4 @@ return new class extends Migration
         Schema::dropIfExists("push_subscriptions");
     }
 };
+

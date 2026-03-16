@@ -15,7 +15,8 @@ return new class extends Migration {
             $table->integer('stock')->default(0);
             $table->json('images')->nullable();
             $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
 
         Schema::create('gift_cards', function (Blueprint $table) {
             $table->id();
@@ -27,7 +28,8 @@ return new class extends Migration {
             $table->foreignId('created_by')->constrained('users');
             $table->foreignId('activated_by')->nullable()->constrained('users');
             $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
 
         Schema::create('active_devices', function (Blueprint $table) {
             $table->id();
@@ -40,7 +42,8 @@ return new class extends Migration {
             $table->timestamp('last_active_at');
             $table->string('pending_auth_code', 6)->nullable();
             $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
 
         Schema::create('referrals', function (Blueprint $table) {
             $table->id();
@@ -50,7 +53,8 @@ return new class extends Migration {
             $table->decimal('milestone_turnover', 15, 2)->default(0);
             $table->boolean('bonus_paid_50k')->default(false);
             $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
 
         Schema::create('ai_assistant_chats', function (Blueprint $table) {
             $table->id();
@@ -61,7 +65,8 @@ return new class extends Migration {
             $table->integer('request_count')->default(0);
             $table->timestamp('quota_reset_at');
             $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
     }
 
     public function down(): void {
@@ -72,3 +77,4 @@ return new class extends Migration {
         Schema::dropIfExists('beauty_products');
     }
 };
+

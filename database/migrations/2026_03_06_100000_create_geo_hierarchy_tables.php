@@ -24,7 +24,7 @@ return new class extends Migration {
     }
 
     private function geoColumns(Blueprint $t, ?string $parentId = null): void {
-        $t->id(); $t->string('name')->index(); $t->string('code')->nullable();
+        $t->id(); $t->string('correlation_id')->nullable()->index(); $t->string('name')->index(); $t->string('code')->nullable();
         if ($parentId) $t->foreignId($parentId)->constrained()->cascadeOnDelete();
         $t->timestamps(); $t->softDeletes();
     }

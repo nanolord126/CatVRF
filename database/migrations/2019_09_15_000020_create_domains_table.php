@@ -15,10 +15,12 @@ return new class extends Migration
     {
         Schema::create('domains', function (Blueprint $table) {
             $table->increments('id');
+            $table->string('correlation_id')->nullable()->index();
             $table->string('domain', 255)->unique();
             $table->string('tenant_id');
 
             $table->timestamps();
+            $table->softDeletes();
 
             $table->foreign('tenant_id')->references('id')->on('tenants')->onUpdate('cascade')->onDelete('cascade');
         });

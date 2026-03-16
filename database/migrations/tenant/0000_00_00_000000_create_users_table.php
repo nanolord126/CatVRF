@@ -21,7 +21,8 @@ return new class extends Migration
             $table->string('role')->default('client');
             $table->rememberToken();
             $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {
             $table->string('email')->primary();
@@ -49,3 +50,4 @@ return new class extends Migration
         Schema::dropIfExists('sessions');
     }
 };
+

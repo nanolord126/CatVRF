@@ -18,7 +18,8 @@ return new class extends Migration
             $table->string('theme_color')->default('#3b82f6');
             $table->boolean('is_active')->default(true);
             $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
 
         // 2. Глобальный поиск (Search Metadata for Scout/Typesense)
         Schema::create('marketplace_search_index', function (Blueprint $table) {
@@ -32,7 +33,8 @@ return new class extends Migration
             $table->decimal('rating', 3, 2)->default(5.00);
             $table->json('vector_embedding')->nullable(); // Поле для OpenAI Embeddings/Vector Search
             $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
     }
 
     public function down(): void
@@ -41,3 +43,4 @@ return new class extends Migration
         Schema::dropIfExists('marketplace_landings');
     }
 };
+

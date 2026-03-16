@@ -19,7 +19,8 @@ return new class extends Migration
             $table->text('comment')->nullable();
             $table->json('ai_tags')->nullable(); // Теги от AI (дисциплина, вежливость, скорость)
             $table->timestamps();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
 
         // 2. Расширение профиля пользователя для хранения Trust Score
         Schema::table('users', function (Blueprint $table) {
@@ -36,3 +37,4 @@ return new class extends Migration
         Schema::dropIfExists('hr_exchange_reviews');
     }
 };
+

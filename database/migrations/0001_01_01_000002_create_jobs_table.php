@@ -19,7 +19,8 @@ return new class extends Migration
             $table->unsignedInteger('reserved_at')->nullable();
             $table->unsignedInteger('available_at');
             $table->unsignedInteger('created_at');
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
 
         Schema::create('job_batches', function (Blueprint $table) {
             $table->string('id')->primary();
@@ -42,7 +43,8 @@ return new class extends Migration
             $table->longText('payload');
             $table->longText('exception');
             $table->timestamp('failed_at')->useCurrent();
-        });
+
+            $table->string('correlation_id')->nullable()->index();        });
     }
 
     /**
@@ -55,3 +57,4 @@ return new class extends Migration
         Schema::dropIfExists('failed_jobs');
     }
 };
+
