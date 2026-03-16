@@ -44,6 +44,7 @@ return new class extends Migration
             $table->string('tags')->nullable()->index(); // Tags for AI matching
             $table->string('correlation_id')->index();
             $table->timestamps();
+            $table->softDeletes();
             $table->index(['manufacturer_id', 'sku']);
         });
 
@@ -61,6 +62,7 @@ return new class extends Migration
             $table->enum('status', ['draft', 'active', 'expired', 'terminated'])->default('active');
             $table->string('correlation_id')->index();
             $table->timestamps();
+            $table->softDeletes();
         });
 
         // 4. B2B Bulk Orders
@@ -76,6 +78,7 @@ return new class extends Migration
             $table->timestamp('expected_delivery_at')->nullable();
             $table->string('correlation_id')->index();
             $table->timestamps();
+            $table->softDeletes();
         });
 
         // 5. B2B Order Items

@@ -54,6 +54,7 @@ return new class extends Migration
             $blueprint->float('procurement_budget_share');
             $blueprint->uuid('correlation_id');
             $blueprint->timestamps();
+            $blueprint->softDeletes();
         });
     }
 

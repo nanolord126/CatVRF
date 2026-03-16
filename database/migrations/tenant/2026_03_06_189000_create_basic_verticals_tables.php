@@ -37,6 +37,7 @@ return new class extends Migration {
                 $table->decimal('total_amount', 12, 2);
                 $table->string('status')->default('pending');
                 $table->timestamps();
+                $table->softDeletes();
 
             $table->string('correlation_id')->nullable()->index();            });
         }

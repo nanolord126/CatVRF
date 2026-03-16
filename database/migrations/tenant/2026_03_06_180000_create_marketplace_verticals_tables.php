@@ -27,6 +27,7 @@ return new class extends Migration
             $table->integer('capacity');
             $table->string('status')->default('available');
             $table->timestamps();
+            $table->softDeletes();
         });
 
         Schema::create('restaurant_menu_items', function (Blueprint $table) {
@@ -48,6 +49,7 @@ return new class extends Migration
             $table->string('status')->default('pending');
             $table->uuid('correlation_id')->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
 
         // 4. CLINICS & VET (Медицина и Ветклиники: записи, пациенты)

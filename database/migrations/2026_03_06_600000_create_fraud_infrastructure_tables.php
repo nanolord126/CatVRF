@@ -32,6 +32,7 @@ return new class extends Migration
             $blueprint->boolean('is_active')->default(true);
             $blueprint->json('config')->nullable(); // Пороги срабатывания
             $blueprint->timestamps();
+            $blueprint->softDeletes();
         });
     }
 
