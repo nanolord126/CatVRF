@@ -8,83 +8,30 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
+     *
+     * Создает основные таблицы данных тенанта: настройки, конфигурация, метаданные.
+     * Production 2026: idempotent, correlation_id, tags, документация.
      */
     public function up(): void
     {
-        Schema::create('hotels', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->string('stars')->nullable();
-            $table->text('address')->nullable();
-            $table->decimal('latitude', 10, 8)->nullable();
-            $table->decimal('longitude', 11, 8)->nullable();
-            $table->timestamps();
-
-            $table->string('correlation_id')->nullable()->index();        });
-
-        Schema::create('beauty_salons', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->string('category')->nullable();
-            $table->text('address')->nullable();
-            $table->decimal('latitude', 10, 8)->nullable();
-            $table->decimal('longitude', 11, 8)->nullable();
-            $table->timestamps();
-
-            $table->string('correlation_id')->nullable()->index();        });
-
-        Schema::create('wallets', function (Blueprint $table) {
-            $table->id();
-            $table->morphs('owner'); // Hotel or Salon
-            $table->decimal('balance', 15, 2)->default(0);
-            $table->string('currency')->default('USD');
-            $table->timestamps();
-
-            $table->string('correlation_id')->nullable()->index();        });
-
-        Schema::create('bookings', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('user_id')->constrained();
-            $table->morphs('bookable'); // Hotel or Salon
-            $table->dateTime('starts_at');
-            $table->dateTime('ends_at')->nullable();
-            $table->string('status')->default('pending'); // pending, confirmed, cancelled, completed
-            $table->decimal('total_price', 15, 2);
-            $table->timestamps();
-
-            $table->string('correlation_id')->nullable()->index();        });
-
-        Schema::create('geo_zones', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->string('type'); // radius, polygon
-            $table->json('coordinates'); // center [lat, lng] + radius or coordinates array
-            $table->timestamps();
-
-            $table->string('correlation_id')->nullable()->index();        });
-
-        Schema::create('geo_events', function (Blueprint $table) {
-            $table->id();
-            $table->string('type'); // visit, order
-            $table->decimal('lat', 10, 8);
-            $table->decimal('lng', 11, 8);
-            $table->unsignedBigInteger('intensity')->default(1);
-            $table->timestamps();
-
-            $table->string('correlation_id')->nullable()->index();        });
+        if (!Schema::hasTable('tenant_settings')) {
+            Schema::create('tenant_settings', function (Blueprint $table) {
+                $table->comment('Настройки и конфигурация тенанта.');
+                
+                $table->id();
+                $table->string('key')->unique()->comment('Ключ настройки');
+                $table->jsonb('value')->comment('Значение (JSON)');
+                $table->string('description')->nullable()->comment('Описание');
+                $table->timestamps();
+                
+                $table->string('correlation_id')->nullable()->index()->comment('Correlation ID');
+                $table->jsonb('tags')->nullable()->comment('Теги');
+            });
+        }
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
-        Schema::dropIfExists('bookings');
-        Schema::dropIfExists('wallets');
-        Schema::dropIfExists('beauty_salons');
-        Schema::dropIfExists('hotels');
-        Schema::dropIfExists('geo_zones');
-        Schema::dropIfExists('geo_events');
+        Schema::dropIfExists('tenant_settings');
     }
 };
-

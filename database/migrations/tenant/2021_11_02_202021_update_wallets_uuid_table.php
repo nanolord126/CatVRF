@@ -1,55 +1,46 @@
 <?php
 
-declare(strict_types=1);
-
-use Bavix\Wallet\Internal\Service\IdentifierFactoryServiceInterface;
-use Bavix\Wallet\Models\Wallet;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Schema;
 
-return new class() extends Migration
+return new class extends Migration
 {
+    /**
+     * Run the migrations.
+     *
+     * Добавляет UUID поля к таблицам wallets и transactions для публичного API.
+     * Production 2026: idempotent, обратная совместимость.
+     */
     public function up(): void
     {
-        if (Schema::hasColumn($this->table(), 'uuid')) {
-            return;
-        }
-
-        // upgrade from 6.x
-        Schema::table($this->table(), static function (Blueprint $table) {
-            $table->uuid('uuid')
-                ->after('slug')
-                ->nullable()
-                ->unique();
-        });
-
-        Wallet::query()->chunk(10000, static function (Collection $wallets) {
-            $wallets->each(function (Wallet $wallet) {
-                $wallet->uuid = app(IdentifierFactoryServiceInterface::class)->generate();
-                $wallet->save();
+        if (Schema::hasTable('wallets') && !Schema::hasColumn('wallets', 'uuid')) {
+            Schema::table('wallets', function (Blueprint $table) {
+                $table->uuid('uuid')->nullable()->unique()->after('id')->comment('UUID для публичного API');
             });
-        });
-
-        Schema::table($this->table(), static function (Blueprint $table) {
-            $table->uuid('uuid')
-                ->change();
-        });
+        }
+        
+        if (Schema::hasTable('transactions') && !Schema::hasColumn('transactions', 'uuid')) {
+            Schema::table('transactions', function (Blueprint $table) {
+                $table->uuid('uuid')->nullable()->unique()->after('id')->comment('UUID для публичного API');
+            });
+        }
     }
 
     public function down(): void
     {
-        Schema::table($this->table(), function (Blueprint $table) {
-            if (Schema::hasColumn($this->table(), 'uuid')) {
-                $table->dropIndex('wallets_uuid_unique');
+        Schema::table('wallets', function (Blueprint $table) {
+            if (Schema::hasColumn('wallets', 'uuid')) {
+                $table->dropUnique(['uuid']);
                 $table->dropColumn('uuid');
             }
         });
-    }
-
-    private function table(): string
-    {
-        return (new Wallet())->getTable();
+        
+        Schema::table('transactions', function (Blueprint $table) {
+            if (Schema::hasColumn('transactions', 'uuid')) {
+                $table->dropUnique(['uuid']);
+                $table->dropColumn('uuid');
+            }
+        });
     }
 };

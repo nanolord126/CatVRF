@@ -8,43 +8,73 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
+     *
+     * Создает таблицы для управления очередью заданий с поддержкой
+     * трассировки (correlation_id), батчей и отказов.
+     * Production 2026: uuid, tags (jsonb), составные индексы, комментарии.
      */
     public function up(): void
     {
-        Schema::create('jobs', function (Blueprint $table) {
-            $table->id();
-            $table->string('queue')->index();
-            $table->longText('payload');
-            $table->unsignedTinyInteger('attempts');
-            $table->unsignedInteger('reserved_at')->nullable();
-            $table->unsignedInteger('available_at');
-            $table->unsignedInteger('created_at');
+        if (!Schema::hasTable('jobs')) {
+            Schema::create('jobs', function (Blueprint $table) {
+                $table->comment('Очередь асинхронных заданий (Laravel Queue + Horizon).');
 
-            $table->string('correlation_id')->nullable()->index();        });
+                $table->id();
+                $table->string('queue')->index()->comment('Название очереди');
+                $table->longText('payload')->comment('Сериализованная задача');
+                $table->unsignedTinyInteger('attempts')->default(0)->comment('Попытки выполнения');
+                $table->unsignedInteger('reserved_at')->nullable()->index()->comment('Время резерва');
+                $table->unsignedInteger('available_at')->index()->comment('Время доступности');
+                $table->unsignedInteger('created_at')->index()->comment('Время создания');
 
-        Schema::create('job_batches', function (Blueprint $table) {
-            $table->string('id')->primary();
-            $table->string('name');
-            $table->integer('total_jobs');
-            $table->integer('pending_jobs');
-            $table->integer('failed_jobs');
-            $table->longText('failed_job_ids');
-            $table->mediumText('options')->nullable();
-            $table->integer('cancelled_at')->nullable();
-            $table->integer('created_at');
-            $table->integer('finished_at')->nullable();
-        });
+                // Traceability & Production 2026
+                $table->string('correlation_id')->nullable()->index()->comment('Correlation ID для трассировки');
+                $table->uuid('uuid')->nullable()->unique()->index()->comment('Уникальный ID задачи');
+                $table->jsonb('tags')->nullable()->comment('Теги для фильтрации и аналитики');
 
-        Schema::create('failed_jobs', function (Blueprint $table) {
-            $table->id();
-            $table->string('uuid')->unique();
-            $table->text('connection');
-            $table->text('queue');
-            $table->longText('payload');
-            $table->longText('exception');
-            $table->timestamp('failed_at')->useCurrent();
+                // Составной индекс для быстрой фильтрации по очереди
+                $table->index(['queue', 'reserved_at'], 'idx_jobs_queue_reserved');
+            });
+        }
 
-            $table->string('correlation_id')->nullable()->index();        });
+        if (!Schema::hasTable('job_batches')) {
+            Schema::create('job_batches', function (Blueprint $table) {
+                $table->comment('Батчи задач для Horizon (группировка связанных заданий).');
+
+                $table->string('id')->primary()->comment('Уникальный ID батча');
+                $table->string('name')->comment('Название батча');
+                $table->integer('total_jobs')->comment('Всего задач');
+                $table->integer('pending_jobs')->comment('Ожидающие');
+                $table->integer('failed_jobs')->comment('Неудачные');
+                $table->longText('failed_job_ids')->comment('ID неудачных задач');
+                $table->mediumText('options')->nullable()->comment('Опции батча');
+                $table->integer('cancelled_at')->nullable()->comment('Время отмены');
+                $table->integer('created_at')->comment('Время создания');
+                $table->integer('finished_at')->nullable()->comment('Время завершения');
+
+                // Traceability & Production 2026
+                $table->string('correlation_id')->nullable()->index()->comment('Correlation ID');
+                $table->jsonb('tags')->nullable()->comment('Теги батча');
+            });
+        }
+
+        if (!Schema::hasTable('failed_jobs')) {
+            Schema::create('failed_jobs', function (Blueprint $table) {
+                $table->comment('Неудачные задания для анализа и повторной обработки.');
+
+                $table->id();
+                $table->string('uuid')->unique()->index()->comment('Уникальный ID неудачной задачи');
+                $table->text('connection')->comment('Соединение (database, redis)');
+                $table->text('queue')->comment('Очередь');
+                $table->longText('payload')->comment('Payload задачи');
+                $table->longText('exception')->comment('Стек ошибки');
+                $table->timestamp('failed_at')->useCurrent()->index()->comment('Время провала');
+
+                // Traceability & Production 2026
+                $table->string('correlation_id')->nullable()->index()->comment('Correlation ID');
+                $table->jsonb('tags')->nullable()->comment('Теги ошибки');
+            });
+        }
     }
 
     /**
@@ -57,4 +87,3 @@ return new class extends Migration
         Schema::dropIfExists('failed_jobs');
     }
 };
-

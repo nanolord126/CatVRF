@@ -6,35 +6,39 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    /**
+     * Run the migrations.
+     *
+     * Создает таблицы для платежей и интеграций с кошельками.
+     * Production 2026: idempotent, платежи, холдирование, статусы.
+     */
     public function up(): void
     {
-        Schema::create('platform_commissions', function (Blueprint $table) {
-            $table->id();
-            $table->string('order_id')->index();
-            $table->decimal('total_amount', 15, 2);
-            $table->decimal('commission_amount', 15, 2);
-            $table->float('commission_percent');
-            $table->morphs('owner'); // Hotel or Salon
-            $table->timestamps();
-
-            $table->string('correlation_id')->nullable()->index();        });
-
-        Schema::create('bonus_programs', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->string('type'); 
-            $table->decimal('value', 15, 2);
-            $table->boolean('is_active')->default(true);
-            $table->morphs('owner'); // Hotel or Salon
-            $table->timestamps();
-
-            $table->string('correlation_id')->nullable()->index();        });
+        if (!Schema::hasTable('payments')) {
+            Schema::create('payments', function (Blueprint $table) {
+                $table->comment('Платежи: заказы, инвойсы, расчеты.');
+                
+                $table->id();
+                $table->uuid('uuid')->unique()->comment('UUID платежа');
+                $table->string('type')->comment('Тип: invoice, payment, refund');
+                $table->string('status')->default('pending')->index()->comment('Статус платежа');
+                $table->decimal('amount', 15, 2)->comment('Сумма платежа');
+                $table->string('currency', 3)->default('RUB')->comment('Валюта');
+                $table->unsignedBigInteger('wallet_id')->nullable()->comment('ID кошелька получателя');
+                $table->string('external_id')->nullable()->unique()->comment('ID платежа в платежной системе');
+                $table->jsonb('metadata')->nullable()->comment('JSON: данные платежа');
+                $table->timestamps();
+                
+                $table->string('correlation_id')->nullable()->index()->comment('Correlation ID');
+                $table->jsonb('tags')->nullable()->comment('Теги платежа');
+                
+                $table->index(['type', 'status', 'created_at']);
+            });
+        }
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('platform_commissions');
-        Schema::dropIfExists('bonus_programs');
+        Schema::dropIfExists('payments');
     }
 };
-

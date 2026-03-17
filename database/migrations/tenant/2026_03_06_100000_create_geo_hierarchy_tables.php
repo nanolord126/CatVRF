@@ -4,29 +4,29 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration {
-    public function up(): void {
-        if (!Schema::hasTable('countries')) {
-            Schema::create('countries', fn(Blueprint $t) => $this->geoColumns($t));
-        }
-        if (!Schema::hasTable('regions')) {
-            Schema::create('regions', fn(Blueprint $t) => $this->geoColumns($t, 'country_id'));
-        }
-        if (!Schema::hasTable('districts')) {
-            Schema::create('districts', fn(Blueprint $t) => $this->geoColumns($t, 'region_id'));
-        }
-        if (!Schema::hasTable('cities')) {
-            Schema::create('cities', fn(Blueprint $t) => $this->geoColumns($t, 'district_id'));
-        }
-        if (!Schema::hasTable('areas')) {
-            Schema::create('areas', fn(Blueprint $t) => $this->geoColumns($t, 'city_id'));
+return new class extends Migration
+{
+    public function up(): void
+    {
+        if (!Schema::hasTable('geo_zones')) {
+            Schema::create('geo_zones', function (Blueprint $table) {
+                $table->comment('Географические зоны: доставки, обслуживания, фильтрации.');
+                $table->id();
+                $table->string('name')->comment('Название зоны');
+                $table->decimal('lat', 10, 7)->comment('Широта центра');
+                $table->decimal('lon', 10, 7)->comment('Долгота центра');
+                $table->decimal('radius', 8, 2)->comment('Радиус зоны (км)');
+                $table->jsonb('polygon')->nullable()->comment('Полигон границ');
+                $table->timestamps();
+                $table->string('correlation_id')->nullable()->index();
+                $table->jsonb('tags')->nullable();
+                $table->index(['lat', 'lon']);
+            });
         }
     }
 
-    private function geoColumns(Blueprint $t, ?string $parentId = null): void {
-        $t->id(); $t->string('name')->index(); $t->string('code')->nullable();
-        $t->uuid('correlation_id')->nullable();
-        if ($parentId) $t->foreignId($parentId)->constrained()->cascadeOnDelete();
-        $t->timestamps(); $t->softDeletes();
+    public function down(): void
+    {
+        Schema::dropIfExists('geo_zones');
     }
 };

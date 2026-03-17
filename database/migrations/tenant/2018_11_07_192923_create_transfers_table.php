@@ -2,65 +2,51 @@
 
 declare(strict_types=1);
 
-use Bavix\Wallet\Models\Transaction;
-use Bavix\Wallet\Models\Transfer;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class() extends Migration
+return new class extends Migration
 {
+    /**
+     * Run the migrations.
+     *
+     * Создает таблицу transfers для Bavix Wallet системы.
+     * Production 2026: idempotent, correlation_id, tags, индексы, документация.
+     */
     public function up(): void
     {
-        Schema::create($this->table(), function (Blueprint $table) {
-            $table->bigIncrements('id');
-            $table->morphs('from');
-            $table->morphs('to');
-            $table
-                ->enum('status', ['exchange', 'transfer', 'paid', 'refund', 'gift'])
-                ->default('transfer');
+        if (!Schema::hasTable('transfers')) {
+            Schema::create('transfers', function (Blueprint $table) {
+                $table->comment('Переводы между кошельками (Bavix Wallet). Отслеживает движение средств.');
 
-            $table
-                ->enum('status_last', ['exchange', 'transfer', 'paid', 'refund', 'gift'])
-                ->nullable();
-
-            $table->unsignedBigInteger('deposit_id');
-            $table->unsignedBigInteger('withdraw_id');
-
-            $table->decimal('discount', 64, 0)
-                ->default(0);
-
-            $table->decimal('fee', 64, 0)
-                ->default(0);
-
-            $table->uuid('uuid')
-                ->unique();
-            $table->timestamps();
-
-            $table->foreign('deposit_id')
-                ->references('id')
-                ->on($this->transactionTable())
-                ->onDelete('cascade');
-
-            $table->foreign('withdraw_id')
-                ->references('id')
-                ->on($this->transactionTable())
-                ->onDelete('cascade');
-        });
+                $table->bigIncrements('id')->comment('Уникальный ID передачи');
+                $table->string('from_type')->comment('Тип отправителя (User, Organization)');
+                $table->unsignedBigInteger('from_id')->comment('ID отправителя');
+                $table->string('to_type')->comment('Тип получателя (User, Organization)');
+                $table->unsignedBigInteger('to_id')->comment('ID получателя');
+                $table->unsignedBigInteger('from_wallet_id')->comment('ID кошелька отправителя');
+                $table->unsignedBigInteger('to_wallet_id')->comment('ID кошелька получателя');
+                $table->decimal('amount', 64, 0)->comment('Сумма перевода');
+                $table->string('status')->default('completed')->comment('Статус: completed, pending, failed');
+                $table->timestamps()->comment('created_at, updated_at');
+                
+                // Traceability & Production 2026
+                $table->string('correlation_id')->nullable()->index()->comment('Correlation ID для трассировки');
+                $table->uuid('uuid')->nullable()->unique()->index()->comment('Уникальный UUID');
+                $table->jsonb('meta')->nullable()->comment('JSON: дополнительные данные');
+                $table->jsonb('tags')->nullable()->comment('Теги для категоризации переводов');
+                
+                // Индексы для оптимизации
+                $table->index(['from_type', 'from_id'], 'transfers_from_type_id');
+                $table->index(['to_type', 'to_id'], 'transfers_to_type_id');
+                $table->index(['status', 'created_at'], 'transfers_status_created');
+            });
+        }
     }
 
     public function down(): void
     {
-        Schema::dropIfExists($this->table());
-    }
-
-    private function table(): string
-    {
-        return (new Transfer())->getTable();
-    }
-
-    private function transactionTable(): string
-    {
-        return (new Transaction())->getTable();
+        Schema::dropIfExists('transfers');
     }
 };
