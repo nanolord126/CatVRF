@@ -2,11 +2,14 @@
 
 namespace App\Domains\Sports\Services;
 
+use Illuminate\Support\Facades\Log;
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Str;
+
+
 use App\Domains\Sports\Models\Booking;
 use App\Domains\Sports\Models\ClassSession;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Throwable;
 
 final readonly class BookingService
@@ -20,6 +23,10 @@ final readonly class BookingService
         bool $isTrial = false,
         ?string $correlationId = null,
     ): Booking {
+        $correlationId = Str::uuid()->toString();
+        Log::channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
+        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+
         try {
             $correlationId = $correlationId ?? Str::uuid();
 
@@ -78,6 +85,10 @@ final readonly class BookingService
 
     public function confirmBooking(Booking $booking, ?string $correlationId = null): void
     {
+        $correlationId = Str::uuid()->toString();
+        Log::channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
+        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+
         try {
             $correlationId = $correlationId ?? Str::uuid();
 
@@ -101,6 +112,10 @@ final readonly class BookingService
 
     public function cancelBooking(Booking $booking, string $reason = '', ?string $correlationId = null): void
     {
+        $correlationId = Str::uuid()->toString();
+        Log::channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
+        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+
         try {
             $correlationId = $correlationId ?? Str::uuid();
 
@@ -128,6 +143,10 @@ final readonly class BookingService
 
     public function markAsAttended(Booking $booking, ?string $correlationId = null): void
     {
+        $correlationId = Str::uuid()->toString();
+        Log::channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
+        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+
         try {
             $correlationId = $correlationId ?? Str::uuid();
 

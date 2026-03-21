@@ -2,14 +2,22 @@
 
 namespace App\Domains\Beauty\Services;
 
+use Illuminate\Support\Facades\Log;
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Str;
+
+
 use App\Domains\Beauty\Models\BeautyConsumable;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 final class ConsumableDeductionService
 {
     public function __construct()
     {
+        $correlationId = Str::uuid()->toString();
+        Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
+        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+
     }
 
     /**
@@ -17,6 +25,10 @@ final class ConsumableDeductionService
      */
     public function deductConsumables(int $appointmentId, array $consumables, string $correlationId): bool
     {
+        $correlationId = Str::uuid()->toString();
+        Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
+        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+
         try {
             DB::transaction(function () use ($appointmentId, $consumables, $correlationId) {
                 foreach ($consumables as $consumableId => $quantity) {
@@ -55,6 +67,10 @@ final class ConsumableDeductionService
      */
     public function reserveConsumables(int $appointmentId, array $consumables, string $correlationId): bool
     {
+        $correlationId = Str::uuid()->toString();
+        Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
+        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+
         try {
             DB::transaction(function () use ($appointmentId, $consumables, $correlationId) {
                 foreach ($consumables as $consumableId => $quantity) {
@@ -92,6 +108,10 @@ final class ConsumableDeductionService
      */
     public function releaseConsumables(int $appointmentId, array $consumables, string $correlationId): bool
     {
+        $correlationId = Str::uuid()->toString();
+        Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
+        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+
         try {
             DB::transaction(function () use ($appointmentId, $consumables, $correlationId) {
                 foreach ($consumables as $consumableId => $quantity) {

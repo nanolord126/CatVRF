@@ -2,13 +2,21 @@
 
 namespace App\Domains\Photography\Services;
 
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Str;
+
+
+use Illuminate\Support\Facades\DB;
 
 final class PhotoSessionService
 {
     public function __construct()
     {
+        $correlationId = Str::uuid()->toString();
+        Log::channel('audit')->info('Service method called in Photography', ['correlation_id' => $correlationId]);
+        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+
     }
 
     /**
@@ -21,6 +29,10 @@ final class PhotoSessionService
         int $durationMinutes,
         string $correlationId,
     ): int {
+        $correlationId = Str::uuid()->toString();
+        Log::channel('audit')->info('Service method called in Photography', ['correlation_id' => $correlationId]);
+        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+
         try {
             $sessionId = DB::transaction(function () use ($photographerId, $eventType, $sessionDate, $durationMinutes, $correlationId) {
                 $sessionId = DB::table('photo_sessions')->insertGetId([
@@ -59,6 +71,10 @@ final class PhotoSessionService
      */
     public function completePhotoSession(int $sessionId, int $photosCount, string $correlationId): bool
     {
+        $correlationId = Str::uuid()->toString();
+        Log::channel('audit')->info('Service method called in Photography', ['correlation_id' => $correlationId]);
+        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+
         try {
             DB::transaction(function () use ($sessionId, $photosCount, $correlationId) {
                 DB::table('photo_sessions')

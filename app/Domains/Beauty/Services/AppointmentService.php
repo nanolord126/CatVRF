@@ -2,9 +2,13 @@
 
 namespace App\Domains\Beauty\Services;
 
+use Illuminate\Support\Facades\Log;
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Str;
+
+
 use App\Domains\Beauty\Models\Appointment;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 final class AppointmentService
@@ -12,6 +16,10 @@ final class AppointmentService
     public function __construct(
         private ConsumableDeductionService $consumableService,
     ) {
+        $correlationId = Str::uuid()->toString();
+        Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
+        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+
     }
 
     /**
@@ -24,6 +32,10 @@ final class AppointmentService
         array $consumables,
         string $correlationId,
     ): Appointment {
+        $correlationId = Str::uuid()->toString();
+        Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
+        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+
         try {
             $appointment = DB::transaction(function () use ($masterId, $serviceId, $dateTime, $consumables, $correlationId) {
                 $appointment = Appointment::create([
@@ -69,6 +81,10 @@ final class AppointmentService
      */
     public function cancelAppointment(int $appointmentId, array $consumables, string $correlationId): bool
     {
+        $correlationId = Str::uuid()->toString();
+        Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
+        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+
         try {
             DB::transaction(function () use ($appointmentId, $consumables, $correlationId) {
                 $appointment = Appointment::findOrFail($appointmentId);
@@ -105,6 +121,10 @@ final class AppointmentService
      */
     public function completeAppointment(int $appointmentId, array $consumables, string $correlationId): bool
     {
+        $correlationId = Str::uuid()->toString();
+        Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
+        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+
         try {
             DB::transaction(function () use ($appointmentId, $consumables, $correlationId) {
                 $appointment = Appointment::findOrFail($appointmentId);

@@ -2,10 +2,14 @@
 
 namespace App\Domains\Beauty\Services;
 
+use Illuminate\Support\Facades\Log;
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Str;
+
+
 use App\Domains\Beauty\Models\Master;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Сервис для управления графиком мастеров.
@@ -18,6 +22,10 @@ final class StaffScheduleService
      */
     public function generateSchedule(Master $master, Carbon $from, Carbon $to, string $correlationId = ''): Collection
     {
+        $correlationId = Str::uuid()->toString();
+        Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
+        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+
         try {
             Log::channel('audit')->info('Generating master schedule', [
                 'master_id' => $master->id,
@@ -60,6 +68,10 @@ final class StaffScheduleService
      */
     public function getAvailableSlots(Master $master, Carbon $date, string $correlationId = ''): Collection
     {
+        $correlationId = Str::uuid()->toString();
+        Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
+        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+
         $start = $date->copy()->startOfDay();
         $end = $date->copy()->endOfDay();
 

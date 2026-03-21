@@ -2,12 +2,15 @@
 
 namespace App\Domains\Flowers\Services;
 
+use Illuminate\Support\Facades\Log;
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Str;
+
+
 use App\Domains\Flowers\Events\FlowerDeliveryCompleted;
 use App\Domains\Flowers\Models\FlowerDelivery;
 use App\Domains\Flowers\Models\FlowerOrder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 final class FlowerDeliveryService
 {
@@ -91,6 +94,10 @@ final class FlowerDeliveryService
 
     public function trackDelivery(int $deliveryId): FlowerDelivery
     {
+        $correlationId = Str::uuid()->toString();
+        Log::channel('audit')->info('Service method called in Flowers', ['correlation_id' => $correlationId]);
+        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+
         return FlowerDelivery::query()
             ->where('id', $deliveryId)
             ->with('order.shop')

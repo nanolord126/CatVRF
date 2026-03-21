@@ -2,13 +2,16 @@
 
 namespace App\Domains\Sports\Services;
 
+use Illuminate\Support\Facades\Log;
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Str;
+
+
 use App\Domains\Sports\Models\Review;
 use App\Domains\Sports\Models\Studio;
 use App\Domains\Sports\Models\Trainer;
 use App\Domains\Sports\Events\ReviewSubmitted;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Throwable;
 
 final readonly class ReviewService
@@ -25,6 +28,10 @@ final readonly class ReviewService
         ?int $bookingId = null,
         ?string $correlationId = null,
     ): Review {
+        $correlationId = Str::uuid()->toString();
+        Log::channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
+        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+
         try {
             $correlationId = $correlationId ?? Str::uuid();
 
@@ -112,6 +119,10 @@ final readonly class ReviewService
         array $categories = [],
         ?string $correlationId = null,
     ): Review {
+        $correlationId = Str::uuid()->toString();
+        Log::channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
+        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+
         try {
             $correlationId = $correlationId ?? Str::uuid();
 

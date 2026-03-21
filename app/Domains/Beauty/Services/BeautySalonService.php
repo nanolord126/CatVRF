@@ -19,10 +19,18 @@ final class BeautySalonService
 {
     public function __construct(
         private readonly InventoryManagementService $inventoryService,
-    ) {}
+    ) {
+        $correlationId = Str::uuid()->toString();
+        Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
+        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+}
 
     public function createSalon(array $data, int $tenantId, string $correlationId): BeautySalon
     {
+        $correlationId = Str::uuid()->toString();
+        Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
+        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+
         return DB::transaction(function () use ($data, $tenantId, $correlationId) {
             Log::channel('audit')->info('Creating beauty salon', [
                 'correlation_id' => $correlationId,
@@ -49,6 +57,10 @@ final class BeautySalonService
 
     public function updateSalon(BeautySalon $salon, array $data, string $correlationId): BeautySalon
     {
+        $correlationId = Str::uuid()->toString();
+        Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
+        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+
         return DB::transaction(function () use ($salon, $data, $correlationId) {
             Log::channel('audit')->info('Updating beauty salon', [
                 'correlation_id' => $correlationId,
@@ -62,6 +74,10 @@ final class BeautySalonService
 
     public function getSalonStats(BeautySalon $salon): array
     {
+        $correlationId = Str::uuid()->toString();
+        Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
+        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+
         $totalAppointments = Appointment::query()
             ->where('salon_id', $salon->id)
             ->where('status', 'completed')
@@ -88,6 +104,10 @@ final class BeautySalonService
 
     public function deactivateSalon(BeautySalon $salon, string $correlationId): bool
     {
+        $correlationId = Str::uuid()->toString();
+        Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
+        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+
         return DB::transaction(function () use ($salon, $correlationId) {
             Log::channel('audit')->info('Deactivating beauty salon', [
                 'correlation_id' => $correlationId,

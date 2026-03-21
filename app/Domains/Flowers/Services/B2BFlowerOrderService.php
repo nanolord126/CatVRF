@@ -2,19 +2,26 @@
 
 namespace App\Domains\Flowers\Services;
 
+use Illuminate\Support\Facades\Log;
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Str;
+
+
 use App\Domains\Flowers\Events\B2BFlowerOrderPlaced;
 use App\Domains\Flowers\Models\B2BFlowerOrder;
 use App\Domains\Flowers\Models\B2BFlowerStorefront;
-use App\Services\FraudControlService;
+
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 final class B2BFlowerOrderService
 {
     public function __construct(
         private readonly FraudControlService $fraudControlService,
-    ) {}
+    ) {
+        $correlationId = Str::uuid()->toString();
+        Log::channel('audit')->info('Service method called in Flowers', ['correlation_id' => $correlationId]);
+        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+}
 
     public function createB2BOrder(
         int $tenantId,

@@ -2,21 +2,28 @@
 
 namespace App\Domains\Flowers\Services;
 
+use Illuminate\Support\Facades\Log;
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Str;
+
+
 use App\Domains\Flowers\Events\FlowerOrderPlaced;
 use App\Domains\Flowers\Models\FlowerOrder;
 use App\Domains\Flowers\Models\FlowerOrderItem;
 use App\Domains\Flowers\Models\FlowerProduct;
-use App\Services\FraudControlService;
+
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 final class FlowerOrderService
 {
     public function __construct(
         private readonly FraudControlService $fraudControlService,
-    ) {}
+    ) {
+        $correlationId = Str::uuid()->toString();
+        Log::channel('audit')->info('Service method called in Flowers', ['correlation_id' => $correlationId]);
+        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+}
 
     public function createPublicOrder(
         int $tenantId,
@@ -117,6 +124,10 @@ final class FlowerOrderService
 
     public function getPublicOrders(int $tenantId, int $userId): Collection
     {
+        $correlationId = Str::uuid()->toString();
+        Log::channel('audit')->info('Service method called in Flowers', ['correlation_id' => $correlationId]);
+        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+
         return FlowerOrder::query()
             ->where('tenant_id', $tenantId)
             ->where('user_id', $userId)
@@ -126,6 +137,10 @@ final class FlowerOrderService
 
     public function updateOrderStatus(int $orderId, string $status, string $correlationId = ''): FlowerOrder
     {
+        $correlationId = Str::uuid()->toString();
+        Log::channel('audit')->info('Service method called in Flowers', ['correlation_id' => $correlationId]);
+        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+
         return DB::transaction(function () use ($orderId, $status, $correlationId) {
             $order = FlowerOrder::query()
                 ->where('id', $orderId)

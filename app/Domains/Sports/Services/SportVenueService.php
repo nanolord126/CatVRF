@@ -11,6 +11,10 @@ final class SportVenueService
 {
     public function createVenue(array $data, int $tenantId, string $correlationId): SportVenue
     {
+        $correlationId = Str::uuid()->toString();
+        Log::channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
+        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+
         return DB::transaction(function () use ($data, $tenantId, $correlationId) {
             Log::channel('audit')->info('Creating sport venue', [
                 'correlation_id' => $correlationId,

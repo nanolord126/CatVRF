@@ -2,12 +2,15 @@
 
 namespace App\Domains\Sports\Services;
 
+use Illuminate\Support\Facades\Log;
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Str;
+
+
 use App\Domains\Sports\Models\Purchase;
 use App\Domains\Sports\Models\Membership;
 use App\Domains\Sports\Events\PurchaseCreated;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Throwable;
 
 final readonly class PurchaseService
@@ -22,6 +25,10 @@ final readonly class PurchaseService
         float $unitPrice,
         ?string $correlationId = null,
     ): Purchase {
+        $correlationId = Str::uuid()->toString();
+        Log::channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
+        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+
         try {
             $correlationId = $correlationId ?? Str::uuid();
 
@@ -87,6 +94,10 @@ final readonly class PurchaseService
 
     public function confirmPayment(Purchase $purchase, string $transactionId, ?string $correlationId = null): void
     {
+        $correlationId = Str::uuid()->toString();
+        Log::channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
+        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+
         try {
             $correlationId = $correlationId ?? Str::uuid();
 
@@ -117,6 +128,10 @@ final readonly class PurchaseService
 
     public function refundPurchase(Purchase $purchase, string $reason = '', ?string $correlationId = null): void
     {
+        $correlationId = Str::uuid()->toString();
+        Log::channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
+        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+
         try {
             $correlationId = $correlationId ?? Str::uuid();
 

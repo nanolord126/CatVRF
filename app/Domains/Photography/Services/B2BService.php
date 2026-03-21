@@ -4,16 +4,23 @@ declare(strict_types=1);
 
 namespace App\Domains\Photography\Services;
 
+use Illuminate\Support\Facades\Log;
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Str;
+
+
 use App\Domains\Photography\Models\B2BPhotoStorefront;
 use App\Domains\Photography\Models\B2BPhotoOrder;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 final readonly class B2BService
 {
 	public function createStorefront(array $data): B2BPhotoStorefront
 	{
+        $correlationId = Str::uuid()->toString();
+        Log::channel('audit')->info('Service method called in Photography', ['correlation_id' => $correlationId]);
+        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+
 		return DB::transaction(function () use ($data) {
 			$correlationId = $data['correlation_id'] ?? Str::uuid()->toString();
 
@@ -42,6 +49,10 @@ final readonly class B2BService
 
 	public function createB2BOrder(array $data): B2BPhotoOrder
 	{
+        $correlationId = Str::uuid()->toString();
+        Log::channel('audit')->info('Service method called in Photography', ['correlation_id' => $correlationId]);
+        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+
 		return DB::transaction(function () use ($data) {
 			$correlationId = $data['correlation_id'] ?? Str::uuid()->toString();
 
@@ -73,6 +84,10 @@ final readonly class B2BService
 
 	public function approveB2BOrder(B2BPhotoOrder $order): B2BPhotoOrder
 	{
+        $correlationId = Str::uuid()->toString();
+        Log::channel('audit')->info('Service method called in Photography', ['correlation_id' => $correlationId]);
+        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+
 		return DB::transaction(function () use ($order) {
 			$order->update(['status' => 'approved']);
 
