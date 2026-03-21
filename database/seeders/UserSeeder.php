@@ -1,8 +1,58 @@
-﻿<?php declare(strict_types=1);
+<?php
 
+declare(strict_types=1);
 
 namespace Database\Seeders;
-use App\Models\User;
-use Illuminate\Database\Seeder;  
 
-final class UserSeeder extends Seeder {     /**      * Seed the users table.      */     public function run(): void     {         // Create admin user         User::factory()             ->state([                 'email' => 'admin@catvrf.local',                 'name' => 'System Administrator',                 'is_admin' => true,             ])             ->create();          // Create regular users         User::factory()             ->count(10)             ->create();     } }
+use App\Models\User;
+use App\Models\Tenant;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
+
+/**
+ * Тестовые пользователи (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class UserSeeder extends Seeder
+{
+    /**
+     * Seed the users table.
+     */
+    public function run(): void
+    {
+        // Создаём тестовый тенант
+        $tenant = Tenant::factory()->create([
+            'name' => 'Test Tenant',
+            'slug' => 'test-tenant',
+        ]);
+
+        // Создаём владельца бизнеса для тестового тенанта
+        User::factory()
+            ->owner()
+            ->create([
+                'tenant_id' => $tenant->id,
+                'email' => 'owner@catvrf.local',
+                'name' => 'Business Owner',
+                'correlation_id' => (string) Str::uuid(),
+                'tags' => ['user:owner', 'source:seeder', 'test'],
+            ]);
+
+        // Создаём обычных пользователей
+        User::factory()
+            ->count(10)
+            ->create([
+                'tenant_id' => $tenant->id,
+                'correlation_id' => (string) Str::uuid(),
+                'tags' => ['user:regular', 'source:seeder', 'test'],
+            ]);
+
+        // Создаём неактивных пользователей
+        User::factory()
+            ->inactive()
+            ->count(5)
+            ->create([
+                'tenant_id' => $tenant->id,
+                'correlation_id' => (string) Str::uuid(),
+                'tags' => ['user:inactive', 'source:seeder', 'test'],
+            ]);
+    }
+}

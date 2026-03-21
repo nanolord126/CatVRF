@@ -1,11 +1,16 @@
 <?php
+declare(strict_types=1);
 
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Domains\Advertising\Models\AdPlacement;
+use Illuminate\Support\Str;
 
-class AdPlacementSeeder extends Seeder
+/**
+ * Рекламные места (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class AdPlacementSeeder extends Seeder
 {
     public function run(): void
     {
@@ -14,7 +19,9 @@ class AdPlacementSeeder extends Seeder
             'allowed_types' => ['banner', 'html'],
             'dimensions' => ['width' => 1200, 'height' => 300],
             'description' => 'Отображается в шапке главной страницы всех тенантов.',
-            'is_active' => true
+            'is_active' => true,
+            'correlation_id' => (string) Str::uuid(),
+            'tags' => ['source:seeder']
         ]);
 
         AdPlacement::updateOrCreate(['code' => 'sidebar_recommendation'], [

@@ -1,10 +1,14 @@
 <?php
+declare(strict_types=1);
 
 namespace Database\Seeders;
 
 use Database\Seeders\VerticalFilterSeederBase;
 
-class BeautyFilterSeeder extends VerticalFilterSeederBase
+/**
+ * Фильтры для красоты (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class BeautyFilterSeeder extends VerticalFilterSeederBase
 {
     public function run(): void
     {

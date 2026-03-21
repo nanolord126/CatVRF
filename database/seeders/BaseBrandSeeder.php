@@ -1,10 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use App\Models\{Brand, Category};
 use Illuminate\Database\Seeder;
-class BaseBrandSeeder extends Seeder
+
+/**
+ * Базовый seeder для брендов (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class BaseBrandSeeder extends Seeder
 {
     public function run(): void
     {

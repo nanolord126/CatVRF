@@ -1,15 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\Tenant;
-use App\Models\User;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
-use Stancl\Tenancy\Database\Models\Domain;
+use Illuminate\Support\Str;
 
-class RestaurantVerticalSeeder extends Seeder
+/**
+ * Ресторанная вертикаль (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class RestaurantVerticalSeeder extends Seeder
 {
     public function run(): void
     {

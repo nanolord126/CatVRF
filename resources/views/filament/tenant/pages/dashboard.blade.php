@@ -86,14 +86,14 @@
         <div class="space-y-6">
             <!-- Sidebar / Stats -->
             <div class="p-6 rounded-2xl border border-white/10 bg-gradient-to-br from-indigo-600/20 to-purple-600/20 backdrop-blur-xl shadow-2xl">
-                <h3 class="text-white font-bold mb-4">Ecosystem Status</h3>
+                <h3 class="text-white font-bold mb-4">Состояние экосистемы</h3>
                 <div class="space-y-4">
                     <div class="flex justify-between items-center">
-                        <span class="text-gray-300 text-sm">Tenant Health</span>
-                        <span class="px-2 py-1 bg-emerald-500/20 text-emerald-400 text-xs rounded-full border border-emerald-500/30">Stable</span>
+                        <span class="text-gray-300 text-sm">Состояние системы</span>
+                        <span class="px-2 py-1 bg-emerald-500/20 text-emerald-400 text-xs rounded-full border border-emerald-500/30">Стабильно</span>
                     </div>
                     <div class="flex justify-between items-center">
-                        <span class="text-gray-300 text-sm">Wallet Balance</span>
+                        <span class="text-gray-300 text-sm">Баланс кошелька</span>
                         <span class="text-white font-medium">842,500 ₽</span>
                     </div>
                     <div class="w-full bg-white/10 rounded-full h-1.5 overflow-hidden">
@@ -106,7 +106,7 @@
             <div class="p-6 rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl shadow-2xl">
                 <div class="flex items-center text-indigo-400 mb-4 text-sm font-bold uppercase tracking-wider">
                     <x-heroicon-m-sparkles class="w-5 h-5 mr-2" />
-                    Insight of the day
+                    Инсайт дня
                 </div>
                 <p class="text-gray-300 italic text-sm leading-relaxed">
                     "Спрос на кастомные букеты в радиусе 5км вырастет на 40% к вечеру субботы. Рекомендуем пополнить склад роз."

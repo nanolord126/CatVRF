@@ -1,8 +1,38 @@
-﻿<?php  declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace Database\Seeders;
-use App\Models\Tenants\Electronics;
-use Illuminate\Database\Seeder;  final 
 
-final class ElectronicsSeeder extends Seeder { 	public function run(): void 	{ 		Electronics::create([ 			'name' => '4K Smart TV 65 inch', 			'description' => 'Ultra HD 4K smart television with streaming apps', 			'category' => 'televisions', 			'brand' => 'TechVision', 			'model' => 'TV-4K-65', 			'price' => 699.99, 			'quantity_in_stock' => 25, 			'specifications' => json_encode(['resolution' => '4K', 'size' => '65 inches', 'smart' => true]), 			'warranty_months' => 24, 			'image_url' => 'https://example.com/tv.jpg', 			'status' => 'published', 		]);  		Electronics::create([ 			'name' => 'Wireless Noise-Canceling Headphones', 			'description' => 'Premium wireless headphones with active noise cancellation', 			'category' => 'audio', 			'brand' => 'AudioPro', 			'model' => 'ANC-2000', 			'price' => 249.99, 			'quantity_in_stock' => 100, 			'specifications' => json_encode(['noise_cancellation' => true, 'wireless' => true, 'battery_life' => '30 hours']), 			'warranty_months' => 12, 			'image_url' => 'https://example.com/headphones.jpg', 			'status' => 'published', 		]);  		Electronics::create([ 			'name' => 'Latest Smartphone', 			'description' => 'Advanced smartphone with AI processor and exceptional camera', 			'category' => 'phones', 			'brand' => 'SmartTech', 			'model' => 'ST-Pro-Max', 			'price' => 1199.99, 			'quantity_in_stock' => 50, 			'specifications' => json_encode(['storage' => '256GB', 'ram' => '8GB', 'camera' => '108MP']), 			'warranty_months' => 24, 			'image_url' => 'https://example.com/phone.jpg', 			'status' => 'published', 		]); 	} }
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+
+final class ElectronicsSeeder extends Seeder
+{
+    public function run(): void
+    {
+        $tenantId = DB::table('tenants')->inRandomOrder()->value('id') ?? 1;
+
+        $items = [
+            ['name' => '4K Smart TV 65 inch', 'category' => 'televisions', 'brand' => 'TechVision', 'sku' => 'TV-4K-65', 'price' => 6999900],
+            ['name' => 'Wireless Noise-Canceling Headphones', 'category' => 'audio', 'brand' => 'AudioPro', 'sku' => 'ANC-2000', 'price' => 2499900],
+            ['name' => 'Latest Smartphone', 'category' => 'phones', 'brand' => 'SmartTech', 'sku' => 'ST-Pro-Max', 'price' => 11999900],
+        ];
+
+        foreach ($items as $item) {
+            DB::table('electronics')->insert(array_merge($item, [
+                'uuid' => Str::uuid()->toString(),
+                'tenant_id' => $tenantId,
+                'business_group_id' => null,
+                'sku' => $item['sku'] . '-' . Str::random(4),
+                'current_stock' => random_int(10, 100),
+                'warranty_months' => 12,
+                'rating' => random_int(40, 50) / 10,
+                'review_count' => random_int(10, 200),
+                'status' => 'active',
+                'correlation_id' => Str::uuid()->toString(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]));
+        }
+    }
+}

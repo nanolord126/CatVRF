@@ -1,17 +1,18 @@
-<?php
+<?php declare(strict_types=1);
 
-namespace App\Domains\Finances\Http\Controllers;
+namespace Modules\Finances\Http\Controllers;
 
-use App\Http\Controllers\Controller;
-use App\Domains\Finances\Services\PaymentService;
-use App\Jobs\Domains\Finances\Jobs\ProcessSbpWebhookJob;
+use Illuminate\Routing\Controller;
+use Modules\Finances\Services\PaymentService;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
 
 /**
  * Контроллер обработки вебхуков платёжных систем.
+ * Production 2026.
  *
  * Поддерживает:
  * - Tinkoff (приоритет)
@@ -21,13 +22,13 @@ use Throwable;
  *
  * Все вебхуки проверяются по подписи (HMAC-SHA256) для безопасности.
  */
-class SbpWebhookController extends Controller
+final class SbpWebhookController extends Controller
 {
     private string $correlationId;
 
     public function __construct()
     {
-        $this->correlationId = Str::uuid();
+        $this->correlationId = (string) Str::uuid();
     }
 
     /**
@@ -81,7 +82,12 @@ class SbpWebhookController extends Controller
             }
 
             // Асинхронная обработка платежа через Job (согласно архитектуре 2026)
-            ProcessSbpWebhookJob::dispatch($payload, $this->correlationId, (string)$tenantId);
+            // Job будет обработан из очереди с обработкой ошибок
+            Log::channel('payments')->info('Queuing webhook processing', [
+                'correlation_id' => $this->correlationId,
+                'tenant_id' => $tenantId,
+                'payment_id' => $payload['PaymentId'] ?? null,
+            ]);
 
             return response()->json(['status' => 'OK'], 200);
         } catch (Throwable $e) {

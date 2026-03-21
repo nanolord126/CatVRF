@@ -1,7 +1,16 @@
 <?php
+
+declare(strict_types=1);
+
 namespace Database\Seeders;
-class AutoBrands extends BaseBrandSeeder {
-    public function run(): void {
+
+/**
+ * Бренды автомобилей (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class AutoBrands extends BaseBrandSeeder
+{
+    public function run(): void
+    {
         $this->seedBrands('AutoService', [
             ['name' => 'Toyota', 'country' => 'Japan'], ['name' => 'Tesla', 'country' => 'USA'],
             ['name' => 'BMW', 'country' => 'Germany'], ['name' => 'Mercedes-Benz', 'country' => 'Germany'],

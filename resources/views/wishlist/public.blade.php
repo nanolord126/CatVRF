@@ -1,7 +1,19 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="min-h-screen bg-slate-900 text-white p-8">
+<div class="min-h-screen bg-slate-900 text-white p-8" x-data="{
+    payFor(id) {
+        fetch(`/wishlist/pay/${id}`, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(res => res.json())
+        .then(data => window.location.href = data.url);
+    }
+}">
     <div class="max-w-4xl mx-auto backdrop-blur-xl bg-white/10 border border-white/20 rounded-3xl p-8 shadow-2xl">
         <h1 class="text-4xl font-bold mb-2 bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
             {{ $wishlist->title }}
@@ -18,8 +30,8 @@
                         <p class="text-2xl font-mono">{{ number_format($item->price_at_addition, 2) }} ₽</p>
                     </div>
                     @if(!$item->is_fully_paid)
-                    <button 
-                        onclick="payFor('{{ $item->id }}')"
+                    <button
+                        @click="payFor('{{ $item->id }}')"
                         class="px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full font-bold hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] transition-all"
                     >
                         Пополнить
@@ -37,17 +49,4 @@
     </div>
 </div>
 
-<script>
-function payFor(id) {
-    fetch(`/wishlist/pay/${id}`, {
-        method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': '{{ csrf_token() }}',
-            'Content-Type': 'application/json'
-        }
-    })
-    .then(res => res.json())
-    .then(data => window.location.href = data.url);
-}
-</script>
 @endsection

@@ -4,14 +4,24 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "test:e2e": "cypress run",
+        "test:e2e:open": "cypress open",
+        "test:e2e:payment": "cypress run --spec 'cypress/e2e/payment-flow.cy.ts'",
+        "test:e2e:rbac": "cypress run --spec 'cypress/e2e/rbac-authorization.cy.ts'",
+        "test:e2e:wishlist": "cypress run --spec 'cypress/e2e/wishlist-service.cy.ts'",
+        "test:e2e:all": "cypress run --spec 'cypress/e2e/**/*.cy.ts'",
+        "test:e2e:headless": "cypress run --headless --browser chrome",
+        "test:e2e:ci": "cypress run --headless --browser chrome --record false"
     },
     "devDependencies": {
         "@tailwindcss/vite": "^4.0.0",
         "axios": "^1.11.0",
         "concurrently": "^9.0.1",
+        "cypress": "^14.0.0",
         "laravel-vite-plugin": "^2.0.0",
         "tailwindcss": "^4.0.0",
+        "typescript": "^5.9.3",
         "vite": "^7.0.7",
         "vite-plugin-pwa": "^1.2.0"
     },

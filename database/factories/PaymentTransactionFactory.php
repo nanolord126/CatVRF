@@ -1,76 +1,79 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Factories;
 
-use App\Domains\Finances\Models\PaymentTransaction;
+use App\Models\PaymentTransaction;
 use App\Models\User;
+use App\Models\Tenant;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
-/**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Domains\Finances\Models\PaymentTransaction>
- */
-class PaymentTransactionFactory extends Factory
+final class PaymentTransactionFactory extends Factory
 {
     protected $model = PaymentTransaction::class;
 
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
     public function definition(): array
     {
         return [
-            'payment_id' => 'pay_' . Str::random(20),
+            'uuid' => Str::uuid(),
+            'tenant_id' => Tenant::factory(),
             'user_id' => User::factory(),
-            'tenant_id' => null,
-            'amount' => $this->faker->randomFloat(2, 10, 10000),
-            'status' => $this->faker->randomElement([
-                PaymentTransaction::STATUS_PENDING,
-                PaymentTransaction::STATUS_AUTHORIZED,
-                PaymentTransaction::STATUS_SETTLED,
-            ]),
-            'splits' => null,
-            'metadata' => [
+            'idempotency_key' => Str::uuid(),
+            'provider_code' => fake()->randomElement(['tinkoff', 'tochka', 'sber']),
+            'provider_payment_id' => 'pay_' . Str::random(20),
+            'amount' => fake()->numberBetween(10000, 1000000),
+            'currency' => 'RUB',
+            'status' => 'pending',
+            'payment_method' => fake()->randomElement(['credit_card', 'debit_card', 'bank_transfer', 'sbp']),
+            'hold' => false,
+            'hold_amount' => 0,
+            'captured_at' => null,
+            'refunded_at' => null,
+            'fraud_score' => 0.0,
+            'ml_fraud_version' => 'v1',
+            'correlation_id' => (string) Str::uuid(),
+            'meta' => [
                 'order_id' => 'ORD-' . Str::random(10),
-                'order_type' => 'course_enrollment',
-                'user_email' => $this->faker->email(),
+                'ip_address' => fake()->ipv4(),
+                'user_agent' => fake()->userAgent(),
             ],
-            'correlation_id' => Str::uuid(),
-            'captured_at' => $this->faker->optional()->dateTime(),
+            'tags' => ['payment:test', 'source:factory'],
         ];
     }
 
-    /**
-     * Состояние для успешного платежа.
-     */
-    public function settled(): self
+    public function completed(): static
     {
         return $this->state(fn (array $attributes) => [
-            'status' => PaymentTransaction::STATUS_SETTLED,
+            'status' => 'captured',
             'captured_at' => now(),
         ]);
     }
 
-    /**
-     * Состояние для ошибочного платежа.
-     */
-    public function failed(): self
+    public function failed(): static
     {
         return $this->state(fn (array $attributes) => [
-            'status' => PaymentTransaction::STATUS_FAILED,
+            'status' => 'failed',
+            'captured_at' => now(),
         ]);
     }
 
-    /**
-     * Состояние для возвращённого платежа.
-     */
-    public function refunded(): self
+    public function refunded(): static
     {
         return $this->state(fn (array $attributes) => [
-            'status' => PaymentTransaction::STATUS_REFUNDED,
+            'status' => 'refunded',
             'captured_at' => now(),
+            'refunded_at' => now(),
+        ]);
+    }
+
+    public function onHold(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => 'authorized',
+            'hold' => true,
+            'hold_amount' => $attributes['amount'],
         ]);
     }
 }

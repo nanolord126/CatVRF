@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace Database\Seeders;
 
@@ -8,7 +9,10 @@ use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
-class FinancesSeeder extends Seeder
+/**
+ * Финансы (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class FinancesSeeder extends Seeder
 {
     /**
      * Заполнение БД тестовыми данными для финансового модуля.

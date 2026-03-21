@@ -1,7 +1,16 @@
 <?php
+
+declare(strict_types=1);
+
 namespace Database\Seeders;
-class EducationBrands extends BaseBrandSeeder {
-    public function run(): void {
+
+/**
+ * Бренды образования (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class EducationBrands extends BaseBrandSeeder
+{
+    public function run(): void
+    {
         $this->seedBrands('Education', [
             ['name' => 'Harvard University', 'country' => 'USA'], ['name' => 'Stanford University', 'country' => 'USA'],
             ['name' => 'MIT', 'country' => 'USA'], ['name' => 'Oxford University', 'country' => 'UK'],

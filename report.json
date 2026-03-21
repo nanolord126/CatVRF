@@ -1,0 +1,615 @@
+{
+    "total": 44,
+    "issues": [
+        {
+            "path": "Api/AutoPartsOrderController.php",
+            "analysis": {
+                "lines": 83,
+                "methods": 4,
+                "has_logging": true,
+                "has_error_handling": true,
+                "has_syntax_error": false,
+                "empty_methods": 1,
+                "has_empty_returns": false
+            },
+            "fail_reasons": [
+                "\u043f\u0443\u0441\u0442\u044b\u0435 \u043c\u0435\u0442\u043e\u0434\u044b"
+            ]
+        },
+        {
+            "path": "Api/BaseApiController.php",
+            "analysis": {
+                "lines": 36,
+                "methods": 3,
+                "has_logging": false,
+                "has_error_handling": false,
+                "has_syntax_error": false,
+                "empty_methods": 0,
+                "has_empty_returns": false
+            },
+            "fail_reasons": [
+                "\u043c\u0435\u043d\u0435\u0435 4 \u043c\u0435\u0442\u043e\u0434\u043e\u0432",
+                "\u043d\u0435\u0442 \u043b\u043e\u0433\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u044f",
+                "\u043d\u0435\u0442 \u043e\u0431\u0440\u0430\u0431\u043e\u0442\u043a\u0438 \u043e\u0448\u0438\u0431\u043e\u043a"
+            ]
+        },
+        {
+            "path": "Api/ConfectioneryOrderController.php",
+            "analysis": {
+                "lines": 90,
+                "methods": 4,
+                "has_logging": true,
+                "has_error_handling": true,
+                "has_syntax_error": false,
+                "empty_methods": 1,
+                "has_empty_returns": false
+            },
+            "fail_reasons": [
+                "\u043f\u0443\u0441\u0442\u044b\u0435 \u043c\u0435\u0442\u043e\u0434\u044b"
+            ]
+        },
+        {
+            "path": "Api/ElectronicsOrderController.php",
+            "analysis": {
+                "lines": 95,
+                "methods": 4,
+                "has_logging": true,
+                "has_error_handling": true,
+                "has_syntax_error": false,
+                "empty_methods": 1,
+                "has_empty_returns": false
+            },
+            "fail_reasons": [
+                "\u043f\u0443\u0441\u0442\u044b\u0435 \u043c\u0435\u0442\u043e\u0434\u044b"
+            ]
+        },
+        {
+            "path": "Api/FarmDirectOrderController.php",
+            "analysis": {
+                "lines": 180,
+                "methods": 6,
+                "has_logging": true,
+                "has_error_handling": true,
+                "has_syntax_error": false,
+                "empty_methods": 1,
+                "has_empty_returns": false
+            },
+            "fail_reasons": [
+                "\u043f\u0443\u0441\u0442\u044b\u0435 \u043c\u0435\u0442\u043e\u0434\u044b"
+            ]
+        },
+        {
+            "path": "Api/FurnitureOrderController.php",
+            "analysis": {
+                "lines": 93,
+                "methods": 4,
+                "has_logging": true,
+                "has_error_handling": true,
+                "has_syntax_error": false,
+                "empty_methods": 1,
+                "has_empty_returns": false
+            },
+            "fail_reasons": [
+                "\u043f\u0443\u0441\u0442\u044b\u0435 \u043c\u0435\u0442\u043e\u0434\u044b"
+            ]
+        },
+        {
+            "path": "Api/HealthyFoodDietController.php",
+            "analysis": {
+                "lines": 98,
+                "methods": 4,
+                "has_logging": true,
+                "has_error_handling": true,
+                "has_syntax_error": false,
+                "empty_methods": 1,
+                "has_empty_returns": false
+            },
+            "fail_reasons": [
+                "\u043f\u0443\u0441\u0442\u044b\u0435 \u043c\u0435\u0442\u043e\u0434\u044b"
+            ]
+        },
+        {
+            "path": "Api/MeatShopsOrderController.php",
+            "analysis": {
+                "lines": 65,
+                "methods": 3,
+                "has_logging": true,
+                "has_error_handling": true,
+                "has_syntax_error": false,
+                "empty_methods": 1,
+                "has_empty_returns": false
+            },
+            "fail_reasons": [
+                "\u043c\u0435\u043d\u0435\u0435 4 \u043c\u0435\u0442\u043e\u0434\u043e\u0432",
+                "\u043f\u0443\u0441\u0442\u044b\u0435 \u043c\u0435\u0442\u043e\u0434\u044b"
+            ]
+        },
+        {
+            "path": "Api/OfficeCateringOrderController.php",
+            "analysis": {
+                "lines": 89,
+                "methods": 4,
+                "has_logging": true,
+                "has_error_handling": true,
+                "has_syntax_error": false,
+                "empty_methods": 1,
+                "has_empty_returns": false
+            },
+            "fail_reasons": [
+                "\u043f\u0443\u0441\u0442\u044b\u0435 \u043c\u0435\u0442\u043e\u0434\u044b"
+            ]
+        },
+        {
+            "path": "Api/OpenApiController.php",
+            "analysis": {
+                "lines": 218,
+                "methods": 2,
+                "has_logging": false,
+                "has_error_handling": false,
+                "has_syntax_error": false,
+                "empty_methods": 0,
+                "has_empty_returns": false
+            },
+            "fail_reasons": [
+                "\u043d\u0435\u0442 \u043b\u043e\u0433\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u044f",
+                "\u043d\u0435\u0442 \u043e\u0431\u0440\u0430\u0431\u043e\u0442\u043a\u0438 \u043e\u0448\u0438\u0431\u043e\u043a"
+            ]
+        },
+        {
+            "path": "Api/PaymentController.php",
+            "analysis": {
+                "lines": 121,
+                "methods": 2,
+                "has_logging": true,
+                "has_error_handling": true,
+                "has_syntax_error": false,
+                "empty_methods": 1,
+                "has_empty_returns": false
+            },
+            "fail_reasons": [
+                "\u043c\u0435\u043d\u0435\u0435 4 \u043c\u0435\u0442\u043e\u0434\u043e\u0432",
+                "\u043f\u0443\u0441\u0442\u044b\u0435 \u043c\u0435\u0442\u043e\u0434\u044b"
+            ]
+        },
+        {
+            "path": "Api/PharmacyOrderController.php",
+            "analysis": {
+                "lines": 89,
+                "methods": 4,
+                "has_logging": true,
+                "has_error_handling": true,
+                "has_syntax_error": false,
+                "empty_methods": 1,
+                "has_empty_returns": false
+            },
+            "fail_reasons": [
+                "\u043f\u0443\u0441\u0442\u044b\u0435 \u043c\u0435\u0442\u043e\u0434\u044b"
+            ]
+        },
+        {
+            "path": "Api/ToysKidsOrderController.php",
+            "analysis": {
+                "lines": 66,
+                "methods": 3,
+                "has_logging": true,
+                "has_error_handling": true,
+                "has_syntax_error": false,
+                "empty_methods": 1,
+                "has_empty_returns": false
+            },
+            "fail_reasons": [
+                "\u043c\u0435\u043d\u0435\u0435 4 \u043c\u0435\u0442\u043e\u0434\u043e\u0432",
+                "\u043f\u0443\u0441\u0442\u044b\u0435 \u043c\u0435\u0442\u043e\u0434\u044b"
+            ]
+        },
+        {
+            "path": "Api/V1/BaseApiV1Controller.php",
+            "analysis": {
+                "lines": 66,
+                "methods": 3,
+                "has_logging": true,
+                "has_error_handling": false,
+                "has_syntax_error": false,
+                "empty_methods": 0,
+                "has_empty_returns": false
+            },
+            "fail_reasons": [
+                "\u043c\u0435\u043d\u0435\u0435 4 \u043c\u0435\u0442\u043e\u0434\u043e\u0432",
+                "\u043d\u0435\u0442 \u043e\u0431\u0440\u0430\u0431\u043e\u0442\u043a\u0438 \u043e\u0448\u0438\u0431\u043e\u043a"
+            ]
+        },
+        {
+            "path": "Api/V1/Furniture3DController.php",
+            "analysis": {
+                "lines": 58,
+                "methods": 3,
+                "has_logging": false,
+                "has_error_handling": false,
+                "has_syntax_error": false,
+                "empty_methods": 1,
+                "has_empty_returns": false
+            },
+            "fail_reasons": [
+                "\u043c\u0435\u043d\u0435\u0435 4 \u043c\u0435\u0442\u043e\u0434\u043e\u0432",
+                "\u043d\u0435\u0442 \u043b\u043e\u0433\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u044f",
+                "\u043d\u0435\u0442 \u043e\u0431\u0440\u0430\u0431\u043e\u0442\u043a\u0438 \u043e\u0448\u0438\u0431\u043e\u043a",
+                "\u043f\u0443\u0441\u0442\u044b\u0435 \u043c\u0435\u0442\u043e\u0434\u044b"
+            ]
+        },
+        {
+            "path": "Api/V1/HealthCheckController.php",
+            "analysis": {
+                "lines": 108,
+                "methods": 1,
+                "has_logging": false,
+                "has_error_handling": true,
+                "has_syntax_error": false,
+                "empty_methods": 0,
+                "has_empty_returns": false
+            },
+            "fail_reasons": [
+                "\u043c\u0435\u043d\u0435\u0435 4 \u043c\u0435\u0442\u043e\u0434\u043e\u0432",
+                "\u043d\u0435\u0442 \u043b\u043e\u0433\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u044f"
+            ]
+        },
+        {
+            "path": "Api/V1/PaymentController.php",
+            "analysis": {
+                "lines": 165,
+                "methods": 3,
+                "has_logging": true,
+                "has_error_handling": true,
+                "has_syntax_error": false,
+                "empty_methods": 1,
+                "has_empty_returns": false
+            },
+            "fail_reasons": [
+                "\u043f\u0443\u0441\u0442\u044b\u0435 \u043c\u0435\u0442\u043e\u0434\u044b"
+            ]
+        },
+        {
+            "path": "Api/V1/Product3DController.php",
+            "analysis": {
+                "lines": 76,
+                "methods": 5,
+                "has_logging": false,
+                "has_error_handling": false,
+                "has_syntax_error": false,
+                "empty_methods": 1,
+                "has_empty_returns": false
+            },
+            "fail_reasons": [
+                "\u043d\u0435\u0442 \u043b\u043e\u0433\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u044f",
+                "\u043d\u0435\u0442 \u043e\u0431\u0440\u0430\u0431\u043e\u0442\u043a\u0438 \u043e\u0448\u0438\u0431\u043e\u043a",
+                "\u043f\u0443\u0441\u0442\u044b\u0435 \u043c\u0435\u0442\u043e\u0434\u044b"
+            ]
+        },
+        {
+            "path": "Api/V1/PromoController.php",
+            "analysis": {
+                "lines": 15,
+                "methods": 1,
+                "has_logging": false,
+                "has_error_handling": false,
+                "has_syntax_error": false,
+                "empty_methods": 0,
+                "has_empty_returns": false
+            },
+            "fail_reasons": [
+                "\u043c\u0435\u043d\u0435\u0435 4 \u043c\u0435\u0442\u043e\u0434\u043e\u0432",
+                "\u043d\u0435\u0442 \u043b\u043e\u0433\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u044f",
+                "\u043d\u0435\u0442 \u043e\u0431\u0440\u0430\u0431\u043e\u0442\u043a\u0438 \u043e\u0448\u0438\u0431\u043e\u043a"
+            ]
+        },
+        {
+            "path": "Api/V1/Room3DController.php",
+            "analysis": {
+                "lines": 48,
+                "methods": 3,
+                "has_logging": false,
+                "has_error_handling": false,
+                "has_syntax_error": false,
+                "empty_methods": 1,
+                "has_empty_returns": false
+            },
+            "fail_reasons": [
+                "\u043c\u0435\u043d\u0435\u0435 4 \u043c\u0435\u0442\u043e\u0434\u043e\u0432",
+                "\u043d\u0435\u0442 \u043b\u043e\u0433\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u044f",
+                "\u043d\u0435\u0442 \u043e\u0431\u0440\u0430\u0431\u043e\u0442\u043a\u0438 \u043e\u0448\u0438\u0431\u043e\u043a",
+                "\u043f\u0443\u0441\u0442\u044b\u0435 \u043c\u0435\u0442\u043e\u0434\u044b"
+            ]
+        },
+        {
+            "path": "Api/V1/SearchController.php",
+            "analysis": {
+                "lines": 12,
+                "methods": 0,
+                "has_logging": false,
+                "has_error_handling": false,
+                "has_syntax_error": false,
+                "empty_methods": 0,
+                "has_empty_returns": false
+            },
+            "fail_reasons": [
+                "\u043c\u0435\u043d\u0435\u0435 4 \u043c\u0435\u0442\u043e\u0434\u043e\u0432",
+                "\u043d\u0435\u0442 \u043b\u043e\u0433\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u044f",
+                "\u043d\u0435\u0442 \u043e\u0431\u0440\u0430\u0431\u043e\u0442\u043a\u0438 \u043e\u0448\u0438\u0431\u043e\u043a"
+            ]
+        },
+        {
+            "path": "Api/V1/SystemController.php",
+            "analysis": {
+                "lines": 12,
+                "methods": 0,
+                "has_logging": false,
+                "has_error_handling": false,
+                "has_syntax_error": false,
+                "empty_methods": 0,
+                "has_empty_returns": false
+            },
+            "fail_reasons": [
+                "\u043c\u0435\u043d\u0435\u0435 4 \u043c\u0435\u0442\u043e\u0434\u043e\u0432",
+                "\u043d\u0435\u0442 \u043b\u043e\u0433\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u044f",
+                "\u043d\u0435\u0442 \u043e\u0431\u0440\u0430\u0431\u043e\u0442\u043a\u0438 \u043e\u0448\u0438\u0431\u043e\u043a"
+            ]
+        },
+        {
+            "path": "Api/V1/Vehicle3DController.php",
+            "analysis": {
+                "lines": 48,
+                "methods": 3,
+                "has_logging": false,
+                "has_error_handling": false,
+                "has_syntax_error": false,
+                "empty_methods": 1,
+                "has_empty_returns": false
+            },
+            "fail_reasons": [
+                "\u043c\u0435\u043d\u0435\u0435 4 \u043c\u0435\u0442\u043e\u0434\u043e\u0432",
+                "\u043d\u0435\u0442 \u043b\u043e\u0433\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u044f",
+                "\u043d\u0435\u0442 \u043e\u0431\u0440\u0430\u0431\u043e\u0442\u043a\u0438 \u043e\u0448\u0438\u0431\u043e\u043a",
+                "\u043f\u0443\u0441\u0442\u044b\u0435 \u043c\u0435\u0442\u043e\u0434\u044b"
+            ]
+        },
+        {
+            "path": "Api/V1/WalletController.php",
+            "analysis": {
+                "lines": 169,
+                "methods": 5,
+                "has_logging": true,
+                "has_error_handling": true,
+                "has_syntax_error": false,
+                "empty_methods": 1,
+                "has_empty_returns": false
+            },
+            "fail_reasons": [
+                "\u043f\u0443\u0441\u0442\u044b\u0435 \u043c\u0435\u0442\u043e\u0434\u044b"
+            ]
+        },
+        {
+            "path": "Api/V2/ActivityController.php",
+            "analysis": {
+                "lines": 101,
+                "methods": 3,
+                "has_logging": true,
+                "has_error_handling": true,
+                "has_syntax_error": false,
+                "empty_methods": 0,
+                "has_empty_returns": false
+            },
+            "fail_reasons": [
+                "\u043c\u0435\u043d\u0435\u0435 4 \u043c\u0435\u0442\u043e\u0434\u043e\u0432"
+            ]
+        },
+        {
+            "path": "Api/V2/Analytics/AnalyticsController.php",
+            "analysis": {
+                "lines": 190,
+                "methods": 6,
+                "has_logging": true,
+                "has_error_handling": true,
+                "has_syntax_error": false,
+                "empty_methods": 1,
+                "has_empty_returns": false
+            },
+            "fail_reasons": [
+                "\u043f\u0443\u0441\u0442\u044b\u0435 \u043c\u0435\u0442\u043e\u0434\u044b"
+            ]
+        },
+        {
+            "path": "Api/V2/Analytics/ExportController.php",
+            "analysis": {
+                "lines": 183,
+                "methods": 5,
+                "has_logging": true,
+                "has_error_handling": true,
+                "has_syntax_error": false,
+                "empty_methods": 1,
+                "has_empty_returns": false
+            },
+            "fail_reasons": [
+                "\u043f\u0443\u0441\u0442\u044b\u0435 \u043c\u0435\u0442\u043e\u0434\u044b"
+            ]
+        },
+        {
+            "path": "Api/V2/Analytics/FraudDetectionController.php",
+            "analysis": {
+                "lines": 124,
+                "methods": 3,
+                "has_logging": true,
+                "has_error_handling": true,
+                "has_syntax_error": false,
+                "empty_methods": 0,
+                "has_empty_returns": false
+            },
+            "fail_reasons": [
+                "\u043c\u0435\u043d\u0435\u0435 4 \u043c\u0435\u0442\u043e\u0434\u043e\u0432"
+            ]
+        },
+        {
+            "path": "Api/V2/Analytics/ReportingController.php",
+            "analysis": {
+                "lines": 204,
+                "methods": 6,
+                "has_logging": true,
+                "has_error_handling": true,
+                "has_syntax_error": false,
+                "empty_methods": 1,
+                "has_empty_returns": false
+            },
+            "fail_reasons": [
+                "\u043f\u0443\u0441\u0442\u044b\u0435 \u043c\u0435\u0442\u043e\u0434\u044b"
+            ]
+        },
+        {
+            "path": "Api/V2/BaseApiV2Controller.php",
+            "analysis": {
+                "lines": 66,
+                "methods": 3,
+                "has_logging": true,
+                "has_error_handling": false,
+                "has_syntax_error": false,
+                "empty_methods": 0,
+                "has_empty_returns": false
+            },
+            "fail_reasons": [
+                "\u043c\u0435\u043d\u0435\u0435 4 \u043c\u0435\u0442\u043e\u0434\u043e\u0432",
+                "\u043d\u0435\u0442 \u043e\u0431\u0440\u0430\u0431\u043e\u0442\u043a\u0438 \u043e\u0448\u0438\u0431\u043e\u043a"
+            ]
+        },
+        {
+            "path": "Api/V2/Chat/ChatController.php",
+            "analysis": {
+                "lines": 204,
+                "methods": 6,
+                "has_logging": true,
+                "has_error_handling": true,
+                "has_syntax_error": false,
+                "empty_methods": 1,
+                "has_empty_returns": false
+            },
+            "fail_reasons": [
+                "\u043f\u0443\u0441\u0442\u044b\u0435 \u043c\u0435\u0442\u043e\u0434\u044b"
+            ]
+        },
+        {
+            "path": "Api/V2/Collaboration/CollaborationController.php",
+            "analysis": {
+                "lines": 273,
+                "methods": 6,
+                "has_logging": true,
+                "has_error_handling": true,
+                "has_syntax_error": false,
+                "empty_methods": 1,
+                "has_empty_returns": false
+            },
+            "fail_reasons": [
+                "\u043f\u0443\u0441\u0442\u044b\u0435 \u043c\u0435\u0442\u043e\u0434\u044b"
+            ]
+        },
+        {
+            "path": "Api/V2/PaymentController.php",
+            "analysis": {
+                "lines": 11,
+                "methods": 0,
+                "has_logging": false,
+                "has_error_handling": false,
+                "has_syntax_error": false,
+                "empty_methods": 0,
+                "has_empty_returns": false
+            },
+            "fail_reasons": [
+                "\u043c\u0435\u043d\u0435\u0435 4 \u043c\u0435\u0442\u043e\u0434\u043e\u0432",
+                "\u043d\u0435\u0442 \u043b\u043e\u0433\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u044f",
+                "\u043d\u0435\u0442 \u043e\u0431\u0440\u0430\u0431\u043e\u0442\u043a\u0438 \u043e\u0448\u0438\u0431\u043e\u043a"
+            ]
+        },
+        {
+            "path": "Api/V2/Search/SearchController.php",
+            "analysis": {
+                "lines": 189,
+                "methods": 5,
+                "has_logging": true,
+                "has_error_handling": true,
+                "has_syntax_error": false,
+                "empty_methods": 1,
+                "has_empty_returns": false
+            },
+            "fail_reasons": [
+                "\u043f\u0443\u0441\u0442\u044b\u0435 \u043c\u0435\u0442\u043e\u0434\u044b"
+            ]
+        },
+        {
+            "path": "Auth/TokenController.php",
+            "analysis": {
+                "lines": 131,
+                "methods": 2,
+                "has_logging": true,
+                "has_error_handling": true,
+                "has_syntax_error": false,
+                "empty_methods": 0,
+                "has_empty_returns": false
+            },
+            "fail_reasons": [
+                "\u043c\u0435\u043d\u0435\u0435 4 \u043c\u0435\u0442\u043e\u0434\u043e\u0432"
+            ]
+        },
+        {
+            "path": "Demo3DController.php",
+            "analysis": {
+                "lines": 89,
+                "methods": 2,
+                "has_logging": false,
+                "has_error_handling": false,
+                "has_syntax_error": false,
+                "empty_methods": 0,
+                "has_empty_returns": false
+            },
+            "fail_reasons": [
+                "\u043c\u0435\u043d\u0435\u0435 4 \u043c\u0435\u0442\u043e\u0434\u043e\u0432",
+                "\u043d\u0435\u0442 \u043b\u043e\u0433\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u044f",
+                "\u043d\u0435\u0442 \u043e\u0431\u0440\u0430\u0431\u043e\u0442\u043a\u0438 \u043e\u0448\u0438\u0431\u043e\u043a"
+            ]
+        },
+        {
+            "path": "Internal/PaymentWebhookController.php",
+            "analysis": {
+                "lines": 131,
+                "methods": 3,
+                "has_logging": true,
+                "has_error_handling": true,
+                "has_syntax_error": false,
+                "empty_methods": 1,
+                "has_empty_returns": false
+            },
+            "fail_reasons": [
+                "\u043c\u0435\u043d\u0435\u0435 4 \u043c\u0435\u0442\u043e\u0434\u043e\u0432",
+                "\u043f\u0443\u0441\u0442\u044b\u0435 \u043c\u0435\u0442\u043e\u0434\u044b"
+            ]
+        },
+        {
+            "path": "Internal/WebhookController.php",
+            "analysis": {
+                "lines": 258,
+                "methods": 6,
+                "has_logging": true,
+                "has_error_handling": true,
+                "has_syntax_error": false,
+                "empty_methods": 1,
+                "has_empty_returns": true
+            },
+            "fail_reasons": [
+                "\u043f\u0443\u0441\u0442\u044b\u0435 \u043c\u0435\u0442\u043e\u0434\u044b",
+                "\u043f\u0443\u0441\u0442\u044b\u0435 \u0432\u043e\u0437\u0432\u0440\u0430\u0449\u0430\u0435\u043c\u044b\u0435 \u0437\u043d\u0430\u0447\u0435\u043d\u0438\u044f"
+            ]
+        }
+    ],
+    "passed": [
+        "Api/V1/AuthController.php",
+        "Api/V2/Analytics/MLAnalyticsController.php",
+        "Api/V2/Analytics/RecommendationController.php",
+        "Api/V2/Notifications/PreferencesController.php",
+        "Api/V2/Realtime/PresenceController.php",
+        "Api/V2/Realtime/SubscriptionController.php"
+    ]
+}

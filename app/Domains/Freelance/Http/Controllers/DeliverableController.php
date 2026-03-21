@@ -1,0 +1,206 @@
+<?php declare(strict_types=1);
+
+namespace App\Domains\Freelance\Http\Controllers;
+
+use App\Domains\Freelance\Models\FreelanceDeliverable;
+use App\Domains\Freelance\Services\DeliverableService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+
+final class DeliverableController
+{
+    public function __construct(
+        private readonly DeliverableService $deliverableService,
+    ) {}
+
+    public function store(Request $request): JsonResponse
+    {
+        if (class_exists('\App\Services\FraudControlService')) {
+            \App\Services\FraudControlService::check();
+        }
+
+        try {
+            $correlationId = Str::uuid();
+
+            $validated = $request->validate([
+                'title' => 'required|string|max:255',
+                'description' => 'nullable|string',
+                'file_urls' => 'nullable|array',
+            ]);
+
+            $deliverable = $this->deliverableService->submitDeliverable(
+                contractId: $request->input('contract_id'),
+                freelancerId: auth()->user()->freelancer->id ?? 0,
+                data: $validated,
+                correlationId: $correlationId,
+            );
+
+            return response()->json([
+                'success' => true,
+                'data' => $deliverable,
+                'correlation_id' => $correlationId,
+            ], 201);
+        } catch (\Exception $e) {
+            Log::channel('audit')->error('Error submitting deliverable', [
+                'error' => $e->getMessage(),
+                'correlation_id' => Str::uuid(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to submit deliverable',
+                'correlation_id' => Str::uuid(),
+            ], 500);
+        }
+    }
+
+    public function show(int $id): JsonResponse
+    {
+        try {
+            $deliverable = FreelanceDeliverable::findOrFail($id);
+
+            $this->authorize('view', $deliverable);
+
+            return response()->json([
+                'success' => true,
+                'data' => $deliverable,
+                'correlation_id' => Str::uuid(),
+            ]);
+        } catch (\Exception $e) {
+            Log::channel('audit')->error('Error showing deliverable', [
+                'deliverable_id' => $id,
+                'error' => $e->getMessage(),
+                'correlation_id' => Str::uuid(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Deliverable not found',
+                'correlation_id' => Str::uuid(),
+            ], 404);
+        }
+    }
+
+    public function approve(int $id): JsonResponse
+    {
+        try {
+            $correlationId = Str::uuid();
+            $deliverable = FreelanceDeliverable::findOrFail($id);
+
+            $this->authorize('approve', $deliverable);
+
+            $this->deliverableService->approveDeliverable($id, $correlationId);
+
+            return response()->json([
+                'success' => true,
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (\Exception $e) {
+            Log::channel('audit')->error('Error approving deliverable', [
+                'deliverable_id' => $id,
+                'error' => $e->getMessage(),
+                'correlation_id' => Str::uuid(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to approve deliverable',
+                'correlation_id' => Str::uuid(),
+            ], 500);
+        }
+    }
+
+    public function requestRevision(Request $request, int $id): JsonResponse
+    {
+        try {
+            $correlationId = Str::uuid();
+            $deliverable = FreelanceDeliverable::findOrFail($id);
+
+            $this->authorize('requestRevision', $deliverable);
+
+            $this->deliverableService->requestRevision(
+                $id,
+                $request->input('feedback', ''),
+                $correlationId
+            );
+
+            return response()->json([
+                'success' => true,
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (\Exception $e) {
+            Log::channel('audit')->error('Error requesting revision', [
+                'deliverable_id' => $id,
+                'error' => $e->getMessage(),
+                'correlation_id' => Str::uuid(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to request revision',
+                'correlation_id' => Str::uuid(),
+            ], 500);
+        }
+    }
+
+    public function reject(Request $request, int $id): JsonResponse
+    {
+        try {
+            $correlationId = Str::uuid();
+            $deliverable = FreelanceDeliverable::findOrFail($id);
+
+            $this->authorize('reject', $deliverable);
+
+            $this->deliverableService->rejectDeliverable(
+                $id,
+                $request->input('reason', ''),
+                $correlationId
+            );
+
+            return response()->json([
+                'success' => true,
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (\Exception $e) {
+            Log::channel('audit')->error('Error rejecting deliverable', [
+                'deliverable_id' => $id,
+                'error' => $e->getMessage(),
+                'correlation_id' => Str::uuid(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to reject deliverable',
+                'correlation_id' => Str::uuid(),
+            ], 500);
+        }
+    }
+
+    public function contractDeliverables(int $contractId): JsonResponse
+    {
+        try {
+            $deliverables = FreelanceDeliverable::where('contract_id', $contractId)
+                ->paginate(20);
+
+            return response()->json([
+                'success' => true,
+                'data' => $deliverables,
+                'correlation_id' => Str::uuid(),
+            ]);
+        } catch (\Exception $e) {
+            Log::channel('audit')->error('Error listing contract deliverables', [
+                'contract_id' => $contractId,
+                'error' => $e->getMessage(),
+                'correlation_id' => Str::uuid(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to list deliverables',
+                'correlation_id' => Str::uuid(),
+            ], 500);
+        }
+    }
+}

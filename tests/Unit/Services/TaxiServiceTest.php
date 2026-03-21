@@ -2,8 +2,8 @@
 
 namespace Tests\Unit\Domains\Taxi\Services;
 
-use App\Domains\Taxi\Services\TaxiService;
-use App\Models\Domains\Taxi\TaxiRide;
+use Modules\Auto\Services\TaxiService;
+use Modules\Auto\Models\TaxiRide;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;

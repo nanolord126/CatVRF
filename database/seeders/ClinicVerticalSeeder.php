@@ -1,14 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\Tenant;
-use App\Models\User;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
-class ClinicVerticalSeeder extends Seeder
+/**
+ * Медицинская вертикаль (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class ClinicVerticalSeeder extends Seeder
 {
     public function run(): void
     {

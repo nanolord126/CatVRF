@@ -3,14 +3,14 @@
         <!-- Global Forecasting Insights Card 1: Risk Status -->
         <x-filament::card class="relative overflow-hidden bg-primary-950 text-white shadow-2xl">
             <div class="z-10 relative">
-                <h3 class="text-sm font-semibold text-primary-200 uppercase tracking-widest leading-6 mb-2">System Risk Overview</h3>
+                <h3 class="text-sm font-semibold text-primary-200 uppercase tracking-widest leading-6 mb-2">Обзор системных рисков</h3>
                 <p class="text-4xl font-extrabold flex items-center gap-2 italic">
                     <x-heroicon-o-shield-check class="w-10 h-10 text-green-400" />
-                    SYSTEM STABLE
+                    СИСТЕМА СТАБИЛЬНА
                 </p>
                 <div class="mt-4 flex items-center justify-between opacity-80 text-xs">
-                    <span>Ecosystem Integrity: 99.8%</span>
-                    <span>Last Prediction: {{ now()->diffForHumans() }}</span>
+                    <span>Целостность экосистемы: 99.8%</span>
+                    <span>Последний прогноз: {{ now()->diffForHumans() }}</span>
                 </div>
             </div>
             <div class="absolute -right-8 -bottom-8 opacity-10">
@@ -28,7 +28,7 @@
     <div class="mt-8">
         <h2 class="text-2xl font-black mb-6 flex items-center gap-2">
             <x-heroicon-o-sparkles class="w-8 h-8 text-primary-500" />
-            REAL-TIME CAPACITY PLANNER AI
+            ИИ-ПЛАНИРОВЩИК МОЩНОСТЕЙ В РЕАЛЬНОМ ВРЕМЕНИ
         </h2>
         
         {{ $this->form }}
@@ -37,24 +37,24 @@
         <div class="mt-8 grid grid-cols-1 md:grid-cols-4 gap-6 animate-in fade-in slide-in-from-bottom-5 duration-700">
             <!-- Data Point: Required vs Available -->
             <x-filament::card class="text-center bg-gray-50/50">
-                <span class="text-xs font-bold uppercase text-gray-400">Staff Needed</span>
+                <span class="text-xs font-bold uppercase text-gray-400">Требуемый персонал</span>
                 <p class="text-4xl font-black text-primary-600">{{ $predictionData['forecasted_staff'] }}</p>
             </x-filament::card>
 
             <x-filament::card class="text-center bg-gray-50/50">
-                <span class="text-xs font-bold uppercase text-gray-400">Available FTE</span>
+                <span class="text-xs font-bold uppercase text-gray-400">Доступно сотрудников</span>
                 <p class="text-4xl font-black text-green-600">{{ $predictionData['available_staff'] }}</p>
             </x-filament::card>
 
             <x-filament::card class="text-center bg-gray-50/50 border-l-4 {{ $predictionData['shortage'] > 0 ? 'border-red-500' : 'border-green-500' }}">
-                <span class="text-xs font-bold uppercase text-gray-400">Detected Shortage</span>
+                <span class="text-xs font-bold uppercase text-gray-400">Обнаружена нехватка</span>
                 <p class="text-4xl font-black {{ $predictionData['shortage'] > 0 ? 'text-red-500' : 'text-gray-400' }}">
-                    {{ $predictionData['shortage'] ?: 'NONE' }}
+                    {{ $predictionData['shortage'] ?: 'НЕТ' }}
                 </p>
             </x-filament::card>
 
             <x-filament::card class="text-center bg-gray-900 text-white">
-                <span class="text-xs font-bold uppercase text-primary-400">Risk Matrix</span>
+                <span class="text-xs font-bold uppercase text-primary-400">Матрица рисков</span>
                 <p class="text-4xl font-black italic">{{ $predictionData['risk'] }}</p>
             </x-filament::card>
 
@@ -89,19 +89,19 @@
         <div class="relative z-10">
             <h2 class="text-3xl font-black mb-4 flex items-center gap-2 leading-relaxed">
                 <x-heroicon-o-cpu-chip class="w-10 h-10 text-primary-400" />
-                STAFF PREDICTIVE INTELLIGENCE (SPI-2026)
+                ПРЕДИКТИВНЫЙ ИИ ПЕРСОНАЛА (SPI-2026)
             </h2>
             <p class="text-gray-300 max-w-2xl text-lg opacity-90 leading-relaxed">
-                The SPI-2026 engine performs continuous multi-vector analysis of tenant demand across all marketplace verticals. 
-                Utilizing **Ecosystem Tracing (Correlation IDs)**, it identifies potential staff shortages 48-72 hours before real-world impact.
+                Ядро SPI-2026 выполняет непрерывный многовекторный анализ спроса арендаторов по всем вертикалям платформы. 
+                Используя **Ecosystem Tracing (Correlation IDs)**, выявляет потенциальную нехватку персонала за 48-72 часа до реальных последствий.
             </p>
             <div class="mt-8 flex flex-wrap gap-4">
-                <span class="px-4 py-2 bg-white/10 rounded-full text-xs font-mono uppercase tracking-widest backdrop-blur group-hover:bg-white/20 transition-colors">MODEL: Prophet-X Ensemble</span>
-                <span class="px-4 py-2 bg-white/10 rounded-full text-xs font-mono uppercase tracking-widest backdrop-blur group-hover:bg-white/20 transition-colors">ACCURACY: 98.4%</span>
-                <span class="px-4 py-2 bg-green-500/20 text-green-400 rounded-full text-xs font-mono uppercase tracking-widest backdrop-blur border border-green-500/30">TRAINING: Real-time</span>
+                <span class="px-4 py-2 bg-white/10 rounded-full text-xs font-mono uppercase tracking-widest backdrop-blur group-hover:bg-white/20 transition-colors">МОДЕЛЬ: Prophet-X Ensemble</span>
+                <span class="px-4 py-2 bg-white/10 rounded-full text-xs font-mono uppercase tracking-widest backdrop-blur group-hover:bg-white/20 transition-colors">ТОЧНОСТЬ: 98.4%</span>
+                <span class="px-4 py-2 bg-green-500/20 text-green-400 rounded-full text-xs font-mono uppercase tracking-widest backdrop-blur border border-green-500/30">ОБУЧЕНИЕ: В реальном времени</span>
             </div>
         </div>
-        <div class="absolute -right-32 -top-32 opacity-10 blur-3xl pointer-events-none group-hover:scale-110 transition-transform duration-[2000ms]">
+        <div class="absolute -right-32 -top-32 opacity-10 blur-3xl pointer-events-НЕТ group-hover:scale-110 transition-transform duration-[2000ms]">
             <div class="w-96 h-96 bg-primary-400 rounded-full"></div>
         </div>
     </div>

@@ -1,0 +1,1 @@
+<?php require "vendor/autoload.php"; require "bootstrap/app.php"; $app = app(); $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap(); DB::table("venues")->insert(["name"=>"Test Venue", "address"=>"Test", "correlation_id"=>"test"]);

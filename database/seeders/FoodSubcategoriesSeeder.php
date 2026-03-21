@@ -1,11 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use App\Models\FoodVenue;
 use Illuminate\Database\Seeder;
 
-class FoodSubcategoriesSeeder extends Seeder
+/**
+ * Подкатегории еды (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class FoodSubcategoriesSeeder extends Seeder
 {
     public function run(): void
     {

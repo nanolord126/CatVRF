@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use App\Models\User;
@@ -10,7 +12,10 @@ use App\Models\SalarySlip;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
-class PayrollSeeder extends Seeder
+/**
+ * Расчётная ведомость (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class PayrollSeeder extends Seeder
 {
     public function run(): void
     {

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace Database\Seeders;
 
@@ -8,7 +9,10 @@ use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
-class AIConstructorSeeder extends Seeder
+/**
+ * AI-конструктор тестовые данные (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class AIConstructorSeeder extends Seeder
 {
     /**
      * Предустановленные данные для демонстрации AI-функционала.

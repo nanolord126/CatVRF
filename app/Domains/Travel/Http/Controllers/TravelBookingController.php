@@ -1,0 +1,238 @@
+<?php declare(strict_types=1);
+
+namespace App\Domains\Travel\Http\Controllers;
+
+use App\Domains\Travel\Models\TravelBooking;
+use App\Domains\Travel\Services\BookingService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use Throwable;
+
+final class TravelBookingController
+{
+    public function __construct(
+        private readonly BookingService $bookingService,
+    ) {}
+
+    public function store(Request $request): JsonResponse
+    {
+        if (class_exists('\App\Services\FraudControlService')) {
+            \App\Services\FraudControlService::check();
+        }
+
+        $correlationId = $request->get('correlation_id', Str::uuid()->toString());
+
+        try {
+            $request->validate([
+                'tour_id' => 'required|exists:travel_tours,id',
+                'participants_count' => 'required|integer|min:1',
+                'participants_data' => 'nullable|array',
+            ]);
+
+            $booking = DB::transaction(function () use ($request, $correlationId) {
+                $tour = \App\Domains\Travel\Models\TravelTour::findOrFail($request->get('tour_id'));
+
+                return $this->bookingService->createBooking(
+                    $tour,
+                    auth()->user(),
+                    $request->get('participants_count'),
+                    $request->get('participants_data', []),
+                    $correlationId,
+                );
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => $booking,
+                'correlation_id' => $correlationId,
+            ], 201);
+        } catch (Throwable $e) {
+            Log::channel('audit')->error('Booking creation failed', [
+                'error' => $e->getMessage(),
+                'correlation_id' => $correlationId,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create booking',
+                'correlation_id' => $correlationId,
+            ], 500);
+        }
+    }
+
+    public function show(int $id): JsonResponse
+    {
+        try {
+            $booking = TravelBooking::where('tenant_id', tenant()->id)->findOrFail($id);
+
+            $this->authorize('view', $booking);
+
+            return response()->json([
+                'success' => true,
+                'data' => $booking,
+                'correlation_id' => Str::uuid(),
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Booking not found',
+                'correlation_id' => Str::uuid(),
+            ], 404);
+        }
+    }
+
+    public function update(Request $request, int $id): JsonResponse
+    {
+        if (class_exists('\App\Services\FraudControlService')) {
+            \App\Services\FraudControlService::check();
+        }
+
+        $correlationId = $request->get('correlation_id', Str::uuid()->toString());
+
+        try {
+            $booking = TravelBooking::where('tenant_id', tenant()->id)->findOrFail($id);
+
+            $this->authorize('update', $booking);
+
+            $booking = DB::transaction(function () use ($request, $booking, $correlationId) {
+                $booking->update([
+                    'participants_count' => $request->get('participants_count', $booking->participants_count),
+                    'participants_data' => $request->get('participants_data', $booking->participants_data),
+                    'correlation_id' => $correlationId,
+                ]);
+
+                return $booking;
+            });
+
+            Log::channel('audit')->info('Booking updated', [
+                'booking_id' => $booking->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $booking,
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update booking',
+                'correlation_id' => $correlationId,
+            ], 500);
+        }
+    }
+
+    public function destroy(int $id): JsonResponse
+    {
+        if (class_exists('\App\Services\FraudControlService')) {
+            \App\Services\FraudControlService::check();
+        }
+
+        $correlationId = Str::uuid()->toString();
+
+        try {
+            $booking = TravelBooking::where('tenant_id', tenant()->id)->findOrFail($id);
+
+            $this->authorize('delete', $booking);
+
+            DB::transaction(function () use ($booking, $correlationId) {
+                $booking->delete();
+            });
+
+            Log::channel('audit')->info('Booking deleted', [
+                'booking_id' => $booking->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete booking',
+                'correlation_id' => $correlationId,
+            ], 500);
+        }
+    }
+
+    public function userBookings(): JsonResponse
+    {
+        try {
+            $bookings = TravelBooking::where('user_id', auth()->id())
+                ->where('tenant_id', tenant()->id)
+                ->paginate(20);
+
+            return response()->json([
+                'success' => true,
+                'data' => $bookings->items(),
+                'correlation_id' => Str::uuid(),
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to get bookings',
+                'correlation_id' => Str::uuid(),
+            ], 500);
+        }
+    }
+
+    public function complete(int $id): JsonResponse
+    {
+        $correlationId = Str::uuid()->toString();
+
+        try {
+            $booking = TravelBooking::where('tenant_id', tenant()->id)->findOrFail($id);
+
+            $this->authorize('update', $booking);
+
+            $booking = $this->bookingService->completeBooking($booking, $correlationId);
+
+            return response()->json([
+                'success' => true,
+                'data' => $booking,
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to complete booking',
+                'correlation_id' => $correlationId,
+            ], 500);
+        }
+    }
+
+    public function cancel(Request $request, int $id): JsonResponse
+    {
+        $correlationId = $request->get('correlation_id', Str::uuid()->toString());
+
+        try {
+            $booking = TravelBooking::where('tenant_id', tenant()->id)->findOrFail($id);
+
+            $this->authorize('update', $booking);
+
+            $booking = $this->bookingService->cancelBooking(
+                $booking,
+                $request->get('reason'),
+                $correlationId,
+            );
+
+            return response()->json([
+                'success' => true,
+                'data' => $booking,
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to cancel booking',
+                'correlation_id' => $correlationId,
+            ], 500);
+        }
+    }
+}

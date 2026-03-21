@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace Database\Seeders;
 
@@ -6,8 +7,12 @@ use Illuminate\Database\Seeder;
 use App\Models\Category;
 use App\Models\Brand;
 use App\Models\Filter;
+use Illuminate\Support\Str;
 
-class CategorySystemSeeder extends Seeder
+/**
+ * Система категорий (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class CategorySystemSeeder extends Seeder
 {
     public function run(): void
     {

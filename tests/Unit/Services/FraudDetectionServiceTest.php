@@ -38,7 +38,7 @@ final class FraudDetectionServiceTest extends TestCase
 
         $result = $this->service->analyzeTransaction($transaction);
 
-        $this->assertGreater($result['risk_score'], 0.2);
+        $this->assertGreaterThan(0.2, $result['risk_score']);
         $this->assertContains('HIGH_AMOUNT', $result['flags']);
     }
 
@@ -56,7 +56,7 @@ final class FraudDetectionServiceTest extends TestCase
 
         $result = $this->service->analyzeTransaction($transaction);
 
-        $this->assertLess($result['risk_score'], 0.5);
+        $this->assertLessThan(0.5, $result['risk_score']);
         $this->assertEquals('APPROVED', $result['status']);
     }
 

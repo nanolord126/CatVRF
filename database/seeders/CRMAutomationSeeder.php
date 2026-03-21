@@ -1,12 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use App\Models\Tenant;
 
-class CRMAutomationSeeder extends Seeder
+/**
+ * CRM автоматизация (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class CRMAutomationSeeder extends Seeder
 {
     public function run(): void
     {

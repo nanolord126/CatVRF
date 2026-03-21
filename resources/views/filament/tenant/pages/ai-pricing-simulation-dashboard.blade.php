@@ -5,8 +5,8 @@
 
         <!-- Historical Log of AI Calculations -->
         <x-filament::section>
-            <x-slot name="heading">AI Dynamic Pricing Calculation History</x-slot>
-            <x-slot name="description">Audit trail of all recent AI-driven price adjustments across the ecosystem.</x-slot>
+            <x-slot name="heading">История расчетов динамического ценообразования ИИ</x-slot>
+            <x-slot name="description">Журнал аудита всех недавних корректировок цен, выполненных ИИ в экосистеме.</x-slot>
             
             {{ $this->table }}
         </x-filament::section>

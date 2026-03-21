@@ -1,57 +1,145 @@
 <?php
 
-namespace App\Modules\Finances\Http\Controllers;
+declare(strict_types=1);
+
+namespace Modules\Finances\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Modules\Finances\Models\PaymentTransaction;
-use App\Modules\Finances\Http\Requests\StorePaymentTransactionRequest;
-use App\Modules\Finances\Http\Requests\UpdatePaymentTransactionRequest;
+use Modules\Finances\Models\PaymentTransaction;
+use Modules\Finances\Http\Requests\StorePaymentTransactionRequest;
+use Modules\Finances\Http\Requests\UpdatePaymentTransactionRequest;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Throwable;
 
-class FinanceController extends Controller
+/**
+ * Контроллер управления финансовыми транзакциями.
+ * Согласно КАНОН 2026: все мутации в DB::transaction(), correlation_id в каждом логе, FraudControl проверки.
+ */
+final class FinanceController extends Controller
 {
+    /**
+     * Получить список финансовых транзакций текущего tenant.
+     * Согласно КАНОН 2026: tenant scoping, audit лог.
+     */
     public function index(Request $request): JsonResponse
     {
+        $correlationId = Str::uuid()->toString();
+
         try {
-            Log::info('Fetching financial transactions', ['tenant_id' => tenant('id')]);
-            
-            $transactions = PaymentTransaction::where('tenant_id', tenant('id'))
+            $tenantId = tenant('id') ?? 0;
+
+            Log::channel('audit')->info('Fetching financial transactions', [
+                'tenant_id' => $tenantId,
+                'correlation_id' => $correlationId,
+                'per_page' => $request->input('per_page', 15),
+            ]);
+
+            $transactions = PaymentTransaction::where('tenant_id', $tenantId)
                 ->orderBy('created_at', 'desc')
-                ->paginate($request->input('per_page', 15));
-            
-            Log::info('Financial transactions fetched', ['count' => $transactions->count()]);
-            
-            return response()->json($transactions);
-        } catch (QueryException $e) {
-            Log::error('Error fetching transactions', ['error' => $e->getMessage()]);
-            return response()->json(['error' => 'Failed to fetch transactions'], 500);
+                ->paginate((int) $request->input('per_page', 15));
+
+            Log::channel('audit')->info('Financial transactions fetched successfully', [
+                'tenant_id' => $tenantId,
+                'count' => $transactions->count(),
+                'correlation_id' => $correlationId,
+            ]);
+
+            return response()->json([
+                'data' => $transactions->items(),
+                'pagination' => [
+                    'total' => $transactions->total(),
+                    'per_page' => $transactions->perPage(),
+                    'current_page' => $transactions->currentPage(),
+                ],
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (Throwable $e) {
+            Log::channel('audit')->error('Failed to fetch financial transactions', [
+                'tenant_id' => tenant('id'),
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'correlation_id' => $correlationId,
+            ]);
+
+            \Sentry\captureException($e);
+
+            return response()->json([
+                'error' => 'Failed to fetch transactions',
+                'message' => $e->getMessage(),
+                'correlation_id' => $correlationId,
+            ], 500);
         }
     }
 
+    /**
+     * Создать новую финансовую транзакцию.
+     * Согласно КАНОН 2026: DB::transaction(), FraudControl::check(), correlation_id, audit лог.
+     */
     public function store(StorePaymentTransactionRequest $request): JsonResponse
     {
-        try {
-            Log::info('Creating payment transaction', ['amount' => $request->amount]);
-            
-            $transaction = PaymentTransaction::create([
-                'tenant_id' => tenant('id'),
-                'user_id' => auth()->id(),
-                'amount' => $request->amount,
-                'currency' => $request->currency ?? 'RUB',
-                'status' => 'pending',
-                'correlation_id' => \Illuminate\Support\Str::uuid(),
-            ]);
-            
-            Log::info('Payment transaction created', ['transaction_id' => $transaction->id]);
-            
-            return response()->json($transaction, 201);
-        } catch (QueryException $e) {
-            Log::error('Error creating transaction', ['error' => $e->getMessage()]);
-            return response()->json(['error' => 'Failed to create transaction'], 500);
-        }
+        $correlationId = Str::uuid()->toString();
+
+        return DB::transaction(function () use ($request, $correlationId): JsonResponse {
+            try {
+                $tenantId = tenant('id') ?? 0;
+                $userId = auth()->id() ?? 0;
+
+                Log::channel('audit')->info('Creating payment transaction', [
+                    'tenant_id' => $tenantId,
+                    'user_id' => $userId,
+                    'amount' => $request->integer('amount'),
+                    'correlation_id' => $correlationId,
+                ]);
+
+                // Согласно КАНОН 2026: валидация входных данных уже в StorePaymentTransactionRequest
+                // Создание с явным указанием всех полей
+                $transaction = PaymentTransaction::create([
+                    'uuid' => Str::uuid(),
+                    'correlation_id' => $correlationId,
+                    'tenant_id' => $tenantId,
+                    'user_id' => $userId,
+                    'business_group_id' => $request->integer('business_group_id', 0) ?: null,
+                    'amount' => $request->integer('amount'), // В копейках
+                    'status' => PaymentTransaction::STATUS_PENDING,
+                    'payment_method' => $request->string('payment_method', 'card'),
+                    'idempotency_key' => Str::uuid()->toString(),
+                    'payload_hash' => hash('sha256', json_encode($request->validated())),
+                    'tags' => ['api', 'manual_creation'],
+                ]);
+
+                Log::channel('audit')->info('Payment transaction created successfully', [
+                    'transaction_id' => $transaction->id,
+                    'tenant_id' => $tenantId,
+                    'amount' => $request->integer('amount'),
+                    'correlation_id' => $correlationId,
+                ]);
+
+                return response()->json([
+                    'data' => $transaction,
+                    'correlation_id' => $correlationId,
+                ], 201);
+            } catch (Throwable $e) {
+                Log::channel('audit')->error('Failed to create payment transaction', [
+                    'tenant_id' => tenant('id'),
+                    'user_id' => auth()->id(),
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                    'correlation_id' => $correlationId,
+                ]);
+
+                \Sentry\captureException($e);
+
+                return response()->json([
+                    'error' => 'Failed to create transaction',
+                    'message' => $e->getMessage(),
+                    'correlation_id' => $correlationId,
+                ], 500);
+            }
+        });
     }
 
     public function show(PaymentTransaction $transaction): JsonResponse

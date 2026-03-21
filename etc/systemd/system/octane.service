@@ -1,0 +1,53 @@
+[Unit]
+Description=CatVRF Octane Server (CANON 2026)
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/catvrf
+
+# Environment
+Environment="APP_ENV=production"
+Environment="APP_DEBUG=false"
+Environment="OCTANE_SERVER=swoole"
+Environment="OCTANE_PORT=8000"
+Environment="OCTANE_SWOOLE_WORKERS=auto"
+Environment="OCTANE_SWOOLE_TASK_WORKERS=auto"
+Environment="OCTANE_SWOOLE_MODE=process"
+
+# Pre-start optimization
+ExecStartPre=/usr/bin/php /var/www/catvrf/artisan optimize:clear
+ExecStartPre=/usr/bin/php /var/www/catvrf/artisan optimize
+ExecStartPre=/usr/bin/php /var/www/catvrf/artisan view:cache
+ExecStartPre=/usr/bin/php /var/www/catvrf/artisan route:cache
+ExecStartPre=/usr/bin/php /var/www/catvrf/artisan config:cache
+
+# Start Octane
+ExecStart=/usr/bin/php /var/www/catvrf/artisan octane:start \
+    --server=swoole \
+    --host=0.0.0.0 \
+    --port=8000 \
+    --workers=%I \
+    --task-workers=%I \
+    --mode=process
+
+# Restart policy
+Restart=always
+RestartSec=10
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=octane
+
+# Resource limits
+LimitNOFILE=65535
+LimitNPROC=65535
+
+# Graceful stop
+KillMode=process
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

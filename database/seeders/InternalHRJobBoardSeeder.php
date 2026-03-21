@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use App\Models\HRJobVacancy;
@@ -8,7 +10,10 @@ use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
-class InternalHRJobBoardSeeder extends Seeder
+/**
+ * Внутренняя доска объявлений HR (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class InternalHRJobBoardSeeder extends Seeder
 {
     /**
      * Run the database seeds.

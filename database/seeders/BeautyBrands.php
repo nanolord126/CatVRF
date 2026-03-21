@@ -1,7 +1,16 @@
 <?php
+
+declare(strict_types=1);
+
 namespace Database\Seeders;
-class BeautyBrands extends BaseBrandSeeder {
-    public function run(): void {
+
+/**
+ * Бренды красоты (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class BeautyBrands extends BaseBrandSeeder
+{
+    public function run(): void
+    {
         $this->seedBrands('Beauty', [
             ['name' => 'L\'Oreal', 'country' => 'France', 'description' => 'World leader in beauty.'],
             ['name' => 'Estée Lauder', 'country' => 'USA'], ['name' => 'Dyson', 'country' => 'UK'],

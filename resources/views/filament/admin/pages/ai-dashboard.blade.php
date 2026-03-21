@@ -2,26 +2,26 @@
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {{-- Total Embeddings Card --}}
         <div class="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-            <h3 class="text-sm font-medium text-gray-500">Total Neural Embeddings</h3>
+            <h3 class="text-sm font-medium text-gray-500">Всего нейронных эмбеддингов</h3>
             <p class="text-3xl font-bold mt-2 text-primary-600">{{ $totalEmbeddings }}</p>
         </div>
 
         {{-- AI Engine Status --}}
         <div class="p-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-            <h3 class="text-sm font-medium text-gray-500">Core Model (2026)</h3>
-            <p class="text-3xl font-bold mt-2 text-green-600">Active / gpt-4o-ext</p>
+            <h3 class="text-sm font-medium text-gray-500">Базовая модель (2026)</h3>
+            <p class="text-3xl font-bold mt-2 text-green-600">Активно / gpt-4o-ext</p>
         </div>
     </div>
 
     <div class="mt-8">
-        <h2 class="text-xl font-bold mb-4">Vertical Demand Heatmap (BigData Analytics)</h2>
+        <h2 class="text-xl font-bold mb-4">Тепловая карта спроса по вертикалям (BigData)</h2>
         <div class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm">
             <table class="w-full text-left">
                 <thead>
                     <tr>
-                        <th class="pb-3 border-b border-gray-100 dark:border-gray-700">Vertical Entity</th>
-                        <th class="pb-3 border-b border-gray-100 dark:border-gray-700">Interactions (24h)</th>
-                        <th class="pb-3 border-b border-gray-100 dark:border-gray-700">AI Trust Score Avg</th>
+                        <th class="pb-3 border-b border-gray-100 dark:border-gray-700">Сущность вертикали</th>
+                        <th class="pb-3 border-b border-gray-100 dark:border-gray-700">Взаимодействия (24ч)</th>
+                        <th class="pb-3 border-b border-gray-100 dark:border-gray-700">Средний рейтинг доверия ИИ</th>
                     </tr>
                 </thead>
                 <tbody>

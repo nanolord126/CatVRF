@@ -1,6 +1,14 @@
 <?php
+
+declare(strict_types=1);
+
 namespace Database\Seeders;
-class ElectronicsBrands extends BaseBrandSeeder {
+
+/**
+ * Бренды электроники (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class ElectronicsBrands extends BaseBrandSeeder
+{
     public function run(): void {
         $this->seedBrands('Electronics', [
             ['name' => 'Apple', 'country' => 'USA'], ['name' => 'Samsung', 'country' => 'South Korea'],

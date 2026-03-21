@@ -1,0 +1,725 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "CatVRF Multi-Vertical Marketplace API",
+    "description": "Production-ready REST API для всех 11 вертикалей платформы. Все endpoints защищены Sanctum токен-аутентификацией, используют tenant scoping и correlation ID для трассирования.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "CatVRF API Support",
+      "url": "https://catvrf.ru/support"
+    },
+    "license": {
+      "name": "proprietary",
+      "url": "https://catvrf.ru/license"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8000/api/v1",
+      "description": "Development server"
+    },
+    {
+      "url": "https://api.catvrf.ru/api/v1",
+      "description": "Production server"
+    }
+  ],
+  "paths": {
+    "/farm-orders": {
+      "get": {
+        "summary": "Список фермерских заказов",
+        "operationId": "listFarmOrders",
+        "tags": ["Farm Direct"],
+        "security": [
+          {
+            "sanctumAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 15
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Фильтр по статусу",
+            "schema": {
+              "type": "string",
+              "enum": ["pending", "confirmed", "delivered", "cancelled"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешно получен список заказов",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Success"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/FarmDirectOrder"
+                      }
+                    },
+                    "correlation_id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "example": "550e8400-e29b-41d4-a716-446655440000"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/UnauthorizedError"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitError"
+          }
+        }
+      },
+      "post": {
+        "summary": "Создать новый фермерский заказ",
+        "operationId": "createFarmOrder",
+        "tags": ["Farm Direct"],
+        "security": [
+          {
+            "sanctumAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateFarmOrderRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Заказ успешно создан",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Created"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/FarmDirectOrder"
+                    },
+                    "correlation_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      }
+    },
+    "/farm-orders/{id}": {
+      "get": {
+        "summary": "Получить деталь фермерского заказа",
+        "operationId": "showFarmOrder",
+        "tags": ["Farm Direct"],
+        "security": [
+          {
+            "sanctumAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Успешно получена деталь заказа",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/FarmDirectOrder"
+                    },
+                    "correlation_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFoundError"
+          }
+        }
+      },
+      "put": {
+        "summary": "Обновить фермерский заказ",
+        "operationId": "updateFarmOrder",
+        "tags": ["Farm Direct"],
+        "security": [
+          {
+            "sanctumAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateFarmOrderRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Заказ успешно обновлен",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/FarmDirectOrder"
+                    },
+                    "correlation_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Удалить фермерский заказ",
+        "operationId": "deleteFarmOrder",
+        "tags": ["Farm Direct"],
+        "security": [
+          {
+            "sanctumAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Заказ успешно удален (soft delete)"
+          }
+        }
+      }
+    },
+    "/diet-plans/{id}/subscribe": {
+      "post": {
+        "summary": "Подписаться на диет-план",
+        "operationId": "subscribeToDietPlan",
+        "tags": ["Healthy Food"],
+        "security": [
+          {
+            "sanctumAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Подписка успешно создана",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Subscribed to diet plan"
+                    },
+                    "correlation_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auto-parts-orders/compatible/{vin}": {
+      "get": {
+        "summary": "Найти совместимые запчасти по VIN",
+        "operationId": "findCompatibleParts",
+        "tags": ["Auto Parts"],
+        "security": [
+          {
+            "sanctumAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "vin",
+            "in": "path",
+            "required": true,
+            "description": "17-значный VIN код",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-HJ-NPR-Z0-9]{17}$",
+              "example": "WVWZZZ3CZ9E123456"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Список совместимых запчастей",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AutoPart"
+                      }
+                    },
+                    "correlation_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Неверный формат VIN",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": false
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "The vin field must match the pattern ^[A-HJ-NPR-Z0-9]{17}$"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pharmacy-orders/verify-prescription": {
+      "post": {
+        "summary": "Верифицировать рецепт для аптечного заказа",
+        "operationId": "verifyPharmacyPrescription",
+        "tags": ["Pharmacy"],
+        "security": [
+          {
+            "sanctumAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["prescription_id", "verified_by"],
+                "properties": {
+                  "prescription_id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "verified_by": {
+                    "type": "string",
+                    "description": "ID фармацевта, верифицирующего рецепт"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Рецепт успешно верифицирован",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Prescription verified"
+                    },
+                    "correlation_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "FarmDirectOrder": {
+        "type": "object",
+        "required": ["id", "product_id", "quantity_kg", "delivery_date", "status"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "example": "550e8400-e29b-41d4-a716-446655440000"
+          },
+          "product_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity_kg": {
+            "type": "number",
+            "format": "float",
+            "minimum": 0.5,
+            "maximum": 500,
+            "example": 2.5
+          },
+          "delivery_date": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-03-25"
+          },
+          "client_address": {
+            "type": "string",
+            "example": "ул. Ленина, 1, кв. 50"
+          },
+          "client_phone": {
+            "type": "string",
+            "pattern": "^\\+?[0-9]{10,15}$",
+            "example": "+79991234567"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "confirmed", "delivered", "cancelled"],
+            "example": "confirmed"
+          },
+          "correlation_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CreateFarmOrderRequest": {
+        "type": "object",
+        "required": ["product_id", "quantity_kg", "delivery_date", "client_address", "client_phone"],
+        "properties": {
+          "product_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "UUID фермерского продукта"
+          },
+          "quantity_kg": {
+            "type": "number",
+            "format": "float",
+            "minimum": 0.5,
+            "maximum": 500,
+            "description": "Количество в килограммах"
+          },
+          "delivery_date": {
+            "type": "string",
+            "format": "date",
+            "description": "Дата доставки (не ранее, чем завтра)"
+          },
+          "client_address": {
+            "type": "string",
+            "description": "Адрес доставки",
+            "minLength": 5
+          },
+          "client_phone": {
+            "type": "string",
+            "pattern": "^\\+?[0-9]{10,15}$",
+            "description": "Телефон клиента в формате +7XXXXXXXXXX или 8XXXXXXXXXX"
+          }
+        }
+      },
+      "UpdateFarmOrderRequest": {
+        "type": "object",
+        "properties": {
+          "quantity_kg": {
+            "type": "number",
+            "format": "float",
+            "minimum": 0.5,
+            "maximum": 500
+          },
+          "delivery_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "confirmed", "delivered", "cancelled"]
+          }
+        }
+      },
+      "AutoPart": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "example": "Масляный фильтр"
+          },
+          "sku": {
+            "type": "string",
+            "example": "OIL-FILTER-001"
+          },
+          "price": {
+            "type": "number",
+            "format": "float",
+            "example": 199.99
+          },
+          "compatible_vins": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": ["Volkswagen", "Skoda", "Audi"]
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "sanctumAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Sanctum API Token. Получить можно через POST /api/v1/auth/login"
+      }
+    },
+    "responses": {
+      "UnauthorizedError": {
+        "description": "Требуется аутентификация",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "example": false
+                },
+                "message": {
+                  "type": "string",
+                  "example": "Unauthenticated"
+                }
+              }
+            }
+          }
+        }
+      },
+      "NotFoundError": {
+        "description": "Ресурс не найден",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "example": false
+                },
+                "message": {
+                  "type": "string",
+                  "example": "Resource not found"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ValidationError": {
+        "description": "Ошибка валидации",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "example": false
+                },
+                "message": {
+                  "type": "string",
+                  "example": "The given data was invalid"
+                },
+                "errors": {
+                  "type": "object",
+                  "example": {
+                    "quantity_kg": ["The quantity kg field must be between 0.5 and 500."],
+                    "delivery_date": ["The delivery date field must be a date after today."]
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "RateLimitError": {
+        "description": "Превышен лимит запросов",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "success": {
+                  "type": "boolean",
+                  "example": false
+                },
+                "message": {
+                  "type": "string",
+                  "example": "Too many requests. Please try again later."
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Farm Direct",
+      "description": "API для управления фермерскими заказами"
+    },
+    {
+      "name": "Healthy Food",
+      "description": "API для управления диет-планами и здоровым питанием"
+    },
+    {
+      "name": "Auto Parts",
+      "description": "API для поиска автозапчастей по VIN и управления заказами"
+    },
+    {
+      "name": "Pharmacy",
+      "description": "API для аптечных заказов и верификации рецептов"
+    }
+  ]
+}

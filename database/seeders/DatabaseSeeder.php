@@ -1,55 +1,56 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
-class DatabaseSeeder extends Seeder
+/**
+ * Основной сидер для инициализации БД тестовыми данными.
+ * НЕ ЗАПУСКАТЬ В PRODUCTION.
+ */
+final class DatabaseSeeder extends Seeder
 {
     /**
      * Seed the application's database.
      */
     public function run(): void
     {
-        // Central Admin User (no tenant_id for platform admins)
-        User::updateOrCreate(
-            ['email' => 'admin@hotelbeauty.crm'],
-            [
-                'name' => 'Super Admin',
-                'password' => Hash::make('password'),
-                'tenant_id' => null,
-            ]
-        );
+        // Центральный админ (без tenant_id для платформы)
+        User::factory()->create([
+            'email' => 'admin@catvrf.local',
+            'name' => 'Super Admin',
+            'password' => Hash::make('admin123'),
+            'tenant_id' => null,
+            'correlation_id' => (string) Str::uuid(),
+            'tags' => ['user:superadmin', 'source:seeder'],
+        ]);
 
-        // Create Tenant 1 (Hotel)
-        if (!Tenant::find('grand-hotel')) {
-            $tenant1 = Tenant::create([
-                'id' => 'grand-hotel',
-                'name' => 'Grand Hotel Luxury',
-                'type' => 'hotel',
-                'plan' => 'premium',
-            ]);
-            $tenant1->domains()->create(['domain' => 'hotel.localhost']);
-        }
+        // Создаём основные tenants через factory
+        $hotelTenant = Tenant::factory()->create([
+            'name' => 'Grand Hotel Luxury',
+            'slug' => 'grand-hotel',
+            'tags' => ['vertical:hotel', 'source:seeder'],
+        ]);
 
-        // Create Tenant 2 (Beauty Salon)
-        if (!Tenant::find('spa-beauty')) {
-            $tenant2 = Tenant::create([
-                'id' => 'spa-beauty',
-                'name' => 'Elite Spa & Beauty',
-                'type' => 'beauty',
-                'plan' => 'premium',
-            ]);
-            $tenant2->domains()->create(['domain' => 'beauty.localhost']);
-        }
+        $beautyTenant = Tenant::factory()->create([
+            'name' => 'Elite Spa & Beauty',
+            'slug' => 'spa-beauty',
+            'tags' => ['vertical:beauty', 'source:seeder'],
+        ]);
 
-        $this->command->info('Tenants created: hotel.localhost, beauty.localhost');
+        $this->command->info('Основные tenants созданы');
 
+        // Вызываем все сидеры
         $this->call([
-            // BaseFilterSeeder::class,  // TODO: Fix filter table structure
+            RolePermissionSeeder::class,
+            UserSeeder::class,
+            // Verticals
             TaxiRideSeeder::class,
             FoodOrderSeeder::class,
             HotelBookingSeeder::class,
@@ -65,6 +66,20 @@ class DatabaseSeeder extends Seeder
             PropertySeeder::class,
             InsurancePolicySeeder::class,
             MessageSeeder::class,
+            // New Food Verticals
+            FarmDirectSeeder::class,
+            HealthyFoodSeeder::class,
+            ConfectionerySeeder::class,
+            MeatShopsSeeder::class,
+            OfficeCateringSeeder::class,
+            // New Goods Verticals
+            FurnitureSeeder::class,
+            ElectronicsSeeder::class,
+            ToysKidsSeeder::class,
+            AutoVerticalSeeder::class, // Includes AutoParts
+            PharmacySeeder::class,
         ]);
+
+        $this->command->info('✓ Все сидеры успешно выполнены');
     }
 }

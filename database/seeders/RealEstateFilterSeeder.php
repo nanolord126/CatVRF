@@ -1,10 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use Database\Seeders\VerticalFilterSeederBase;
 
-class RealEstateFilterSeeder extends VerticalFilterSeederBase
+/**
+ * Фильтры вертикали недвижимости (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class RealEstateFilterSeeder extends VerticalFilterSeederBase
 {
     public function run(): void
     {

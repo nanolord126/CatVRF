@@ -1,10 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use Database\Seeders\VerticalFilterSeederBase;
 
-class MarketplaceGeneralFilterSeeder extends VerticalFilterSeederBase
+/**
+ * Общие фильтры маркетплейса (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class MarketplaceGeneralFilterSeeder extends VerticalFilterSeederBase
 {
     public function run(): void
     {

@@ -1,10 +1,10 @@
 <?php
-
 namespace Database\Factories;
 
 use App\Models\Domains\Communication\Message;
-use App\Models\User;
+use App\Models\Tenant;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 class MessageFactory extends Factory
 {
@@ -13,12 +13,12 @@ class MessageFactory extends Factory
     public function definition(): array
     {
         return [
-            'tenant_id' => 1,
-            'sender_id' => User::factory(),
-            'receiver_id' => User::factory(),
-            'content' => $this->faker->sentence(),
-            'status' => $this->faker->randomElement(['sent', 'read', 'archived']),
-            'read_at' => $this->faker->optional()->dateTime(),
+            "tenant_id" => \Illuminate\Support\Facades\DB::table("tenants")->inRandomOrder()->value("id") ?? Tenant::factory(),
+            "content" => fake()->sentence(),
+            "status" => "sent",
+            "sender_id" => 1,
+            "receiver_id" => 2,
         ];
     }
 }
+

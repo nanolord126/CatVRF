@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace Database\Seeders;
 
@@ -9,7 +10,10 @@ use App\Models\BeautyProduct;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
-class BeautyShopSeeder extends Seeder
+/**
+ * Салон красоты (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class BeautyShopSeeder extends Seeder
 {
     /**
      * Run the database seeds.

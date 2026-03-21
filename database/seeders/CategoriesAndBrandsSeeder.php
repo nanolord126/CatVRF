@@ -1,14 +1,20 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use App\Models\{Category, Brand, Filter, FilterValue};
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
-class CategoriesAndBrandsSeeder extends Seeder
+/**
+ * Категории и бренды (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class CategoriesAndBrandsSeeder extends Seeder
 {
-    public function run(): void {
+    public function run(): void
+    {
         $verticals = [
             'Hotels' => ['Stay', 'Resort', 'Business'],
             'Beauty' => ['Cosmetics', 'HairCare', 'Skincare'],

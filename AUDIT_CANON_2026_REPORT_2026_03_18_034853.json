@@ -1,0 +1,1459 @@
+﻿{
+    "Modules":  [
+                    {
+                        "FilesNeedUpdate":  20,
+                        "CompliantFiles":  0,
+                        "Name":  "Authorization and RBAC",
+                        "Files":  [
+                                      {
+                                          "Name":  "TokenCreateRequest.php",
+                                          "PassedChecks":  3,
+                                          "Path":  ".\\app\\Http\\Requests\\Api\\V1\\TokenCreateRequest.php",
+                                          "Type":  "Request",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  true,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  7
+                                      },
+                                      {
+                                          "Name":  "TokenRefreshRequest.php",
+                                          "PassedChecks":  2,
+                                          "Path":  ".\\app\\Http\\Requests\\Api\\V1\\TokenRefreshRequest.php",
+                                          "Type":  "Request",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  8
+                                      },
+                                      {
+                                          "Name":  "BaseApiRequest.php",
+                                          "PassedChecks":  3,
+                                          "Path":  ".\\app\\Http\\Requests\\BaseApiRequest.php",
+                                          "Type":  "Request",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  true,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  7
+                                      },
+                                      {
+                                          "Name":  "CreateApiKeyRequest.php",
+                                          "PassedChecks":  2,
+                                          "Path":  ".\\app\\Http\\Requests\\CreateApiKeyRequest.php",
+                                          "Type":  "Request",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  8
+                                      },
+                                      {
+                                          "Name":  "PaymentInitRequest.php",
+                                          "PassedChecks":  2,
+                                          "Path":  ".\\app\\Http\\Requests\\PaymentInitRequest.php",
+                                          "Type":  "Request",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  8
+                                      },
+                                      {
+                                          "Name":  "PromoApplyRequest.php",
+                                          "PassedChecks":  2,
+                                          "Path":  ".\\app\\Http\\Requests\\PromoApplyRequest.php",
+                                          "Type":  "Request",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  8
+                                      },
+                                      {
+                                          "Name":  "ReferralClaimRequest.php",
+                                          "PassedChecks":  2,
+                                          "Path":  ".\\app\\Http\\Requests\\ReferralClaimRequest.php",
+                                          "Type":  "Request",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  8
+                                      },
+                                      {
+                                          "Name":  "AppointmentPolicy.php",
+                                          "PassedChecks":  3,
+                                          "Path":  ".\\app\\Policies\\AppointmentPolicy.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  true,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  7
+                                      },
+                                      {
+                                          "Name":  "BeautyPolicy.php",
+                                          "PassedChecks":  3,
+                                          "Path":  ".\\app\\Policies\\BeautyPolicy.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  true,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  7
+                                      },
+                                      {
+                                          "Name":  "BonusPolicy.php",
+                                          "PassedChecks":  2,
+                                          "Path":  ".\\app\\Policies\\BonusPolicy.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  8
+                                      },
+                                      {
+                                          "Name":  "CommissionPolicy.php",
+                                          "PassedChecks":  3,
+                                          "Path":  ".\\app\\Policies\\CommissionPolicy.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  true,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  7
+                                      },
+                                      {
+                                          "Name":  "EmployeePolicy.php",
+                                          "PassedChecks":  2,
+                                          "Path":  ".\\app\\Policies\\EmployeePolicy.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  8
+                                      },
+                                      {
+                                          "Name":  "HotelPolicy.php",
+                                          "PassedChecks":  3,
+                                          "Path":  ".\\app\\Policies\\HotelPolicy.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  true,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  7
+                                      },
+                                      {
+                                          "Name":  "InventoryPolicy.php",
+                                          "PassedChecks":  3,
+                                          "Path":  ".\\app\\Policies\\InventoryPolicy.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  true,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  7
+                                      },
+                                      {
+                                          "Name":  "OrderPolicy.php",
+                                          "PassedChecks":  3,
+                                          "Path":  ".\\app\\Policies\\OrderPolicy.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  true,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  7
+                                      },
+                                      {
+                                          "Name":  "PaymentPolicy.php",
+                                          "PassedChecks":  3,
+                                          "Path":  ".\\app\\Policies\\PaymentPolicy.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  true,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  7
+                                      },
+                                      {
+                                          "Name":  "PayoutPolicy.php",
+                                          "PassedChecks":  2,
+                                          "Path":  ".\\app\\Policies\\PayoutPolicy.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  8
+                                      },
+                                      {
+                                          "Name":  "PayrollPolicy.php",
+                                          "PassedChecks":  2,
+                                          "Path":  ".\\app\\Policies\\PayrollPolicy.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  8
+                                      },
+                                      {
+                                          "Name":  "ProductPolicy.php",
+                                          "PassedChecks":  3,
+                                          "Path":  ".\\app\\Policies\\ProductPolicy.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  true,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  7
+                                      },
+                                      {
+                                          "Name":  "ReferralPolicy.php",
+                                          "PassedChecks":  2,
+                                          "Path":  ".\\app\\Policies\\ReferralPolicy.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  8
+                                      }
+                                  ],
+                        "TotalFiles":  23
+                    },
+                    {
+                        "FilesNeedUpdate":  3,
+                        "CompliantFiles":  0,
+                        "Name":  "Notifications",
+                        "Files":  [
+                                      {
+                                          "Name":  "FlushCacheListener.php",
+                                          "PassedChecks":  2,
+                                          "Path":  ".\\app\\Listeners\\Octane\\FlushCacheListener.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  8
+                                      },
+                                      {
+                                          "Name":  "OctaneTickListener.php",
+                                          "PassedChecks":  3,
+                                          "Path":  ".\\app\\Listeners\\Octane\\OctaneTickListener.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  true,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  7
+                                      },
+                                      {
+                                          "Name":  "ResetRedisConnectionListener.php",
+                                          "PassedChecks":  3,
+                                          "Path":  ".\\app\\Listeners\\Octane\\ResetRedisConnectionListener.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  true,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  7
+                                      }
+                                  ],
+                        "TotalFiles":  3
+                    },
+                    {
+                        "FilesNeedUpdate":  0,
+                        "Files":  [
+
+                                  ],
+                        "Name":  "Marketing and Promo",
+                        "CompliantFiles":  0,
+                        "TotalFiles":  0
+                    },
+                    {
+                        "FilesNeedUpdate":  1,
+                        "CompliantFiles":  0,
+                        "Name":  "Analytics and BigData",
+                        "Files":  [
+                                      {
+                                          "Name":  "AnalyticsService.php",
+                                          "PassedChecks":  6,
+                                          "Path":  ".\\app\\Services\\AnalyticsService.php",
+                                          "Type":  "Service",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  true,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  true,
+                                                         "readonly_constructor":  true,
+                                                         "tenant_scoping":  true,
+                                                         "audit_log":  true,
+                                                         "no_todo":  false,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  4
+                                      }
+                                  ],
+                        "TotalFiles":  1
+                    },
+                    {
+                        "FilesNeedUpdate":  16,
+                        "CompliantFiles":  0,
+                        "Name":  "HR and Personnel",
+                        "Files":  [
+                                      {
+                                          "Name":  "LowPartsStock.php",
+                                          "PassedChecks":  4,
+                                          "Path":  ".\\app\\Domains\\Auto\\Events\\LowPartsStock.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  true,
+                                                         "readonly_constructor":  true,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  6
+                                      },
+                                      {
+                                          "Name":  "RepairWorkCompleted.php",
+                                          "PassedChecks":  4,
+                                          "Path":  ".\\app\\Domains\\Auto\\Events\\RepairWorkCompleted.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  true,
+                                                         "readonly_constructor":  true,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  6
+                                      },
+                                      {
+                                          "Name":  "RideCompleted.php",
+                                          "PassedChecks":  4,
+                                          "Path":  ".\\app\\Domains\\Auto\\Events\\RideCompleted.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  true,
+                                                         "readonly_constructor":  true,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  6
+                                      },
+                                      {
+                                          "Name":  "AutoPartResource.php",
+                                          "PassedChecks":  2,
+                                          "Path":  ".\\app\\Domains\\Auto\\Filament\\Resources\\AutoPartResource.php",
+                                          "Type":  "Resource",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  8
+                                      },
+                                      {
+                                          "Name":  "AutoServiceOrderResource.php",
+                                          "PassedChecks":  2,
+                                          "Path":  ".\\app\\Domains\\Auto\\Filament\\Resources\\AutoServiceOrderResource.php",
+                                          "Type":  "Resource",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  8
+                                      },
+                                      {
+                                          "Name":  "B2BAutoStorefrontResource.php",
+                                          "PassedChecks":  2,
+                                          "Path":  ".\\app\\Domains\\Auto\\Filament\\Resources\\B2BAutoStorefrontResource.php",
+                                          "Type":  "Resource",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  8
+                                      },
+                                      {
+                                          "Name":  "CarWashBookingResource.php",
+                                          "PassedChecks":  2,
+                                          "Path":  ".\\app\\Domains\\Auto\\Filament\\Resources\\CarWashBookingResource.php",
+                                          "Type":  "Resource",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  8
+                                      },
+                                      {
+                                          "Name":  "TaxiDriverResource.php",
+                                          "PassedChecks":  2,
+                                          "Path":  ".\\app\\Domains\\Auto\\Filament\\Resources\\TaxiDriverResource.php",
+                                          "Type":  "Resource",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  8
+                                      },
+                                      {
+                                          "Name":  "TaxiVehicleResource.php",
+                                          "PassedChecks":  2,
+                                          "Path":  ".\\app\\Domains\\Auto\\Filament\\Resources\\TaxiVehicleResource.php",
+                                          "Type":  "Resource",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  8
+                                      },
+                                      {
+                                          "Name":  "AutoPartController.php",
+                                          "PassedChecks":  6,
+                                          "Path":  ".\\app\\Domains\\Auto\\Http\\Controllers\\AutoPartController.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  true,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  true,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  true,
+                                                         "tenant_scoping":  true,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  4
+                                      },
+                                      {
+                                          "Name":  "AutoServiceOrderController.php",
+                                          "PassedChecks":  6,
+                                          "Path":  ".\\app\\Domains\\Auto\\Http\\Controllers\\AutoServiceOrderController.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  true,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  true,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  true,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  true,
+                                                         "audit_log":  true,
+                                                         "no_todo":  false,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  4
+                                      },
+                                      {
+                                          "Name":  "B2BAutoController.php",
+                                          "PassedChecks":  7,
+                                          "Path":  ".\\app\\Domains\\Auto\\Http\\Controllers\\B2BAutoController.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  true,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  true,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  true,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  true,
+                                                         "audit_log":  true,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  3
+                                      },
+                                      {
+                                          "Name":  "CarWashBookingController.php",
+                                          "PassedChecks":  6,
+                                          "Path":  ".\\app\\Domains\\Auto\\Http\\Controllers\\CarWashBookingController.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  true,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  true,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  true,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  true,
+                                                         "audit_log":  true,
+                                                         "no_todo":  false,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  4
+                                      },
+                                      {
+                                          "Name":  "TaxiController.php",
+                                          "PassedChecks":  7,
+                                          "Path":  ".\\app\\Domains\\Auto\\Http\\Controllers\\TaxiController.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  true,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  true,
+                                                         "readonly_constructor":  true,
+                                                         "tenant_scoping":  true,
+                                                         "audit_log":  true,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  3
+                                      },
+                                      {
+                                          "Name":  "TaxiDriverController.php",
+                                          "PassedChecks":  7,
+                                          "Path":  ".\\app\\Domains\\Auto\\Http\\Controllers\\TaxiDriverController.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  true,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  true,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  true,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  true,
+                                                         "audit_log":  true,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  3
+                                      },
+                                      {
+                                          "Name":  "TaxiRideController.php",
+                                          "PassedChecks":  7,
+                                          "Path":  ".\\app\\Domains\\Auto\\Http\\Controllers\\TaxiRideController.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  true,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  true,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  true,
+                                                         "readonly_constructor":  true,
+                                                         "tenant_scoping":  true,
+                                                         "audit_log":  true,
+                                                         "no_todo":  false,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  3
+                                      },
+                                      {
+                                          "Name":  "RideReminderJob.php",
+                                          "PassedChecks":  4,
+                                          "Path":  ".\\app\\Domains\\Auto\\Jobs\\RideReminderJob.php",
+                                          "Type":  "Notification",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  true,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  true,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  true,
+                                                         "no_todo":  false,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  6
+                                      },
+                                      {
+                                          "Name":  "SurgeRecalculationJob.php",
+                                          "PassedChecks":  6,
+                                          "Path":  ".\\app\\Domains\\Auto\\Jobs\\SurgeRecalculationJob.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  true,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  true,
+                                                         "readonly_constructor":  true,
+                                                         "tenant_scoping":  true,
+                                                         "audit_log":  true,
+                                                         "no_todo":  false,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  4
+                                      },
+                                      {
+                                          "Name":  "DeductRepairPartsListener.php",
+                                          "PassedChecks":  6,
+                                          "Path":  ".\\app\\Domains\\Auto\\Listeners\\DeductRepairPartsListener.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  true,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  true,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  true,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  true,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  4
+                                      },
+                                      {
+                                          "Name":  "LowPartsStockAlertListener.php",
+                                          "PassedChecks":  4,
+                                          "Path":  ".\\app\\Domains\\Auto\\Listeners\\LowPartsStockAlertListener.php",
+                                          "Type":  "Notification",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  true,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  true,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  true,
+                                                         "no_todo":  false,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  6
+                                      }
+                                  ],
+                        "TotalFiles":  830
+                    },
+                    {
+                        "FilesNeedUpdate":  0,
+                        "Files":  [
+
+                                  ],
+                        "Name":  "Payroll and Calculations",
+                        "CompliantFiles":  0,
+                        "TotalFiles":  0
+                    },
+                    {
+                        "FilesNeedUpdate":  12,
+                        "CompliantFiles":  0,
+                        "Name":  "Couriers and Logistics",
+                        "Files":  [
+                                      {
+                                          "Name":  "CourierAssigned.php",
+                                          "PassedChecks":  3,
+                                          "Path":  ".\\app\\Domains\\Logistics\\Events\\CourierAssigned.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  true,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  7
+                                      },
+                                      {
+                                          "Name":  "ShipmentCreated.php",
+                                          "PassedChecks":  3,
+                                          "Path":  ".\\app\\Domains\\Logistics\\Events\\ShipmentCreated.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  true,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  7
+                                      },
+                                      {
+                                          "Name":  "ShipmentDelivered.php",
+                                          "PassedChecks":  3,
+                                          "Path":  ".\\app\\Domains\\Logistics\\Events\\ShipmentDelivered.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  true,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  7
+                                      },
+                                      {
+                                          "Name":  "B2BLogisticsStorefrontResource.php",
+                                          "PassedChecks":  2,
+                                          "Path":  ".\\app\\Domains\\Logistics\\Filament\\Resources\\B2BLogisticsStorefrontResource.php",
+                                          "Type":  "Resource",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  8
+                                      },
+                                      {
+                                          "Name":  "CourierRatingResource.php",
+                                          "PassedChecks":  2,
+                                          "Path":  ".\\app\\Domains\\Logistics\\Filament\\Resources\\CourierRatingResource.php",
+                                          "Type":  "Resource",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  8
+                                      },
+                                      {
+                                          "Name":  "CourierServiceResource.php",
+                                          "PassedChecks":  2,
+                                          "Path":  ".\\app\\Domains\\Logistics\\Filament\\Resources\\CourierServiceResource.php",
+                                          "Type":  "Resource",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  8
+                                      },
+                                      {
+                                          "Name":  "ShipmentRatingResource.php",
+                                          "PassedChecks":  2,
+                                          "Path":  ".\\app\\Domains\\Logistics\\Filament\\Resources\\ShipmentRatingResource.php",
+                                          "Type":  "Resource",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  8
+                                      },
+                                      {
+                                          "Name":  "ShipmentResource.php",
+                                          "PassedChecks":  2,
+                                          "Path":  ".\\app\\Domains\\Logistics\\Filament\\Resources\\ShipmentResource.php",
+                                          "Type":  "Resource",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  8
+                                      },
+                                      {
+                                          "Name":  "ShipmentTrackingResource.php",
+                                          "PassedChecks":  2,
+                                          "Path":  ".\\app\\Domains\\Logistics\\Filament\\Resources\\ShipmentTrackingResource.php",
+                                          "Type":  "Resource",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  8
+                                      },
+                                      {
+                                          "Name":  "B2BLogisticsController.php",
+                                          "PassedChecks":  7,
+                                          "Path":  ".\\app\\Domains\\Logistics\\Http\\Controllers\\B2BLogisticsController.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  true,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  true,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  true,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  true,
+                                                         "audit_log":  true,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  3
+                                      },
+                                      {
+                                          "Name":  "CourierRatingController.php",
+                                          "PassedChecks":  7,
+                                          "Path":  ".\\app\\Domains\\Logistics\\Http\\Controllers\\CourierRatingController.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  true,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  true,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  true,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  true,
+                                                         "audit_log":  true,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  3
+                                      },
+                                      {
+                                          "Name":  "CourierServiceController.php",
+                                          "PassedChecks":  8,
+                                          "Path":  ".\\app\\Domains\\Logistics\\Http\\Controllers\\CourierServiceController.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  true,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  true,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  true,
+                                                         "readonly_constructor":  true,
+                                                         "tenant_scoping":  true,
+                                                         "audit_log":  true,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  2
+                                      },
+                                      {
+                                          "Name":  "ShipmentController.php",
+                                          "PassedChecks":  8,
+                                          "Path":  ".\\app\\Domains\\Logistics\\Http\\Controllers\\ShipmentController.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  true,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  true,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  true,
+                                                         "readonly_constructor":  true,
+                                                         "tenant_scoping":  true,
+                                                         "audit_log":  true,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  2
+                                      },
+                                      {
+                                          "Name":  "ShipmentInsuranceController.php",
+                                          "PassedChecks":  7,
+                                          "Path":  ".\\app\\Domains\\Logistics\\Http\\Controllers\\ShipmentInsuranceController.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  true,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  true,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  true,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  true,
+                                                         "audit_log":  true,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  3
+                                      },
+                                      {
+                                          "Name":  "ShipmentTrackingController.php",
+                                          "PassedChecks":  4,
+                                          "Path":  ".\\app\\Domains\\Logistics\\Http\\Controllers\\ShipmentTrackingController.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  true,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  true,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  6
+                                      },
+                                      {
+                                          "Name":  "CalculateCourierEarningsJob.php",
+                                          "PassedChecks":  6,
+                                          "Path":  ".\\app\\Domains\\Logistics\\Jobs\\CalculateCourierEarningsJob.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  true,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  true,
+                                                         "readonly_constructor":  true,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  true,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  4
+                                      },
+                                      {
+                                          "Name":  "UpdateShipmentStatusJob.php",
+                                          "PassedChecks":  7,
+                                          "Path":  ".\\app\\Domains\\Logistics\\Jobs\\UpdateShipmentStatusJob.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  true,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  true,
+                                                         "readonly_constructor":  true,
+                                                         "tenant_scoping":  true,
+                                                         "audit_log":  true,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  3
+                                      },
+                                      {
+                                          "Name":  "DeductShipmentCommissionListener.php",
+                                          "PassedChecks":  7,
+                                          "Path":  ".\\app\\Domains\\Logistics\\Listeners\\DeductShipmentCommissionListener.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  true,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  true,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  true,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  true,
+                                                         "audit_log":  true,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  3
+                                      },
+                                      {
+                                          "Name":  "RefundShipmentCommissionListener.php",
+                                          "PassedChecks":  7,
+                                          "Path":  ".\\app\\Domains\\Logistics\\Listeners\\RefundShipmentCommissionListener.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  true,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  true,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  true,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  true,
+                                                         "audit_log":  true,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  3
+                                      },
+                                      {
+                                          "Name":  "B2BLogisticsOrder.php",
+                                          "PassedChecks":  4,
+                                          "Path":  ".\\app\\Domains\\Logistics\\Models\\B2BLogisticsOrder.php",
+                                          "Type":  "Model",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  true,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  true,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  6
+                                      }
+                                  ],
+                        "TotalFiles":  39
+                    },
+                    {
+                        "FilesNeedUpdate":  7,
+                        "CompliantFiles":  0,
+                        "Name":  "Payments and Wallet",
+                        "Files":  [
+                                      {
+                                          "Name":  "FiscalService.php",
+                                          "PassedChecks":  5,
+                                          "Path":  ".\\app\\Services\\Payment\\FiscalService.php",
+                                          "Type":  "Service",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  true,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  true,
+                                                         "readonly_constructor":  true,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  true,
+                                                         "no_todo":  false,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  5
+                                      },
+                                      {
+                                          "Name":  "PaymentGatewayInterface.php",
+                                          "PassedChecks":  2,
+                                          "Path":  ".\\app\\Services\\Payment\\Gateways\\PaymentGatewayInterface.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  8
+                                      },
+                                      {
+                                          "Name":  "SberGateway.php",
+                                          "PassedChecks":  4,
+                                          "Path":  ".\\app\\Services\\Payment\\Gateways\\SberGateway.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  true,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  true,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  6
+                                      },
+                                      {
+                                          "Name":  "TinkoffGateway.php",
+                                          "PassedChecks":  4,
+                                          "Path":  ".\\app\\Services\\Payment\\Gateways\\TinkoffGateway.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  true,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  true,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  6
+                                      },
+                                      {
+                                          "Name":  "TochkaGateway.php",
+                                          "PassedChecks":  4,
+                                          "Path":  ".\\app\\Services\\Payment\\Gateways\\TochkaGateway.php",
+                                          "Type":  "Other",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  true,
+                                                         "tenant_scoping":  false,
+                                                         "audit_log":  true,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  6
+                                      },
+                                      {
+                                          "Name":  "IdempotencyService.php",
+                                          "PassedChecks":  8,
+                                          "Path":  ".\\app\\Services\\Payment\\IdempotencyService.php",
+                                          "Type":  "Service",
+                                          "Checks":  {
+                                                         "db_transaction":  true,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  true,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  true,
+                                                         "readonly_constructor":  true,
+                                                         "tenant_scoping":  true,
+                                                         "audit_log":  true,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  2
+                                      },
+                                      {
+                                          "Name":  "PaymentGatewayService.php",
+                                          "PassedChecks":  7,
+                                          "Path":  ".\\app\\Services\\Payment\\PaymentGatewayService.php",
+                                          "Type":  "Service",
+                                          "Checks":  {
+                                                         "db_transaction":  true,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  true,
+                                                         "readonly_constructor":  true,
+                                                         "tenant_scoping":  true,
+                                                         "audit_log":  true,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  3
+                                      },
+                                      {
+                                          "Name":  "PaymentIdempotencyService.php",
+                                          "PassedChecks":  3,
+                                          "Path":  ".\\app\\Services\\Payment\\PaymentIdempotencyService.php",
+                                          "Type":  "Service",
+                                          "Checks":  {
+                                                         "db_transaction":  false,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  false,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  true,
+                                                         "audit_log":  false,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  7
+                                      },
+                                      {
+                                          "Name":  "WalletService.php",
+                                          "PassedChecks":  6,
+                                          "Path":  ".\\app\\Services\\Wallet\\WalletService.php",
+                                          "Type":  "Service",
+                                          "Checks":  {
+                                                         "db_transaction":  true,
+                                                         "rate_limiter":  false,
+                                                         "error_handling":  false,
+                                                         "declare_strict_types":  true,
+                                                         "correlation_id":  true,
+                                                         "readonly_constructor":  false,
+                                                         "tenant_scoping":  true,
+                                                         "audit_log":  true,
+                                                         "no_todo":  true,
+                                                         "fraud_check":  false
+                                                     },
+                                          "Issues":  4
+                                      }
+                                  ],
+                        "TotalFiles":  9
+                    }
+                ],
+    "FilesNeedUpdate":  59,
+    "TotalFiles":  905
+}

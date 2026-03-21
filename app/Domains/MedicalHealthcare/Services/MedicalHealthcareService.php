@@ -1,0 +1,102 @@
+<?php declare(strict_types=1);
+
+namespace App\Domains\MedicalHealthcare\Services;
+
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
+use App\Domains\MedicalHealthcare\Models\Clinic;
+use App\Domains\MedicalHealthcare\Models\Doctor;
+use App\Domains\MedicalHealthcare\Models\MedicalAppointment;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+
+final class MedicalHealthcareService
+{
+    public function __construct(
+        private readonly Clinic $clinicModel,
+        private readonly Doctor $doctorModel,
+    ) {}
+
+    public function createClinic(array $data): Clinic
+    {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'createClinic'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createClinic', ['domain' => __CLASS__]);
+
+        return DB::transaction(function () use ($data) {
+            $clinic = $this->clinicModel->create($data);
+            Log::channel('audit')->info('Клиника создана', [
+                'clinic_id' => $clinic->id,
+                'correlation_id' => $data['correlation_id'] ?? null,
+            ]);
+            return $clinic;
+        });
+    }
+
+    public function scheduleAppointment(array $data): MedicalAppointment
+    {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'scheduleAppointment'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL scheduleAppointment', ['domain' => __CLASS__]);
+
+        return DB::transaction(function () use ($data) {
+            $appointment = MedicalAppointment::create($data);
+            Log::channel('audit')->info('Прием назначен', [
+                'appointment_id' => $appointment->id,
+                'correlation_id' => $data['correlation_id'] ?? null,
+            ]);
+            return $appointment;
+        });
+    }
+
+    public function getAvailableDoctors(int $clinicId, string $specialty): Collection
+    {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'getAvailableDoctors'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getAvailableDoctors', ['domain' => __CLASS__]);
+
+        return $this->doctorModel
+            ->where('clinic_id', $clinicId)
+            ->where('specialty', $specialty)
+            ->where('is_available', true)
+            ->get();
+    }
+
+    public function completeAppointment(int $appointmentId): bool
+    {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'completeAppointment'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL completeAppointment', ['domain' => __CLASS__]);
+
+        return DB::transaction(function () use ($appointmentId) {
+            $appointment = MedicalAppointment::findOrFail($appointmentId);
+            $appointment->update(['status' => 'completed']);
+            Log::channel('audit')->info('Прием завершён', ['appointment_id' => $appointmentId]);
+            return true;
+        });
+    }
+
+    public function cancelAppointment(int $appointmentId, string $reason): bool
+    {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'cancelAppointment'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL cancelAppointment', ['domain' => __CLASS__]);
+
+        return DB::transaction(function () use ($appointmentId, $reason) {
+            $appointment = MedicalAppointment::findOrFail($appointmentId);
+            $appointment->update(['status' => 'cancelled', 'cancellation_reason' => $reason]);
+            Log::channel('audit')->warning('Прием отменён', [
+                'appointment_id' => $appointmentId,
+                'reason' => $reason,
+            ]);
+            return true;
+        });
+    }
+}

@@ -1,8 +1,21 @@
-﻿<?php  declare(strict_types=1);
-
+<?php
+declare(strict_types=1);
 
 namespace Database\Seeders;
-use App\Models\Tenants\AnimalProduct;
-use Illuminate\Database\Seeder;  final 
 
-final class AnimalProductSeeder extends Seeder { 	public function run(): void 	{ 		AnimalProduct::create([ 			'name' => 'Premium Dog Food - Beef & Rice', 			'description' => 'High-quality dry dog food with balanced nutrients', 			'category' => 'food', 			'subcategory' => 'dry_food', 			'animal_type' => 'dog', 			'brand' => 'PetNutrition Pro', 			'price' => 45.99, 			'quantity_in_stock' => 150, 			'unit_of_measure' => 'bag', 			'manufacturer' => 'PetFood Industries', 			'ingredients' => json_encode(['beef', 'rice', 'vegetables', 'vitamins']), 			'benefits' => json_encode(['complete_nutrition', 'healthy_coat', 'digestive_health']), 			'expiry_date' => now()->addMonths(12)->toDateString(), 			'status' => 'published', 		]);  		AnimalProduct::create([ 			'name' => 'Cat Litter - Clumping Formula', 			'description' => 'Premium clumping cat litter with odor control', 			'category' => 'supplies', 			'subcategory' => 'litter', 			'animal_type' => 'cat', 			'brand' => 'CleanPaws', 			'price' => 18.50, 			'quantity_in_stock' => 200, 			'unit_of_measure' => 'bag', 			'manufacturer' => 'CleanPaws Corporation', 			'ingredients' => json_encode(['bentonite', 'odor_control_agents']), 			'benefits' => json_encode(['excellent_clumping', 'odor_control', 'dust_free']), 			'status' => 'published', 		]);  		AnimalProduct::create([ 			'name' => 'Multivitamin Dog Supplements', 			'description' => 'Complete vitamin and mineral supplement for dogs', 			'category' => 'supplements', 			'subcategory' => 'vitamins', 			'animal_type' => 'dog', 			'brand' => 'VitaPet', 			'price' => 35.00, 			'quantity_in_stock' => 80, 			'unit_of_measure' => 'bottle', 			'manufacturer' => 'VitaPet Labs', 			'ingredients' => json_encode(['vitamin_A', 'vitamin_D3', 'calcium', 'phosphorus']), 			'benefits' => json_encode(['bone_health', 'immune_support', 'coat_shine']), 			'expiry_date' => now()->addMonths(18)->toDateString(), 			'status' => 'published', 		]);  		AnimalProduct::create([ 			'name' => 'Orthopedic Pet Bed - Large', 			'description' => 'Comfortable orthopedic memory foam bed for large pets', 			'category' => 'accessories', 			'subcategory' => 'bedding', 			'animal_type' => 'dog', 			'brand' => 'ComfyPets', 			'price' => 120.00, 			'quantity_in_stock' => 35, 			'unit_of_measure' => 'piece', 			'manufacturer' => 'ComfyPets Manufacturing', 			'benefits' => json_encode(['joint_support', 'pain_relief', 'washable_cover']), 			'status' => 'published', 		]);  		AnimalProduct::create([ 			'name' => 'Fish Tank Filter - 50 Gallon', 			'description' => 'Advanced aquarium filter with activated carbon', 			'category' => 'equipment', 			'subcategory' => 'filters', 			'animal_type' => 'fish', 			'brand' => 'AquaTech', 			'price' => 89.99, 			'quantity_in_stock' => 45, 			'unit_of_measure' => 'piece', 			'manufacturer' => 'AquaTech Industries', 			'benefits' => json_encode(['crystal_clear_water', 'reduces_ammonia', 'quiet_operation']), 			'status' => 'published', 		]);  		AnimalProduct::create([ 			'name' => 'Small Animal Hay - Timothy Grass', 			'description' => 'Fresh timothy hay for rabbits, guinea pigs, and other small animals', 			'category' => 'food', 			'subcategory' => 'hay', 			'animal_type' => 'small_animals', 			'brand' => 'NatureHay', 			'price' => 12.50, 			'quantity_in_stock' => 300, 			'unit_of_measure' => 'bag', 			'manufacturer' => 'NatureHay Farm', 			'ingredients' => json_encode(['timothy_grass', 'natural_fibers']), 			'benefits' => json_encode(['digestive_health', 'natural_nutrition', 'high_fiber']), 			'status' => 'published', 		]); 	} }
+use App\Models\Tenants\AnimalProduct;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
+
+/**
+ * Товары для животных (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class AnimalProductSeeder extends Seeder
+{
+    public function run(): void
+    {
+        AnimalProduct::factory()
+            ->count(7)
+            ->create(['correlation_id' => (string) Str::uuid(), 'tags' => ['source:seeder']]);
+    }
+}

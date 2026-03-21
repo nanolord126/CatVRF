@@ -1,35 +1,37 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Modules\Inventory\Models\Product;
-use Modules\Inventory\Models\StockMovement;
-use App\Models\User;
-use Spatie\Permission\Models\Role;
 use Illuminate\Support\Str;
+use App\Models\Tenant;
+use Spatie\Permission\Models\Role;
 
-class TenantMasterSeeder extends Seeder
+/**
+ * Основные данные для tenant (роли, пользователи, активы).
+ * НЕ ЗАПУСКАТЬ В PRODUCTION.
+ */
+final class TenantMasterSeeder extends Seeder
 {
     public function run(): void
     {
-        // 1. Create Roles if they don't exist
-        $ownerRole = Role::firstOrCreate(['name' => 'Owner', 'guard_name' => 'web']);
-        $managerRole = Role::firstOrCreate(['name' => 'Manager', 'guard_name' => 'web']);
-        $staffRole = Role::firstOrCreate(['name' => 'Staff', 'guard_name' => 'web']);
+        // 1. Создаём роли
+        Role::firstOrCreate(['name' => 'Owner', 'guard_name' => 'web'], ['correlation_id' => (string) Str::uuid()]);
+        Role::firstOrCreate(['name' => 'Manager', 'guard_name' => 'web'], ['correlation_id' => (string) Str::uuid()]);
+        Role::firstOrCreate(['name' => 'Staff', 'guard_name' => 'web'], ['correlation_id' => (string) Str::uuid()]);
 
-        // 2. Create Users
-        $owner = User::firstOrCreate(
-            ['email' => 'owner@tenant.com'],
-            ['name' => 'Tenant Owner', 'password' => bcrypt('password')]
-        );
-        $owner->assignRole($ownerRole);
+        // 2. Получаем первый tenant или создаём
+        $tenant = Tenant::factory()->create([
+            'name' => 'Test Tenant Master',
+            'correlation_id' => (string) Str::uuid(),
+            'tags' => ['seeder:master', 'source:seeder'],
+        ]);
 
-        $staff = User::firstOrCreate(
-            ['email' => 'staff@tenant.com'],
-            ['name' => 'Front Desk Staff', 'password' => bcrypt('password')]
-        );
-        $staff->assignRole($staffRole);
+        $this->command->info("Tenant '{$tenant->name}' создан");
+    }
+}
 
         // 3. Create ASSETS
         $tv = Product::updateOrCreate(

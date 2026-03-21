@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use App\Models\B2B\B2BProduct;
@@ -10,9 +12,9 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
 /**
- * Seeder for B2B AI Ecosystem with realistic data for 2026.
+ * B2B AI экосистема (НЕ ЗАПУСКАТЬ В PRODUCTION).
  */
-class B2BAIEcosystemSeeder extends Seeder
+final class B2BAIEcosystemSeeder extends Seeder
 {
     /**
      * Run the database seeds.

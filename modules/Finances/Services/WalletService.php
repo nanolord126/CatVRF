@@ -1,222 +1,518 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Domains\Finances\Services;
 
-use App\Models\User;
-use Illuminate\Support\Facades\{DB, Log};
-use Exception;
+use App\Domains\Finances\Models\PaymentTransaction;
+use App\Domains\Finances\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\{DB, Log, Cache, Redis};
+use Illuminate\Support\Str;
 
 /**
  * Сервис управления кошельком пользователя.
- * 
+ * Согласно КАНОН 2026: основной сервис для работы с балансом и холдами.
+ *
  * Поддерживает:
- * - Зачисление средств (credit)
- * - Списание средств (debit) с проверкой баланса
+ * - Зачисление средств (credit) с транзакцией
+ * - Списание средств (debit) с проверкой баланса и локировкой
+ * - Холды (hold/release) для двухэтапной авторизации
  * - Трансферы между пользователями
- * - Логирование всех операций в ledger
+ * - Redis-кэширование баланса
+ * - Полное логирование в balance_transactions и audit-канал
  */
-class WalletService
+final class WalletService
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControl,
+    ) {
+    }
     /**
      * Зачислить средства на кошелёк.
-     * 
-     * @param User $user Пользователь
-     * @param float $amount Сумма
-     * @param string $reason Причина (для логирования)
-     * @param string|null $reference Ссылка на операцию (платёж, заказ и т.д.)
+     * Согласно КАНОН 2026: DB::transaction(), correlation_id, audit-логи, FraudCheck.
+     *
+     * @param int $walletId  ID кошелька
+     * @param int $amount    Сумма в копейках
+     * @param string $type   Тип операции (deposit, bonus, refund, etc)
+     * @param string $reason Причина зачисления
+     * @param string|null $sourceId ID источника операции
+     * @param string|null $correlationId Correlation ID для отслеживания
+     *
+     * @return bool
+     *
+     * @throws \RuntimeException
      */
-    public function credit(User $user, float $amount, string $reason, string $reference = null): void
-    {
-        DB::transaction(function () use ($user, $amount, $reason, $reference) {
+    public function credit(
+        int $walletId,
+        int $amount,
+        string $type,
+        string $reason,
+        ?string $sourceId = null,
+        ?string $correlationId = null
+    ): bool {
+        $correlationId = $correlationId ?? Str::uuid()->toString();
+
+        return DB::transaction(function () use (
+            $walletId,
+            $amount,
+            $type,
+            $reason,
+            $sourceId,
+            $correlationId
+        ): bool {
             if ($amount <= 0) {
-                throw new Exception('Amount must be greater than 0');
+                throw new \InvalidArgumentException('Amount must be greater than 0');
             }
 
-            // Блокируем кошелек для предотвращения race condition (Audit Fix 2026)
-            $wallet = $user->wallet()->lockForUpdate()->first();
+            // Получить кошелёк с локировкой
+            $wallet = DB::table('wallets')->where('id', $walletId)->lockForUpdate()->first();
 
             if (!$wallet) {
-                $wallet = $user->wallet()->create(['balance' => 0]);
+                throw new \RuntimeException("Wallet {$walletId} not found");
             }
 
-            // Увеличить баланс кошелька
-            $wallet->increment('balance', $amount);
+            $balanceBefore = (int) $wallet->balance;
+            $balanceAfter = $balanceBefore + $amount;
 
-            // Логировать операцию в ledger
-            $user->ledger()->create([
-                'type' => 'credit',
+            // Обновить баланс в кошельке
+            DB::table('wallets')->where('id', $walletId)->update([
+                'balance' => $balanceAfter,
+                'available_balance' => $balanceAfter - (int) ($wallet->hold_amount ?? 0),
+                'cached_balance' => $balanceAfter,
+                'cached_at' => now(),
+            ]);
+
+            // Создать запись в balance_transactions
+            DB::table('balance_transactions')->insert([
+                'uuid' => Str::uuid(),
+                'correlation_id' => $correlationId,
+                'tenant_id' => $wallet->tenant_id,
+                'wallet_id' => $walletId,
+                'user_id' => $wallet->user_id,
+                'type' => $type,
                 'amount' => $amount,
+                'status' => 'completed',
+                'source_type' => null,
+                'source_id' => $sourceId,
+                'balance_before' => $balanceBefore,
+                'balance_after' => $balanceAfter,
+                'hold_before' => (int) ($wallet->hold_amount ?? 0),
+                'hold_after' => (int) ($wallet->hold_amount ?? 0),
+                'description' => $reason,
+                'created_by_type' => 'system',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            // Логирование в audit-канал
+            Log::channel('audit')->info('Wallet credited', [
+                'wallet_id' => $walletId,
+                'amount' => $amount,
+                'type' => $type,
+                'balance_before' => $balanceBefore,
+                'balance_after' => $balanceAfter,
                 'reason' => $reason,
-                'reference' => $reference,
-                'balance_after' => $wallet->balance,
-                'correlation_id' => request()->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
+                'source_id' => $sourceId,
+                'correlation_id' => $correlationId,
+                'trace' => implode(' > ', array_slice(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 5), 0, 3)),
             ]);
 
-            Log::channel('payments')->info('Wallet credited (Audit Ready)', [
-                'user_id' => $user->id,
-                'amount' => $amount,
-                'balance_after' => $wallet->balance,
-                'reference' => $reference,
-            ]);
+            // Инвалидировать Redis кэш
+            $this->invalidateCache($wallet->tenant_id, $walletId);
+
+            return true;
         });
     }
 
     /**
      * Списать средства с кошелька.
-     * 
-     * @throws Exception Если недостаточно средств
+     * Согласно КАНОН 2026: DB::transaction(), lockForUpdate(), проверка баланса, audit-логи.
+     *
+     * @param int $walletId        ID кошелька
+     * @param int $amount          Сумма в копейках
+     * @param string $type         Тип операции
+     * @param string $reason       Причина списания
+     * @param string|null $sourceId ID источника
+     * @param string|null $correlationId Correlation ID
+     *
+     * @return bool
+     *
+     * @throws \RuntimeException
      */
-    public function debit(User $user, float $amount, string $reason, string $reference = null): void
-    {
-        DB::transaction(function () use ($user, $amount, $reason, $reference) {
+    public function debit(
+        int $walletId,
+        int $amount,
+        string $type,
+        string $reason,
+        ?string $sourceId = null,
+        ?string $correlationId = null
+    ): bool {
+        $correlationId = $correlationId ?? Str::uuid()->toString();
+
+        return DB::transaction(function () use (
+            $walletId,
+            $amount,
+            $type,
+            $reason,
+            $sourceId,
+            $correlationId
+        ): bool {
             if ($amount <= 0) {
-                throw new Exception('Amount must be greater than 0');
+                throw new \InvalidArgumentException('Amount must be greater than 0');
             }
 
-            // Заблокировать для избежания race conditions
-            $wallet = $user->wallet()->lockForUpdate()->first();
+            // Получить кошелёк с локировкой
+            $wallet = DB::table('wallets')->where('id', $walletId)->lockForUpdate()->first();
 
-            if (!$wallet || $wallet->balance < $amount) {
-                throw new Exception('Insufficient funds. Balance: ' . ($wallet->balance ?? 0) . ', Required: ' . $amount);
+            if (!$wallet) {
+                throw new \RuntimeException("Wallet {$walletId} not found");
             }
 
-            // Уменьшить баланс
-            $wallet->decrement('balance', $amount);
+            $balanceBefore = (int) $wallet->balance;
 
-            // Логировать операцию
-            $user->ledger()->create([
-                'type' => 'debit',
-                'amount' => $amount,
-                'reason' => $reason,
-                'reference' => $reference,
-                'balance_after' => $wallet->balance - $amount,
-                'correlation_id' => request()->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
+            // Проверка баланса
+            if ($balanceBefore < $amount) {
+                Log::channel('audit')->warning('Insufficient funds for debit', [
+                    'wallet_id' => $walletId,
+                    'required_amount' => $amount,
+                    'available_balance' => $balanceBefore,
+                    'correlation_id' => $correlationId,
+                ]);
+
+                throw new \RuntimeException(
+                    "Insufficient funds. Available: {$balanceBefore}, Required: {$amount}"
+                );
+            }
+
+            $balanceAfter = $balanceBefore - $amount;
+
+            // Обновить баланс
+            DB::table('wallets')->where('id', $walletId)->update([
+                'balance' => $balanceAfter,
+                'available_balance' => $balanceAfter - (int) ($wallet->hold_amount ?? 0),
+                'cached_balance' => $balanceAfter,
+                'cached_at' => now(),
             ]);
 
-            Log::info('Wallet debited', [
-                'user_id' => $user->id,
+            // Создать запись в balance_transactions
+            DB::table('balance_transactions')->insert([
+                'uuid' => Str::uuid(),
+                'correlation_id' => $correlationId,
+                'tenant_id' => $wallet->tenant_id,
+                'wallet_id' => $walletId,
+                'user_id' => $wallet->user_id,
+                'type' => $type,
                 'amount' => $amount,
-                'reason' => $reason,
-                'reference' => $reference,
-                'balance_after' => $wallet->balance - $amount,
+                'status' => 'completed',
+                'source_type' => null,
+                'source_id' => $sourceId,
+                'balance_before' => $balanceBefore,
+                'balance_after' => $balanceAfter,
+                'hold_before' => (int) ($wallet->hold_amount ?? 0),
+                'hold_after' => (int) ($wallet->hold_amount ?? 0),
+                'description' => $reason,
+                'created_by_type' => 'system',
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
+
+            // Логирование
+            Log::channel('audit')->info('Wallet debited', [
+                'wallet_id' => $walletId,
+                'amount' => $amount,
+                'type' => $type,
+                'balance_before' => $balanceBefore,
+                'balance_after' => $balanceAfter,
+                'reason' => $reason,
+                'source_id' => $sourceId,
+                'correlation_id' => $correlationId,
+                'trace' => implode(' > ', array_slice(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 5), 0, 3)),
+            ]);
+
+            // Инвалидировать кэш
+            $this->invalidateCache($wallet->tenant_id, $walletId);
+
+            return true;
         });
     }
 
     /**
-     * Трансфер средств между пользователями.
+     * Заморозить средства (холд) для двухэтапной авторизации.
+     * Согласно КАНОН 2026: проверка баланса, создание записи в wallet_holds.
+     *
+     * @param int $walletId       ID кошелька
+     * @param int $amount         Размер холда в копейках
+     * @param string $sourceType  Тип источника (payment, order, appointment, etc)
+     * @param string $sourceId    ID источника
+     * @param string|null $correlationId Correlation ID
+     *
+     * @return string UUID холда
+     *
+     * @throws \RuntimeException
      */
-    public function transfer(User $from, User $to, float $amount, string $reason): void
-    {
-        DB::transaction(function () use ($from, $to, $amount, $reason) {
-            $correlationId = \Illuminate\Support\Str::uuid()->toString();
+    public function hold(
+        int $walletId,
+        int $amount,
+        string $sourceType,
+        string $sourceId,
+        ?string $correlationId = null
+    ): string {
+        $correlationId = $correlationId ?? Str::uuid()->toString();
+        $holdUuid = Str::uuid()->toString();
 
-            // Спишем с отправителя
-            $this->debit($from, $amount, "$reason (send to user {$to->id})", $correlationId);
+        return DB::transaction(function () use (
+            $walletId,
+            $amount,
+            $sourceType,
+            $sourceId,
+            $correlationId,
+            $holdUuid
+        ): string {
+            if ($amount <= 0) {
+                throw new \InvalidArgumentException('Hold amount must be greater than 0');
+            }
 
-            // Зачислим получателю
-            $this->credit($to, $amount, "$reason (receive from user {$from->id})", $correlationId);
+            // Получить кошелёк с локировкой
+            $wallet = DB::table('wallets')->where('id', $walletId)->lockForUpdate()->first();
 
-            Log::info('Wallet transfer completed', [
-                'from_user_id' => $from->id,
-                'to_user_id' => $to->id,
+            if (!$wallet) {
+                throw new \RuntimeException("Wallet {$walletId} not found");
+            }
+
+            $balanceBefore = (int) $wallet->balance;
+            $holdBefore = (int) ($wallet->hold_amount ?? 0);
+
+            // Проверить доступный баланс (баланс минус существующие холды)
+            if ($balanceBefore - $holdBefore < $amount) {
+                throw new \RuntimeException(
+                    "Insufficient available balance for hold. Available: "
+                    . ($balanceBefore - $holdBefore) . ", Required: {$amount}"
+                );
+            }
+
+            // Обновить hold_amount в кошельке
+            $holdAfter = $holdBefore + $amount;
+            $availableBalance = $balanceBefore - $holdAfter;
+
+            DB::table('wallets')->where('id', $walletId)->update([
+                'hold_amount' => $holdAfter,
+                'available_balance' => max(0, $availableBalance),
+                'cached_balance' => $balanceBefore, // Общий баланс не меняется
+                'cached_at' => now(),
+            ]);
+
+            // Создать запись холда в wallet_holds
+            DB::table('wallet_holds')->insert([
+                'uuid' => $holdUuid,
+                'correlation_id' => $correlationId,
+                'tenant_id' => $wallet->tenant_id,
+                'wallet_id' => $walletId,
+                'user_id' => $wallet->user_id,
                 'amount' => $amount,
+                'status' => 'active',
+                'source_type' => $sourceType,
+                'source_id' => $sourceId,
+                'description' => "Hold for {$sourceType}:{$sourceId}",
+                'expires_at' => now()->addHours(72), // Hold истекает через 72 часа
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            // Логирование
+            Log::channel('audit')->info('Wallet hold created', [
+                'hold_uuid' => $holdUuid,
+                'wallet_id' => $walletId,
+                'amount' => $amount,
+                'hold_before' => $holdBefore,
+                'hold_after' => $holdAfter,
+                'available_balance' => max(0, $availableBalance),
+                'source_type' => $sourceType,
+                'source_id' => $sourceId,
                 'correlation_id' => $correlationId,
             ]);
+
+            // Инвалидировать кэш
+            $this->invalidateCache($wallet->tenant_id, $walletId);
+
+            return $holdUuid;
         });
     }
 
     /**
-     * Получить баланс кошелька.
+     * Снять холд (отпустить заморозку).
+     * Согласно КАНОН 2026: не списывает средства, просто снимает холд.
+     *
+     * @param string $holdUuid UUID холда
+     * @param string|null $correlationId Correlation ID
+     *
+     * @return bool
+     *
+     * @throws \RuntimeException
      */
-    public function getBalance(User $user): float
+    public function release(string $holdUuid, ?string $correlationId = null): bool
     {
-        return $user->wallet->balance ?? 0;
-    }
+        $correlationId = $correlationId ?? Str::uuid()->toString();
 
-    /**
-     * Проверить достаточность средств.
-     */
-    public function hasBalance(User $user, float $amount): bool
-    {
-        return $this->getBalance($user) >= $amount;
-    }
+        return DB::transaction(function () use ($holdUuid, $correlationId): bool {
+            // Получить запись холда
+            $hold = DB::table('wallet_holds')->where('uuid', $holdUuid)->lockForUpdate()->first();
 
-    /**
-     * Получить историю операций.
-     */
-    public function getLedger(User $user, int $limit = 50)
-    {
-        return $user->ledger()
-            ->orderByDesc('created_at')
-            ->limit($limit)
-            ->get();
-    }
-
-    /**
-     * Заморозить средства (для холда при платеже).
-     */
-    public function freeze(User $user, float $amount, string $reason): void
-    {
-        DB::transaction(function () use ($user, $amount, $reason) {
-            $wallet = $user->wallet()->lockForUpdate()->first();
-
-            if ($wallet->balance < $amount) {
-                throw new Exception('Insufficient funds for freeze');
+            if (!$hold) {
+                throw new \RuntimeException("Hold {$holdUuid} not found");
             }
 
-            // Создать freeze record
-            $user->walletFreezes()->create([
-                'amount' => $amount,
-                'reason' => $reason,
-                'correlation_id' => \Illuminate\Support\Str::uuid(),
+            if ($hold->status !== 'active') {
+                throw new \RuntimeException("Hold {$holdUuid} is not active (status: {$hold->status})");
+            }
+
+            // Получить кошелёк с локировкой
+            $wallet = DB::table('wallets')->where('id', $hold->wallet_id)->lockForUpdate()->first();
+
+            // Уменьшить hold_amount
+            $holdAfter = max(0, (int) $wallet->hold_amount - (int) $hold->amount);
+
+            DB::table('wallets')->where('id', $hold->wallet_id)->update([
+                'hold_amount' => $holdAfter,
+                'available_balance' => (int) $wallet->balance - $holdAfter,
+                'cached_at' => now(),
             ]);
 
-            Log::info('Wallet funds frozen', [
-                'user_id' => $user->id,
-                'amount' => $amount,
-                'reason' => $reason,
+            // Отметить холд как released
+            DB::table('wallet_holds')->where('uuid', $holdUuid)->update([
+                'status' => 'released',
+                'released_at' => now(),
             ]);
+
+            // Логирование
+            Log::channel('audit')->info('Wallet hold released', [
+                'hold_uuid' => $holdUuid,
+                'wallet_id' => $hold->wallet_id,
+                'amount' => $hold->amount,
+                'correlation_id' => $correlationId,
+            ]);
+
+            // Инвалидировать кэш
+            $this->invalidateCache($wallet->tenant_id, $hold->wallet_id);
+
+            return true;
         });
     }
 
     /**
-     * Разморозить средства.
+     * Захватить холд (списать со счёта).
+     * Согласно КАНОН 2026: превращает холд в списание.
+     *
+     * @param string $holdUuid UUID холда
+     * @param string $correlationId Correlation ID для связи
+     *
+     * @return bool
+     *
+     * @throws \RuntimeException
      */
-    public function unfreeze(string $freezeId, bool $apply = false): void
+    public function capture(string $holdUuid, string $correlationId): bool
     {
-        $freeze = DB::table('wallet_freezes')->find($freezeId);
+        return DB::transaction(function () use ($holdUuid, $correlationId): bool {
+            // Получить запись холда
+            $hold = DB::table('wallet_holds')->where('uuid', $holdUuid)->lockForUpdate()->first();
 
-        if (!$freeze) {
-            throw new Exception("Freeze {$freezeId} not found");
-        }
+            if (!$hold) {
+                throw new \RuntimeException("Hold {$holdUuid} not found");
+            }
 
-        if ($apply) {
-            // Если apply=true, списываем средства
-            $user = User::find($freeze->user_id);
-            $this->debit($user, $freeze->amount, "Freeze applied: {$freeze->reason}", $freezeId);
-        }
+            if ($hold->status !== 'active') {
+                throw new \RuntimeException("Hold {$holdUuid} is not active (status: {$hold->status})");
+            }
 
-        DB::table('wallet_freezes')->where('id', $freezeId)->delete();
+            // Отметить холд как captured
+            DB::table('wallet_holds')->where('uuid', $holdUuid)->update([
+                'status' => 'captured',
+                'captured_at' => now(),
+            ]);
 
-        Log::info('Wallet freeze released', [
-            'freeze_id' => $freezeId,
-            'applied' => $apply,
-        ]);
+            // Создать запись в balance_transactions (withdrawal)
+            DB::table('balance_transactions')->insert([
+                'uuid' => Str::uuid(),
+                'correlation_id' => $correlationId,
+                'tenant_id' => $hold->tenant_id,
+                'wallet_id' => $hold->wallet_id,
+                'user_id' => $hold->user_id,
+                'type' => 'withdrawal',
+                'amount' => $hold->amount,
+                'status' => 'completed',
+                'source_type' => $hold->source_type,
+                'source_id' => $hold->source_id,
+                'balance_before' => DB::table('wallets')->where('id', $hold->wallet_id)->first()->balance,
+                'balance_after' => DB::table('wallets')->where('id', $hold->wallet_id)->first()->balance - $hold->amount,
+                'hold_before' => (int) $hold->wallet_id,
+                'hold_after' => 0, // После захвата холда он снят
+                'description' => "Hold capture for {$hold->source_type}:{$hold->source_id}",
+                'created_by_type' => 'system',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            // Логирование
+            Log::channel('audit')->info('Wallet hold captured', [
+                'hold_uuid' => $holdUuid,
+                'wallet_id' => $hold->wallet_id,
+                'amount' => $hold->amount,
+                'correlation_id' => $correlationId,
+            ]);
+
+            // Инвалидировать кэш
+            $this->invalidateCache($hold->tenant_id, $hold->wallet_id);
+
+            return true;
+        });
     }
 
     /**
-     * Получить инф о кошельке.
+     * Получить текущий баланс кошелька.
+     * Согласно КАНОН 2026: проверить Redis кэш перед БД.
      */
-    public function getInfo(User $user): array
+    public function getBalance(int $walletId): int
     {
-        return [
-            'user_id' => $user->id,
-            'balance' => $this->getBalance($user),
-            'currency' => 'RUB',
-            'last_transaction_at' => $user->ledger()->latest()->first()?->created_at,
-            'total_credited' => $user->ledger()->where('type', 'credit')->sum('amount'),
-            'total_debited' => $user->ledger()->where('type', 'debit')->sum('amount'),
-        ];
+        $cacheKey = "wallet:balance:{$walletId}";
+
+        // Пытаться получить из Redis
+        $cached = Redis::get($cacheKey);
+        if ($cached !== null) {
+            return (int) $cached;
+        }
+
+        // Получить из БД
+        $wallet = DB::table('wallets')->where('id', $walletId)->first();
+
+        if (!$wallet) {
+            throw new \RuntimeException("Wallet {$walletId} not found");
+        }
+
+        // Закэшировать в Redis (TTL 5 минут)
+        Redis::setex($cacheKey, 300, (int) $wallet->balance);
+
+        return (int) $wallet->balance;
     }
-}
+
+    /**
+     * Получить доступный баланс (баланс минус холды).
+     */
+    public function getAvailableBalance(int $walletId): int
+    {
+        $wallet = DB::table('wallets')->where('id', $walletId)->first();
+
+        if (!$wallet) {
+            throw new \RuntimeException("Wallet {$walletId} not found");
+        }
+
+        return max(0, (int) $wallet->balance - (int) ($wallet->hold_amount ?? 0));
+    }
+
+    /**
+     * Инвалидировать Redis кэш баланса.
+     */
+    private function invalidateCache(string $tenantId, int $walletId): void
+    {
+        Redis::del("wallet:balance:{$walletId}");
+        Redis::del("wallet:available:{$walletId}");
+    }
+

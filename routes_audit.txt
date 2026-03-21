@@ -1,0 +1,514 @@
+declare(strict_types=1);
+
+namespace App\Http\Controllers\Api\V1;
+
+use App\Http\Requests\PaymentInitRequest;
+use App\Services\Security\IdempotencyService;
+use App\Services\Security\RateLimiterService;
+use Illuminate\Auth\Access\AuthorizationException;
+use OpenApi\Annotations as OA;
+
+/**
+ * @OA\Tag(
+ *     name="Payments",
+ *     description="Payment processing endpoints"
+ * )
+ */
+final class PaymentController extends BaseApiV1Controller
+{
+    public function __construct(
+        private readonly IdempotencyService $idempotencyService,
+        private readonly RateLimiterService $rateLimiterService,
+    ) {
+    }
+
+    /**
+     * Initialize payment
+     *
+     * @OA\Post(
+     *     path="/v1/payments/init",
+     *     tags={"Payments"},
+     *     summary="Initialize a new payment",
+     *     description="Creates and initializes a payment transaction with idempotency and rate limiting",
+     *     security={{"bearer_token": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Payment initialization data",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="order_id", type="integer", example=123),
+     *             @OA\Property(property="amount", type="integer", example=50000, description="Amount in kopeks"),
+     *             @OA\Property(property="currency", type="string", example="RUB"),
+     *             @OA\Property(property="description", type="string", example="Order payment")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Payment initialized successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="data", type="object",
+     *                 @OA\Property(property="payment_id", type="string", format="uuid"),
+     *                 @OA\Property(property="status", type="string", example="pending"),
+     *                 @OA\Property(property="amount", type="integer", example=50000)
+     *             ),
+     *             @OA\Property(property="correlation_id", type="string", format="uuid")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=409,
+     *         description="Duplicate payment (idempotency key already processed)"
+     *     ),
+     *     @OA\Response(
+     *         response=429,
+     *         description="Rate limit exceeded (max 10 payments/minute)"
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error"
+     *     )
+     * )
+     */
+    public function init(PaymentInitRequest $request): \Illuminate\Routing\ResponseFactory
+    {
+        try {
+            // КАНОН 2026: FraudControl проверка
+            // TODO: Implement fraud check after service injection
+
+            // Rate limiting check
+            if (!$this->rateLimiterService->checkPaymentInit(
+                auth()->id() ?? 0,
+                $request->ip()
+            )) {
+                throw new AuthorizationException('Rate limit exceeded');
+            }
+
+            // Idempotency check
+            $payload = json_encode($request->only(['order_id', 'amount', 'currency']));
+            $idempotencyKey = $request->header('Idempotency-Key') ?? uniqid();
+
+            if (!$this->idempotencyService->check($idempotencyKey, $payload)) {
+                return $this->respondWithError('Duplicate payment', 409);
+            }
+
+            // КАНОН 2026: DB::transaction() для создания платежа
+            return DB::transaction(function () use ($request) {
+                $paymentId = \Str::uuid();
+                
+                $payment = \App\Domains\Finances\Models\PaymentTransaction::create([
+                    'uuid' => $paymentId,
+                    'tenant_id' => auth()->id(),
+                    'correlation_id' => (string) $paymentId,
+                    'idempotency_key' => $request->header('Idempotency-Key'),
+                    'amount' => $request->get('amount'),
+                    'currency' => $request->get('currency', 'RUB'),
+                    'status' => 'pending',
+                    'metadata' => [
+                        'description' => $request->get('description'),
+                        'api_version' => 'v1',
+                    ],
+                ]);
+
+                \Illuminate\Support\Facades\Log::channel('audit')->info('Payment initiated V1', [
+                    'payment_id' => $payment->id,
+                    'correlation_id' => $paymentId,
+                ]);
+
+                return $this->respondWithSuccess(
+                    [
+                        'payment_id' => $paymentId,
+                        'status' => 'pending',
+                        'amount' => $request->get('amount'),
+                    ],
+                    'Payment initialized',
+                    201
+                );
+            });
+        } catch (AuthorizationException $e) {
+            return $this->respondWithError($e->getMessage(), 429);
+        }
+    }
+
+    /**
+     * Получить платёж по ID
+     */
+    public function show(string $paymentId): \Illuminate\Routing\ResponseFactory
+    {
+        $correlationId = (string) \Illuminate\Support\Str::uuid();
+
+        try {
+            $payment = \App\Domains\Finances\Models\PaymentTransaction::where('uuid', $paymentId)
+                ->where('tenant_id', auth()->id())
+                ->firstOrFail();
+
+            \Illuminate\Support\Facades\Log::channel('audit')->info('Payment retrieved', [
+                'payment_id' => $payment->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $this->respondWithSuccess([
+                'payment_id' => $paymentId,
+                'status' => $payment->status,
+                'amount' => $payment->amount,
+                'created_at' => $payment->created_at,
+            ]);
+
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::channel('audit')->error('Payment retrieval failed', [
+                'error' => $e->getMessage(),
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $this->respondWithError('Payment not found', 404);
+        }
+    }
+}
+declare(strict_types=1);
+
+namespace App\Http\Controllers\Api\V1;
+
+use App\Http\Requests\PaymentInitRequest;
+use App\Services\Security\IdempotencyService;
+use App\Services\Security\RateLimiterService;
+use Illuminate\Auth\Access\AuthorizationException;
+use OpenApi\Annotations as OA;
+
+/**
+ * @OA\Tag(
+ *     name="Payments",
+ *     description="Payment processing endpoints"
+ * )
+ */
+final class PaymentController extends BaseApiV1Controller
+{
+    public function __construct(
+        private readonly IdempotencyService $idempotencyService,
+        private readonly RateLimiterService $rateLimiterService,
+    ) {
+    }
+
+    /**
+     * Initialize payment
+     *
+     * @OA\Post(
+     *     path="/v1/payments/init",
+     *     tags={"Payments"},
+     *     summary="Initialize a new payment",
+     *     description="Creates and initializes a payment transaction with idempotency and rate limiting",
+     *     security={{"bearer_token": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Payment initialization data",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="order_id", type="integer", example=123),
+     *             @OA\Property(property="amount", type="integer", example=50000, description="Amount in kopeks"),
+     *             @OA\Property(property="currency", type="string", example="RUB"),
+     *             @OA\Property(property="description", type="string", example="Order payment")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Payment initialized successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="data", type="object",
+     *                 @OA\Property(property="payment_id", type="string", format="uuid"),
+     *                 @OA\Property(property="status", type="string", example="pending"),
+     *                 @OA\Property(property="amount", type="integer", example=50000)
+     *             ),
+     *             @OA\Property(property="correlation_id", type="string", format="uuid")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=409,
+     *         description="Duplicate payment (idempotency key already processed)"
+     *     ),
+     *     @OA\Response(
+     *         response=429,
+     *         description="Rate limit exceeded (max 10 payments/minute)"
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error"
+     *     )
+     * )
+     */
+    public function init(PaymentInitRequest $request): \Illuminate\Routing\ResponseFactory
+    {
+        try {
+            // КАНОН 2026: FraudControl проверка
+            // TODO: Implement fraud check after service injection
+
+            // Rate limiting check
+            if (!$this->rateLimiterService->checkPaymentInit(
+                auth()->id() ?? 0,
+                $request->ip()
+            )) {
+                throw new AuthorizationException('Rate limit exceeded');
+            }
+
+            // Idempotency check
+            $payload = json_encode($request->only(['order_id', 'amount', 'currency']));
+            $idempotencyKey = $request->header('Idempotency-Key') ?? uniqid();
+
+            if (!$this->idempotencyService->check($idempotencyKey, $payload)) {
+                return $this->respondWithError('Duplicate payment', 409);
+            }
+
+            // КАНОН 2026: DB::transaction() для создания платежа
+            return DB::transaction(function () use ($request) {
+                $paymentId = \Str::uuid();
+                
+                $payment = \App\Domains\Finances\Models\PaymentTransaction::create([
+                    'uuid' => $paymentId,
+                    'tenant_id' => auth()->id(),
+                    'correlation_id' => (string) $paymentId,
+                    'idempotency_key' => $request->header('Idempotency-Key'),
+                    'amount' => $request->get('amount'),
+                    'currency' => $request->get('currency', 'RUB'),
+                    'status' => 'pending',
+                    'metadata' => [
+                        'description' => $request->get('description'),
+                        'api_version' => 'v1',
+                    ],
+                ]);
+
+                \Illuminate\Support\Facades\Log::channel('audit')->info('Payment initiated V1', [
+                    'payment_id' => $payment->id,
+                    'correlation_id' => $paymentId,
+                ]);
+
+                return $this->respondWithSuccess(
+                    [
+                        'payment_id' => $paymentId,
+                        'status' => 'pending',
+                        'amount' => $request->get('amount'),
+                    ],
+                    'Payment initialized',
+                    201
+                );
+            });
+        } catch (AuthorizationException $e) {
+            return $this->respondWithError($e->getMessage(), 429);
+        }
+    }
+
+    /**
+     * Получить платёж по ID
+     */
+    public function show(string $paymentId): \Illuminate\Routing\ResponseFactory
+    {
+        $correlationId = (string) \Illuminate\Support\Str::uuid();
+
+        try {
+            $payment = \App\Domains\Finances\Models\PaymentTransaction::where('uuid', $paymentId)
+                ->where('tenant_id', auth()->id())
+                ->firstOrFail();
+
+            \Illuminate\Support\Facades\Log::channel('audit')->info('Payment retrieved', [
+                'payment_id' => $payment->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $this->respondWithSuccess([
+                'payment_id' => $paymentId,
+                'status' => $payment->status,
+                'amount' => $payment->amount,
+                'created_at' => $payment->created_at,
+            ]);
+
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::channel('audit')->error('Payment retrieval failed', [
+                'error' => $e->getMessage(),
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $this->respondWithError('Payment not found', 404);
+        }
+    }
+}
+declare(strict_types=1);
+
+namespace App\Http\Controllers\Api\V1;
+
+use App\Http\Requests\PaymentInitRequest;
+use App\Services\Security\IdempotencyService;
+use App\Services\Security\RateLimiterService;
+use Illuminate\Auth\Access\AuthorizationException;
+use OpenApi\Annotations as OA;
+
+/**
+ * @OA\Tag(
+ *     name="Payments",
+ *     description="Payment processing endpoints"
+ * )
+ */
+final class PaymentController extends BaseApiV1Controller
+{
+    public function __construct(
+        private readonly IdempotencyService $idempotencyService,
+        private readonly RateLimiterService $rateLimiterService,
+    ) {
+    }
+
+    /**
+     * Initialize payment
+     *
+     * @OA\Post(
+     *     path="/v1/payments/init",
+     *     tags={"Payments"},
+     *     summary="Initialize a new payment",
+     *     description="Creates and initializes a payment transaction with idempotency and rate limiting",
+     *     security={{"bearer_token": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         description="Payment initialization data",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="order_id", type="integer", example=123),
+     *             @OA\Property(property="amount", type="integer", example=50000, description="Amount in kopeks"),
+     *             @OA\Property(property="currency", type="string", example="RUB"),
+     *             @OA\Property(property="description", type="string", example="Order payment")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Payment initialized successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="success", type="boolean", example=true),
+     *             @OA\Property(property="data", type="object",
+     *                 @OA\Property(property="payment_id", type="string", format="uuid"),
+     *                 @OA\Property(property="status", type="string", example="pending"),
+     *                 @OA\Property(property="amount", type="integer", example=50000)
+     *             ),
+     *             @OA\Property(property="correlation_id", type="string", format="uuid")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=409,
+     *         description="Duplicate payment (idempotency key already processed)"
+     *     ),
+     *     @OA\Response(
+     *         response=429,
+     *         description="Rate limit exceeded (max 10 payments/minute)"
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation error"
+     *     )
+     * )
+     */
+    public function init(PaymentInitRequest $request): \Illuminate\Routing\ResponseFactory
+    {
+        try {
+            // КАНОН 2026: FraudControl проверка
+            // TODO: Implement fraud check after service injection
+
+            // Rate limiting check
+            if (!$this->rateLimiterService->checkPaymentInit(
+                auth()->id() ?? 0,
+                $request->ip()
+            )) {
+                throw new AuthorizationException('Rate limit exceeded');
+            }
+
+            // Idempotency check
+            $payload = json_encode($request->only(['order_id', 'amount', 'currency']));
+            $idempotencyKey = $request->header('Idempotency-Key') ?? uniqid();
+
+            if (!$this->idempotencyService->check($idempotencyKey, $payload)) {
+                return $this->respondWithError('Duplicate payment', 409);
+            }
+
+            // КАНОН 2026: DB::transaction() для создания платежа
+            return DB::transaction(function () use ($request) {
+                $paymentId = \Str::uuid();
+                
+                $payment = \App\Domains\Finances\Models\PaymentTransaction::create([
+                    'uuid' => $paymentId,
+                    'tenant_id' => auth()->id(),
+                    'correlation_id' => (string) $paymentId,
+                    'idempotency_key' => $request->header('Idempotency-Key'),
+                    'amount' => $request->get('amount'),
+                    'currency' => $request->get('currency', 'RUB'),
+                    'status' => 'pending',
+                    'metadata' => [
+                        'description' => $request->get('description'),
+                        'api_version' => 'v1',
+                    ],
+                ]);
+
+                \Illuminate\Support\Facades\Log::channel('audit')->info('Payment initiated V1', [
+                    'payment_id' => $payment->id,
+                    'correlation_id' => $paymentId,
+                ]);
+
+                return $this->respondWithSuccess(
+                    [
+                        'payment_id' => $paymentId,
+                        'status' => 'pending',
+                        'amount' => $request->get('amount'),
+                    ],
+                    'Payment initialized',
+                    201
+                );
+            });
+        } catch (AuthorizationException $e) {
+            return $this->respondWithError($e->getMessage(), 429);
+        }
+    }
+
+    /**
+     * Получить платёж по ID
+     */
+    public function show(string $paymentId): \Illuminate\Routing\ResponseFactory
+    {
+        $correlationId = (string) \Illuminate\Support\Str::uuid();
+
+        try {
+            $payment = \App\Domains\Finances\Models\PaymentTransaction::where('uuid', $paymentId)
+                ->where('tenant_id', auth()->id())
+                ->firstOrFail();
+
+            \Illuminate\Support\Facades\Log::channel('audit')->info('Payment retrieved', [
+                'payment_id' => $payment->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $this->respondWithSuccess([
+                'payment_id' => $paymentId,
+                'status' => $payment->status,
+                'amount' => $payment->amount,
+                'created_at' => $payment->created_at,
+            ]);
+
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::channel('audit')->error('Payment retrieval failed', [
+                'error' => $e->getMessage(),
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $this->respondWithError('Payment not found', 404);
+        }
+    }
+}
+
+   ReflectionException 
+
+  Class "App\Http\Controllers\Api\V1\PaymentController" does not exist
+
+  at vendor\laravel\framework\src\Illuminate\Foundation\Console\RouteListCommand.php:235
+    231▕             if ($this->isFrameworkController($route)) {
+    232▕                 return false;
+    233▕             }
+    234▕ 
+  ➜ 235▕             $path = (new ReflectionClass($route->getControllerClass()))
+    236▕                 ->getFileName();
+    237▕         } else {
+    238▕             return false;
+    239▕         }
+
+  1   vendor\laravel\framework\src\Illuminate\Foundation\Console\RouteListCommand.php:235
+      ReflectionClass::__construct()
+
+  2   vendor\laravel\framework\src\Illuminate\Foundation\Console\RouteListCommand.php:149
+      Illuminate\Foundation\Console\RouteListCommand::isVendorRoute()
+

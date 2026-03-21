@@ -1,0 +1,60 @@
+<?php declare(strict_types=1);
+
+namespace App\Domains\HomeServices\Services;
+
+use App\Domains\HomeServices\Models\ServiceListing;
+
+final class ListingService
+{
+    public function __construct() {}
+
+    public function createListing(
+        int $contractorId,
+        int $categoryId,
+        string $name,
+        string $description,
+        string $type,
+        float $basePrice,
+        string $correlationId
+    ): ServiceListing {
+        try {
+            return \DB::transaction(function () use ($contractorId, $categoryId, $name, $description, $type, $basePrice, $correlationId) {
+                $listing = ServiceListing::create([
+                    'tenant_id' => tenant('id'),
+                    'contractor_id' => $contractorId,
+                    'category_id' => $categoryId,
+                    'name' => $name,
+                    'description' => $description,
+                    'type' => $type,
+                    'base_price' => $basePrice,
+                    'is_active' => true,
+                    'correlation_id' => $correlationId,
+                ]);
+
+                \Log::channel('audit')->info('Service listing created', [
+                    'listing_id' => $listing->id,
+                    'contractor_id' => $contractorId,
+                    'correlation_id' => $correlationId,
+                ]);
+
+                return $listing;
+            });
+        } catch (\Throwable $e) {
+            \Log::channel('audit')->error('Failed to create listing', ['error' => $e->getMessage()]);
+            throw $e;
+        }
+    }
+
+    public function updateListing(ServiceListing $listing, array $data, string $correlationId): ServiceListing
+    {
+        try {
+            return \DB::transaction(function () use ($listing, $data, $correlationId) {
+                $listing->update($data + ['correlation_id' => $correlationId]);
+                return $listing;
+            });
+        } catch (\Throwable $e) {
+            \Log::channel('audit')->error('Failed to update listing', ['error' => $e->getMessage()]);
+            throw $e;
+        }
+    }
+}

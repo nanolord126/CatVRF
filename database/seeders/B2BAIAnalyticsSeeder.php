@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
@@ -7,7 +9,10 @@ use App\Models\B2BProduct;
 use App\Models\B2BManufacturer;
 use Illuminate\Support\Str;
 
-class B2BAIAnalyticsSeeder extends Seeder
+/**
+ * B2B AI аналитика (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class B2BAIAnalyticsSeeder extends Seeder
 {
     public function run(): void
     {

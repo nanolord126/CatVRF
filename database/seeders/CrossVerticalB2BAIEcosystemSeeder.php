@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use App\Models\B2BManufacturer;
@@ -8,7 +10,10 @@ use App\Models\Tenant;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
-class CrossVerticalB2BAIEcosystemSeeder extends Seeder
+/**
+ * Кросс-вертикальная B2B AI экосистема (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class CrossVerticalB2BAIEcosystemSeeder extends Seeder
 {
     public function run(): void
     {

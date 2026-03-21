@@ -1,11 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use App\Models\Filter;
 use App\Models\FilterValue;
 use Illuminate\Database\Seeder;
 
+/**
+ * Базовый seeder для фильтров вертикалей (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
 abstract class VerticalFilterSeederBase extends Seeder
 {
     protected function createFilters(string $vertical, array $data): void

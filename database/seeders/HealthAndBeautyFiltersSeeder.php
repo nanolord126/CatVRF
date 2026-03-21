@@ -1,12 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use App\Models\Filter;
 use App\Models\FilterValue;
 use Illuminate\Database\Seeder;
 
-class HealthAndBeautyFiltersSeeder extends Seeder
+/**
+ * Фильтры здоровья и красоты (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class HealthAndBeautyFiltersSeeder extends Seeder
 {
     public function run(): void
     {

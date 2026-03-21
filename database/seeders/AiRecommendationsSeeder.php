@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace Database\Seeders;
 
@@ -7,7 +8,10 @@ use App\Models\User;
 use App\Models\Common\AiUserTelemetry;
 use Illuminate\Support\Str;
 
-class AiRecommendationsSeeder extends Seeder
+/**
+ * AI-рекомендации тестовые данные (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class AiRecommendationsSeeder extends Seeder
 {
     /**
      * Run the database seeds for testing AI Recommendations.

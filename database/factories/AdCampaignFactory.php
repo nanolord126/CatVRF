@@ -1,27 +1,35 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Factories;
 
 use App\Models\Domains\Advertising\AdCampaign;
-use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Facades\DB;
 
-class AdCampaignFactory extends Factory
+final class AdCampaignFactory extends Factory
 {
     protected $model = AdCampaign::class;
 
     public function definition(): array
     {
+        $budget = fake()->numberBetween(1000, 10000);
+        $spent = fake()->numberBetween(0, $budget);
+
+        $tenant_id = DB::table("tenants")->value("id") ?? 1;
+        $user_id = DB::table("users")->value("id") ?? 1;
+
         return [
-            'tenant_id' => 1,
-            'advertiser_id' => User::factory(),
-            'title' => $this->faker->sentence(),
-            'description' => $this->faker->paragraph(),
-            'status' => $this->faker->randomElement(['draft', 'active', 'paused', 'ended']),
-            'budget' => $this->faker->numberBetween(1000, 100000),
-            'spent' => $this->faker->numberBetween(0, 10000),
-            'start_date' => $this->faker->date(),
-            'end_date' => $this->faker->dateTimeBetween('+1 days', '+30 days'),
+            "tenant_id" => $tenant_id,
+            "advertiser_id" => $user_id,
+            "title" => fake()->sentence(),
+            "description" => fake()->paragraph(),
+            "status" => "active",
+            "budget" => $budget,
+            "spent" => $spent,
+            "start_date" => now(),
+            "end_date" => now()->addMonth(),
         ];
     }
 }

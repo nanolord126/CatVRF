@@ -1,0 +1,165 @@
+name: E2E Tests (Cypress)
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  e2e-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      mariadb:
+        image: mariadb:10.6
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: catvrf_test
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+        ports:
+          - 3306:3306
+
+    strategy:
+      matrix:
+        node-version: [ 18.x, 20.x ]
+        php-version: [ '8.2', '8.3' ]
+
+    steps:
+      # Checkout repository
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Setup PHP
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php-version }}
+          extensions: mbstring, pdo, pdo_mysql, bcmath, json, curl
+          coverage: xdebug
+          tools: composer:v2
+
+      # Setup Node
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      # Cache Composer
+      - name: Cache Composer dependencies
+        uses: actions/cache@v3
+        with:
+          path: vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-
+
+      # Install PHP dependencies
+      - name: Install PHP dependencies
+        run: composer install --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+
+      # Install Node dependencies
+      - name: Install Node dependencies
+        run: npm ci
+
+      # Setup Laravel environment
+      - name: Setup Laravel environment
+        run: |
+          cp .env.example .env.testing
+          echo "DB_HOST=127.0.0.1" >> .env.testing
+          echo "DB_PORT=3306" >> .env.testing
+          echo "DB_DATABASE=catvrf_test" >> .env.testing
+          echo "DB_USERNAME=root" >> .env.testing
+          echo "DB_PASSWORD=root" >> .env.testing
+          echo "APP_ENV=testing" >> .env.testing
+          echo "APP_DEBUG=true" >> .env.testing
+
+      # Generate app key
+      - name: Generate application key
+        run: php artisan key:generate --env=testing
+
+      # Run migrations
+      - name: Run database migrations
+        run: php artisan migrate --env=testing --force
+
+      # Seed test data
+      - name: Seed test database
+        run: php artisan db:seed --env=testing --force
+
+      # Build assets
+      - name: Build frontend assets
+        run: npm run build
+
+      # Start Laravel app
+      - name: Start Laravel development server
+        run: |
+          php artisan serve --env=testing &
+          sleep 3
+
+      # Wait for server to be ready
+      - name: Wait for server
+        run: |
+          for i in {1..30}; do
+            curl -s http://localhost:8000 && echo "Server ready" && break
+            echo "Waiting for server... attempt $i"
+            sleep 1
+          done
+
+      # Run Cypress E2E tests
+      - name: Run Cypress tests
+        run: npm run test:e2e:ci
+        env:
+          CYPRESS_BASE_URL: http://localhost:8000
+          CYPRESS_API_TOKEN: ${{ secrets.CYPRESS_TEST_TOKEN }}
+
+      # Upload artifacts on failure
+      - name: Upload test artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-artifacts-${{ matrix.php-version }}-node${{ matrix.node-version }}
+          path: |
+            cypress/screenshots/
+            cypress/videos/
+            cypress/logs/
+          retention-days: 7
+
+      # Upload coverage reports
+      - name: Upload coverage to Codecov
+        if: always()
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage/coverage-final.json
+          flags: e2e
+          name: codecov-e2e
+
+      # Notify on failure
+      - name: Notify failure
+        if: failure()
+        run: |
+          echo "E2E tests failed for PHP ${{ matrix.php-version }} / Node ${{ matrix.node-version }}"
+          echo "Check artifacts for screenshots and videos"
+
+  # Report job to consolidate results
+  e2e-results:
+    needs: e2e-tests
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check E2E test results
+        run: |
+          if [ "${{ needs.e2e-tests.result }}" == "success" ]; then
+            echo "✅ All E2E tests passed"
+            exit 0
+          else
+            echo "❌ E2E tests failed"
+            exit 1
+          fi

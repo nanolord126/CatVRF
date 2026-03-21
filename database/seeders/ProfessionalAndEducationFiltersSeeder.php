@@ -1,12 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use App\Models\Filter;
 use App\Models\FilterValue;
 use Illuminate\Database\Seeder;
 
-class ProfessionalAndEducationFiltersSeeder extends Seeder
+/**
+ * Фильтры профессиональных и образовательных услуг (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class ProfessionalAndEducationFiltersSeeder extends Seeder
 {
     public function run(): void
     {

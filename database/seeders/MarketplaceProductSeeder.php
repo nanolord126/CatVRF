@@ -1,8 +1,21 @@
-﻿<?php    declare(strict_types=1);
-
+<?php
+declare(strict_types=1);
 
 namespace Database\Seeders;
-use App\Models\Tenants\MarketplaceProduct;
-use Illuminate\Database\Seeder;    final 
 
-final class MarketplaceProductSeeder extends Seeder  {      public function run(): void      {          $products = [              [                  'name' => 'Букет тюльпанов премиум',                  'description' => 'Красивый букет из 21 тюльпана',                  'sku' => 'TULIP-001',                  'price' => 2500.00,                  'quantity' => 50,                  'category' => 'flowers',                  'status' => 'active',                  'is_published' => true,              ],              [                  'name' => 'Пицца Маргарита',                  'description' => 'Классическая пицца с томатом, моцареллой и базиликом',                  'sku' => 'PIZZA-001',                  'price' => 450.00,                  'quantity' => 100,                  'category' => 'food',                  'status' => 'active',                  'is_published' => true,              ],              [                  'name' => 'Профессиональный парикмахерский набор',                  'description' => 'Комплект инструментов для парикмахера',                  'sku' => 'TOOLS-001',                  'price' => 8500.00,                  'quantity' => 20,                  'category' => 'goods',                  'status' => 'active',                  'is_published' => true,              ],          ];            foreach ($products as $product) {              MarketplaceProduct::create([                  ...$product,                  'correlation_id' => \Illuminate\Support\Str::uuid(),              ]);          }      }  }  
+use App\Models\Tenants\MarketplaceProduct;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
+
+/**
+ * Продукты маркетплейса (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class MarketplaceProductSeeder extends Seeder
+{
+    public function run(): void
+    {
+        MarketplaceProduct::factory()
+            ->count(3)
+            ->create(['correlation_id' => (string) Str::uuid(), 'tags' => ['source:seeder']]);
+    }
+}              [                  'name' => 'Букет тюльпанов премиум',                  'description' => 'Красивый букет из 21 тюльпана',                  'sku' => 'TULIP-001',                  'price' => 2500.00,                  'quantity' => 50,                  'category' => 'flowers',                  'status' => 'active',                  'is_published' => true,              ],              [                  'name' => 'Пицца Маргарита',                  'description' => 'Классическая пицца с томатом, моцареллой и базиликом',                  'sku' => 'PIZZA-001',                  'price' => 450.00,                  'quantity' => 100,                  'category' => 'food',                  'status' => 'active',                  'is_published' => true,              ],              [                  'name' => 'Профессиональный парикмахерский набор',                  'description' => 'Комплект инструментов для парикмахера',                  'sku' => 'TOOLS-001',                  'price' => 8500.00,                  'quantity' => 20,                  'category' => 'goods',                  'status' => 'active',                  'is_published' => true,              ],          ];            foreach ($products as $product) {              MarketplaceProduct::create([                  ...$product,                  'correlation_id' => \Illuminate\Support\Str::uuid(),              ]);          }      }  }  

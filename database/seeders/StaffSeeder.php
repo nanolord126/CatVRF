@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use App\Models\User;
@@ -9,7 +11,10 @@ use Modules\Staff\Models\StaffTask;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 
-class StaffSeeder extends Seeder
+/**
+ * Сотрудники (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class StaffSeeder extends Seeder
 {
     public function run(): void
     {

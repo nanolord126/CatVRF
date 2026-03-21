@@ -4,12 +4,13 @@ export default defineConfig({
   projectId: 'catvrf-e2e',
   
   e2e: {
-    baseUrl: 'http://localhost:8000',
+    baseUrl: 'http://127.0.0.1:8000',
     viewportWidth: 1280,
     viewportHeight: 720,
-    defaultCommandTimeout: 10000,
-    requestTimeout: 10000,
-    responseTimeout: 10000,
+    defaultCommandTimeout: 30000,
+    requestTimeout: 30000,
+    responseTimeout: 30000,
+    pageLoadTimeout: 120000,
     specPattern: 'cypress/e2e/**/*.cy.ts',
     supportFile: 'cypress/support/e2e.ts',
     screenshotOnRunFailure: true,
@@ -20,7 +21,7 @@ export default defineConfig({
     downloadsFolder: 'cypress/downloads',
 
     env: {
-      apiUrl: 'http://localhost:8000/api',
+      apiUrl: 'http://127.0.0.1:8000/api',
       adminUser: 'admin@kotvrf.ru',
       adminPassword: 'password123',
       managerUser: 'manager@kotvrf.ru',

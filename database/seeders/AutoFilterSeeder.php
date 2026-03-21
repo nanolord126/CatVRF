@@ -1,10 +1,14 @@
 <?php
+declare(strict_types=1);
 
 namespace Database\Seeders;
 
 use Database\Seeders\VerticalFilterSeederBase;
 
-class AutoFilterSeeder extends VerticalFilterSeederBase
+/**
+ * Фильтры для автомобилей (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class AutoFilterSeeder extends VerticalFilterSeederBase
 {
     public function run(): void
     {

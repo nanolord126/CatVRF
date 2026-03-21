@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use App\Models\B2BPartner;
@@ -7,7 +9,10 @@ use App\Models\B2BContract;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
-class B2BSeeder extends Seeder
+/**
+ * B2B партнеры (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class B2BSeeder extends Seeder
 {
     public function run(): void
     {

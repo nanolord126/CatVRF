@@ -1,4 +1,4 @@
-﻿<?php  
+<?php  
 namespace Database\Seeders;
 use App\Models\PaymentTransaction;
 use Illuminate\Database\Seeder;  

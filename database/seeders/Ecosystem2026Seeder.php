@@ -1,12 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use App\Models\Tenant;
 
-class Ecosystem2026Seeder extends Seeder
+/**
+ * Экосистема 2026 (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class Ecosystem2026Seeder extends Seeder
 {
     public function run(): void
     {

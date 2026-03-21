@@ -1,11 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use App\Models\Domains\Communication\Message;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
-class MessageSeeder extends Seeder
+/**
+ * Тестовые сообщения (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class MessageSeeder extends Seeder
 {
     public function run(): void
     {
@@ -16,7 +22,7 @@ class MessageSeeder extends Seeder
         ];
 
         foreach ($messages as $message) {
-            Message::factory()->create($message);
+            Message::factory()->create(array_merge($message, ['correlation_id' => (string) Str::uuid(), 'tags' => ['source:seeder']]));
         }
     }
 }

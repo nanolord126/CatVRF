@@ -1,12 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use App\Models\RealEstate\Property;
 use App\Models\Tenant;
+use Illuminate\Support\Str;
 
-class RealEstateVerticalSeeder extends Seeder
+/**
+ * Вертикаль недвижимости (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class RealEstateVerticalSeeder extends Seeder
 {
     public function run(): void
     {

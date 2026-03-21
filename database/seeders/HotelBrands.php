@@ -1,6 +1,12 @@
 <?php
+declare(strict_types=1);
+
 namespace Database\Seeders;
-class HotelBrands extends BaseBrandSeeder {
+
+/**
+ * Гостиничные бренды (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class HotelBrands extends BaseBrandSeeder {
     public function run(): void {
         $this->seedBrands('Hotels', [
             ['name' => 'Marriott', 'country' => 'USA'], ['name' => 'Hilton', 'country' => 'USA'],

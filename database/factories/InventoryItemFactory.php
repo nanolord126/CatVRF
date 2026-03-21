@@ -1,9 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Factories;
 
-use App\Models\Domains\Inventory\InventoryItem;
+use App\Models\InventoryItem;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Support\Str;
 
 class InventoryItemFactory extends Factory
 {
@@ -12,15 +15,16 @@ class InventoryItemFactory extends Factory
     public function definition(): array
     {
         return [
-            'tenant_id' => 1,
-            'sku' => $this->faker->unique()->bothify('SKU-####'),
-            'name' => $this->faker->word(),
-            'description' => $this->faker->sentence(),
-            'cost_price' => $this->faker->numberBetween(10, 1000),
-            'selling_price' => $this->faker->numberBetween(20, 2000),
-            'quantity' => $this->faker->numberBetween(0, 1000),
-            'reorder_level' => $this->faker->numberBetween(5, 50),
-            'status' => $this->faker->randomElement(['active', 'inactive', 'discontinued']),
+            "uuid" => (string) Str::uuid(),
+            "tenant_id" => 1,
+            "sku" => $this->faker->unique()->bothify("SKU-####"),
+            "name" => $this->faker->word(),
+            "current_stock" => $this->faker->numberBetween(10, 100),
+            "hold_stock" => 0,
+            "min_stock_threshold" => $this->faker->numberBetween(5, 20),
+            "max_stock_threshold" => $this->faker->numberBetween(100, 200),
+            "correlation_id" => (string) Str::uuid(),
+            "tags" => ["auto-generated" => true],
         ];
     }
 }

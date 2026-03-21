@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Domains\Finances\Services\Security;
 
 use App\Domains\Finances\Models\PaymentTransaction;
@@ -7,96 +9,325 @@ use Illuminate\Support\Facades\{Cache, Log, DB};
 
 /**
  * Сервис управления правилами и лимитами для защиты от мошенничества.
+ * Согласно КАНОН 2026: check(), checkPayment(), checkWithdrawal(), checkReferral().
  */
-class FraudControlService
+final class FraudControlService
 {
     /**
-     * Оценить риск операции пользователя (от 0 до 100).
-     * 
-     * @param \App\Models\User $user Пользователь
-     * @param array $context Контекст операции: ['amount', 'type', 'location', etc.]
-     * @return int Оценка риска от 0 до 100
+     * Универсальный метод проверки операции.
+     * Согласно КАНОН 2026: ОБЯЗАТЕЛЕН перед любой критичной операцией.
+     *
+     * @return array['allowed' => bool, 'score' => float 0-1, 'reason' => ?string]
      */
-    public function assessRisk($user, array $context = []): int
-    {
+    public function check(
+        int $userId,
+        string $operationType,
+        int $amount,
+        array $context = []
+    ): array {
         try {
-            $riskScore = 0;
+            $score = $this->calculateScore($userId, $operationType, $amount, $context);
+            $threshold = $this->getThreshold($operationType);
 
-            // 1. Проверка суммы операции
-            if (!empty($context['amount'])) {
-                $dailyLimit = config('finances.fraud.daily_limit', 100000);
-                if ($context['amount'] > $dailyLimit * 0.5) {
-                    $riskScore += 20;
-                }
+            $allowed = $score < $threshold;
+            $reason = null;
+
+            if (!$allowed) {
+                $reason = $this->getBlockReason($score, $operationType, $context);
+
+                // Логирование попытки фрода
+                $this->logFraudAttempt($userId, $operationType, $amount, $score, 'block', $reason, $context);
             }
 
-            // 2. Проверка дневного лимита
-            $dailyTotal = $this->getUserDailyTotal($user->id);
-            if ($dailyTotal > config('finances.fraud.daily_limit', 100000) * 0.8) {
-                $riskScore += 25;
-            }
+            Log::channel('audit')->info('Fraud check completed', [
+                'user_id' => $userId,
+                'operation_type' => $operationType,
+                'amount' => $amount,
+                'score' => $score,
+                'threshold' => $threshold,
+                'allowed' => $allowed,
+            ]);
 
-            // 3. Проверка количества операций
-            $txCount = $this->getUserTransactionCount($user->id);
-            if ($txCount > config('finances.fraud.max_daily_transactions', 10)) {
-                $riskScore += 20;
-            }
-
-            // 4. Проверка истории пользователя
-            if ($user->created_at->diffInDays() < 7) {
-                $riskScore += 15; // Новый пользователь - повышенный риск
-            }
-
-            // 5. Проверка повторных операций
-            if (!empty($context['type'])) {
-                $recentCount = PaymentTransaction::where('user_id', $user->id)
-                    ->where('type', $context['type'])
-                    ->whereDate('created_at', now())
-                    ->count();
-                
-                if ($recentCount > 5) {
-                    $riskScore += 15;
-                }
-            }
-
-            // 6. Необычное время (3:00-5:00 AM)
-            $hour = (int)now()->format('H');
-            if ($hour >= 3 && $hour <= 5) {
-                $riskScore += 10;
-            }
-
-            return min($riskScore, 100);
-        } catch (\Exception $e) {
-            Log::warning('Risk assessment failed', [
-                'user_id' => $user->id ?? null,
+            return [
+                'allowed' => $allowed,
+                'score' => $score,
+                'reason' => $reason,
+            ];
+        } catch (\Throwable $e) {
+            Log::error('Fraud check failed', [
+                'user_id' => $userId,
                 'error' => $e->getMessage(),
             ]);
-            return 50; // При ошибке - средний риск
+
+            // Fallback: при ошибке проверки — осторожный подход
+            return [
+                'allowed' => false,
+                'score' => 0.8,
+                'reason' => 'Fraud check service error',
+            ];
         }
     }
 
     /**
-     * Проверить транзакцию на предмет мошенничества.
+     * Проверка конкретно для платежей.
+     * Согласно КАНОН 2026: ОБЯЗАТЕЛЕН перед инициализацией платежа.
+     *
+     * @return array['allowed' => bool, 'score' => float, 'reason' => ?string]
      */
-    public function checkTransaction(array $transaction, int $userId): array
+    public function checkPayment(int $userId, int $amount, array $context = []): array
     {
+        return $this->check($userId, 'payment', $amount, array_merge($context, [
+            'type' => 'payment',
+        ]));
+    }
+
+    /**
+     * Проверка для вывода средств (withdrawal / payout).
+     *
+     * @return array
+     */
+    public function checkWithdrawal(int $userId, int $amount, array $context = []): array
+    {
+        return $this->check($userId, 'withdrawal', $amount, array_merge($context, [
+            'type' => 'withdrawal',
+        ]));
+    }
+
+    /**
+     * Проверка для реферальных бонусов.
+     *
+     * @return array
+     */
+    public function checkReferral(int $userId, int $referredUserId, array $context = []): array
+    {
+        return $this->check($userId, 'referral', 0, array_merge($context, [
+            'referred_user_id' => $referredUserId,
+        ]));
+    }
+
+    /**
+     * Проверка для промо-кодов.
+     *
+     * @return array
+     */
+    public function checkPromoAbuse(int $userId, string $promoCode, int $amount, array $context = []): array
+    {
+        return $this->check($userId, 'promo_apply', $amount, array_merge($context, [
+            'promo_code' => $promoCode,
+        ]));
+    }
+
+    /**
+     * Рассчитать score фрода для операции (0-1, где 1 = 100% фрод).
+     */
+    private function calculateScore(
+        int $userId,
+        string $operationType,
+        int $amount,
+        array $context = []
+    ): float {
+        $score = 0.0;
+
+        // Фактор 1: Сумма операции (максимум 0.3)
+        $dailyLimit = config('finances.fraud.daily_limit', 10000000); // 100 000 РУБ в копейках
+        if ($amount > $dailyLimit) {
+            $score += 0.3;
+        } elseif ($amount > $dailyLimit / 2) {
+            $score += 0.15;
+        }
+
+        // Фактор 2: Частота операций (максимум 0.25)
+        $dailyCount = $this->getUserOperationCount($userId, $operationType);
+        if ($dailyCount > 10) {
+            $score += 0.25;
+        } elseif ($dailyCount > 5) {
+            $score += 0.15;
+        }
+
+        // Фактор 3: Возраст аккаунта (максимум 0.2)
+        $accountAge = $this->getAccountAgeDays($userId);
+        if ($accountAge < 7) {
+            $score += 0.2;
+        } elseif ($accountAge < 30) {
+            $score += 0.1;
+        }
+
+        // Фактор 4: История успешных операций (максимум -0.15, снижает скор)
+        $successRate = $this->getSuccessRate($userId, $operationType);
+        if ($successRate > 0.95) {
+            $score -= 0.15; // Надежный пользователь
+        }
+
+        // Фактор 5: Необычное время (максимум 0.1)
+        $hour = (int) now()->format('H');
+        if ($hour >= 2 && $hour <= 5) { // Ночное время
+            $score += 0.1;
+        }
+
+        // Фактор 6: IP/Device изменения (максимум 0.15)
+        if ($this->isNewDevice($userId) || $this->hasIpChange($userId)) {
+            $score += 0.15;
+        }
+
+        return min(max($score, 0.0), 1.0); // Нормализовать к 0-1
+    }
+
+    /**
+     * Получить порог блокировки для типа операции.
+     */
+    private function getThreshold(string $operationType): float
+    {
+        return match ($operationType) {
+            'payment' => 0.8,
+            'withdrawal' => 0.7,
+            'payout' => 0.6,
+            'referral' => 0.9,
+            'promo_apply' => 0.85,
+            default => 0.75,
+        };
+    }
+
+    /**
+     * Получить текстовое объяснение блокировки.
+     */
+    private function getBlockReason(float $score, string $operationType, array $context = []): string
+    {
+        if ($score > 0.95) {
+            return 'High fraud risk detected';
+        } elseif ($score > 0.85) {
+            return 'Suspicious activity detected';
+        } elseif ($score > 0.75) {
+            return 'Operation requires additional verification';
+        }
+
+        return 'Operation blocked for security reasons';
+    }
+
+    /**
+     * Логировать попытку фрода в fraud_attempts таблицу.
+     */
+    private function logFraudAttempt(
+        int $userId,
+        string $operationType,
+        int $amount,
+        float $score,
+        string $decision,
+        ?string $reason,
+        array $context = []
+    ): void {
         try {
-            $riskScore = 0;
-            $reasons = [];
+            DB::table('fraud_attempts')->insert([
+                'tenant_id' => auth()->user()->tenant_id ?? 'system',
+                'user_id' => $userId,
+                'operation_type' => $operationType,
+                'ip_address' => request()->ip(),
+                'device_fingerprint' => $this->getDeviceFingerprint(),
+                'ml_score' => $score,
+                'decision' => $decision,
+                'reason' => $reason,
+                'blocked_at' => now(),
+                'created_at' => now(),
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('Failed to log fraud attempt', [
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
 
-            // 1. Проверка лимита по сумме
-            $dailyLimit = config('finances.fraud.daily_limit', 100000);
-            if ($transaction['amount'] > $dailyLimit) {
-                $riskScore += 30;
-                $reasons[] = 'Amount exceeds daily limit';
-            }
+    /**
+     * Получить количество операций пользователя за день.
+     */
+    private function getUserOperationCount(int $userId, string $operationType): int
+    {
+        return (int) DB::table('balance_transactions')
+            ->where('user_id', $userId)
+            ->where('type', $operationType)
+            ->whereDate('created_at', now())
+            ->count();
+    }
 
-            // 2. Проверка дневной суммы
-            $dailyTotal = $this->getUserDailyTotal($userId);
-            if ($dailyTotal + $transaction['amount'] > $dailyLimit * 2) {
-                $riskScore += 25;
-                $reasons[] = 'Daily accumulation exceeds limit';
-            }
+    /**
+     * Получить возраст аккаунта в днях.
+     */
+    private function getAccountAgeDays(int $userId): int
+    {
+        $user = DB::table('users')->find($userId);
+
+        if (!$user) {
+            return 0;
+        }
+
+        return now()->diffInDays($user->created_at);
+    }
+
+    /**
+     * Получить процент успешных операций.
+     */
+    private function getSuccessRate(int $userId, string $operationType): float
+    {
+        $total = DB::table('balance_transactions')
+            ->where('user_id', $userId)
+            ->where('type', $operationType)
+            ->count();
+
+        if ($total === 0) {
+            return 0.0;
+        }
+
+        $successful = DB::table('balance_transactions')
+            ->where('user_id', $userId)
+            ->where('type', $operationType)
+            ->where('status', 'completed')
+            ->count();
+
+        return $successful / $total;
+    }
+
+    /**
+     * Проверить, новое ли устройство.
+     */
+    private function isNewDevice(int $userId): bool
+    {
+        $deviceFingerprint = $this->getDeviceFingerprint();
+
+        $existingCount = DB::table('user_sessions')
+            ->where('user_id', $userId)
+            ->where('device_fingerprint', $deviceFingerprint)
+            ->count();
+
+        return $existingCount === 0;
+    }
+
+    /**
+     * Проверить, изменился ли IP.
+     */
+    private function hasIpChange(int $userId): bool
+    {
+        $currentIp = request()->ip();
+        $lastIp = DB::table('user_sessions')
+            ->where('user_id', $userId)
+            ->latest('created_at')
+            ->first()?->ip_address;
+
+        if (!$lastIp) {
+            return true; // Первая сессия
+        }
+
+        return $currentIp !== $lastIp;
+    }
+
+    /**
+     * Получить fingerprint устройства.
+     */
+    private function getDeviceFingerprint(): string
+    {
+        return hash('sha256', implode('|', [
+            request()->ip(),
+            request()->userAgent(),
+            auth()->id() ?? 'anonymous',
+        ]));
+    }
 
             // 3. Количество транзакций за день
             $txCount = $this->getUserTransactionCount($userId);
@@ -270,6 +501,95 @@ class FraudControlService
     }
 
     /**
+     * Проверка манипуляции wishlist для поиска.
+     * Согласно КАНОН 2026: выявлять попытки специально добавлять/удалять товары для манипуляции выдачей.
+     *
+     * @param int $userId ID пользователя
+     * @param int $productId ID товара
+     * @param string $correlationId Идентификатор корреляции
+     * @return array['allowed' => bool, 'score' => float, 'reason' => ?string]
+     */
+    public function checkWishlistManipulation(
+        int $userId,
+        int $productId,
+        string $correlationId = ''
+    ): array {
+        try {
+            // Подсчитываем количество add/remove операций в последний час
+            $recentActions = Cache::get("wishlist_actions_{$userId}_{$productId}", []);
+
+            if (count($recentActions) > 5) {
+                // Более 5 операций за час = подозрительно
+                $score = 0.85;
+                $reason = 'Suspicious wishlist manipulation detected';
+
+                Log::channel('audit')->warning('Wishlist manipulation suspected', [
+                    'user_id' => $userId,
+                    'product_id' => $productId,
+                    'actions_count' => count($recentActions),
+                    'correlation_id' => $correlationId,
+                ]);
+
+                return [
+                    'allowed' => false,
+                    'score' => $score,
+                    'reason' => $reason,
+                ];
+            }
+
+            return [
+                'allowed' => true,
+                'score' => 0.2,
+                'reason' => null,
+            ];
+        } catch (\Throwable $e) {
+            Log::error('Wishlist manipulation check failed', [
+                'user_id' => $userId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [
+                'allowed' => true,
+                'score' => 0.3,
+                'reason' => null,
+            ];
+        }
+    }
+
+    /**
+     * Проверка бонусов.
+     */
+    public function checkBonus(
+        int $tenantId,
+        int $recipientId,
+        int $amountCopeki,
+        string $correlationId = ''
+    ): array {
+        // TODO: ML-скоринг для бонусов
+        return [
+            'allowed' => true,
+            'score' => 0.1,
+            'reason' => null,
+        ];
+    }
+
+    /**
+     * Проверка выплаты.
+     */
+    public function checkPayout(
+        int $tenantId,
+        int $amountCopeki,
+        string $correlationId = ''
+    ): array {
+        // TODO: ML-скоринг для выплат
+        return [
+            'allowed' => true,
+            'score' => 0.1,
+            'reason' => null,
+        ];
+    }
+
+    /**
      * Получить информацию о сервисе.
      */
     public function getInfo(): array
@@ -283,6 +603,7 @@ class FraudControlService
                 'location_check',
                 'time_check',
                 'ml_integration',
+                'wishlist_manipulation_detection',
             ],
             'config' => [
                 'daily_limit' => config('finances.fraud.daily_limit'),

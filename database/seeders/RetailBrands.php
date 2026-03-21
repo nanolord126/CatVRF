@@ -1,6 +1,14 @@
 <?php
+
+declare(strict_types=1);
+
 namespace Database\Seeders;
-class RetailBrands extends BaseBrandSeeder {
+
+/**
+ * Бренды розницы (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class RetailBrands extends BaseBrandSeeder
+{
     public function run(): void {
         $this->seedBrands('Clothing', [
             ['name' => 'Zara', 'country' => 'Spain'], ['name' => 'H&M', 'country' => 'Sweden'],

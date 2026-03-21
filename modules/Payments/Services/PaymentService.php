@@ -1,130 +1,209 @@
-<?php
+<?php declare(strict_types=1);
 
-namespace Modules\Payments\Services;
+namespace App\Modules\Payments\Services;
 
-use Bavix\Wallet\Models\Wallet;
-use Modules\Payments\Gateways\PaymentGatewayInterface;
-use Modules\Hotels\Models\Hotel;
-use Modules\Beauty\Models\BeautySalon;
+use App\Modules\Payments\Models\PaymentTransaction;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use DomainException;
+use Throwable;
 
-class PaymentService
+/**
+ * Сервис управления платежами.
+ * Единственная точка для операций с платежами.
+ * Production 2026.
+ */
+final class PaymentService
 {
-    protected PaymentGatewayInterface $gateway;
-    protected float $commissionPercent;
-    protected \App\Services\Payments\AtolService $atolService;
-    protected \Modules\Inventory\Services\InventorySyncService $inventorySync;
+    /**
+     * Инициировать платёж.
+     */
+    public function initPayment(
+        int $userId,
+        int $tenantId,
+        int $amount,
+        string $currency = 'RUB',
+        string $paymentMethod = 'card',
+        string $idempotencyKey = '',
+        mixed $correlationId = null,
+        ?array $metadata = null,
+    ): PaymentTransaction {
+        $correlationId ??= Str::uuid();
 
-    public function __construct(
-        PaymentGatewayInterface $gateway, 
-        \App\Services\Payments\AtolService $atolService,
-        \Modules\Inventory\Services\InventorySyncService $inventorySync
-    ) {
-        $this->gateway = $gateway;
-        $this->atolService = $atolService;
-        $this->inventorySync = $inventorySync;
-        $this->commissionPercent = config('payments.commissions.platform_percent', 12.0);
-    }
+        try {
+            Log::channel('audit')->info('payment.service.init.start', [
+                'correlation_id' => $correlationId,
+                'user_id' => $userId,
+                'amount' => $amount,
+                'idempotency_key' => $idempotencyKey,
+            ]);
 
-    public function processOrderPayment($owner, float $amount, string $orderId, string $email = null, array $orderItems = []): array
-    {
-        $correlationId = request()->header('X-Correlation-ID', bin2hex(random_bytes(16)));
+            $transaction = DB::transaction(function () use (
+                $userId,
+                $tenantId,
+                $amount,
+                $currency,
+                $paymentMethod,
+                $idempotencyKey,
+                $correlationId,
+                $metadata,
+            ) {
+                // Проверка idempotency
+                $existing = PaymentTransaction::where('tenant_id', $tenantId)
+                    ->where('user_id', $userId)
+                    ->where('idempotency_key', $idempotencyKey)
+                    ->first();
 
-        $paymentData = $this->gateway->createPayment($amount, $orderId, [
-           'owner_id' => $owner->id,
-           'owner_type' => get_class($owner),
-           'correlation_id' => $correlationId
-        ]);
-
-        if (($paymentData['Success'] ?? false) && $email) {
-            // 1. Фискализация чека в АТОЛ
-            $atolItems = collect($orderItems)->map(function($item) {
-                return [
-                    'name' => $item['name'],
-                    'price' => $item['price'],
-                    'quantity' => $item['quantity']
-                ];
-            })->toArray();
-            
-            if (empty($atolItems)) {
-                $atolItems = [['name' => "Оплата заказа #{$orderId}", 'price' => $amount, 'quantity' => 1]];
-            }
-
-            $receiptUuid = $this->atolService->registerSell($orderId, $email, $atolItems, $amount);
-            
-            // 2. Списание со склада (если это товары из Inventory)
-            foreach ($orderItems as $item) {
-                if (isset($item['product_id'])) {
-                    $this->inventorySync->deductStock(
-                        $item['product_id'], 
-                        $item['quantity'], 
-                        'Order', 
-                        $orderId
-                    );
+                if ($existing) {
+                    Log::channel('audit')->info('payment.service.init.idempotent', [
+                        'correlation_id' => $correlationId,
+                        'existing_id' => $existing->id,
+                    ]);
+                    return $existing;
                 }
+
+                return PaymentTransaction::create([
+                    'tenant_id' => $tenantId,
+                    'user_id' => $userId,
+                    'amount' => $amount,
+                    'currency' => $currency,
+                    'payment_method' => $paymentMethod,
+                    'idempotency_key' => $idempotencyKey,
+                    'status' => 'pending',
+                    'correlation_id' => (string) $correlationId,
+                    'tags' => ['payment_init', 'pending'],
+                    'metadata' => $metadata ?? [],
+                ]);
+            });
+
+            Log::channel('audit')->info('payment.service.init.success', [
+                'correlation_id' => $correlationId,
+                'transaction_id' => $transaction->id,
+                'amount' => $amount,
+            ]);
+
+            return $transaction;
+        } catch (Throwable $e) {
+            Log::channel('audit')->critical('payment.service.init.error', [
+                'correlation_id' => $correlationId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Захватить платёж (authorized → captured).
+     */
+    public function capturePayment(
+        PaymentTransaction $transaction,
+        mixed $correlationId = null,
+    ): PaymentTransaction {
+        $correlationId ??= Str::uuid();
+
+        try {
+            if ($transaction->status !== 'authorized') {
+                throw new DomainException("Cannot capture transaction with status: {$transaction->status}");
             }
 
-            if ($receiptUuid) {
-                 Log::info('Payment-to-Services Sync OK', [
-                     'order_id' => $orderId,
-                     'receipt_uuid' => $receiptUuid,
-                     'correlation_id' => $correlationId
-                 ]);
-            }
+            Log::channel('audit')->info('payment.service.capture.start', [
+                'correlation_id' => $correlationId,
+                'transaction_id' => $transaction->id,
+            ]);
+
+            $updated = DB::transaction(function () use ($transaction, $correlationId) {
+                $transaction->update([
+                    'status' => 'captured',
+                    'captured_at' => now(),
+                ]);
+                return $transaction->fresh();
+            });
+
+            Log::channel('audit')->info('payment.service.capture.success', [
+                'correlation_id' => $correlationId,
+                'transaction_id' => $updated->id,
+            ]);
+
+            return $updated;
+        } catch (Throwable $e) {
+            Log::channel('audit')->critical('payment.service.capture.error', [
+                'correlation_id' => $correlationId,
+                'transaction_id' => $transaction->id,
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
         }
-
-        return $paymentData;
     }
 
-    public function splitPayment($owner, $client, float $amount): void
-    {
-        // Check if trial is active or paid
-        if (!$owner->is_paid && now()->greaterThan($owner->trial_ends_at)) {
-             throw new \Exception("Subscription expired. Please pay 15,000 RUB fee.");
+    /**
+     * Вернуть платёж (любой статус → refunded).
+     */
+    public function refundPayment(
+        PaymentTransaction $transaction,
+        string $reason = 'User requested',
+        mixed $correlationId = null,
+    ): PaymentTransaction {
+        $correlationId ??= Str::uuid();
+
+        try {
+            Log::channel('audit')->info('payment.service.refund.start', [
+                'correlation_id' => $correlationId,
+                'transaction_id' => $transaction->id,
+                'reason' => $reason,
+            ]);
+
+            $refunded = DB::transaction(function () use ($transaction, $reason, $correlationId) {
+                $transaction->update([
+                    'status' => 'refunded',
+                    'refunded_at' => now(),
+                    'refund_reason' => $reason,
+                ]);
+                return $transaction->fresh();
+            });
+
+            Log::channel('audit')->info('payment.service.refund.success', [
+                'correlation_id' => $correlationId,
+                'transaction_id' => $refunded->id,
+            ]);
+
+            return $refunded;
+        } catch (Throwable $e) {
+            Log::channel('audit')->critical('payment.service.refund.error', [
+                'correlation_id' => $correlationId,
+                'transaction_id' => $transaction->id,
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
         }
-
-        $platformPercent = config('payments.commissions.platform_percent', 12.0);
-        $cashbackPercent = config('payments.commissions.client_cashback_percent', 1.0);
-
-        // Total platform cut (12%)
-        $totalCommission = $amount * ($platformPercent / 100);
-        
-        // Bonus to client (1% of the original amount, taken from the 12% commission)
-        $clientBonus = $amount * ($cashbackPercent / 100);
-        
-        // Actual platform net profit (11%)
-        $platformNet = $totalCommission - $clientBonus;
-
-        // Owner (Hotel/Salon) gets their 88%
-        $ownerAmount = $amount - $totalCommission;
-        $owner->deposit($ownerAmount, ['type' => 'order_revenue', 'order_id' => '...']);
-
-        // Client gets their 1% cashback in bonus wallet
-        $client->deposit($clientBonus, ['description' => 'Кэшбэк 1% от заказа', 'type' => 'cashback']);
-
-        // Record platform commission history
-        // PlatformAdmin::getCentralWallet()->deposit($platformNet);
     }
 
-    public function handleOnboardingPayment($owner): void
-    {
-        $fee = config('payments.onboarding.total_fee', 15000);
-        $license = config('payments.onboarding.license_fee', 7500);
-        $deposit = config('payments.onboarding.deposit_amount', 7500);
+    /**
+     * Получить статус платежа у провайдера.
+     */
+    public function getPaymentStatus(
+        PaymentTransaction $transaction,
+        mixed $correlationId = null,
+    ): array {
+        $correlationId ??= Str::uuid();
 
-        // 1. Process via Gateway first (pseudo-code)
-        // $this->gateway->createPayment($fee, 'onboarding_' . $owner->id);
+        try {
+            Log::channel('audit')->info('payment.service.status.check', [
+                'correlation_id' => $correlationId,
+                'transaction_id' => $transaction->id,
+            ]);
 
-        // 2. If Success:
-        $owner->update(['is_paid' => true]);
-        
-        // 3. 7500 goes to security deposit (reserve balance)
-        $owner->deposit($deposit, [
-            'type' => 'security_deposit', 
-            'description' => 'Гарантийный депозит (невозвратный при закрытии бизнеса)',
-            'refundable' => false
-        ]);
-
-        // 4. 7500 stays with platform as license fee
-        // PlatformAdmin::getCentralWallet()->deposit($license);
-    }
+            return [
+                'status' => $transaction->status,
+                'provider_code' => $transaction->provider_code,
+                'amount' => $transaction->amount,
+                'currency' => $transaction->currency,
+            ];
+        } catch (Throwable $e) {
+            Log::channel('audit')->critical('payment.service.status.error', [
+                'correlation_id' => $correlationId,
+                'error' => $e->getMessage(),
+            ]);
+            throw $e;
 }

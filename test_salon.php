@@ -1,0 +1,1 @@
+<?php require "vendor/autoload.php"; require "bootstrap/app.php"; $app = app(); $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap(); print_r(DB::select("SELECT name FROM sqlite_master WHERE type='table' AND name LIKE '%salon%' "));

@@ -4,25 +4,25 @@
             <div>
                 <h1 class="text-2xl font-black text-gray-900 dark:text-gray-100 flex items-center">
                     <span class="p-2 bg-primary-600 text-white rounded-lg mr-3">🌐</span>
-                    Global Ecosystem 2026 Admin
+                    Глобальная экосистема 2026 Admin
                 </h1>
                 <p class="text-sm text-gray-500">Единое управление всеми вертикалями бизнеса: Такси, Еда, Клиники, B2B, HR.</p>
             </div>
             <div class="flex items-center space-x-2">
                  <span class="inline-flex items-center rounded-md bg-green-50 px-2 py-1 text-xs font-semibold text-green-700 ring-1 ring-inset ring-green-600/20">
-                    AI Predict Confidence: {{ $this->forecast['confidence_score'] * 100 }}%
+                    Точность ИИ-прогноза: {{ $this->forecast['confidence_score'] * 100 }}%
                 </span>
             </div>
         </header>
 
         {{-- Секция 1: Прогнозы AI по вертикалям --}}
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            @foreach($this->forecast['predicted_revenue'] as $sector => $amount)
-                @if($sector !== 'total')
+            @foreach($this->forecast['ПРОГНОЗ_revenue'] as $сектор => $amount)
+                @if($сектор !== 'total')
                     <div class="bg-white dark:bg-gray-800 p-5 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-700 transition-all hover:scale-105">
                         <div class="flex items-center justify-between mb-2">
-                             <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">{{ $sector }} sector</span>
-                             <span class="p-1 px-2 bg-green-50 text-green-700 rounded-lg text-[10px] font-black">PREDICTED</span>
+                             <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">{{ $сектор }} сектор</span>
+                             <span class="p-1 px-2 bg-green-50 text-green-700 rounded-lg text-[10px] font-black">ПРОГНОЗ</span>
                         </div>
                         <h3 class="text-2xl font-black text-gray-900 dark:text-gray-100">
                             ${{ number_format($amount, 0) }}
@@ -38,7 +38,7 @@
             <div class="bg-primary-900 p-5 rounded-3xl shadow-xl border border-primary-800 text-white relative overflow-hidden group">
                  <div class="relative z-10">
                     <span class="text-xs font-bold text-primary-300 uppercase tracking-widest">Total Forecast</span>
-                    <h3 class="mt-2 text-3xl font-black">${{ number_format($this->forecast['predicted_revenue']['total'], 0) }}</h3>
+                    <h3 class="mt-2 text-3xl font-black">${{ number_format($this->forecast['ПРОГНОЗ_revenue']['total'], 0) }}</h3>
                     <p class="text-[10px] font-bold text-green-400 mt-1 uppercase">Surpassing Q1 targets by +12%</p>
                  </div>
                  <div class="absolute -right-4 -bottom-4 opacity-10 transform group-hover:scale-150 transition-transform duration-700">

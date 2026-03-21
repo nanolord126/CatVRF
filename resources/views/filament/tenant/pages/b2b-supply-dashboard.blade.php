@@ -1,9 +1,9 @@
 <x-filament-panels::page>
     <div class="space-y-6">
         <div class="p-6 bg-gradient-to-br from-primary-600 to-indigo-700 rounded-2xl shadow-lg text-white">
-            <h1 class="text-3xl font-black mb-2 uppercase tracking-tighter">AI-Driven Procurement Engine</h1>
+            <h1 class="text-3xl font-black mb-2 uppercase tracking-tighter">ИИ-Движок закупок</h1>
             <p class="text-primary-100 max-w-2xl text-sm leading-relaxed opacity-90">
-                Optimized supply chain through predictive analysis. Real-time matching of manufacturer stock with business demand.
+                Оптимизация цепочки поставок через предиктивный анализ. Сопоставление складов производителей со спросом бизнеса в реальном времени.
             </p>
         </div>
 

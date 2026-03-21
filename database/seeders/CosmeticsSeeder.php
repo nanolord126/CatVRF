@@ -1,8 +1,21 @@
-﻿<?php  declare(strict_types=1);
-
+<?php
+declare(strict_types=1);
 
 namespace Database\Seeders;
-use App\Models\Tenants\Cosmetics;
-use Illuminate\Database\Seeder;  final 
 
-final class CosmeticsSeeder extends Seeder { 	public function run(): void 	{ 		Cosmetics::create([ 			'name' => 'Hydrating Facial Moisturizer', 			'description' => 'Lightweight moisturizer for all skin types', 			'brand' => 'SkinCare Plus', 			'category' => 'skincare', 			'type' => 'moisturizer', 			'price' => 34.99, 			'quantity_in_stock' => 200, 			'ingredients' => json_encode(['hyaluronic_acid', 'vitamin_e', 'aloe_vera']), 			'skin_type' => 'all', 			'expiry_date' => now()->addYear()->toDateString(), 			'image_url' => 'https://example.com/moisturizer.jpg', 			'status' => 'published', 		]);  		Cosmetics::create([ 			'name' => 'Matte Finish Lipstick', 			'description' => 'Long-wearing matte lipstick in vibrant red', 			'brand' => 'Beauty Art', 			'category' => 'makeup', 			'type' => 'lipstick', 			'price' => 19.99, 			'quantity_in_stock' => 300, 			'ingredients' => json_encode(['pigments', 'wax', 'oils']), 			'skin_type' => 'all', 			'expiry_date' => now()->addYear()->toDateString(), 			'image_url' => 'https://example.com/lipstick.jpg', 			'status' => 'published', 		]);  		Cosmetics::create([ 			'name' => 'Anti-Aging Eye Serum', 			'description' => 'Professional anti-aging serum for sensitive eye area', 			'brand' => 'Luxury Skincare', 			'category' => 'skincare', 			'type' => 'serum', 			'price' => 59.99, 			'quantity_in_stock' => 100, 			'ingredients' => json_encode(['retinol', 'peptides', 'green_tea_extract']), 			'skin_type' => 'sensitive', 			'expiry_date' => now()->addYear()->toDateString(), 			'image_url' => 'https://example.com/serum.jpg', 			'status' => 'published', 		]); 	} }
+use App\Models\Tenants\Cosmetics;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
+
+/**
+ * Косметика (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class CosmeticsSeeder extends Seeder
+{
+    public function run(): void
+    {
+        Cosmetics::factory()
+            ->count(3)
+            ->create(['correlation_id' => (string) Str::uuid(), 'tags' => ['source:seeder']]);
+    }
+}

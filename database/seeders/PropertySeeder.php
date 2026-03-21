@@ -1,22 +1,31 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use App\Models\Domains\RealEstate\Property;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
-class PropertySeeder extends Seeder
+/**
+ * Тестовые недвижимости (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class PropertySeeder extends Seeder
 {
     public function run(): void
     {
         $properties = [
-            ['title' => 'Modern Apartment Downtown', 'address' => '100 City Center', 'bedrooms' => 2, 'bathrooms' => 1, 'area_sqm' => 75, 'price_per_night' => 150],
-            ['title' => 'Beach House', 'address' => '200 Oceanfront', 'bedrooms' => 3, 'bathrooms' => 2, 'area_sqm' => 120, 'price_per_night' => 250],
-            ['title' => 'Studio Loft', 'address' => '300 Arts District', 'bedrooms' => 1, 'bathrooms' => 1, 'area_sqm' => 50, 'price_per_night' => 100],
+            ["name" => "Modern Apartment Downtown", "type" => "apartment", "area" => 75, "price" => 150000],
+            ["name" => "Beach House", "type" => "rental", "area" => 120, "price" => 250000],
+            ["name" => "Studio Loft", "type" => "apartment", "area" => 50, "price" => 100000],
         ];
 
         foreach ($properties as $property) {
-            Property::factory()->create($property);
+            Property::factory()->create(array_merge($property, [
+                "correlation_id" => (string) Str::uuid()
+            ]));
         }
     }
 }
+

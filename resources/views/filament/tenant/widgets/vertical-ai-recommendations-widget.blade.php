@@ -2,13 +2,13 @@
     <div class="z-10 relative">
         <h2 class="text-2xl font-black mb-6 flex items-center gap-3 italic">
             <x-heroicon-o-sparkles class="w-8 h-8 text-primary-500 animate-pulse" />
-            AI ECOSYSTEM RECOMMENDATIONS 2026
+            AI ЭКОСИСТЕМА РЕКОМЕНДАЦИЙ 2026
         </h2>
 
         <!-- Current Budget Context (Wallet Integration) -->
         <div class="mb-8 p-4 bg-primary-50 rounded-2xl flex items-center justify-between border border-primary-100">
             <div>
-                <span class="block text-[10px] uppercase font-bold tracking-widest text-primary-400">Procurement Budget</span>
+                <span class="block text-[10px] uppercase font-bold tracking-widest text-primary-400">Бюджет закупок</span>
                 <span class="text-xl font-black text-primary-900 leading-none">◎ {{ number_format(\DB::table('ecosystem_loyalty_wallets')->where('user_id', auth()->id())->value('balance') ?? 0, 2) }}</span>
             </div>
             <div class="p-2 bg-white rounded-xl shadow-sm">
@@ -18,7 +18,7 @@
 
         <div class="space-y-6">
             <h3 class="text-xs font-black uppercase tracking-tighter text-gray-400 border-b pb-2 flex items-center justify-between">
-                <span>Tailored for your Vertical: {{ $vertical ?? 'Business' }}</span>
+                <span>Специально для вашей отрасли: {{ $vertical ?? 'Business' }}</span>
                 <span class="text-primary-500 flex items-center gap-1">
                     <x-heroicon-o-arrow-path class="w-3 h-3" /> LIVE
                 </span>
@@ -30,18 +30,18 @@
                 <div class="p-4 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-transparent hover:border-primary-500 transition-all duration-300 relative group/card">
                     <div class="flex justify-between items-start mb-2">
                         <span class="px-2 py-0.5 bg-primary-500 text-white text-[10px] rounded-lg font-black uppercase">
-                            {{ $product->match_score ?: 98 }}% Match
+                            {{ $product->Совпадение_score ?: 98 }}% Совпадение
                         </span>
                         <span class="text-[10px] font-bold text-gray-400 uppercase italic">
                             {{ $product->category }}
                         </span>
                     </div>
                     <h4 class="font-bold text-gray-900 dark:text-white leading-tight mb-1">{{ $product->name }}</h4>
-                    <p class="text-xs text-gray-500 line-clamp-1 mb-3">{{ $product->manufacturer->name ?? 'Manufacturer' }}</p>
+                    <p class="text-xs text-gray-500 line-clamp-1 mb-3">{{ $product->Производитель->name ?? 'Производитель' }}</p>
                     
                     <div class="flex items-end justify-between">
                         <div>
-                            <span class="block text-[10px] text-gray-400 uppercase font-black">Price</span>
+                            <span class="block text-[10px] text-gray-400 uppercase font-black">Цена</span>
                             <span class="font-black text-primary-600">◎ {{ number_format($product->price, 2) }}</span>
                         </div>
                         
@@ -69,7 +69,7 @@
                     <div class="min-w-[200px] p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
                         <span class="text-[9px] text-secondary-500 font-bold uppercase">{{ $cross->category }}</span>
                         <h5 class="text-sm font-bold text-gray-900 dark:text-gray-100 leading-tight">{{ $cross->name }}</h5>
-                        <p class="text-[10px] text-gray-400 mt-1 line-clamp-1 italic">Suggested for {{ $vertical ?? 'Business' }} synergy.</p>
+                        <p class="text-[10px] text-gray-400 mt-1 line-clamp-1 italic">Предложено для синергии в отрасли .</p>
                         <div class="mt-3 flex items-center justify-between border-t pt-2 border-gray-100">
                             <span class="text-xs font-black text-secondary-600">◎ {{ number_format($cross->price, 2) }}</span>
                             <x-heroicon-o-plus-circle class="w-5 h-5 text-gray-300 hover:text-secondary-500 cursor-pointer transition-colors" />

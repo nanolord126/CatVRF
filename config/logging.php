@@ -131,6 +131,54 @@ return [
             'replace_placeholders' => true,
         ],
 
+        'audit' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/audit.log'),
+            'level' => App\Services\Infrastructure\DopplerService::get('LOG_LEVEL', 'info'),
+            'days' => 30,
+            'replace_placeholders' => true,
+        ],
+
+        'fraud_alert' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/fraud_alert.log'),
+            'level' => 'warning',
+            'days' => 30,
+            'replace_placeholders' => true,
+        ],
+
+        'webhook_errors' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/webhook_errors.log'),
+            'level' => 'warning',
+            'days' => 30,
+            'replace_placeholders' => true,
+        ],
+
+        'recommend' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/recommend.log'),
+            'level' => 'info',
+            'days' => 14,
+            'replace_placeholders' => true,
+        ],
+
+        'inventory' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/inventory.log'),
+            'level' => 'info',
+            'days' => 14,
+            'replace_placeholders' => true,
+        ],
+
+        'promo' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/promo.log'),
+            'level' => 'info',
+            'days' => 14,
+            'replace_placeholders' => true,
+        ],
+
         'emergency' => [
             'path' => storage_path('logs/laravel.log'),
         ],

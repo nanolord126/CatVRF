@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace Database\Seeders;
 
@@ -7,8 +8,12 @@ use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
-class FlowersVerticalSeeder extends Seeder
+/**
+ * Вертикаль "Цветы" (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class FlowersVerticalSeeder extends Seeder
 {
     public function run(): void
     {
@@ -21,6 +26,8 @@ class FlowersVerticalSeeder extends Seeder
                 'id' => $tenantId,
                 'name' => 'Bloom & Bouquet',
                 'type' => 'flowers',
+                'correlation_id' => (string) Str::uuid(),
+                'tags' => ['source:seeder']
             ]);
             $tenant->domains()->create(['domain' => 'flowers.localhost']);
         }

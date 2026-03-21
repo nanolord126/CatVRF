@@ -1,0 +1,279 @@
+<?php declare(strict_types=1);
+
+namespace App\Domains\Flowers\Http\Controllers;
+
+use App\Domains\Flowers\Models\FlowerProduct;
+use App\Domains\Flowers\Models\FlowerShop;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\Response;
+
+final class FlowerProductController
+{
+    public function index(Request $request): JsonResponse
+    {
+        $correlationId = (string)Str::uuid();
+        
+        try {
+            $products = FlowerProduct::query()
+                ->where('is_available', true)
+                ->when($request->shop_id, fn ($q) => $q->where('shop_id', $request->shop_id))
+                ->when($request->search, fn ($q) => $q->where('name', 'like', "%{$request->search}%"))
+                ->with('shop')
+                ->paginate(15);
+
+            Log::channel('audit')->info('Flower products listed', [
+                'count' => $products->count(),
+                'correlation_id' => $correlationId,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $products,
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (\Exception $exception) {
+            Log::channel('audit')->error('Product listing failed', [
+                'error' => $exception->getMessage(),
+                'correlation_id' => $correlationId,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => $exception->getMessage(),
+                'correlation_id' => $correlationId,
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    public function show(int $id): JsonResponse
+    {
+        $correlationId = (string)Str::uuid();
+
+        try {
+            $product = FlowerProduct::query()
+                ->where('id', $id)
+                ->where('is_available', true)
+                ->with('shop')
+                ->firstOrFail();
+
+            Log::channel('audit')->info('Flower product viewed', [
+                'product_id' => $product->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $product,
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (\Exception $exception) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Product not found',
+                'correlation_id' => $correlationId,
+            ], Response::HTTP_NOT_FOUND);
+        }
+    }
+
+    public function shopProducts(int $shopId): JsonResponse
+    {
+        $correlationId = (string)Str::uuid();
+
+        try {
+            $shop = FlowerShop::query()->findOrFail($shopId);
+            $products = $shop->products()->where('is_available', true)->paginate(15);
+
+            return response()->json([
+                'success' => true,
+                'data' => $products,
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (\Exception $exception) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Shop not found',
+                'correlation_id' => $correlationId,
+            ], Response::HTTP_NOT_FOUND);
+        }
+    }
+
+    public function search(Request $request): JsonResponse
+    {
+        $correlationId = (string)Str::uuid();
+
+        try {
+            $query = $request->get('q', '');
+            $products = FlowerProduct::query()
+                ->where('name', 'like', "%{$query}%")
+                ->orWhere('description', 'like', "%{$query}%")
+                ->where('is_available', true)
+                ->limit(20)
+                ->get();
+
+            Log::channel('audit')->info('Flower products searched', [
+                'query' => $query,
+                'results' => $products->count(),
+                'correlation_id' => $correlationId,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $products,
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (\Exception $exception) {
+            return response()->json([
+                'success' => false,
+                'message' => $exception->getMessage(),
+                'correlation_id' => $correlationId,
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    public function store(Request $request): JsonResponse
+    {
+        if (class_exists('\App\Services\FraudControlService')) {
+            \App\Services\FraudControlService::check();
+        }
+
+        $correlationId = (string)Str::uuid();
+
+        try {
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'description' => 'nullable|string',
+                'product_type' => 'required|in:bouquet,arrangement,basket,single_flower,subscription,gift',
+                'price' => 'required|numeric|min:1',
+                'stock' => 'required|integer|min:0',
+            ]);
+
+            $shop = auth()->user()->flowerShop;
+            if (!$shop) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Flower shop not found',
+                    'correlation_id' => $correlationId,
+                ], Response::HTTP_FORBIDDEN);
+            }
+
+            $product = DB::transaction(function () use ($validated, $shop, $correlationId) {
+                $product = FlowerProduct::query()->create([
+                    'tenant_id' => filament()->getTenant()->id,
+                    'shop_id' => $shop->id,
+                    'correlation_id' => $correlationId,
+                    ...$validated,
+                ]);
+
+                Log::channel('audit')->info('Flower product created', [
+                    'product_id' => $product->id,
+                    'shop_id' => $shop->id,
+                    'correlation_id' => $correlationId,
+                ]);
+
+                return $product;
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => $product,
+                'correlation_id' => $correlationId,
+            ], Response::HTTP_CREATED);
+        } catch (\Exception $exception) {
+            Log::channel('audit')->error('Product creation failed', [
+                'error' => $exception->getMessage(),
+                'correlation_id' => $correlationId,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => $exception->getMessage(),
+                'correlation_id' => $correlationId,
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    public function update(int $id, Request $request): JsonResponse
+    {
+        if (class_exists('\App\Services\FraudControlService')) {
+            \App\Services\FraudControlService::check();
+        }
+
+        $correlationId = (string)Str::uuid();
+
+        try {
+            $product = FlowerProduct::query()->findOrFail($id);
+            
+            $this->authorize('update', $product);
+
+            $validated = $request->validate([
+                'name' => 'string|max:255',
+                'description' => 'nullable|string',
+                'price' => 'numeric|min:1',
+                'stock' => 'integer|min:0',
+            ]);
+
+            $product = DB::transaction(function () use ($product, $validated, $correlationId) {
+                $product->update([...$validated, 'correlation_id' => $correlationId]);
+
+                Log::channel('audit')->info('Flower product updated', [
+                    'product_id' => $product->id,
+                    'correlation_id' => $correlationId,
+                ]);
+
+                return $product;
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => $product,
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (\Exception $exception) {
+            return response()->json([
+                'success' => false,
+                'message' => $exception->getMessage(),
+                'correlation_id' => $correlationId,
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    public function destroy(int $id): JsonResponse
+    {
+        if (class_exists('\App\Services\FraudControlService')) {
+            \App\Services\FraudControlService::check();
+        }
+
+        $correlationId = (string)Str::uuid();
+
+        try {
+            $product = FlowerProduct::query()->findOrFail($id);
+            
+            $this->authorize('delete', $product);
+
+            DB::transaction(function () use ($product, $correlationId) {
+                $product->delete();
+
+                Log::channel('audit')->info('Flower product deleted', [
+                    'product_id' => $product->id,
+                    'correlation_id' => $correlationId,
+                ]);
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Product deleted',
+                'correlation_id' => $correlationId,
+            ]);
+        } catch (\Exception $exception) {
+            return response()->json([
+                'success' => false,
+                'message' => $exception->getMessage(),
+                'correlation_id' => $correlationId,
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+}

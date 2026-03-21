@@ -1,159 +1,286 @@
-<?php
+<?php declare(strict_types=1);
 
 namespace App\Modules\Payments\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Modules\Payments\Models\PaymentMethod;
-use App\Modules\Payments\Http\Requests\StorePaymentMethodRequest;
-use App\Modules\Payments\Http\Requests\UpdatePaymentMethodRequest;
+use App\Modules\Payments\Models\PaymentTransaction;
+use App\Modules\Payments\Http\Requests\StorePaymentRequest;
+use App\Modules\Payments\Services\PaymentService;
+use App\Domains\Finances\Services\Security\FraudControlService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Throwable;
 
-class PaymentController extends Controller
+/**
+ * Контроллер платежей.
+ * Production 2026.
+ */
+final class PaymentController extends Controller
 {
+    public function __construct(
+        private readonly PaymentService $paymentService,
+        private readonly FraudControlService $fraudControl,
+    ) {}
+
+    /**
+     * Получить все платежи пользователя.
+     */
     public function index(Request $request): JsonResponse
     {
+        $correlationId = Str::uuid();
+        
         try {
-            Log::info('Fetching payment methods', ['tenant_id' => tenant('id')]);
-            
-            $methods = PaymentMethod::where('tenant_id', tenant('id'))
-                ->where('is_active', true)
-                ->paginate($request->input('per_page', 15));
-            
-            Log::info('Payment methods fetched', ['count' => $methods->count()]);
-            
-            return response()->json($methods);
-        } catch (QueryException $e) {
-            Log::error('Error fetching payment methods', ['error' => $e->getMessage()]);
-            return response()->json(['error' => 'Failed to fetch payment methods'], 500);
-        }
-    }
-
-    public function store(StorePaymentMethodRequest $request): JsonResponse
-    {
-        try {
-            Log::info('Creating payment method', ['type' => $request->type]);
-            
-            $method = PaymentMethod::create([
+            Log::channel('audit')->info('payment.transactions.index.start', [
+                'correlation_id' => $correlationId,
                 'tenant_id' => tenant('id'),
                 'user_id' => auth()->id(),
-                'type' => $request->type,
-                'token' => $request->token,
-                'is_active' => true,
-                'correlation_id' => \Illuminate\Support\Str::uuid(),
+            ]);
+
+            $perPage = (int) $request->input('per_page', 15);
+            $transactions = PaymentTransaction::where('tenant_id', tenant('id'))
+                ->where('user_id', auth()->id())
+                ->orderBy('created_at', 'desc')
+                ->paginate($perPage);
+
+            Log::channel('audit')->info('payment.transactions.index.success', [
+                'correlation_id' => $correlationId,
+                'count' => $transactions->count(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $transactions,
+                'correlation_id' => (string) $correlationId,
+            ]);
+        } catch (Throwable $e) {
+            Log::channel('audit')->critical('payment.transactions.index.error', [
+                'correlation_id' => $correlationId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
             
-            Log::info('Payment method created', ['method_id' => $method->id]);
-            
-            return response()->json($method, 201);
-        } catch (QueryException $e) {
-            Log::error('Error creating payment method', ['error' => $e->getMessage()]);
-            return response()->json(['error' => 'Failed to create payment method'], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при получении платежей',
+                'correlation_id' => (string) $correlationId,
+            ], 500);
         }
     }
 
-    public function show(PaymentMethod $method): JsonResponse
+    /**
+     * Инициировать платёж.
+     */
+    public function store(StorePaymentRequest $request): JsonResponse
     {
+        $correlationId = Str::uuid();
+        
         try {
-            $this->authorize('view', $method);
+            // Fraud check
+            $fraudScore = $this->fraudControl->assessRisk(auth()->user(), [
+                'amount' => $request->amount,
+                'type' => 'payment_init',
+                'correlation_id' => $correlationId,
+            ]);
+
+            if ($fraudScore > 80) {
+                Log::channel('audit')->warning('payment.init.fraud.blocked', [
+                    'correlation_id' => $correlationId,
+                    'fraud_score' => $fraudScore,
+                ]);
+                
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Операция заблокирована системой безопасности',
+                    'correlation_id' => (string) $correlationId,
+                ], 403);
+            }
+
+            Log::channel('audit')->info('payment.init.start', [
+                'correlation_id' => $correlationId,
+                'amount' => $request->amount,
+                'fraud_score' => $fraudScore,
+            ]);
+
+            // Инициирование платежа через сервис
+            $transaction = DB::transaction(function () use ($request, $correlationId) {
+                return $this->paymentService->initPayment(
+                    userId: auth()->id(),
+                    tenantId: tenant('id'),
+                    amount: (int) ($request->amount * 100), // копейки
+                    currency: $request->currency ?? 'RUB',
+                    paymentMethod: $request->payment_method,
+                    idempotencyKey: $request->idempotency_key ?? (string) Str::uuid(),
+                    correlationId: $correlationId,
+                    metadata: $request->metadata ?? [],
+                );
+            });
+
+            Log::channel('audit')->info('payment.init.success', [
+                'correlation_id' => $correlationId,
+                'transaction_id' => $transaction->id,
+                'amount' => $transaction->amount,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $transaction,
+                'correlation_id' => (string) $correlationId,
+            ], 201);
+        } catch (Throwable $e) {
+            Log::channel('audit')->critical('payment.init.error', [
+                'correlation_id' => $correlationId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
             
-            Log::info('Retrieving payment method', ['method_id' => $method->id]);
-            
-            return response()->json($method);
-        } catch (\Exception $e) {
-            Log::warning('Unauthorized access to payment method', ['method_id' => $method->id]);
-            return response()->json(['error' => 'Unauthorized'], 403);
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при инициировании платежа',
+                'correlation_id' => (string) $correlationId,
+            ], 500);
         }
     }
 
-    public function update(UpdatePaymentMethodRequest $request, PaymentMethod $method): JsonResponse
+    /**
+     * Захватить платёж (hold → capture).
+     */
+    public function capture(Request $request): JsonResponse
     {
+        $correlationId = Str::uuid();
+        
         try {
-            $this->authorize('update', $method);
+            $transaction = PaymentTransaction::where('tenant_id', tenant('id'))
+                ->where('user_id', auth()->id())
+                ->findOrFail($request->transaction_id);
+
+            Log::channel('audit')->info('payment.capture.start', [
+                'correlation_id' => $correlationId,
+                'transaction_id' => $transaction->id,
+            ]);
+
+            $captured = DB::transaction(function () use ($transaction, $correlationId) {
+                return $this->paymentService->capturePayment(
+                    transaction: $transaction,
+                    correlationId: $correlationId,
+                );
+            });
+
+            Log::channel('audit')->info('payment.capture.success', [
+                'correlation_id' => $correlationId,
+                'transaction_id' => $captured->id,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $captured,
+                'correlation_id' => (string) $correlationId,
+            ]);
+        } catch (Throwable $e) {
+            Log::channel('audit')->critical('payment.capture.error', [
+                'correlation_id' => $correlationId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
             
-            Log::info('Updating payment method', ['method_id' => $method->id]);
-            
-            $method->update($request->validated());
-            
-            Log::info('Payment method updated', ['method_id' => $method->id]);
-            
-            return response()->json($method);
-        } catch (\Exception $e) {
-            Log::error('Error updating payment method', ['method_id' => $method->id, 'error' => $e->getMessage()]);
-            return response()->json(['error' => 'Failed to update payment method'], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при захвате платежа',
+                'correlation_id' => (string) $correlationId,
+            ], 500);
         }
     }
 
-    public function destroy(PaymentMethod $method): JsonResponse
+    /**
+     * Отменить платёж (refund).
+     */
+    public function refund(Request $request): JsonResponse
     {
+        $correlationId = Str::uuid();
+        
         try {
-            $this->authorize('delete', $method);
+            $transaction = PaymentTransaction::where('tenant_id', tenant('id'))
+                ->where('user_id', auth()->id())
+                ->findOrFail($request->transaction_id);
+
+            Log::channel('audit')->info('payment.refund.start', [
+                'correlation_id' => $correlationId,
+                'transaction_id' => $transaction->id,
+            ]);
+
+            $refunded = DB::transaction(function () use ($transaction, $correlationId) {
+                return $this->paymentService->refundPayment(
+                    transaction: $transaction,
+                    reason: $request->reason ?? 'User requested',
+                    correlationId: $correlationId,
+                );
+            });
+
+            Log::channel('audit')->info('payment.refund.success', [
+                'correlation_id' => $correlationId,
+                'transaction_id' => $refunded->id,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $refunded,
+                'correlation_id' => (string) $correlationId,
+            ]);
+        } catch (Throwable $e) {
+            Log::channel('audit')->critical('payment.refund.error', [
+                'correlation_id' => $correlationId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
             
-            Log::info('Disabling payment method', ['method_id' => $method->id]);
-            
-            $method->update(['is_active' => false]);
-            
-            Log::info('Payment method disabled', ['method_id' => $method->id]);
-            
-            return response()->json(['message' => 'Payment method disabled'], 200);
-        } catch (\Exception $e) {
-            Log::error('Error disabling payment method', ['method_id' => $method->id, 'error' => $e->getMessage()]);
-            return response()->json(['error' => 'Failed to disable payment method'], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при возврате платежа',
+                'correlation_id' => (string) $correlationId,
+            ], 500);
         }
     }
 
-    public function setDefault(PaymentMethod $method): JsonResponse
+    /**
+     * Получить статус платежа.
+     */
+    public function status(Request $request): JsonResponse
     {
+        $correlationId = Str::uuid();
+        
         try {
-            Log::info('Setting default payment method', ['method_id' => $method->id]);
-            
-            PaymentMethod::where('user_id', auth()->id())
-                ->where('tenant_id', tenant('id'))
-                ->update(['is_default' => false]);
-            
-            $method->update(['is_default' => true]);
-            
-            Log::info('Default payment method set', ['method_id' => $method->id]);
-            
-            return response()->json($method);
-        } catch (QueryException $e) {
-            Log::error('Error setting default method', ['error' => $e->getMessage()]);
-            return response()->json(['error' => 'Failed to set default method'], 500);
-        }
-    }
+            $transaction = PaymentTransaction::where('tenant_id', tenant('id'))
+                ->where('user_id', auth()->id())
+                ->findOrFail($request->transaction_id);
 
-    public function verify(PaymentMethod $method): JsonResponse
-    {
-        try {
-            Log::info('Verifying payment method', ['method_id' => $method->id]);
-            
-            $method->update(['is_verified' => true]);
-            
-            Log::info('Payment method verified', ['method_id' => $method->id]);
-            
-            return response()->json($method);
-        } catch (QueryException $e) {
-            Log::error('Error verifying payment method', ['error' => $e->getMessage()]);
-            return response()->json(['error' => 'Failed to verify payment method'], 500);
-        }
-    }
+            Log::channel('audit')->info('payment.status.check', [
+                'correlation_id' => $correlationId,
+                'transaction_id' => $transaction->id,
+            ]);
 
-    public function history(Request $request): JsonResponse
-    {
-        try {
-            Log::info('Fetching payment history', ['user_id' => auth()->id()]);
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'status' => $transaction->status,
+                    'amount' => $transaction->amount,
+                    'currency' => $transaction->currency,
+                    'provider_code' => $transaction->provider_code,
+                ],
+                'correlation_id' => (string) $correlationId,
+            ]);
+        } catch (Throwable $e) {
+            Log::channel('audit')->critical('payment.status.error', [
+                'correlation_id' => $correlationId,
+                'error' => $e->getMessage(),
+            ]);
             
-            $history = PaymentMethod::where('user_id', auth()->id())
-                ->where('tenant_id', tenant('id'))
-                ->orderBy('created_at', 'desc')
-                ->paginate($request->input('per_page', 15));
-            
-            return response()->json($history);
-        } catch (QueryException $e) {
-            Log::error('Error fetching payment history', ['error' => $e->getMessage()]);
-            return response()->json(['error' => 'Failed to fetch history'], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Платёж не найден',
+                'correlation_id' => (string) $correlationId,
+            ], 404);
         }
     }
 }

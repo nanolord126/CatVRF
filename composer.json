@@ -20,6 +20,7 @@
         "laravel/tinker": "^2.10.1",
         "maatwebsite/excel": "^3.1",
         "minishlink/web-push": "^10.0",
+        "phpunit/phpunit": "^11.0",
         "pragmarx/google2fa-laravel": "^2.3",
         "saade/filament-fullcalendar": "^3.0",
         "sentry/sentry-laravel": "*",
@@ -35,13 +36,12 @@
         "laravel/pint": "^1.24",
         "laravel/sail": "^1.41",
         "mockery/mockery": "^1.6",
-        "nunomaduro/collision": "^8.6",
-        "phpunit/phpunit": "^11.5.3"
+        "nunomaduro/collision": "^8.6"
     },
     "autoload": {
         "psr-4": {
             "App\\": "app/",
-            "Modules\\": "modules/",
+            "Modules\\": ["modules/", "app/Domains/"],
             "Database\\Factories\\": "database/factories/",
             "Database\\Seeders\\": "database/seeders/"
         }
@@ -97,10 +97,14 @@
         "sort-packages": true,
         "allow-plugins": {
             "pestphp/pest-plugin": true,
-            "php-http/discovery": true
+            "php-http/discovery": true,
+            "phpstan/extension-installer": true
         },
         "platform": {
             "php": "8.2.29"
+        },
+        "audit": {
+            "ignore": ["PKSA-z3gr-8qht-p93v"]
         }
     },
     "minimum-stability": "stable",

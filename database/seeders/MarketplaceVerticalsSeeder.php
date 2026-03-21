@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use App\Models\Venue;
@@ -9,13 +11,13 @@ use App\Models\Gym;
 use App\Models\Coach;
 use App\Models\TrainingSchedule;
 use App\Models\Course;
-use App\Models\CourseModule;
-use App\Models\Lesson;
-use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
-class MarketplaceVerticalsSeeder extends Seeder
+/**
+ * Вертикали маркетплейса (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class MarketplaceVerticalsSeeder extends Seeder
 {
     public function run(): void
     {

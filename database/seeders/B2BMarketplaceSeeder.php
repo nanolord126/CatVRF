@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
@@ -9,7 +11,10 @@ use App\Models\WholesaleContract;
 use App\Models\Tenant;
 use Illuminate\Support\Str;
 
-class B2BMarketplaceSeeder extends Seeder
+/**
+ * B2B маркетплейс (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class B2BMarketplaceSeeder extends Seeder
 {
     /**
      * Seed the B2B Marketplace with realistic data.

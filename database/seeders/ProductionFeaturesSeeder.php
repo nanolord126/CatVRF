@@ -1,12 +1,18 @@
 <?php
+declare(strict_types=1);
+
 namespace Database\Seeders;
+
 use Illuminate\Database\Seeder;
 use App\Models\BusinessGroup;
 use App\Models\User;
 use App\Models\Tenant;
 use Illuminate\Support\Str;
 
-class ProductionFeaturesSeeder extends Seeder {
+/**
+ * Функции production среды (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class ProductionFeaturesSeeder extends Seeder {
     public function run(): void {
         $owner = User::first() ?? User::factory()->create(['email' => 'admin@catvrf.ru']);
         $group = BusinessGroup::firstOrCreate(['inn' => '7701234567'], [

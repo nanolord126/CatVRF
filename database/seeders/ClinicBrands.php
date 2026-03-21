@@ -1,6 +1,12 @@
 <?php
+declare(strict_types=1);
+
 namespace Database\Seeders;
-class ClinicBrands extends BaseBrandSeeder {
+
+/**
+ * Медицинские клиники (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class ClinicBrands extends BaseBrandSeeder {
     public function run(): void {
         $this->seedBrands('HumanClinics', [
             ['name' => 'Mayo Clinic', 'country' => 'USA'], ['name' => 'Cleveland Clinic', 'country' => 'USA'],

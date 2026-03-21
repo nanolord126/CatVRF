@@ -1,12 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use App\Models\Filter;
 use App\Models\FilterValue;
 use Illuminate\Database\Seeder;
 
-class RetailAndGoodsFiltersSeeder extends Seeder
+/**
+ * Фильтры розницы и товаров (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class RetailAndGoodsFiltersSeeder extends Seeder
 {
     public function run(): void
     {

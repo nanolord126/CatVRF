@@ -2,28 +2,28 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <!-- AI Security KPI -->
         <x-filament::section>
-            <x-slot name="heading">AI Reputation & Fraud Detection (Detections Stream)</x-slot>
-            <x-slot name="description">Monitor suspicious activities detected by the AI model across all verticals.</x-slot>
+            <x-slot name="heading">ИИ-Репутация и Обнаружение Фрода (Поток данных)</x-slot>
+            <x-slot name="description">Мониторинг подозрительной активности, выявленной ИИ по всем вертикалям.</x-slot>
             
             {{ $this->table }}
         </x-filament::section>
 
         <!-- API Gateway (Partner Access) -->
         <x-filament::section>
-            <x-slot name="heading">External Partner API Gateway 2026</x-slot>
-            <x-slot name="description">Manage external access and scoping for 3rd party integrations (Taxi Dispatch, Food Aggregators).</x-slot>
+            <x-slot name="heading">API-шлюз внешних партнеров 2026</x-slot>
+            <x-slot name="description">Управление внешним доступом и интеграциями сторонних систем (Такси, Агрегаторы еды).</x-slot>
 
             <div class="space-y-4">
                 @foreach($this->getViewData()['partners'] as $partner)
                     <div class="p-4 border rounded-lg dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
                         <div class="flex justify-between items-center mb-2">
                             <span class="font-bold text-lg text-primary-600">{{ $partner->partner_name }}</span>
-                            <span class="badge {{ $partner->is_active ? 'badge-success' : 'badge-danger' }}">
-                                {{ $partner->is_active ? 'Active' : 'Revoked' }}
+                            <span class="badge {{ $partner->is_Активен ? 'badge-success' : 'badge-danger' }}">
+                                {{ $partner->is_Активен ? 'Активен' : 'Отключен' }}
                             </span>
                         </div>
-                        <div class="text-sm font-mono opacity-70">Key: {{ substr($partner->api_key, 0, 8) }}...</div>
-                        <div class="mt-2 text-xs opacity-75">Allowed Scopes: {{ implode(', ', json_decode($partner->allowed_scopes, true) ?? []) }}</div>
+                        <div class="text-sm font-mono opacity-70">Ключ: {{ substr($partner->api_key, 0, 8) }}...</div>
+                        <div class="mt-2 text-xs opacity-75">Разрешенные доступы: {{ implode(', ', json_decode($partner->allowed_scopes, true) ?? []) }}</div>
                     </div>
                 @endforeach
             </div>

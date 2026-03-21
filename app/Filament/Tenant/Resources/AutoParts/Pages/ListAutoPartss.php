@@ -1,0 +1,1 @@
+<?php declare(strict_types=1); namespace App\Filament\Tenant\Resources\AutoParts\Pages; use App\Filament\Tenant\Resources\AutoPartsResource; use Filament\Resources\Pages\ListRecords; final class ListAutoPartss extends ListRecords { protected static string $resource = AutoPartsResource::class; }

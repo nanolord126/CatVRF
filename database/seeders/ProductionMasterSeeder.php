@@ -1,11 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Artisan;
 
-class ProductionMasterSeeder extends Seeder
+/**
+ * Мастер-сидер для запуска всех вертикалей 2026 (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class ProductionMasterSeeder extends Seeder
 {
     /**
      * Master Seeder to launch all 2026 vertical modules in proper order.

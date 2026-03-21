@@ -1,10 +1,14 @@
 <?php
+declare(strict_types=1);
 
 namespace Database\Seeders;
 
 use Database\Seeders\VerticalFilterSeederBase;
 
-class ElectronicsFilterSeeder extends VerticalFilterSeederBase
+/**
+ * Фильтры для электроники (НЕ ЗАПУСКАТЬ В PRODUCTION).
+ */
+final class ElectronicsFilterSeeder extends VerticalFilterSeederBase
 {
     public function run(): void
     {

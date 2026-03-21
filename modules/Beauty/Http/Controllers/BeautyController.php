@@ -1,128 +1,363 @@
-<?php
+<?php declare(strict_types=1);
 
-namespace App\Domains\Beauty\Http\Controllers;
+namespace App\Modules\Beauty\Http\Controllers;
 
-use App\Domains\Beauty\Models\BeautySalon;
-use App\Domains\Beauty\Services\BeautyService;
 use App\Http\Controllers\Controller;
+use App\Modules\Beauty\Models\BeautySalon;
+use App\Modules\Beauty\Models\Appointment;
+use App\Modules\Beauty\Http\Requests\StoreBeautySalonRequest;
+use App\Modules\Beauty\Http\Requests\StoreAppointmentRequest;
+use App\Modules\Beauty\Services\BeautyService;
+use App\Modules\Beauty\Services\BookingService;
+use App\Domains\Finances\Services\Security\FraudControlService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Throwable;
 
-class BeautyController extends Controller
+/**
+ * Контроллер Красоты (салоны, мастера, записи).
+ * Production 2026.
+ */
+final class BeautyController extends Controller
 {
-    public function __construct(private BeautyService $service) {}
+    public function __construct(
+        private readonly BeautyService $beautyService,
+        private readonly BookingService $bookingService,
+        private readonly FraudControlService $fraudControl,
+    ) {}
 
+    /**
+     * Получить все салоны красоты tenant.
+     */
     public function index(Request $request): JsonResponse
     {
+        $correlationId = Str::uuid();
+        
         try {
-            Log::info('Fetching beauty salons', ['tenant_id' => tenant()->id, 'per_page' => $request->input('per_page', 15)]);
-            
-            $salons = BeautySalon::where('tenant_id', tenant()->id)
+            Log::channel('audit')->info('beauty.salons.index.start', [
+                'correlation_id' => $correlationId,
+                'tenant_id' => tenant('id'),
+            ]);
+
+            $perPage = (int) $request->input('per_page', 15);
+            $salons = BeautySalon::where('tenant_id', tenant('id'))
                 ->orderBy('created_at', 'desc')
-                ->paginate($request->input('per_page', 15));
+                ->paginate($perPage);
+
+            Log::channel('audit')->info('beauty.salons.index.success', [
+                'correlation_id' => $correlationId,
+                'count' => $salons->count(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $salons,
+                'correlation_id' => (string) $correlationId,
+            ]);
+        } catch (Throwable $e) {
+            Log::channel('audit')->critical('beauty.salons.index.error', [
+                'correlation_id' => $correlationId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
             
-            Log::info('Beauty salons fetched', ['count' => $salons->count()]);
-            
-            return response()->json($salons);
-        } catch (QueryException $e) {
-            Log::error('Error fetching beauty salons', ['error' => $e->getMessage()]);
-            return response()->json(['error' => 'Failed to fetch salons'], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при получении салонов',
+                'correlation_id' => (string) $correlationId,
+            ], 500);
         }
     }
 
-    public function store(Request $request): JsonResponse
+    /**
+     * Создать салон красоты.
+     */
+    public function store(StoreBeautySalonRequest $request): JsonResponse
     {
+        $correlationId = Str::uuid();
+        
         try {
-            $this->authorize('create', BeautySalon::class);
+            Log::channel('audit')->info('beauty.salon.create.start', [
+                'correlation_id' => $correlationId,
+                'name' => $request->name,
+            ]);
+
+            $salon = DB::transaction(function () use ($request, $correlationId) {
+                return $this->beautyService->createSalon(
+                    tenantId: tenant('id'),
+                    name: $request->name,
+                    address: $request->address,
+                    phone: $request->phone,
+                    email: $request->email,
+                    description: $request->description,
+                    workingHours: $request->working_hours ?? [],
+                    correlationId: $correlationId,
+                );
+            });
+
+            Log::channel('audit')->info('beauty.salon.create.success', [
+                'correlation_id' => $correlationId,
+                'salon_id' => $salon->id,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $salon,
+                'correlation_id' => (string) $correlationId,
+            ], 201);
+        } catch (Throwable $e) {
+            Log::channel('audit')->critical('beauty.salon.create.error', [
+                'correlation_id' => $correlationId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
             
-            Log::info('Creating beauty salon', ['name' => $request->input('name')]);
-            
-            $salon = $this->service->createSalon($request->all());
-            
-            Log::info('Beauty salon created', ['salon_id' => $salon->id]);
-            
-            return response()->json($salon, 201);
-        } catch (\Exception $e) {
-            Log::error('Error creating salon', ['error' => $e->getMessage()]);
-            return response()->json(['error' => 'Failed to create salon'], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при создании салона',
+                'correlation_id' => (string) $correlationId,
+            ], 500);
         }
     }
 
+    /**
+     * Получить салон.
+     */
     public function show(BeautySalon $salon): JsonResponse
     {
+        $correlationId = Str::uuid();
+        
         try {
-            Log::info('Retrieving beauty salon', ['salon_id' => $salon->id]);
+            $this->authorize('view', $salon);
             
-            return response()->json($salon);
-        } catch (\Exception $e) {
-            Log::error('Error retrieving salon', ['salon_id' => $salon->id, 'error' => $e->getMessage()]);
-            return response()->json(['error' => 'Failed to retrieve salon'], 500);
+            Log::channel('audit')->info('beauty.salon.show', [
+                'correlation_id' => $correlationId,
+                'salon_id' => $salon->id,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $salon->load(['masters', 'services']),
+                'correlation_id' => (string) $correlationId,
+            ]);
+        } catch (Throwable $e) {
+            Log::channel('audit')->critical('beauty.salon.show.error', [
+                'correlation_id' => $correlationId,
+                'error' => $e->getMessage(),
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Салон не найден',
+                'correlation_id' => (string) $correlationId,
+            ], 404);
         }
     }
 
-    public function update(Request $request, BeautySalon $salon): JsonResponse
+    /**
+     * Создать запись на услугу.
+     */
+    public function createAppointment(StoreAppointmentRequest $request): JsonResponse
     {
+        $correlationId = Str::uuid();
+        
         try {
-            $this->authorize('update', $salon);
+            // Fraud check
+            $fraudScore = $this->fraudControl->assessRisk(auth()->user(), [
+                'amount' => $request->price ?? 0,
+                'type' => 'beauty_appointment',
+                'correlation_id' => $correlationId,
+            ]);
+
+            if ($fraudScore > 80) {
+                Log::channel('audit')->warning('beauty.appointment.fraud.blocked', [
+                    'correlation_id' => $correlationId,
+                    'fraud_score' => $fraudScore,
+                ]);
+                
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Операция заблокирована системой безопасности',
+                    'correlation_id' => (string) $correlationId,
+                ], 403);
+            }
+
+            Log::channel('audit')->info('beauty.appointment.create.start', [
+                'correlation_id' => $correlationId,
+                'salon_id' => $request->salon_id,
+                'service_id' => $request->service_id,
+            ]);
+
+            $appointment = DB::transaction(function () use ($request, $correlationId) {
+                return $this->bookingService->createAppointment(
+                    salonId: $request->salon_id,
+                    serviceId: $request->service_id,
+                    masterId: $request->master_id,
+                    clientId: auth()->id(),
+                    tenantId: tenant('id'),
+                    dateTime: $request->datetime,
+                    notes: $request->notes,
+                    correlationId: $correlationId,
+                );
+            });
+
+            Log::channel('audit')->info('beauty.appointment.create.success', [
+                'correlation_id' => $correlationId,
+                'appointment_id' => $appointment->id,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $appointment,
+                'correlation_id' => (string) $correlationId,
+            ], 201);
+        } catch (Throwable $e) {
+            Log::channel('audit')->critical('beauty.appointment.create.error', [
+                'correlation_id' => $correlationId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
             
-            Log::info('Updating beauty salon', ['salon_id' => $salon->id]);
-            
-            $updated = $this->service->updateSchedule($salon, $request->all());
-            
-            Log::info('Beauty salon updated', ['salon_id' => $salon->id]);
-            
-            return response()->json($updated);
-        } catch (\Exception $e) {
-            Log::error('Error updating salon', ['salon_id' => $salon->id, 'error' => $e->getMessage()]);
-            return response()->json(['error' => 'Failed to update salon'], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при создании записи',
+                'correlation_id' => (string) $correlationId,
+            ], 500);
         }
     }
 
-    public function destroy(BeautySalon $salon): JsonResponse
+    /**
+     * Отменить запись.
+     */
+    public function cancelAppointment(Appointment $appointment): JsonResponse
     {
+        $correlationId = Str::uuid();
+        
         try {
-            $this->authorize('delete', $salon);
+            $this->authorize('delete', $appointment);
+
+            Log::channel('audit')->info('beauty.appointment.cancel.start', [
+                'correlation_id' => $correlationId,
+                'appointment_id' => $appointment->id,
+            ]);
+
+            $cancelled = DB::transaction(function () use ($appointment, $correlationId) {
+                return $this->bookingService->cancelAppointment(
+                    appointment: $appointment,
+                    correlationId: $correlationId,
+                );
+            });
+
+            Log::channel('audit')->info('beauty.appointment.cancel.success', [
+                'correlation_id' => $correlationId,
+                'appointment_id' => $cancelled->id,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $cancelled,
+                'correlation_id' => (string) $correlationId,
+            ]);
+        } catch (Throwable $e) {
+            Log::channel('audit')->critical('beauty.appointment.cancel.error', [
+                'correlation_id' => $correlationId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
             
-            Log::info('Deleting beauty salon', ['salon_id' => $salon->id]);
-            
-            $salon->delete();
-            
-            Log::info('Beauty salon deleted', ['salon_id' => $salon->id]);
-            
-            return response()->json(['message' => 'Salon deleted'], 200);
-        } catch (\Exception $e) {
-            Log::error('Error deleting salon', ['salon_id' => $salon->id, 'error' => $e->getMessage()]);
-            return response()->json(['error' => 'Failed to delete salon'], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при отмене записи',
+                'correlation_id' => (string) $correlationId,
+            ], 500);
         }
     }
-    
-    public function services(BeautySalon $salon): JsonResponse
+
+    /**
+     * Получить доступные слоты записи.
+     */
+    public function availableSlots(Request $request): JsonResponse
     {
+        $correlationId = Str::uuid();
+        
         try {
-            Log::info('Fetching salon services', ['salon_id' => $salon->id]);
+            $slots = $this->bookingService->getAvailableSlots(
+                salonId: $request->salon_id,
+                masterId: $request->master_id,
+                serviceId: $request->service_id,
+                date: $request->date,
+            );
+
+            Log::channel('audit')->info('beauty.slots.check', [
+                'correlation_id' => $correlationId,
+                'salon_id' => $request->salon_id,
+                'slots_count' => count($slots),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $slots,
+                'correlation_id' => (string) $correlationId,
+            ]);
+        } catch (Throwable $e) {
+            Log::channel('audit')->critical('beauty.slots.error', [
+                'correlation_id' => $correlationId,
+                'error' => $e->getMessage(),
+            ]);
             
-            $services = $salon->services()->get();
-            
-            return response()->json($services);
-        } catch (QueryException $e) {
-            Log::error('Error fetching salon services', ['salon_id' => $salon->id, 'error' => $e->getMessage()]);
-            return response()->json(['error' => 'Failed to fetch services'], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при получении слотов',
+                'correlation_id' => (string) $correlationId,
+            ], 500);
         }
     }
-    
-    public function availability(BeautySalon $salon, Request $request): JsonResponse
+
+    /**
+     * Завершить услугу и списать расходники.
+     */
+    public function completeAppointment(Appointment $appointment): JsonResponse
     {
+        $correlationId = Str::uuid();
+        
         try {
-            Log::info('Checking salon availability', ['salon_id' => $salon->id, 'date' => $request->input('date')]);
+            $this->authorize('update', $appointment);
+
+            Log::channel('audit')->info('beauty.appointment.complete.start', [
+                'correlation_id' => $correlationId,
+                'appointment_id' => $appointment->id,
+            ]);
+
+            $completed = DB::transaction(function () use ($appointment, $correlationId) {
+                return $this->bookingService->completeAppointment(
+                    appointment: $appointment,
+                    correlationId: $correlationId,
+                );
+            });
+
+            Log::channel('audit')->info('beauty.appointment.complete.success', [
+                'correlation_id' => $correlationId,
+                'appointment_id' => $completed->id,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $completed,
+                'correlation_id' => (string) $correlationId,
+            ]);
+        } catch (Throwable $e) {
+            Log::channel('audit')->critical('beauty.appointment.complete.error', [
+                'correlation_id' => $correlationId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
             
-            $availability = $this->service->getAvailability($salon, $request->input('date'));
-            
-            return response()->json($availability);
-        } catch (\Exception $e) {
-            Log::error('Error checking availability', ['salon_id' => $salon->id, 'error' => $e->getMessage()]);
-            return response()->json(['error' => 'Failed to check availability'], 500);
-        }
-    }
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при завершении услуги',
+                'correlation_id' => (string) $correlationId,
+            ], 500);
 }

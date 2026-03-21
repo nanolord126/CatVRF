@@ -5,13 +5,13 @@
 
         <!-- Graph for Visualization would go here in Filament 2026 -->
         <x-filament::section>
-            <x-slot name="heading">Scenario Comparison 24h/7d/30d</x-slot>
-            <x-slot name="description">Compare the "Digital Twin" projection with the current baseline to see if the proposed change is sustainable.</x-slot>
+            <x-slot name="heading">Сравнение сценариев 24ч/7д/30д</x-slot>
+            <x-slot name="description">Сравните прогноз "Цифрового двойника" с текущим базовым уровнем, чтобы оценить устойчивость предложенных изменений.</x-slot>
             
             <div class="p-8 text-center text-gray-500 opacity-50 font-mono">
-                [AI Prediction Graph: {{ $this->vertical }} Scenario Progress Plot]
+                [График ИИ-прогноза: {{ $this->vertical }} График развития сценария]
                 <br>
-                Baseline: $100,000 | Scen: ${{ number_format($this->simulationResult['predicted_monthly_revenue'] ?? 100000, 2) }}
+                База: $100,000 | Сценарий: ${{ number_format($this->simulationResult['predicted_monthly_revenue'] ?? 100000, 2) }}
             </div>
         </x-filament::section>
     </div>
