@@ -2,9 +2,11 @@
 
 namespace App\Domains\Auto\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use App\Domains\Auto\Models\AutoPart;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 final class AutoInventoryService
 {
@@ -17,6 +19,11 @@ final class AutoInventoryService
      */
     public function reserveParts(int $orderId, array $parts, string $correlationId): bool
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'reserveParts'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL reserveParts', ['domain' => __CLASS__]);
+
         try {
             DB::transaction(function () use ($orderId, $parts, $correlationId) {
                 foreach ($parts as $partId => $quantity) {
@@ -54,6 +61,11 @@ final class AutoInventoryService
      */
     public function deductParts(int $orderId, array $parts, string $correlationId): bool
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'deductParts'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL deductParts', ['domain' => __CLASS__]);
+
         try {
             DB::transaction(function () use ($orderId, $parts, $correlationId) {
                 foreach ($parts as $partId => $quantity) {
@@ -89,6 +101,11 @@ final class AutoInventoryService
      */
     public function releaseParts(int $orderId, array $parts, string $correlationId): bool
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'releaseParts'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL releaseParts', ['domain' => __CLASS__]);
+
         try {
             DB::transaction(function () use ($orderId, $parts, $correlationId) {
                 foreach ($parts as $partId => $quantity) {

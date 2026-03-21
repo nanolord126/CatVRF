@@ -2,10 +2,12 @@
 
 namespace App\Domains\Freelance\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use App\Domains\Freelance\Events\DeliverableSubmitted;
 use App\Domains\Freelance\Models\FreelanceDeliverable;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 final class DeliverableService
 {
@@ -15,6 +17,11 @@ final class DeliverableService
         array $data,
         string $correlationId,
     ): FreelanceDeliverable {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'submitDeliverable'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL submitDeliverable', ['domain' => __CLASS__]);
+
         return DB::transaction(function () use ($contractId, $freelancerId, $data, $correlationId) {
             $deliverable = FreelanceDeliverable::create([
                 'tenant_id' => tenant()->id,
@@ -45,6 +52,11 @@ final class DeliverableService
         int $deliverableId,
         string $correlationId,
     ): void {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'approveDeliverable'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL approveDeliverable', ['domain' => __CLASS__]);
+
         DB::transaction(function () use ($deliverableId, $correlationId) {
             $deliverable = FreelanceDeliverable::findOrFail($deliverableId);
             $deliverable->update([
@@ -65,6 +77,11 @@ final class DeliverableService
         string $feedback,
         string $correlationId,
     ): void {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'requestRevision'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL requestRevision', ['domain' => __CLASS__]);
+
         DB::transaction(function () use ($deliverableId, $feedback, $correlationId) {
             $deliverable = FreelanceDeliverable::findOrFail($deliverableId);
             $deliverable->update([
@@ -86,6 +103,11 @@ final class DeliverableService
         string $reason,
         string $correlationId,
     ): void {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'rejectDeliverable'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL rejectDeliverable', ['domain' => __CLASS__]);
+
         DB::transaction(function () use ($deliverableId, $reason, $correlationId) {
             $deliverable = FreelanceDeliverable::findOrFail($deliverableId);
             $deliverable->update([

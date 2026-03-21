@@ -17,6 +17,11 @@ final class TaxiService
 {
     public function createDriver(array $data, int $userId, int $tenantId, string $correlationId): TaxiDriver
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'createDriver'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createDriver', ['domain' => __CLASS__]);
+
         return DB::transaction(function () use ($data, $userId, $tenantId, $correlationId) {
             Log::channel('audit')->info('Creating taxi driver', [
                 'correlation_id' => $correlationId,
@@ -37,6 +42,11 @@ final class TaxiService
 
     public function createVehicle(array $data, int $driverId, string $correlationId): TaxiVehicle
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'createVehicle'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createVehicle', ['domain' => __CLASS__]);
+
         return DB::transaction(function () use ($data, $driverId, $correlationId) {
             return TaxiVehicle::create([
                 'driver_id' => $driverId,
@@ -54,6 +64,11 @@ final class TaxiService
 
     public function createRide(array $data, int $driverId, int $userId, string $correlationId): TaxiRide
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'createRide'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createRide', ['domain' => __CLASS__]);
+
         return DB::transaction(function () use ($data, $driverId, $userId, $correlationId) {
             Log::channel('audit')->info('Creating taxi ride', [
                 'correlation_id' => $correlationId,
@@ -75,6 +90,11 @@ final class TaxiService
 
     public function completeRide(TaxiRide $ride, int $actualPrice, string $correlationId): TaxiRide
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'completeRide'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL completeRide', ['domain' => __CLASS__]);
+
         return DB::transaction(function () use ($ride, $actualPrice, $correlationId) {
             Log::channel('audit')->info('Completing taxi ride', [
                 'correlation_id' => $correlationId,

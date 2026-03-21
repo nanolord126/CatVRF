@@ -2,12 +2,14 @@
 
 namespace App\Domains\Freelance\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use App\Domains\Freelance\Events\ProposalAccepted;
 use App\Domains\Freelance\Models\FreelanceContract;
 use App\Domains\Freelance\Models\FreelanceJob;
 use App\Domains\Freelance\Models\FreelanceProposal;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 final class ProposalService
@@ -18,6 +20,11 @@ final class ProposalService
         array $data,
         string $correlationId,
     ): FreelanceProposal {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'submitProposal'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL submitProposal', ['domain' => __CLASS__]);
+
         return DB::transaction(function () use ($jobId, $freelancerId, $data, $correlationId) {
             $job = FreelanceJob::findOrFail($jobId);
 
@@ -52,6 +59,11 @@ final class ProposalService
         int $proposalId,
         string $correlationId,
     ): FreelanceContract {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'acceptProposal'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL acceptProposal', ['domain' => __CLASS__]);
+
         return DB::transaction(function () use ($proposalId, $correlationId) {
             $proposal = FreelanceProposal::with(['job', 'freelancer'])->findOrFail($proposalId);
 
@@ -92,6 +104,11 @@ final class ProposalService
         ?string $reason = null,
         string $correlationId = '',
     ): void {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'rejectProposal'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL rejectProposal', ['domain' => __CLASS__]);
+
         DB::transaction(function () use ($proposalId, $reason, $correlationId) {
             $proposal = FreelanceProposal::findOrFail($proposalId);
             $proposal->update(['status' => 'rejected', 'responded_at' => now()]);
@@ -108,6 +125,11 @@ final class ProposalService
         int $proposalId,
         string $correlationId,
     ): void {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'withdrawProposal'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL withdrawProposal', ['domain' => __CLASS__]);
+
         DB::transaction(function () use ($proposalId, $correlationId) {
             $proposal = FreelanceProposal::findOrFail($proposalId);
             $proposal->update(['status' => 'cancelled']);

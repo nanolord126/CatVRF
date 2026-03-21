@@ -2,10 +2,12 @@
 
 namespace App\Domains\Fashion\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use App\Domains\Fashion\Events\OrderPlaced;
 use App\Domains\Fashion\Models\FashionOrder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -21,6 +23,11 @@ final class OrderService
         string $shippingAddress,
         ?string $correlationId = null,
     ): FashionOrder {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'createOrder'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createOrder', ['domain' => __CLASS__]);
+
         try {
             $correlationId ??= Str::uuid();
             $discountAmount = 0;
@@ -87,6 +94,11 @@ final class OrderService
 
     public function cancelOrder(FashionOrder $order, string $reason, ?string $correlationId = null): void
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'cancelOrder'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL cancelOrder', ['domain' => __CLASS__]);
+
         try {
             $correlationId ??= Str::uuid();
 
@@ -117,6 +129,11 @@ final class OrderService
 
     public function updateOrderStatus(FashionOrder $order, string $status, ?string $correlationId = null): void
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'updateOrderStatus'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL updateOrderStatus', ['domain' => __CLASS__]);
+
         try {
             $correlationId ??= Str::uuid();
 

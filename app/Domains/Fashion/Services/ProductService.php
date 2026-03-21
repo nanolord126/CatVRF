@@ -2,9 +2,11 @@
 
 namespace App\Domains\Fashion\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use App\Domains\Fashion\Models\FashionProduct;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -22,6 +24,11 @@ final class ProductService
         array $sizes = [],
         ?string $correlationId = null,
     ): FashionProduct {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'createProduct'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createProduct', ['domain' => __CLASS__]);
+
         try {
             $correlationId ??= Str::uuid();
 
@@ -77,6 +84,11 @@ final class ProductService
 
     public function updateProduct(FashionProduct $product, array $data, ?string $correlationId = null): void
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'updateProduct'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL updateProduct', ['domain' => __CLASS__]);
+
         try {
             $correlationId ??= Str::uuid();
 
@@ -101,6 +113,11 @@ final class ProductService
 
     public function updateStock(FashionProduct $product, int $quantity, ?string $correlationId = null): void
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'updateStock'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL updateStock', ['domain' => __CLASS__]);
+
         try {
             $correlationId ??= Str::uuid();
 

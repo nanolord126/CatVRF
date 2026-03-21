@@ -2,9 +2,11 @@
 
 namespace App\Domains\Auto\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use App\Domains\Auto\Models\AutoPart;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Сервис для управления запасами запчастей.
@@ -17,6 +19,11 @@ final class AutoPartsInventoryService
      */
     public function getCurrentStock(string $partId, string $correlationId = ''): int
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'getCurrentStock'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getCurrentStock', ['domain' => __CLASS__]);
+
         $part = AutoPart::query()->find($partId);
 
         if (!$part) {
@@ -31,6 +38,11 @@ final class AutoPartsInventoryService
      */
     public function reserveParts(array $parts, string $reason = '', string $correlationId = ''): bool
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'reserveParts'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL reserveParts', ['domain' => __CLASS__]);
+
         try {
             return DB::transaction(function () use ($parts, $reason, $correlationId) {
                 foreach ($parts as $partData) {
@@ -67,6 +79,11 @@ final class AutoPartsInventoryService
      */
     public function addStock(string $partId, int $quantity, string $reason = '', string $correlationId = ''): bool
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'addStock'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL addStock', ['domain' => __CLASS__]);
+
         try {
             return DB::transaction(function () use ($partId, $quantity, $reason, $correlationId) {
                 $part = AutoPart::query()->lockForUpdate()->find($partId);

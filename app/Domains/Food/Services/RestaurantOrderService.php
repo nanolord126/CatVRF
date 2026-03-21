@@ -2,9 +2,11 @@
 
 namespace App\Domains\Food\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use App\Domains\Food\Models\RestaurantOrder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Сервис для управления заказами в ресторане.
@@ -24,6 +26,11 @@ final class RestaurantOrderService
         array $data,
         string $correlationId = ''
     ): RestaurantOrder {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'createOrder'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createOrder', ['domain' => __CLASS__]);
+
         try {
             return DB::transaction(function () use ($data, $correlationId) {
                 $order = RestaurantOrder::create([
@@ -69,6 +76,11 @@ final class RestaurantOrderService
         RestaurantOrder $order,
         string $correlationId = ''
     ): bool {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'confirmPaymentAndSendToKitchen'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL confirmPaymentAndSendToKitchen', ['domain' => __CLASS__]);
+
         try {
             return DB::transaction(function () use ($order, $correlationId) {
                 $order->update([
@@ -103,6 +115,11 @@ final class RestaurantOrderService
         RestaurantOrder $order,
         string $correlationId = ''
     ): bool {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'completeOrder'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL completeOrder', ['domain' => __CLASS__]);
+
         try {
             return DB::transaction(function () use ($order, $correlationId) {
                 $order->update([

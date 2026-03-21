@@ -2,8 +2,10 @@
 
 namespace App\Domains\Freelance\Services;
 
-use Illuminate\Support\Facades\DB;
+use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+
+use Illuminate\Support\Facades\DB;
 
 final class ProjectService
 {
@@ -21,6 +23,11 @@ final class ProjectService
         int $budgetCents,
         string $correlationId,
     ): int {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'createProject'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createProject', ['domain' => __CLASS__]);
+
         try {
             $projectId = DB::transaction(function () use ($clientId, $freelancerId, $title, $budgetCents, $correlationId) {
                 $projectId = DB::table('freelance_projects')->insertGetId([
@@ -60,6 +67,11 @@ final class ProjectService
      */
     public function completeProject(int $projectId, string $correlationId): bool
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'completeProject'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL completeProject', ['domain' => __CLASS__]);
+
         try {
             DB::transaction(function () use ($projectId, $correlationId) {
                 $project = DB::table('freelance_projects')->findOrFail($projectId);

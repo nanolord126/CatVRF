@@ -2,9 +2,11 @@
 
 namespace App\Domains\Food\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use App\Domains\Food\Models\KDSOrder;
 use App\Domains\Food\Models\RestaurantOrder;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -20,6 +22,11 @@ final class KitchenDisplayService
         RestaurantOrder $order,
         string $correlationId = ''
     ): KDSOrder {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'createKDSOrder'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createKDSOrder', ['domain' => __CLASS__]);
+
         try {
             Log::channel('audit')->info('Creating KDS order', [
                 'order_id' => $order->id,
@@ -58,6 +65,11 @@ final class KitchenDisplayService
      */
     public function calculateCookingTime(RestaurantOrder $order): int
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'calculateCookingTime'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL calculateCookingTime', ['domain' => __CLASS__]);
+
         $maxTime = 0;
 
         foreach ($order->items_json ?? [] as $item) {
@@ -75,6 +87,11 @@ final class KitchenDisplayService
      */
     public function markAsReady(KDSOrder $kdsOrder, string $correlationId = ''): bool
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'markAsReady'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL markAsReady', ['domain' => __CLASS__]);
+
         try {
             return DB::transaction(function () use ($kdsOrder, $correlationId) {
                 $kdsOrder->update([

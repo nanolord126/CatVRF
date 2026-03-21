@@ -2,9 +2,11 @@
 
 namespace App\Domains\Auto\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use App\Domains\Auto\Models\TaxiRide;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Сервис для управления surge pricing в такси.
@@ -21,6 +23,11 @@ final class TaxiSurgeService
         int $tenantId,
         string $correlationId = ''
     ): float {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'calculateSurgeMultiplier'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL calculateSurgeMultiplier', ['domain' => __CLASS__]);
+
         try {
             Log::channel('audit')->info('Calculating surge multiplier', [
                 'location' => $location,
@@ -69,6 +76,11 @@ final class TaxiSurgeService
         string $vehicleClass = 'economy',
         string $correlationId = ''
     ): int {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'calculateRidePrice'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL calculateRidePrice', ['domain' => __CLASS__]);
+
         $basePrices = [
             'economy' => 5000, // 50 руб за км
             'comfort' => 7500, // 75 руб за км

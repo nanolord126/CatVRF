@@ -2,9 +2,11 @@
 
 namespace App\Domains\Fashion\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use App\Domains\Fashion\Models\FashionReturn;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -18,6 +20,11 @@ final class ReturnService
         string $reason,
         ?string $correlationId = null,
     ): FashionReturn {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'requestReturn'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL requestReturn', ['domain' => __CLASS__]);
+
         try {
             $correlationId ??= Str::uuid();
 
@@ -67,6 +74,11 @@ final class ReturnService
 
     public function approveReturn(FashionReturn $return, float $refundAmount, ?string $correlationId = null): void
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'approveReturn'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL approveReturn', ['domain' => __CLASS__]);
+
         try {
             $correlationId ??= Str::uuid();
 
@@ -97,6 +109,11 @@ final class ReturnService
 
     public function processRefund(FashionReturn $return, ?string $correlationId = null): void
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'processRefund'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL processRefund', ['domain' => __CLASS__]);
+
         try {
             $correlationId ??= Str::uuid();
 

@@ -2,11 +2,13 @@
 
 namespace App\Domains\Freelance\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use Illuminate\Support\Facades\DB;
 
 use App\Domains\Freelance\Models\FreelanceJob;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Log;
 
 final class FreelanceService
 {
@@ -18,6 +20,11 @@ final class FreelanceService
 
     public function postJob(array $data): FreelanceJob
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'postJob'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL postJob', ['domain' => __CLASS__]);
+
         $job = FreelanceJob::create([
             'tenant_id' => auth()->user()->tenant_id,
             'uuid' => Str::uuid(),
@@ -42,6 +49,11 @@ final class FreelanceService
      */
     public function executeInTransaction(callable $callback)
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'executeInTransaction'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL executeInTransaction', ['domain' => __CLASS__]);
+
         return DB::transaction(function () use ($callback) {
             return $callback();
         });

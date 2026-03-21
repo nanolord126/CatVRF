@@ -2,10 +2,12 @@
 
 namespace App\Domains\Freelance\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use App\Domains\Freelance\Events\PaymentMilestoneReleased;
 use App\Domains\Freelance\Models\FreelanceContract;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 final class ContractService
 {
@@ -15,6 +17,11 @@ final class ContractService
         float $amount,
         string $correlationId,
     ): void {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'releaseMilestonePayment'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL releaseMilestonePayment', ['domain' => __CLASS__]);
+
         DB::transaction(function () use ($contractId, $milestoneNumber, $amount, $correlationId) {
             $contract = FreelanceContract::findOrFail($contractId);
 
@@ -39,6 +46,11 @@ final class ContractService
         int $contractId,
         string $correlationId,
     ): void {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'completeContract'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL completeContract', ['domain' => __CLASS__]);
+
         DB::transaction(function () use ($contractId, $correlationId) {
             $contract = FreelanceContract::findOrFail($contractId);
             $contract->update([
@@ -58,6 +70,11 @@ final class ContractService
         string $reason,
         string $correlationId,
     ): void {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'pauseContract'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL pauseContract', ['domain' => __CLASS__]);
+
         DB::transaction(function () use ($contractId, $reason, $correlationId) {
             $contract = FreelanceContract::findOrFail($contractId);
             $contract->update(['status' => 'on_hold']);
@@ -75,6 +92,11 @@ final class ContractService
         string $reason,
         string $correlationId,
     ): void {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'cancelContract'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL cancelContract', ['domain' => __CLASS__]);
+
         DB::transaction(function () use ($contractId, $reason, $correlationId) {
             $contract = FreelanceContract::findOrFail($contractId);
             $contract->update(['status' => 'cancelled']);

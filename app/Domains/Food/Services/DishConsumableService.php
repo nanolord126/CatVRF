@@ -2,9 +2,11 @@
 
 namespace App\Domains\Food\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use App\Domains\Food\Models\Dish;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 final class DishConsumableService
 {
@@ -17,6 +19,11 @@ final class DishConsumableService
      */
     public function deductIngredients(int $orderId, array $dishes, string $correlationId): bool
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'deductIngredients'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL deductIngredients', ['domain' => __CLASS__]);
+
         try {
             DB::transaction(function () use ($orderId, $dishes, $correlationId) {
                 foreach ($dishes as $dishId => $quantity) {

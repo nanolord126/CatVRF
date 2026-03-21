@@ -2,10 +2,12 @@
 
 namespace App\Domains\Food\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use App\Domains\Food\Models\DeliveryOrder;
 use App\Domains\Food\Models\DeliveryZone;
 use App\Domains\Food\Models\RestaurantOrder;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -22,6 +24,11 @@ final class DeliveryService
         array $deliveryPoint,
         string $correlationId = ''
     ): int {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'calculateDeliveryPrice'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL calculateDeliveryPrice', ['domain' => __CLASS__]);
+
         try {
             $zone = DeliveryZone::query()
                 ->where('restaurant_id', $order->restaurant_id)
@@ -65,6 +72,11 @@ final class DeliveryService
         array $deliveryPoint,
         string $correlationId = ''
     ): DeliveryOrder {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'createDeliveryOrder'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createDeliveryOrder', ['domain' => __CLASS__]);
+
         try {
             return DB::transaction(function () use ($order, $customerAddress, $deliveryPoint, $correlationId) {
                 $deliveryPrice = $this->calculateDeliveryPrice($order, $deliveryPoint, $correlationId);
@@ -104,6 +116,11 @@ final class DeliveryService
      */
     public function startDelivery(DeliveryOrder $delivery, string $correlationId = ''): bool
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'startDelivery'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL startDelivery', ['domain' => __CLASS__]);
+
         try {
             return DB::transaction(function () use ($delivery, $correlationId) {
                 $delivery->update([

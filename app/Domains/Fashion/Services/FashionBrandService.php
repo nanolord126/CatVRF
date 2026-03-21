@@ -10,6 +10,11 @@ final class FashionBrandService
 {
     public function createBrand(array $data, int $tenantId, string $correlationId): FashionBrand
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'createBrand'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createBrand', ['domain' => __CLASS__]);
+
         return DB::transaction(function () use ($data, $tenantId, $correlationId) {
             Log::channel('audit')->info('Creating fashion brand', ['correlation_id' => $correlationId]);
 
