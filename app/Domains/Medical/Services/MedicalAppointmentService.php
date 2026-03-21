@@ -2,9 +2,11 @@
 
 namespace App\Domains\Medical\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use App\Domains\Medical\Models\Appointment;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 final class MedicalAppointmentService
@@ -23,6 +25,11 @@ final class MedicalAppointmentService
         string $reason,
         string $correlationId,
     ): Appointment {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'bookAppointment'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL bookAppointment', ['domain' => __CLASS__]);
+
         try {
             $appointment = DB::transaction(function () use ($doctorId, $clinicId, $dateTime, $reason, $correlationId) {
                 $appointment = Appointment::create([
@@ -61,6 +68,11 @@ final class MedicalAppointmentService
      */
     public function confirmAppointment(int $appointmentId, string $correlationId): bool
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'confirmAppointment'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL confirmAppointment', ['domain' => __CLASS__]);
+
         try {
             DB::transaction(function () use ($appointmentId, $correlationId) {
                 $appointment = Appointment::findOrFail($appointmentId);
@@ -89,6 +101,11 @@ final class MedicalAppointmentService
      */
     public function completeAppointment(int $appointmentId, string $notes, string $correlationId): bool
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'completeAppointment'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL completeAppointment', ['domain' => __CLASS__]);
+
         try {
             DB::transaction(function () use ($appointmentId, $notes, $correlationId) {
                 $appointment = Appointment::findOrFail($appointmentId);

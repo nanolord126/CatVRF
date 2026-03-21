@@ -2,9 +2,11 @@
 
 namespace App\Domains\Tickets\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use App\Domains\Tickets\Models\{Ticket, TicketType, Event};
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -17,6 +19,11 @@ final class TicketGenerationService
         int $buyerId,
         string $correlationId = '',
     ): array {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'generateTickets'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL generateTickets', ['domain' => __CLASS__]);
+
         try {
             Log::channel('audit')->info('Generating tickets', [
                 'event_id' => $eventId,
@@ -70,6 +77,11 @@ final class TicketGenerationService
 
     public function checkinTicket(string $qrCode, string $correlationId = ''): Ticket
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'checkinTicket'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL checkinTicket', ['domain' => __CLASS__]);
+
         try {
             Log::channel('audit')->info('Checking in ticket', [
                 'qr_code' => $qrCode,

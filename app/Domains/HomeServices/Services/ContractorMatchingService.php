@@ -2,8 +2,10 @@
 
 namespace App\Domains\HomeServices\Services;
 
-use Illuminate\Support\Facades\DB;
+use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+
+use Illuminate\Support\Facades\DB;
 
 final class ContractorMatchingService
 {
@@ -13,6 +15,11 @@ final class ContractorMatchingService
 
     public function findContractors(string $serviceType, string $address, string $correlationId): \Illuminate\Database\Eloquent\Collection
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'findContractors'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL findContractors', ['domain' => __CLASS__]);
+
         try {
             $contractors = DB::table('contractors')
                 ->where('service_type', $serviceType)

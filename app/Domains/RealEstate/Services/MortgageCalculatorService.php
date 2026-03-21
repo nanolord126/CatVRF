@@ -2,7 +2,9 @@
 
 namespace App\Domains\RealEstate\Services;
 
+use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+
 
 /**
  * Service для расчёта ипотеки и условий кредита.
@@ -17,6 +19,11 @@ final class MortgageCalculatorService
         float $interestRate,
         string $correlationId = '',
     ): array {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'calculateMortgage'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL calculateMortgage', ['domain' => __CLASS__]);
+
         try {
             $loanAmount = $propertyPrice - $initialPayment;
             $monthlyRate = $interestRate / 100 / 12;
@@ -61,6 +68,11 @@ final class MortgageCalculatorService
 
     public function compareCredits(array $loans): array
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'compareCredits'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL compareCredits', ['domain' => __CLASS__]);
+
         $comparison = [];
         foreach ($loans as $bank => $data) {
             $comparison[$bank] = $this->calculateMortgage(

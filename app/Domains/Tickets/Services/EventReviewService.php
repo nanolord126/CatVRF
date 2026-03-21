@@ -2,9 +2,11 @@
 
 namespace App\Domains\Tickets\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use App\Domains\Tickets\Models\{EventReview, Event};
 use App\Domains\Tickets\Events\EventReviewSubmitted;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -18,6 +20,11 @@ final class EventReviewService
         string $content,
         string $correlationId = '',
     ): EventReview {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'createReview'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createReview', ['domain' => __CLASS__]);
+
         try {
             Log::channel('audit')->info('Creating event review', [
                 'event_id' => $eventId,

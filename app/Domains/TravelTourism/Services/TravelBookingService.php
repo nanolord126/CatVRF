@@ -9,7 +9,6 @@ use App\Domains\TravelTourism\Models\TravelBooking;
 use App\Services\Wallet\WalletService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 final class TravelBookingService
@@ -20,6 +19,16 @@ final class TravelBookingService
 
     public function createBooking(array $data): TravelBooking
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'createBooking'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createBooking', ['domain' => __CLASS__]);
+
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'createBooking'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createBooking', ['domain' => __CLASS__]);
+
         // Canon 2026: Mandatory Fraud Check & Audit
         $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
         \App\Services\Security\FraudControlService::check(['method' => 'createBooking'], $correlationId ?? 'system');
@@ -57,6 +66,16 @@ final class TravelBookingService
         \App\Services\Security\FraudControlService::check(['method' => 'confirmBooking'], $correlationId ?? 'system');
         \Illuminate\Support\Facades\Log::channel('audit')->info('CALL confirmBooking', ['domain' => __CLASS__]);
 
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'confirmBooking'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL confirmBooking', ['domain' => __CLASS__]);
+
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'confirmBooking'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL confirmBooking', ['domain' => __CLASS__]);
+
         $booking = TravelBooking::findOrFail($bookingId);
 
         Log::channel('audit')->info('TravelBookingService: Confirming booking', [
@@ -72,6 +91,16 @@ final class TravelBookingService
 
     public function processPayment(int $bookingId, string $paymentMethodId): bool
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'processPayment'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL processPayment', ['domain' => __CLASS__]);
+
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'processPayment'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL processPayment', ['domain' => __CLASS__]);
+
         // Canon 2026: Mandatory Fraud Check & Audit
         $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
         \App\Services\Security\FraudControlService::check(['method' => 'processPayment'], $correlationId ?? 'system');
@@ -107,6 +136,16 @@ final class TravelBookingService
         \App\Services\Security\FraudControlService::check(['method' => 'issueVouchers'], $correlationId ?? 'system');
         \Illuminate\Support\Facades\Log::channel('audit')->info('CALL issueVouchers', ['domain' => __CLASS__]);
 
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'issueVouchers'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL issueVouchers', ['domain' => __CLASS__]);
+
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'issueVouchers'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL issueVouchers', ['domain' => __CLASS__]);
+
         $booking = TravelBooking::findOrFail($bookingId);
 
         Log::channel('audit')->info('TravelBookingService: Issuing vouchers', [
@@ -125,6 +164,16 @@ final class TravelBookingService
 
     public function cancelBooking(int $bookingId, string $reason = ''): bool
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'cancelBooking'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL cancelBooking', ['domain' => __CLASS__]);
+
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'cancelBooking'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL cancelBooking', ['domain' => __CLASS__]);
+
         // Canon 2026: Mandatory Fraud Check & Audit
         $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
         \App\Services\Security\FraudControlService::check(['method' => 'cancelBooking'], $correlationId ?? 'system');
@@ -160,6 +209,16 @@ final class TravelBookingService
 
     public function generateItinerary(int $bookingId): Collection
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'generateItinerary'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL generateItinerary', ['domain' => __CLASS__]);
+
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'generateItinerary'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL generateItinerary', ['domain' => __CLASS__]);
+
         // Canon 2026: Mandatory Fraud Check & Audit
         $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
         \App\Services\Security\FraudControlService::check(['method' => 'generateItinerary'], $correlationId ?? 'system');

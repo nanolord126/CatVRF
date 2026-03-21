@@ -2,8 +2,10 @@
 
 namespace App\Domains\RealEstate\Services;
 
-use App\Domains\RealEstate\Models\Property;
+use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+
+use App\Domains\RealEstate\Models\Property;
 
 /**
  * Service для поиска и фильтрации объектов недвижимости.
@@ -13,6 +15,11 @@ final class PropertySearchService
 {
     public function searchProperties(array $filters, string $correlationId = ''): mixed
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'searchProperties'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL searchProperties', ['domain' => __CLASS__]);
+
         try {
             Log::channel('audit')->info('Searching properties', [
                 'filters' => $filters,
@@ -61,6 +68,11 @@ final class PropertySearchService
 
     public function getPropertyDetails(Property $property, string $correlationId = ''): array
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'getPropertyDetails'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getPropertyDetails', ['domain' => __CLASS__]);
+
         return [
             'property' => $property->load(['rentalListing', 'saleListing', 'images', 'viewingAppointments']),
             'stats' => [

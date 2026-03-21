@@ -24,6 +24,16 @@ final class ToyOrderService
         \App\Services\Security\FraudControlService::check(['method' => 'createOrder'], $correlationId ?? 'system');
         \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createOrder', ['domain' => __CLASS__]);
 
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'createOrder'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createOrder', ['domain' => __CLASS__]);
+
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'createOrder'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createOrder', ['domain' => __CLASS__]);
+
         return DB::transaction(function () use ($productId, $quantity, $giftWrapping, $deliveryDate, $clientId, $tenantId, $correlationId) {
             $this->fraudControlService->check(
                 userId: $clientId,
@@ -71,6 +81,16 @@ final class ToyOrderService
 
     public function markDelivered(int $orderId, int $tenantId, string $correlationId): ToyOrder
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'markDelivered'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL markDelivered', ['domain' => __CLASS__]);
+
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'markDelivered'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL markDelivered', ['domain' => __CLASS__]);
+
         // Canon 2026: Mandatory Fraud Check & Audit
         
         \App\Services\Security\FraudControlService::check(['method' => 'markDelivered'], $correlationId ?? 'system');

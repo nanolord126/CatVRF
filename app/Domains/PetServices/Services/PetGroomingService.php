@@ -9,7 +9,6 @@ use App\Domains\PetServices\Models\PetGroomingService as PetGroomingServiceModel
 use App\Services\Wallet\WalletService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 final class PetGroomingService
@@ -20,6 +19,16 @@ final class PetGroomingService
 
     public function createGroomingAppointment(array $data): PetGroomingServiceModel
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'createGroomingAppointment'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createGroomingAppointment', ['domain' => __CLASS__]);
+
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'createGroomingAppointment'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createGroomingAppointment', ['domain' => __CLASS__]);
+
         // Canon 2026: Mandatory Fraud Check & Audit
         $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
         \App\Services\Security\FraudControlService::check(['method' => 'createGroomingAppointment'], $correlationId ?? 'system');
@@ -54,6 +63,16 @@ final class PetGroomingService
         \App\Services\Security\FraudControlService::check(['method' => 'confirmGroomingAppointment'], $correlationId ?? 'system');
         \Illuminate\Support\Facades\Log::channel('audit')->info('CALL confirmGroomingAppointment', ['domain' => __CLASS__]);
 
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'confirmGroomingAppointment'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL confirmGroomingAppointment', ['domain' => __CLASS__]);
+
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'confirmGroomingAppointment'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL confirmGroomingAppointment', ['domain' => __CLASS__]);
+
         $appointment = PetGroomingServiceModel::findOrFail($appointmentId);
 
         Log::channel('audit')->info('PetGroomingService: Confirming grooming appointment', [
@@ -69,6 +88,16 @@ final class PetGroomingService
 
     public function completeGroomingAppointment(int $appointmentId, array $photoUrls = []): bool
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'completeGroomingAppointment'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL completeGroomingAppointment', ['domain' => __CLASS__]);
+
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'completeGroomingAppointment'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL completeGroomingAppointment', ['domain' => __CLASS__]);
+
         // Canon 2026: Mandatory Fraud Check & Audit
         $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
         \App\Services\Security\FraudControlService::check(['method' => 'completeGroomingAppointment'], $correlationId ?? 'system');
@@ -107,6 +136,16 @@ final class PetGroomingService
         \App\Services\Security\FraudControlService::check(['method' => 'getAvailableSlots'], $correlationId ?? 'system');
         \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getAvailableSlots', ['domain' => __CLASS__]);
 
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'getAvailableSlots'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getAvailableSlots', ['domain' => __CLASS__]);
+
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'getAvailableSlots'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getAvailableSlots', ['domain' => __CLASS__]);
+
         $appointmentCount = PetGroomingServiceModel::where('groomer_id', $groomerIdId)
             ->whereDate('appointment_date', $date)
             ->where('status', '!=', 'cancelled')
@@ -122,6 +161,16 @@ final class PetGroomingService
 
     public function cancelGroomingAppointment(int $appointmentId, string $reason = ''): bool
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'cancelGroomingAppointment'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL cancelGroomingAppointment', ['domain' => __CLASS__]);
+
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'cancelGroomingAppointment'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL cancelGroomingAppointment', ['domain' => __CLASS__]);
+
         // Canon 2026: Mandatory Fraud Check & Audit
         $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
         \App\Services\Security\FraudControlService::check(['method' => 'cancelGroomingAppointment'], $correlationId ?? 'system');

@@ -7,7 +7,6 @@ use Illuminate\Support\Facades\Log;
 
 use App\Domains\MedicalSupplies\Models\MedicalSupply;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Log;
 
 final class MedicalSupplyService
 {
@@ -19,6 +18,16 @@ final class MedicalSupplyService
 
     public function getSuppliesByType(string $type)
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'getSuppliesByType'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getSuppliesByType', ['domain' => __CLASS__]);
+
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'getSuppliesByType'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getSuppliesByType', ['domain' => __CLASS__]);
+
         // Canon 2026: Mandatory Fraud Check & Audit
         $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
         \App\Services\Security\FraudControlService::check(['method' => 'getSuppliesByType'], $correlationId ?? 'system');

@@ -8,7 +8,6 @@ use Illuminate\Support\Facades\Log;
 use App\Domains\Jewelry\Models\JewelryItem;
 use App\Domains\Jewelry\Models\JewelryOrder;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 
 final class JewelryService
@@ -21,6 +20,16 @@ final class JewelryService
 
     public function orderItem(int $itemId, int $quantity): JewelryOrder
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'orderItem'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL orderItem', ['domain' => __CLASS__]);
+
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'orderItem'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL orderItem', ['domain' => __CLASS__]);
+
         // Canon 2026: Mandatory Fraud Check & Audit
         $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
         \App\Services\Security\FraudControlService::check(['method' => 'orderItem'], $correlationId ?? 'system');

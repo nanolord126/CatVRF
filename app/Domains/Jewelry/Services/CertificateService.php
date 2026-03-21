@@ -6,7 +6,6 @@ use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
 
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 final class CertificateService
 {
@@ -16,6 +15,16 @@ final class CertificateService
 
     public function verifyCertificate(int $jewelryId, string $certificateCode, string $correlationId): bool
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'verifyCertificate'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL verifyCertificate', ['domain' => __CLASS__]);
+
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'verifyCertificate'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL verifyCertificate', ['domain' => __CLASS__]);
+
         // Canon 2026: Mandatory Fraud Check & Audit
         
         \App\Services\Security\FraudControlService::check(['method' => 'verifyCertificate'], $correlationId ?? 'system');

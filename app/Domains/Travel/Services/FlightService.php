@@ -2,10 +2,12 @@
 
 namespace App\Domains\Travel\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use App\Domains\Travel\Events\FlightBooked;
 use App\Domains\Travel\Models\TravelFlight;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -17,6 +19,11 @@ final readonly class FlightService
         TravelFlight $flight,
         string $correlationId = null,
     ): TravelFlight {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'bookFlight'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL bookFlight', ['domain' => __CLASS__]);
+
         $correlationId ??= Str::uuid()->toString();
 
         try {
@@ -58,6 +65,11 @@ final readonly class FlightService
         TravelFlight $flight,
         string $correlationId = null,
     ): TravelFlight {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'releaseFlight'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL releaseFlight', ['domain' => __CLASS__]);
+
         $correlationId ??= $flight->correlation_id ?? Str::uuid()->toString();
 
         try {

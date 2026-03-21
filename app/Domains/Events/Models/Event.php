@@ -22,6 +22,11 @@ final class Event extends Model
         "tags" => "json",
     ];
 
+    protected static function newFactory()
+    {
+        return \Database\Factories\EventFactory::new();
+    }
+
     protected static function booted(): void
     {
         parent::booted();

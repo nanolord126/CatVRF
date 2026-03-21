@@ -209,3 +209,5 @@ final class FarmDirectService
             ->where('status', 'active')
             ->orderByDesc('rating')
             ->get();
+    }
+}

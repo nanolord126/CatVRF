@@ -6,7 +6,6 @@ use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
 
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 final class BeautyTryOnService
 {
@@ -16,6 +15,16 @@ final class BeautyTryOnService
 
     public function logTryOn(int $productId, int $userId, bool $purchased, string $correlationId): bool
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'logTryOn'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL logTryOn', ['domain' => __CLASS__]);
+
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'logTryOn'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL logTryOn', ['domain' => __CLASS__]);
+
         // Canon 2026: Mandatory Fraud Check & Audit
         
         \App\Services\Security\FraudControlService::check(['method' => 'logTryOn'], $correlationId ?? 'system');

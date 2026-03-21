@@ -41,6 +41,11 @@ final class HotelService
         string $guestPhone,
         string $specialRequests = '',
     ): HotelBooking {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'createBooking'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createBooking', ['domain' => __CLASS__]);
+
         return DB::transaction(function () use (
             $hotelId,
             $userId,
@@ -117,6 +122,11 @@ final class HotelService
      */
     public function confirmBooking(HotelBooking $booking, int $userId): bool
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'confirmBooking'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL confirmBooking', ['domain' => __CLASS__]);
+
         return DB::transaction(function () use ($booking, $userId) {
             if ($booking->payment_status !== 'pending') {
                 throw new \Exception('Бронирование уже подтверждено', 400);
@@ -150,6 +160,11 @@ final class HotelService
      */
     public function completeBooking(HotelBooking $booking): bool
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'completeBooking'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL completeBooking', ['domain' => __CLASS__]);
+
         $booking->update(['status' => 'completed']);
 
         Log::channel('audit')->info('Бронирование завершено', [
@@ -165,6 +180,11 @@ final class HotelService
      */
     public function cancelBooking(HotelBooking $booking, string $reason = ''): bool
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'cancelBooking'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL cancelBooking', ['domain' => __CLASS__]);
+
         return DB::transaction(function () use ($booking, $reason) {
             if (in_array($booking->status, ['completed', 'cancelled'])) {
                 throw new \Exception('Невозможно отменить бронирование в текущем статусе', 400);
@@ -200,6 +220,11 @@ final class HotelService
      */
     public function payoutHotelOwner(HotelBooking $booking, int $hotelOwnerId): bool
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'payoutHotelOwner'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL payoutHotelOwner', ['domain' => __CLASS__]);
+
         return DB::transaction(function () use ($booking, $hotelOwnerId) {
             if ($booking->status !== 'completed') {
                 throw new \Exception('Бронирование не завершено', 400);
@@ -235,6 +260,11 @@ final class HotelService
      */
     public function getActiveHotels(int $tenantId, int $limit = 50): Collection
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'getActiveHotels'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getActiveHotels', ['domain' => __CLASS__]);
+
         return Hotel::where('tenant_id', $tenantId)
             ->where('is_open', true)
             ->orderByDesc('rating')

@@ -17,6 +17,11 @@ final class AppointmentService
 
     public function createAppointment(array $data, string $correlationId = null): PetAppointment
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'createAppointment'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createAppointment', ['domain' => __CLASS__]);
+
         $correlationId ??= Str::uuid()->toString();
 
         try {
@@ -63,6 +68,11 @@ final class AppointmentService
 
     public function completeAppointment(PetAppointment $appointment, string $correlationId = null): PetAppointment
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'completeAppointment'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL completeAppointment', ['domain' => __CLASS__]);
+
         $correlationId ??= Str::uuid()->toString();
 
         try {
@@ -94,6 +104,11 @@ final class AppointmentService
 
     public function cancelAppointment(PetAppointment $appointment, string $correlationId = null): PetAppointment
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'cancelAppointment'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL cancelAppointment', ['domain' => __CLASS__]);
+
         $correlationId ??= Str::uuid()->toString();
 
         try {

@@ -2,10 +2,12 @@
 
 namespace App\Domains\Hotels\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use App\Domains\Hotels\Models\RoomType;
 use App\Domains\Hotels\Models\RoomInventory;
 use App\Domains\Hotels\Models\PricingRule;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Throwable;
@@ -18,6 +20,11 @@ final class PricingService
         string $checkOutDate,
         string $correlationId = '',
     ): int {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'calculateRoomPrice'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL calculateRoomPrice', ['domain' => __CLASS__]);
+
         try {
             Log::channel('audit')->info('Calculating room price', [
                 'room_type_id' => $roomTypeId,
@@ -78,6 +85,11 @@ final class PricingService
         string $checkOutDate,
         string $correlationId = '',
     ): array {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'getAvailableRooms'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getAvailableRooms', ['domain' => __CLASS__]);
+
         try {
             Log::channel('audit')->info('Getting available rooms', [
                 'hotel_id' => $hotelId,
@@ -119,6 +131,11 @@ final class PricingService
         string $date,
         string $correlationId = '',
     ): float {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'applySeasonalMultiplier'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL applySeasonalMultiplier', ['domain' => __CLASS__]);
+
         try {
             $dateParsed = Carbon::parse($date);
 

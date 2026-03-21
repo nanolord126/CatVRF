@@ -2,10 +2,12 @@
 
 namespace App\Domains\Courses\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use App\Domains\Courses\Models\Enrollment;
 use App\Domains\Courses\Models\LessonProgress;
 use App\Domains\Courses\Events\LessonCompleted;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -17,6 +19,11 @@ final class ProgressTrackingService
         int $watchTimeSeconds,
         string $correlationId = '',
     ): LessonProgress {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'trackLessonWatch'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL trackLessonWatch', ['domain' => __CLASS__]);
+
         try {
             Log::channel('audit')->info('Tracking lesson watch time', [
                 'enrollment_id' => $enrollmentId,
@@ -66,6 +73,11 @@ final class ProgressTrackingService
         int $lessonId,
         string $correlationId = '',
     ): LessonProgress {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'markLessonComplete'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL markLessonComplete', ['domain' => __CLASS__]);
+
         try {
             Log::channel('audit')->info('Marking lesson as complete', [
                 'enrollment_id' => $enrollmentId,
@@ -116,6 +128,11 @@ final class ProgressTrackingService
 
     public function getEnrollmentProgress(int $enrollmentId, string $correlationId = ''): array
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'getEnrollmentProgress'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getEnrollmentProgress', ['domain' => __CLASS__]);
+
         try {
             Log::channel('audit')->info('Getting enrollment progress', [
                 'enrollment_id' => $enrollmentId,

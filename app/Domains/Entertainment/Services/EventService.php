@@ -2,16 +2,23 @@
 
 namespace App\Domains\Entertainment\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use App\Domains\Entertainment\Events\EventCancelled;
 use App\Domains\Entertainment\Models\EntertainmentEvent;
 use App\Domains\Entertainment\Models\EntertainmentVenue;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 final class EventService
 {
     public function createEvent(int $venueId, int $entertainerId, string $name, string $description, string $eventType, \DateTime $startDate, \DateTime $endDate, int $totalSeats, float $basePrice, ?float $vipPrice, string $correlationId): EntertainmentEvent
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'createEvent'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createEvent', ['domain' => __CLASS__]);
+
         try {
             return DB::transaction(function () use ($venueId, $entertainerId, $name, $description, $eventType, $startDate, $endDate, $totalSeats, $basePrice, $vipPrice, $correlationId) {
                 $venue = EntertainmentVenue::findOrFail($venueId);
@@ -55,6 +62,11 @@ final class EventService
 
     public function cancelEvent(EntertainmentEvent $event, string $correlationId): void
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'cancelEvent'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL cancelEvent', ['domain' => __CLASS__]);
+
         try {
             DB::transaction(function () use ($event, $correlationId) {
                 $event->update([

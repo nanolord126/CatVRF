@@ -2,9 +2,11 @@
 
 namespace App\Domains\Hotels\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use App\Domains\Hotels\Models\Hotel;
 use App\Domains\Hotels\Models\Review;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -18,6 +20,11 @@ final class ReviewService
         ?array $categories = null,
         string $correlationId = '',
     ): Review {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'createReview'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createReview', ['domain' => __CLASS__]);
+
         try {
             Log::channel('audit')->info('Creating review', [
                 'hotel_id' => $hotelId,
@@ -71,6 +78,11 @@ final class ReviewService
 
     public function recalculateHotelRating(int $hotelId, string $correlationId = ''): float
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'recalculateHotelRating'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL recalculateHotelRating', ['domain' => __CLASS__]);
+
         try {
             Log::channel('audit')->info('Recalculating hotel rating', [
                 'hotel_id' => $hotelId,

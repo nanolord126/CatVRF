@@ -2,6 +2,9 @@
 
 namespace App\Domains\HomeServices\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use App\Domains\HomeServices\Models\ServiceJob;
 use App\Domains\HomeServices\Events\ServiceJobCreated;
 use Illuminate\Support\Str;
@@ -17,6 +20,11 @@ final class JobService
         string $description,
         string $correlationId
     ): ServiceJob {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'createJob'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createJob', ['domain' => __CLASS__]);
+
         try {
             return \DB::transaction(function () use ($serviceListingId, $clientId, $address, $description, $correlationId) {
                 $listing = \App\Domains\HomeServices\Models\ServiceListing::findOrFail($serviceListingId);
@@ -60,6 +68,11 @@ final class JobService
 
     public function completeJob(ServiceJob $job, string $correlationId): void
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'completeJob'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL completeJob', ['domain' => __CLASS__]);
+
         try {
             \DB::transaction(function () use ($job, $correlationId) {
                 $job->update([
@@ -82,6 +95,11 @@ final class JobService
 
     public function cancelJob(ServiceJob $job, string $reason, string $correlationId): void
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'cancelJob'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL cancelJob', ['domain' => __CLASS__]);
+
         try {
             \DB::transaction(function () use ($job, $reason, $correlationId) {
                 $job->update([

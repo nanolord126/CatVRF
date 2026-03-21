@@ -2,10 +2,12 @@
 
 namespace App\Domains\Hotels\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use App\Domains\Hotels\Models\Booking;
 use App\Domains\Hotels\Models\RoomInventory;
 use App\Domains\Hotels\Models\RoomType;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -20,6 +22,11 @@ final class BookingService
         ?string $specialRequests = null,
         string $correlationId = '',
     ): Booking {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'createBooking'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createBooking', ['domain' => __CLASS__]);
+
         try {
             Log::channel('audit')->info('Creating booking', [
                 'hotel_id' => $hotelId,
@@ -92,6 +99,11 @@ final class BookingService
 
     public function confirmBooking(Booking $booking, string $correlationId = ''): Booking
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'confirmBooking'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL confirmBooking', ['domain' => __CLASS__]);
+
         try {
             Log::channel('audit')->info('Confirming booking', [
                 'booking_id' => $booking->id,
@@ -121,6 +133,11 @@ final class BookingService
 
     public function cancelBooking(Booking $booking, string $reason = '', string $correlationId = ''): bool
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'cancelBooking'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL cancelBooking', ['domain' => __CLASS__]);
+
         try {
             Log::channel('audit')->info('Cancelling booking', [
                 'booking_id' => $booking->id,

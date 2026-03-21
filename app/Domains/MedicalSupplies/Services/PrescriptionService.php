@@ -6,7 +6,6 @@ use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
 
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 final class PrescriptionService
 {
@@ -16,6 +15,16 @@ final class PrescriptionService
 
     public function validatePrescription(string $prescriptionCode, int $medicineId, string $correlationId): bool
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'validatePrescription'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL validatePrescription', ['domain' => __CLASS__]);
+
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'validatePrescription'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL validatePrescription', ['domain' => __CLASS__]);
+
         // Canon 2026: Mandatory Fraud Check & Audit
         
         \App\Services\Security\FraudControlService::check(['method' => 'validatePrescription'], $correlationId ?? 'system');

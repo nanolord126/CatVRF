@@ -2,10 +2,12 @@
 
 namespace App\Domains\Courses\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use App\Domains\Courses\Models\Enrollment;
 use App\Domains\Courses\Models\Course;
 use App\Domains\Courses\Events\EnrollmentCreated;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -16,6 +18,11 @@ final class EnrollmentService
         string $studentId,
         string $correlationId = '',
     ): Enrollment {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'enrollStudent'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL enrollStudent', ['domain' => __CLASS__]);
+
         try {
             Log::channel('audit')->info('Enrolling student in course', [
                 'course_id' => $courseId,
@@ -64,6 +71,11 @@ final class EnrollmentService
 
     public function completeEnrollment(Enrollment $enrollment, string $correlationId = ''): Enrollment
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'completeEnrollment'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL completeEnrollment', ['domain' => __CLASS__]);
+
         try {
             Log::channel('audit')->info('Completing enrollment', [
                 'enrollment_id' => $enrollment->id,
@@ -93,6 +105,11 @@ final class EnrollmentService
 
     public function dropEnrollment(Enrollment $enrollment, string $reason = '', string $correlationId = ''): bool
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'dropEnrollment'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL dropEnrollment', ['domain' => __CLASS__]);
+
         try {
             Log::channel('audit')->info('Dropping enrollment', [
                 'enrollment_id' => $enrollment->id,

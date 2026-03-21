@@ -2,8 +2,10 @@
 
 namespace App\Domains\Tickets\Services;
 
-use Illuminate\Support\Facades\DB;
+use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+
+use Illuminate\Support\Facades\DB;
 
 final class EventTicketService
 {
@@ -16,6 +18,11 @@ final class EventTicketService
      */
     public function purchaseTicket(int $eventId, int $ticketTypeId, string $correlationId): bool
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'purchaseTicket'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL purchaseTicket', ['domain' => __CLASS__]);
+
         try {
             DB::transaction(function () use ($eventId, $ticketTypeId, $correlationId) {
                 DB::table('ticket_orders')->insert([
@@ -50,6 +57,11 @@ final class EventTicketService
      */
     public function refundTicket(int $ticketOrderId, string $correlationId): bool
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'refundTicket'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL refundTicket', ['domain' => __CLASS__]);
+
         try {
             DB::transaction(function () use ($ticketOrderId, $correlationId) {
                 DB::table('ticket_orders')

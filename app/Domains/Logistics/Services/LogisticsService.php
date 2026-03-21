@@ -2,11 +2,13 @@
 
 namespace App\Domains\Logistics\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use Illuminate\Support\Facades\DB;
 
 use App\Domains\Logistics\Models\DeliveryOrder;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Log;
 
 final class LogisticsService
 {
@@ -18,6 +20,11 @@ final class LogisticsService
 
     public function createDeliveryOrder(array $data): DeliveryOrder
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'createDeliveryOrder'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createDeliveryOrder', ['domain' => __CLASS__]);
+
         $order = DeliveryOrder::create([
             'tenant_id' => auth()->user()->tenant_id,
             'uuid' => Str::uuid(),
@@ -41,6 +48,11 @@ final class LogisticsService
      */
     public function executeInTransaction(callable $callback)
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'executeInTransaction'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL executeInTransaction', ['domain' => __CLASS__]);
+
         return DB::transaction(function () use ($callback) {
             return $callback();
         });

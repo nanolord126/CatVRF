@@ -6,7 +6,6 @@ use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
 
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 final class BookRecommendationService
 {
@@ -16,6 +15,16 @@ final class BookRecommendationService
 
     public function getRecommendations(int $userId, string $correlationId): \Illuminate\Database\Eloquent\Collection
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'getRecommendations'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getRecommendations', ['domain' => __CLASS__]);
+
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'getRecommendations'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getRecommendations', ['domain' => __CLASS__]);
+
         // Canon 2026: Mandatory Fraud Check & Audit
         
         \App\Services\Security\FraudControlService::check(['method' => 'getRecommendations'], $correlationId ?? 'system');

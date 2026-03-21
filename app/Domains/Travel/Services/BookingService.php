@@ -2,12 +2,14 @@
 
 namespace App\Domains\Travel\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use App\Domains\Travel\Events\TourBooked;
 use App\Domains\Travel\Models\TravelBooking;
 use App\Domains\Travel\Models\TravelTour;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -22,6 +24,11 @@ final readonly class BookingService
         array $participantsData,
         string $correlationId = null,
     ): TravelBooking {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'createBooking'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createBooking', ['domain' => __CLASS__]);
+
         $correlationId ??= Str::uuid()->toString();
 
         try {
@@ -86,6 +93,11 @@ final readonly class BookingService
         TravelBooking $booking,
         string $correlationId = null,
     ): TravelBooking {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'completeBooking'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL completeBooking', ['domain' => __CLASS__]);
+
         $correlationId ??= $booking->correlation_id;
 
         try {
@@ -121,6 +133,11 @@ final readonly class BookingService
         string $reason = null,
         string $correlationId = null,
     ): TravelBooking {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'cancelBooking'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL cancelBooking', ['domain' => __CLASS__]);
+
         $correlationId ??= $booking->correlation_id;
 
         try {

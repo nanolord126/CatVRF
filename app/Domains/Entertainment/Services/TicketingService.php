@@ -2,17 +2,24 @@
 
 namespace App\Domains\Entertainment\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use App\Domains\Entertainment\Events\TicketSold;
 use App\Domains\Entertainment\Models\Booking;
 use App\Domains\Entertainment\Models\TicketSale;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 final class TicketingService
 {
     public function generateTickets(Booking $booking, string $correlationId): void
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'generateTickets'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL generateTickets', ['domain' => __CLASS__]);
+
         try {
             DB::transaction(function () use ($booking, $correlationId) {
                 for ($i = 1; $i <= $booking->number_of_seats; $i++) {
@@ -48,6 +55,11 @@ final class TicketingService
 
     public function refundTickets(Booking $booking, string $correlationId): void
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'refundTickets'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL refundTickets', ['domain' => __CLASS__]);
+
         try {
             DB::transaction(function () use ($booking, $correlationId) {
                 TicketSale::where('booking_id', $booking->id)

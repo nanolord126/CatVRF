@@ -2,11 +2,13 @@
 
 namespace App\Domains\Entertainment\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use App\Domains\Entertainment\Events\BookingCreated;
 use App\Domains\Entertainment\Models\Booking;
 use App\Domains\Entertainment\Models\EntertainmentVenue;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 final class BookingService
@@ -17,6 +19,11 @@ final class BookingService
 
     public function createBooking(int $venueId, int $scheduleId, int $customerId, int $numberOfSeats, string $correlationId): Booking
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'createBooking'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createBooking', ['domain' => __CLASS__]);
+
         try {
             return DB::transaction(function () use ($venueId, $scheduleId, $customerId, $numberOfSeats, $correlationId) {
                 $venue = EntertainmentVenue::findOrFail($venueId);
@@ -68,6 +75,11 @@ final class BookingService
 
     public function cancelBooking(Booking $booking, string $reason, string $correlationId): void
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'cancelBooking'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL cancelBooking', ['domain' => __CLASS__]);
+
         try {
             DB::transaction(function () use ($booking, $reason, $correlationId) {
                 $booking->update([

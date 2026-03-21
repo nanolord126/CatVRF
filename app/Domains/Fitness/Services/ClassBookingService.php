@@ -2,8 +2,10 @@
 
 namespace App\Domains\Fitness\Services;
 
-use Illuminate\Support\Facades\DB;
+use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+
+use Illuminate\Support\Facades\DB;
 
 final class ClassBookingService
 {
@@ -19,6 +21,11 @@ final class ClassBookingService
         int $userId,
         string $correlationId,
     ): int {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'bookFitnessClass'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL bookFitnessClass', ['domain' => __CLASS__]);
+
         try {
             $bookingId = DB::transaction(function () use ($classId, $userId, $correlationId) {
                 // Проверить лимит участников
@@ -67,6 +74,11 @@ final class ClassBookingService
      */
     public function cancelBooking(int $bookingId, string $correlationId): bool
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'cancelBooking'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL cancelBooking', ['domain' => __CLASS__]);
+
         try {
             DB::transaction(function () use ($bookingId, $correlationId) {
                 DB::table('class_bookings')

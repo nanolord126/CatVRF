@@ -2,6 +2,9 @@
 
 namespace App\Domains\HomeServices\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use App\Domains\HomeServices\Models\ServiceReview;
 use App\Domains\HomeServices\Events\ReviewSubmitted;
 
@@ -18,6 +21,11 @@ final class ReviewService
         ?int $jobId = null,
         string $correlationId = ''
     ): ServiceReview {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'createReview'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createReview', ['domain' => __CLASS__]);
+
         try {
             return \DB::transaction(function () use ($contractorId, $reviewerId, $rating, $title, $content, $jobId, $correlationId) {
                 if ($rating < 1 || $rating > 5) {
@@ -67,6 +75,11 @@ final class ReviewService
         string $content,
         string $correlationId = ''
     ): ServiceReview {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'updateReview'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL updateReview', ['domain' => __CLASS__]);
+
         try {
             return \DB::transaction(function () use ($review, $rating, $title, $content, $correlationId) {
                 $review->update([

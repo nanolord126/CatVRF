@@ -2,11 +2,13 @@
 
 namespace App\Domains\Tickets\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use Illuminate\Support\Facades\DB;
 
 use App\Domains\Tickets\Models\Ticket;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Log;
 
 final class TicketService
 {
@@ -18,6 +20,11 @@ final class TicketService
 
     public function buyTicket(int $eventId, int $quantity): array
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'buyTicket'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL buyTicket', ['domain' => __CLASS__]);
+
         $tickets = [];
         for ($i = 0; $i < $quantity; $i++) {
             $tickets[] = Ticket::create([
@@ -45,6 +52,11 @@ final class TicketService
      */
     public function executeInTransaction(callable $callback)
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'executeInTransaction'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL executeInTransaction', ['domain' => __CLASS__]);
+
         return DB::transaction(function () use ($callback) {
             return $callback();
         });

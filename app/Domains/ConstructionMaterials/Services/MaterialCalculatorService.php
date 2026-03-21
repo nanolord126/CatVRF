@@ -6,7 +6,6 @@ use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
 
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 final class MaterialCalculatorService
 {
@@ -20,6 +19,16 @@ final class MaterialCalculatorService
         ?float $thickness = null,
         string $correlationId = '',
     ): array {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'calculateMaterialNeeds'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL calculateMaterialNeeds', ['domain' => __CLASS__]);
+
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'calculateMaterialNeeds'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL calculateMaterialNeeds', ['domain' => __CLASS__]);
+
         // Canon 2026: Mandatory Fraud Check & Audit
         
         \App\Services\Security\FraudControlService::check(['method' => 'calculateMaterialNeeds'], $correlationId ?? 'system');

@@ -2,9 +2,11 @@
 
 namespace App\Domains\Logistics\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use App\Domains\Logistics\Models\Courier;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 final class CourierService
 {
@@ -50,6 +52,11 @@ final class CourierService
      */
     public function assignCourier(int $courierId, int $deliveryId, string $correlationId): bool
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'assignCourier'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL assignCourier', ['domain' => __CLASS__]);
+
         try {
             DB::transaction(function () use ($courierId, $deliveryId, $correlationId) {
                 $courier = Courier::lockForUpdate()->findOrFail($courierId);
@@ -84,6 +91,11 @@ final class CourierService
      */
     public function completeDelivery(int $courierId, int $deliveryId, string $correlationId): bool
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'completeDelivery'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL completeDelivery', ['domain' => __CLASS__]);
+
         try {
             DB::transaction(function () use ($courierId, $deliveryId, $correlationId) {
                 $courier = Courier::lockForUpdate()->findOrFail($courierId);

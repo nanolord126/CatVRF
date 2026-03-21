@@ -16,6 +16,11 @@ final class HotelPropertyService
 {
     public function createProperty(array $data, int $tenantId, string $correlationId): HotelProperty
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'createProperty'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createProperty', ['domain' => __CLASS__]);
+
         return DB::transaction(function () use ($data, $tenantId, $correlationId) {
             Log::channel('audit')->info('Creating hotel property', [
                 'correlation_id' => $correlationId,
@@ -37,6 +42,11 @@ final class HotelPropertyService
 
     public function createRoom(array $data, int $propertyId, string $correlationId): Room
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'createRoom'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createRoom', ['domain' => __CLASS__]);
+
         return DB::transaction(function () use ($data, $propertyId, $correlationId) {
             return Room::create([
                 'property_id' => $propertyId,
@@ -52,6 +62,11 @@ final class HotelPropertyService
 
     public function createBooking(array $data, int $propertyId, int $userId, string $correlationId): Booking
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'createBooking'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createBooking', ['domain' => __CLASS__]);
+
         return DB::transaction(function () use ($data, $propertyId, $userId, $correlationId) {
             Log::channel('audit')->info('Creating hotel booking', [
                 'correlation_id' => $correlationId,
@@ -73,6 +88,11 @@ final class HotelPropertyService
 
     public function getPropertyStats(HotelProperty $property): array
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'getPropertyStats'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getPropertyStats', ['domain' => __CLASS__]);
+
         $totalBookings = Booking::query()
             ->where('property_id', $property->id)
             ->where('status', 'completed')

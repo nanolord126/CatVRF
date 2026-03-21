@@ -2,9 +2,11 @@
 
 namespace App\Domains\Logistics\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use App\Domains\Logistics\Models\CourierService;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 final class CourierServiceService
 {
@@ -19,6 +21,11 @@ final class CourierServiceService
         float $perKmRate,
         string $correlationId,
     ): CourierService {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'createCourierService'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createCourierService', ['domain' => __CLASS__]);
+
         return DB::transaction(function () use (
             $tenantId,
             $userId,
@@ -56,6 +63,11 @@ final class CourierServiceService
 
     public function updateCourierService(CourierService $courier, array $data, string $correlationId): CourierService
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'updateCourierService'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL updateCourierService', ['domain' => __CLASS__]);
+
         return DB::transaction(function () use ($courier, $data, $correlationId) {
             $courier->update([...$data, 'correlation_id' => $correlationId]);
 

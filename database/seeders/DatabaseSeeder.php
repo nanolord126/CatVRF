@@ -61,7 +61,6 @@ final class DatabaseSeeder extends Seeder
             AdCampaignSeeder::class,
             GeoZoneSeeder::class,
             CourseSeeder::class,
-            EventSeeder::class,
             SalonSeeder::class,
             PropertySeeder::class,
             InsurancePolicySeeder::class,

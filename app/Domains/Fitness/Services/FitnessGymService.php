@@ -10,6 +10,11 @@ final class FitnessGymService
 {
     public function createGym(array $data, int $tenantId, string $correlationId): FitnessGym
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'createGym'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createGym', ['domain' => __CLASS__]);
+
         return DB::transaction(function () use ($data, $tenantId, $correlationId) {
             Log::channel('audit')->info('Creating fitness gym', ['correlation_id' => $correlationId]);
 

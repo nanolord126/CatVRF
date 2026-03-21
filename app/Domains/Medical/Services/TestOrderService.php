@@ -2,10 +2,12 @@
 
 namespace App\Domains\Medical\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use App\Domains\Medical\Events\TestOrderCreated;
 use App\Domains\Medical\Models\MedicalTestOrder;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -20,6 +22,11 @@ final class TestOrderService
         float $totalAmount,
         ?string $correlationId = null,
     ): MedicalTestOrder {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'createTestOrder'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createTestOrder', ['domain' => __CLASS__]);
+
         $correlationId ??= Str::uuid()->toString();
 
         try {
@@ -74,6 +81,11 @@ final class TestOrderService
         array $results,
         ?string $correlationId = null,
     ): MedicalTestOrder {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'completeTestOrder'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL completeTestOrder', ['domain' => __CLASS__]);
+
         $correlationId ??= Str::uuid()->toString();
 
         try {

@@ -2,9 +2,11 @@
 
 namespace App\Domains\Tickets\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use App\Domains\Tickets\Models\{TicketSale, Event, TicketType};
 use App\Domains\Tickets\Events\TicketSaleCreated;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -17,6 +19,11 @@ final class TicketSalesService
         int $buyerId,
         string $correlationId = '',
     ): TicketSale {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'createSale'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createSale', ['domain' => __CLASS__]);
+
         try {
             Log::channel('audit')->info('Creating ticket sale', [
                 'event_id' => $eventId,
@@ -79,6 +86,11 @@ final class TicketSalesService
 
     public function confirmPayment(TicketSale $sale, string $transactionId, string $correlationId = ''): TicketSale
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'confirmPayment'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL confirmPayment', ['domain' => __CLASS__]);
+
         try {
             Log::channel('audit')->info('Confirming ticket sale payment', [
                 'sale_id' => $sale->id,
@@ -108,6 +120,11 @@ final class TicketSalesService
 
     public function refundSale(TicketSale $sale, string $reason = '', string $correlationId = ''): bool
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'refundSale'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL refundSale', ['domain' => __CLASS__]);
+
         try {
             Log::channel('audit')->info('Refunding ticket sale', [
                 'sale_id' => $sale->id,

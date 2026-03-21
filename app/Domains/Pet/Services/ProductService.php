@@ -2,16 +2,23 @@
 
 namespace App\Domains\Pet\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use App\Domains\Pet\Models\PetClinic;
 use App\Domains\Pet\Models\PetProduct;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 final class ProductService
 {
     public function createProduct(PetClinic $clinic, array $data, string $correlationId = null): PetProduct
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'createProduct'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createProduct', ['domain' => __CLASS__]);
+
         $correlationId ??= Str::uuid()->toString();
 
         try {
@@ -47,6 +54,11 @@ final class ProductService
 
     public function updateProduct(PetProduct $product, array $data, string $correlationId = null): PetProduct
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'updateProduct'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL updateProduct', ['domain' => __CLASS__]);
+
         $correlationId ??= Str::uuid()->toString();
 
         try {
@@ -77,6 +89,11 @@ final class ProductService
 
     public function updateStock(PetProduct $product, int $quantity, string $correlationId = null): PetProduct
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'updateStock'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL updateStock', ['domain' => __CLASS__]);
+
         $correlationId ??= Str::uuid()->toString();
 
         try {

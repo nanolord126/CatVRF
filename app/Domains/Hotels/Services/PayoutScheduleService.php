@@ -2,9 +2,11 @@
 
 namespace App\Domains\Hotels\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use App\Domains\Hotels\Models\Hotel;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 final class PayoutScheduleService
@@ -18,6 +20,11 @@ final class PayoutScheduleService
      */
     public function scheduleHotelPayout(int $bookingId, int $amount, string $correlationId): bool
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'scheduleHotelPayout'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL scheduleHotelPayout', ['domain' => __CLASS__]);
+
         try {
             DB::transaction(function () use ($bookingId, $amount, $correlationId) {
                 $payoutDate = Carbon::now()->addDays(4);
@@ -57,6 +64,11 @@ final class PayoutScheduleService
      */
     public function processScheduledPayouts(string $correlationId): int
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'processScheduledPayouts'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL processScheduledPayouts', ['domain' => __CLASS__]);
+
         $processed = 0;
 
         try {

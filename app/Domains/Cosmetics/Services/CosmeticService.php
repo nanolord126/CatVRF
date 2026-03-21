@@ -8,7 +8,6 @@ use Illuminate\Support\Facades\Log;
 use App\Domains\Cosmetics\Models\CosmeticProduct;
 use App\Domains\Cosmetics\Models\CosmeticOrder;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 
 final class CosmeticService
@@ -21,6 +20,16 @@ final class CosmeticService
 
     public function orderProduct(int $productId, int $quantity): CosmeticOrder
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'orderProduct'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL orderProduct', ['domain' => __CLASS__]);
+
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'orderProduct'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL orderProduct', ['domain' => __CLASS__]);
+
         // Canon 2026: Mandatory Fraud Check & Audit
         $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
         \App\Services\Security\FraudControlService::check(['method' => 'orderProduct'], $correlationId ?? 'system');

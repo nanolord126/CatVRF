@@ -2,10 +2,12 @@
 
 namespace App\Domains\Logistics\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use App\Domains\Logistics\Models\Shipment;
 use App\Domains\Logistics\Models\ShipmentTracking;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 final class TrackingService
 {
@@ -16,6 +18,11 @@ final class TrackingService
         ?string $notes,
         string $correlationId,
     ): ShipmentTracking {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'addTrackingEvent'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL addTrackingEvent', ['domain' => __CLASS__]);
+
         return DB::transaction(function () use (
             $shipment,
             $eventType,
@@ -45,6 +52,11 @@ final class TrackingService
 
     public function getShipmentHistory(Shipment $shipment): \Illuminate\Database\Eloquent\Collection
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'getShipmentHistory'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getShipmentHistory', ['domain' => __CLASS__]);
+
         return $shipment->tracking()->orderBy('event_time', 'desc')->get();
     }
 }

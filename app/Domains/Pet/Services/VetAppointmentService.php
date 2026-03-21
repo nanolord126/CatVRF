@@ -2,8 +2,10 @@
 
 namespace App\Domains\Pet\Services;
 
-use Illuminate\Support\Facades\DB;
+use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+
+use Illuminate\Support\Facades\DB;
 
 final class VetAppointmentService
 {
@@ -21,6 +23,11 @@ final class VetAppointmentService
         string $petType,
         string $correlationId,
     ): int {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'bookVetAppointment'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL bookVetAppointment', ['domain' => __CLASS__]);
+
         try {
             $appointmentId = DB::transaction(function () use ($vetId, $clinicId, $petName, $petType, $correlationId) {
                 $appointmentId = DB::table('pet_appointments')->insertGetId([
@@ -59,6 +66,11 @@ final class VetAppointmentService
      */
     public function completeVetVisit(int $appointmentId, array $supplies, string $correlationId): bool
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'completeVetVisit'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL completeVetVisit', ['domain' => __CLASS__]);
+
         try {
             DB::transaction(function () use ($appointmentId, $supplies, $correlationId) {
                 // Обновить статус приема

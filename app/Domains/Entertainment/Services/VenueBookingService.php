@@ -2,8 +2,10 @@
 
 namespace App\Domains\Entertainment\Services;
 
-use Illuminate\Support\Facades\DB;
+use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+
+use Illuminate\Support\Facades\DB;
 
 final class VenueBookingService
 {
@@ -21,6 +23,11 @@ final class VenueBookingService
         int $guestCount,
         string $correlationId,
     ): int {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'bookVenue'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL bookVenue', ['domain' => __CLASS__]);
+
         try {
             $bookingId = DB::transaction(function () use ($venueId, $eventName, $eventDate, $guestCount, $correlationId) {
                 $bookingId = DB::table('venue_bookings')->insertGetId([
@@ -60,6 +67,11 @@ final class VenueBookingService
      */
     public function confirmBooking(int $bookingId, string $correlationId): bool
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'confirmBooking'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL confirmBooking', ['domain' => __CLASS__]);
+
         try {
             DB::transaction(function () use ($bookingId, $correlationId) {
                 DB::table('venue_bookings')

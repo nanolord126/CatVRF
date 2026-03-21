@@ -2,10 +2,12 @@
 
 namespace App\Domains\Courses\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use App\Domains\Courses\Models\Certificate;
 use App\Domains\Courses\Models\Enrollment;
 use App\Domains\Courses\Events\CertificateIssued;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Throwable;
@@ -17,6 +19,11 @@ final class CertificateService
         string $studentName,
         string $correlationId = '',
     ): Certificate {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        
+        \App\Services\Security\FraudControlService::check(['method' => 'issueCertificate'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL issueCertificate', ['domain' => __CLASS__]);
+
         try {
             Log::channel('audit')->info('Issuing certificate', [
                 'enrollment_id' => $enrollment->id,

@@ -2,9 +2,11 @@
 
 namespace App\Domains\Travel\Services;
 
+use App\Services\Security\FraudControlService;
+use Illuminate\Support\Facades\Log;
+
 use App\Domains\Travel\Models\TravelTour;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 
 final class TravelService
@@ -17,6 +19,11 @@ final class TravelService
 
     public function bookTour(int $tourId, int $seats): array
     {
+        // Canon 2026: Mandatory Fraud Check & Audit
+        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
+        \App\Services\Security\FraudControlService::check(['method' => 'bookTour'], $correlationId ?? 'system');
+        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL bookTour', ['domain' => __CLASS__]);
+
         return DB::transaction(function () use ($tourId, $seats) {
             $tour = TravelTour::lockForUpdate()->find($tourId);
 
