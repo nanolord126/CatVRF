@@ -61,8 +61,7 @@ final class BeautyTryOnService
      */
     public function getTryOnResult(string $sessionId, string $correlationId = ''): array
     {
-        $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
+        $correlationId = $correlationId ?: Str::uuid()->toString();
 
         Log::channel('audit')->info('Try-on result requested', [
             'session_id' => $sessionId,

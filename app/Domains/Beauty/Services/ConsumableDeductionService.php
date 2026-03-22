@@ -13,21 +13,14 @@ use Illuminate\Support\Facades\DB;
 final class ConsumableDeductionService
 {
     public function __construct(
-        private readonly FraudControlService $fraudControlService,)
-    {
-        $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
-
-    }
+        private readonly FraudControlService $fraudControlService,
+    ) {}
 
     /**
      * Списать расходники после завершения услуги
      */
     public function deductConsumables(int $appointmentId, array $consumables, string $correlationId): bool
     {
-        $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
-
         try {
                         $this->fraudControlService->check(
                 auth()->id() ?? 0,
@@ -74,9 +67,6 @@ final class ConsumableDeductionService
      */
     public function reserveConsumables(int $appointmentId, array $consumables, string $correlationId): bool
     {
-        $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
-
         try {
                         $this->fraudControlService->check(
                 auth()->id() ?? 0,
@@ -122,9 +112,6 @@ final class ConsumableDeductionService
      */
     public function releaseConsumables(int $appointmentId, array $consumables, string $correlationId): bool
     {
-        $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
-
         try {
                         $this->fraudControlService->check(
                 auth()->id() ?? 0,

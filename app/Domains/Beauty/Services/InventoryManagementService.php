@@ -25,9 +25,6 @@ final class InventoryManagementService
      */
     public function getCurrentStock(string $productId, string $correlationId = ''): int
     {
-        $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
-
         $product = BeautyProduct::query()->find($productId);
 
         if (!$product) {
@@ -46,9 +43,6 @@ final class InventoryManagementService
         string $reason = 'appointment_hold',
         string $correlationId = ''
     ): bool {
-        $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
-
         try {
             $this->fraudControlService->check(
                 auth()->id() ?? 0,
@@ -56,9 +50,10 @@ final class InventoryManagementService
                 0,
                 request()->ip(),
                 null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+                $correlationId
             );
-DB::transaction(function () use ($productId, $quantity, $reason, $correlationId) {
+
+            return DB::transaction(function () use ($productId, $quantity, $reason, $correlationId) {
                 $product = BeautyProduct::query()->lockForUpdate()->find($productId);
 
                 if (!$product || $product->current_stock < $quantity) {
@@ -97,9 +92,6 @@ DB::transaction(function () use ($productId, $quantity, $reason, $correlationId)
         string $reason = 'appointment_cancel',
         string $correlationId = ''
     ): bool {
-        $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
-
         try {
             $this->fraudControlService->check(
                 auth()->id() ?? 0,
@@ -107,9 +99,10 @@ DB::transaction(function () use ($productId, $quantity, $reason, $correlationId)
                 0,
                 request()->ip(),
                 null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+                $correlationId
             );
-DB::transaction(function () use ($productId, $quantity, $reason, $correlationId) {
+
+            return DB::transaction(function () use ($productId, $quantity, $reason, $correlationId) {
                 $product = BeautyProduct::query()->lockForUpdate()->find($productId);
 
                 if (!$product) {
@@ -147,9 +140,6 @@ DB::transaction(function () use ($productId, $quantity, $reason, $correlationId)
         string $reason = 'purchase',
         string $correlationId = ''
     ): bool {
-        $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
-
         try {
             $this->fraudControlService->check(
                 auth()->id() ?? 0,
@@ -157,9 +147,10 @@ DB::transaction(function () use ($productId, $quantity, $reason, $correlationId)
                 0,
                 request()->ip(),
                 null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+                $correlationId
             );
-DB::transaction(function () use ($productId, $quantity, $reason, $correlationId) {
+
+            return DB::transaction(function () use ($productId, $quantity, $reason, $correlationId) {
                 $product = BeautyProduct::query()->lockForUpdate()->find($productId);
 
                 if (!$product) {

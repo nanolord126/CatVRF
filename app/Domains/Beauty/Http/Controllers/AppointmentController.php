@@ -4,6 +4,7 @@ namespace App\Domains\Beauty\Http\Controllers;
 
 use App\Domains\Beauty\Models\Appointment;
 use App\Domains\Beauty\Services\AppointmentService;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -13,7 +14,8 @@ final class AppointmentController
 {
     public function __construct(
         private readonly AppointmentService $appointmentService,
-        private readonly FraudControlService $fraudControlService,) {}
+        private readonly FraudControlService $fraudControlService,
+    ) {}
 
     public function index(): JsonResponse
     {
@@ -78,9 +80,11 @@ final class AppointmentController
 
     public function store(): JsonResponse
     {
+        $correlationId = Str::uuid()->toString();
+
         $fraudResult = $this->fraudControlService->check(
             auth()->id() ?? 0,
-            'operation',
+            'create_appointment',
             0,
             request()->ip(),
             request()->header('X-Device-Fingerprint'),
@@ -101,8 +105,6 @@ final class AppointmentController
         }
 
         try {
-            $correlationId = Str::uuid()->toString();
-
             $appointment = DB::transaction(function () use ($correlationId) {
                 return Appointment::create([
                     'uuid' => Str::uuid(),
