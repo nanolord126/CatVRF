@@ -10,6 +10,7 @@ use Modules\Beauty\Models\Master;
 use Modules\Beauty\Models\Appointment;
 use Modules\Inventory\Services\InventoryManagementService;
 use Illuminate\Support\Str;
+use App\Services\FraudControlService;
 
 /**
  * Beauty Salon Management Service
@@ -18,20 +19,27 @@ use Illuminate\Support\Str;
 final class BeautySalonService
 {
     public function __construct(
+        private readonly FraudControlService $fraudControlService,
         private readonly InventoryManagementService $inventoryService,
     ) {
         $correlationId = Str::uuid()->toString();
         Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
 }
 
     public function createSalon(array $data, int $tenantId, string $correlationId): BeautySalon
     {
         $correlationId = Str::uuid()->toString();
         Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
 
-        return DB::transaction(function () use ($data, $tenantId, $correlationId) {
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(function () use ($data, $tenantId, $correlationId) {
             Log::channel('audit')->info('Creating beauty salon', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
@@ -59,9 +67,16 @@ final class BeautySalonService
     {
         $correlationId = Str::uuid()->toString();
         Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
 
-        return DB::transaction(function () use ($salon, $data, $correlationId) {
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(function () use ($salon, $data, $correlationId) {
             Log::channel('audit')->info('Updating beauty salon', [
                 'correlation_id' => $correlationId,
                 'salon_id' => $salon->id,
@@ -76,7 +91,6 @@ final class BeautySalonService
     {
         $correlationId = Str::uuid()->toString();
         Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
 
         $totalAppointments = Appointment::query()
             ->where('salon_id', $salon->id)
@@ -106,9 +120,16 @@ final class BeautySalonService
     {
         $correlationId = Str::uuid()->toString();
         Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
 
-        return DB::transaction(function () use ($salon, $correlationId) {
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(function () use ($salon, $correlationId) {
             Log::channel('audit')->info('Deactivating beauty salon', [
                 'correlation_id' => $correlationId,
                 'salon_id' => $salon->id,

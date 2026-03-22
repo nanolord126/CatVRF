@@ -1,158 +1,98 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Beauty\Services;
 
+use App\Domains\Beauty\Events\AppointmentCompleted;
+use App\Domains\Beauty\Jobs\DeductConsumablesJob;
+use App\Domains\Beauty\Models\Appointment;
+use App\Services\FraudControlService;
+use App\Services\WalletService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Str;
 
-
-use App\Domains\Beauty\Models\Appointment;
-use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
-
-final class AppointmentService
+final readonly class AppointmentService
 {
     public function __construct(
-        private ConsumableDeductionService $consumableService,
-    ) {
-        $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+        private FraudControlService $fraudControl,
+        private WalletService $wallet,
+    ) {}
 
-    }
+    public function book(array $data): Appointment
+    {
+        $correlationId = $data['correlation_id'] ?? Str::uuid()->toString();
 
-    /**
-     * Создать запись на услугу с hold расходников
-     */
-    public function bookAppointment(
-        int $masterId,
-        int $serviceId,
-        Carbon $dateTime,
-        array $consumables,
-        string $correlationId,
-    ): Appointment {
-        $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+        $this->fraudControl->check([
+            'operation' => 'book_appointment',
+            'user_id' => $data['client_id'],
+            'correlation_id' => $correlationId,
+        ]);
 
-        try {
-            $appointment = DB::transaction(function () use ($masterId, $serviceId, $dateTime, $consumables, $correlationId) {
-                $appointment = Appointment::create([
-                    'master_id' => $masterId,
-                    'service_id' => $serviceId,
-                    'appointment_date' => $dateTime,
-                    'status' => 'pending',
-                    'correlation_id' => $correlationId,
-                    'tenant_id' => tenant()->id,
-                ]);
+        return DB::transaction(function () use ($data, $correlationId): Appointment {
+            $appointment = Appointment::create([
+                ...$data,
+                'uuid' => Str::uuid()->toString(),
+                'correlation_id' => $correlationId,
+                'status' => 'pending',
+                'payment_status' => 'pending',
+            ]);
 
-                if (!empty($consumables)) {
-                    $this->consumableService->reserveConsumables(
-                        $appointment->id,
-                        $consumables,
-                        $correlationId,
-                    );
-                }
-
-                Log::channel('audit')->info('Appointment booked', [
-                    'appointment_id' => $appointment->id,
-                    'master_id' => $masterId,
-                    'service_id' => $serviceId,
-                    'correlation_id' => $correlationId,
-                ]);
-
-                return $appointment;
-            });
+            Log::channel('audit')->info('Appointment booked', [
+                'appointment_id' => $appointment->id,
+                'correlation_id' => $correlationId,
+            ]);
 
             return $appointment;
-        } catch (\Exception $e) {
-            Log::channel('audit')->error('Appointment booking failed', [
-                'error' => $e->getMessage(),
-                'correlation_id' => $correlationId,
-                'trace' => $e->getTraceAsString(),
-            ]);
-            throw $e;
-        }
+        });
     }
 
-    /**
-     * Отменить запись и отпустить расходники
-     */
-    public function cancelAppointment(int $appointmentId, array $consumables, string $correlationId): bool
+    public function complete(int $appointmentId, string $correlationId): Appointment
     {
-        $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+        return DB::transaction(function () use ($appointmentId, $correlationId): Appointment {
+            $appointment = Appointment::lockForUpdate()->findOrFail($appointmentId);
 
-        try {
-            DB::transaction(function () use ($appointmentId, $consumables, $correlationId) {
-                $appointment = Appointment::findOrFail($appointmentId);
-                $appointment->update(['status' => 'cancelled']);
-
-                if (!empty($consumables)) {
-                    $this->consumableService->releaseConsumables(
-                        $appointmentId,
-                        $consumables,
-                        $correlationId,
-                    );
-                }
-
-                Log::channel('audit')->info('Appointment cancelled', [
-                    'appointment_id' => $appointmentId,
-                    'correlation_id' => $correlationId,
-                ]);
-            });
-
-            return true;
-        } catch (\Exception $e) {
-            Log::channel('audit')->error('Appointment cancellation failed', [
-                'appointment_id' => $appointmentId,
-                'error' => $e->getMessage(),
-                'correlation_id' => $correlationId,
-                'trace' => $e->getTraceAsString(),
+            $appointment->update([
+                'status' => 'completed',
+                'completed_at' => now(),
             ]);
-            throw $e;
-        }
+
+            DeductConsumablesJob::dispatch($appointmentId, $correlationId);
+
+            if (isset($appointment->master->wallet_id)) {
+                $this->wallet->credit(
+                    $appointment->master->wallet_id,
+                    $appointment->price,
+                    'appointment_completed',
+                    $correlationId
+                );
+            }
+
+            event(new AppointmentCompleted($appointment, $correlationId));
+
+            Log::channel('audit')->info('Appointment completed', [
+                'appointment_id' => $appointmentId,
+                'correlation_id' => $correlationId,
+            ]);
+
+            return $appointment;
+        });
     }
 
-    /**
-     * Завершить визит и списать расходники
-     */
-    public function completeAppointment(int $appointmentId, array $consumables, string $correlationId): bool
+    public function cancel(int $appointmentId, string $reason, string $correlationId): Appointment
     {
-        $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+        return DB::transaction(function () use ($appointmentId, $reason, $correlationId): Appointment {
+            $appointment = Appointment::lockForUpdate()->findOrFail($appointmentId);
+            $appointment->update(['status' => 'cancelled']);
 
-        try {
-            DB::transaction(function () use ($appointmentId, $consumables, $correlationId) {
-                $appointment = Appointment::findOrFail($appointmentId);
-                $appointment->update(['status' => 'completed', 'completed_at' => now()]);
-
-                if (!empty($consumables)) {
-                    $this->consumableService->deductConsumables(
-                        $appointmentId,
-                        $consumables,
-                        $correlationId,
-                    );
-                }
-
-                Log::channel('audit')->info('Appointment completed', [
-                    'appointment_id' => $appointmentId,
-                    'correlation_id' => $correlationId,
-                ]);
-            });
-
-            return true;
-        } catch (\Exception $e) {
-            Log::channel('audit')->error('Appointment completion failed', [
+            Log::channel('audit')->info('Appointment cancelled', [
                 'appointment_id' => $appointmentId,
-                'error' => $e->getMessage(),
+                'reason' => $reason,
                 'correlation_id' => $correlationId,
-                'trace' => $e->getTraceAsString(),
             ]);
-            throw $e;
-        }
+
+            return $appointment;
+        });
     }
 }

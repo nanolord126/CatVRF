@@ -2,11 +2,9 @@
 
 namespace App\Domains\Beauty\Services;
 
+use App\Services\FraudControlService;
 use Illuminate\Support\Facades\Log;
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Str;
-
-
 
 /**
  * Сервис для онлайн примерки причёсок и макияжа через AR.
@@ -14,14 +12,24 @@ use Illuminate\Support\Str;
  */
 final class BeautyTryOnService
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
     /**
      * Инициировать AR-примерку для пользователя.
      */
     public function initiateARSession(int $userId, string $serviceType = 'hairstyle', string $correlationId = ''): array
     {
-        $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+        $correlationId = $correlationId ?: Str::uuid()->toString();
+        
+        $this->fraudControlService->check(
+            $userId,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId
+        );
 
         try {
             Log::channel('audit')->info('AR session initiated', [
@@ -55,7 +63,6 @@ final class BeautyTryOnService
     {
         $correlationId = Str::uuid()->toString();
         Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
 
         Log::channel('audit')->info('Try-on result requested', [
             'session_id' => $sessionId,

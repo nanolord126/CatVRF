@@ -13,7 +13,7 @@ final class ReviewController
 {
     public function __construct(
         private readonly ReviewService $reviewService,
-    ) {}
+        private readonly FraudControlService $fraudControlService,) {}
 
     public function index(int $serviceId): JsonResponse
     {
@@ -23,7 +23,7 @@ final class ReviewController
                 ->with('user')
                 ->paginate(20);
 
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             Log::channel('audit')->info('Beauty reviews listed', [
                 'service_id' => $serviceId,
                 'count' => $reviews->count(),
@@ -36,7 +36,7 @@ final class ReviewController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             Log::error('Beauty review listing failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -52,12 +52,30 @@ final class ReviewController
 
     public function store(int $serviceId): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
+        $fraudResult = $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            'operation',
+            0,
+            request()->ip(),
+            request()->header('X-Device-Fingerprint'),
+            $correlationId,
+        );
+
+        if ($fraudResult['decision'] === 'block') {
+            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                'correlation_id' => $correlationId,
+                'user_id'        => auth()->id(),
+                'score'          => $fraudResult['score'],
+            ]);
+            return response()->json([
+                'success'        => false,
+                'error'          => 'Операция заблокирована.',
+                'correlation_id' => $correlationId,
+            ], 403);
         }
 
         try {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             $review = DB::transaction(function () use ($serviceId, $correlationId) {
                 return Review::create([
@@ -88,7 +106,7 @@ final class ReviewController
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Throwable $e) {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             Log::error('Beauty review creation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -104,12 +122,30 @@ final class ReviewController
 
     public function destroy(int $serviceId, int $reviewId): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
+        $fraudResult = $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            'operation',
+            0,
+            request()->ip(),
+            request()->header('X-Device-Fingerprint'),
+            $correlationId,
+        );
+
+        if ($fraudResult['decision'] === 'block') {
+            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                'correlation_id' => $correlationId,
+                'user_id'        => auth()->id(),
+                'score'          => $fraudResult['score'],
+            ]);
+            return response()->json([
+                'success'        => false,
+                'error'          => 'Операция заблокирована.',
+                'correlation_id' => $correlationId,
+            ], 403);
         }
 
         try {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             $review = Review::findOrFail($reviewId);
 
             if ($review->user_id !== auth()->id()) {
@@ -136,7 +172,7 @@ final class ReviewController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             Log::error('Beauty review deletion failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

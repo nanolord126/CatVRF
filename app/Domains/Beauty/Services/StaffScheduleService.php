@@ -2,14 +2,12 @@
 
 namespace App\Domains\Beauty\Services;
 
-use Illuminate\Support\Facades\Log;
-use App\Services\Security\FraudControlService;
-use Illuminate\Support\Str;
-
-
 use App\Domains\Beauty\Models\Master;
+use App\Services\FraudControlService;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * Сервис для управления графиком мастеров.
@@ -17,14 +15,24 @@ use Illuminate\Support\Collection;
  */
 final class StaffScheduleService
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
     /**
      * Автоматически сгенерировать граф ик мастера на основе правил.
      */
     public function generateSchedule(Master $master, Carbon $from, Carbon $to, string $correlationId = ''): Collection
     {
-        $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+        $correlationId = $correlationId ?: Str::uuid()->toString();
+        
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId
+        );
 
         try {
             Log::channel('audit')->info('Generating master schedule', [
@@ -68,9 +76,16 @@ final class StaffScheduleService
      */
     public function getAvailableSlots(Master $master, Carbon $date, string $correlationId = ''): Collection
     {
-        $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+        $correlationId = $correlationId ?: Str::uuid()->toString();
+        
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId
+        );
 
         $start = $date->copy()->startOfDay();
         $end = $date->copy()->endOfDay();

@@ -3,8 +3,8 @@
 namespace App\Domains\Beauty\Services;
 
 use Illuminate\Support\Facades\Log;
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Str;
+use App\Services\FraudControlService;
 
 
 use App\Domains\Beauty\Models\BeautyConsumable;
@@ -12,11 +12,11 @@ use Illuminate\Support\Facades\DB;
 
 final class ConsumableDeductionService
 {
-    public function __construct()
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,)
     {
         $correlationId = Str::uuid()->toString();
         Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
 
     }
 
@@ -27,9 +27,16 @@ final class ConsumableDeductionService
     {
         $correlationId = Str::uuid()->toString();
         Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
 
         try {
+                        $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
             DB::transaction(function () use ($appointmentId, $consumables, $correlationId) {
                 foreach ($consumables as $consumableId => $quantity) {
                     $consumable = BeautyConsumable::lockForUpdate()->findOrFail($consumableId);
@@ -69,9 +76,16 @@ final class ConsumableDeductionService
     {
         $correlationId = Str::uuid()->toString();
         Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
 
         try {
+                        $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
             DB::transaction(function () use ($appointmentId, $consumables, $correlationId) {
                 foreach ($consumables as $consumableId => $quantity) {
                     $consumable = BeautyConsumable::lockForUpdate()->findOrFail($consumableId);
@@ -110,9 +124,16 @@ final class ConsumableDeductionService
     {
         $correlationId = Str::uuid()->toString();
         Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
 
         try {
+                        $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
             DB::transaction(function () use ($appointmentId, $consumables, $correlationId) {
                 foreach ($consumables as $consumableId => $quantity) {
                     $consumable = BeautyConsumable::lockForUpdate()->findOrFail($consumableId);

@@ -2,14 +2,12 @@
 
 namespace App\Domains\Beauty\Services;
 
-use Illuminate\Support\Facades\Log;
-use App\Services\Security\FraudControlService;
-use Illuminate\Support\Str;
-
-
 use App\Domains\Beauty\Models\BeautyProduct;
+use App\Services\FraudControlService;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * Сервис для прогнозирования спроса на расходники.
@@ -17,6 +15,9 @@ use Illuminate\Support\Collection;
  */
 final class DemandForecastService
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
     /**
      * Прогноз потребности в расходниках на N дней вперёд.
      */
@@ -25,9 +26,16 @@ final class DemandForecastService
         int $daysAhead = 7,
         string $correlationId = ''
     ): Collection {
-        $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Beauty', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
+        $correlationId = $correlationId ?: Str::uuid()->toString();
+        
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId
+        );
 
         try {
             Log::channel('audit')->info('Forecasting consumable demand', [

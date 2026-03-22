@@ -14,7 +14,7 @@ final class BeautyServiceController
 {
     public function __construct(
         private readonly ServiceService $serviceService,
-    ) {}
+        private readonly FraudControlService $fraudControlService,) {}
 
     public function index(): JsonResponse
     {
@@ -23,7 +23,7 @@ final class BeautyServiceController
                 ->with('salon', 'master')
                 ->paginate(20);
 
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             Log::channel('audit')->info('Beauty services listed', [
                 'count' => $services->count(),
                 'correlation_id' => $correlationId,
@@ -35,7 +35,7 @@ final class BeautyServiceController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             Log::error('Beauty service listing failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -70,12 +70,30 @@ final class BeautyServiceController
 
     public function store(): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
+        $fraudResult = $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            'operation',
+            0,
+            request()->ip(),
+            request()->header('X-Device-Fingerprint'),
+            $correlationId,
+        );
+
+        if ($fraudResult['decision'] === 'block') {
+            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                'correlation_id' => $correlationId,
+                'user_id'        => auth()->id(),
+                'score'          => $fraudResult['score'],
+            ]);
+            return response()->json([
+                'success'        => false,
+                'error'          => 'Операция заблокирована.',
+                'correlation_id' => $correlationId,
+            ], 403);
         }
 
         try {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             $service = DB::transaction(function () use ($correlationId) {
                 return BeautyService::create([
@@ -104,7 +122,7 @@ final class BeautyServiceController
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Throwable $e) {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             Log::error('Beauty service creation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -120,12 +138,30 @@ final class BeautyServiceController
 
     public function update(int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
+        $fraudResult = $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            'operation',
+            0,
+            request()->ip(),
+            request()->header('X-Device-Fingerprint'),
+            $correlationId,
+        );
+
+        if ($fraudResult['decision'] === 'block') {
+            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                'correlation_id' => $correlationId,
+                'user_id'        => auth()->id(),
+                'score'          => $fraudResult['score'],
+            ]);
+            return response()->json([
+                'success'        => false,
+                'error'          => 'Операция заблокирована.',
+                'correlation_id' => $correlationId,
+            ], 403);
         }
 
         try {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             $service = BeautyService::findOrFail($id);
 
             DB::transaction(function () use ($service, $correlationId) {
@@ -150,7 +186,7 @@ final class BeautyServiceController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             Log::error('Beauty service update failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -166,12 +202,30 @@ final class BeautyServiceController
 
     public function destroy(int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
+        $fraudResult = $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            'operation',
+            0,
+            request()->ip(),
+            request()->header('X-Device-Fingerprint'),
+            $correlationId,
+        );
+
+        if ($fraudResult['decision'] === 'block') {
+            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                'correlation_id' => $correlationId,
+                'user_id'        => auth()->id(),
+                'score'          => $fraudResult['score'],
+            ]);
+            return response()->json([
+                'success'        => false,
+                'error'          => 'Операция заблокирована.',
+                'correlation_id' => $correlationId,
+            ], 403);
         }
 
         try {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             $service = BeautyService::findOrFail($id);
 
             DB::transaction(function () use ($service, $correlationId) {
@@ -190,7 +244,7 @@ final class BeautyServiceController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             Log::error('Beauty service deletion failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

@@ -13,7 +13,7 @@ final class AppointmentController
 {
     public function __construct(
         private readonly AppointmentService $appointmentService,
-    ) {}
+        private readonly FraudControlService $fraudControlService,) {}
 
     public function index(): JsonResponse
     {
@@ -22,7 +22,7 @@ final class AppointmentController
                 ->with('service', 'master', 'salon')
                 ->paginate(20);
 
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             Log::channel('audit')->info('Beauty appointments listed', [
                 'user_id' => auth()->id(),
                 'count' => $appointments->count(),
@@ -35,7 +35,7 @@ final class AppointmentController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             Log::error('Beauty appointment listing failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -78,12 +78,30 @@ final class AppointmentController
 
     public function store(): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
+        $fraudResult = $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            'operation',
+            0,
+            request()->ip(),
+            request()->header('X-Device-Fingerprint'),
+            $correlationId,
+        );
+
+        if ($fraudResult['decision'] === 'block') {
+            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                'correlation_id' => $correlationId,
+                'user_id'        => auth()->id(),
+                'score'          => $fraudResult['score'],
+            ]);
+            return response()->json([
+                'success'        => false,
+                'error'          => 'Операция заблокирована.',
+                'correlation_id' => $correlationId,
+            ], 403);
         }
 
         try {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             $appointment = DB::transaction(function () use ($correlationId) {
                 return Appointment::create([
@@ -114,7 +132,7 @@ final class AppointmentController
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Throwable $e) {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             Log::error('Beauty appointment creation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -131,7 +149,7 @@ final class AppointmentController
     public function cancel(int $id): JsonResponse
     {
         try {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             $appointment = Appointment::findOrFail($id);
 
             if ($appointment->user_id !== auth()->id()) {
@@ -160,7 +178,7 @@ final class AppointmentController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             Log::error('Beauty appointment cancellation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

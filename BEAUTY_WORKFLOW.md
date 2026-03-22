@@ -52,21 +52,25 @@
 ## Database Schema
 
 ### beauty_salons
+
 ```sql
 id, tenant_id, user_id, name, phone, address, city, rating, status, created_at
 ```
 
 ### beauty_services
+
 ```sql
 id, tenant_id, salon_id, name, description, price, duration_minutes, is_active, category
 ```
 
 ### beauty_bookings
+
 ```sql
 id, tenant_id, salon_id, service_id, customer_id, scheduled_at, status, notes, correlation_id
 ```
 
 ### beauty_payments
+
 ```sql
 id, tenant_id, salon_id, booking_id, amount, status, payment_method, tinkoff_payment_id, 
 salon_payout_amount, platform_commission_amount, commission_percent, completed_at, correlation_id
@@ -75,6 +79,7 @@ salon_payout_amount, platform_commission_amount, commission_percent, completed_a
 ## Key Enums
 
 ### BookingStatus
+
 - `pending` - ожидание оплаты
 - `confirmed` - оплачено, ожидание услуги
 - `completed` - услуга оказана
@@ -82,6 +87,7 @@ salon_payout_amount, platform_commission_amount, commission_percent, completed_a
 - `no_show` - не явилась
 
 ### PaymentStatus
+
 - `pending` - ожидание платежа
 - `confirmed` - оплачено
 - `failed` - ошибка платежа
@@ -91,6 +97,7 @@ salon_payout_amount, platform_commission_amount, commission_percent, completed_a
 ## Services
 
 ### BookingService
+
 ```php
 createBooking(Service $service, int $customerId, string $scheduledAt, ?string $notes)
 confirmBooking(Booking $booking)
@@ -99,6 +106,7 @@ cancelBooking(Booking $booking, ?string $reason)
 ```
 
 ### PaymentService
+
 ```php
 initiatePayment(Booking $booking): array // returns [payment_id, payment_url, correlation_id]
 confirmPayment(Payment $payment, string $tinkoffPaymentId)
@@ -107,6 +115,7 @@ refundPayment(Payment $payment, string $reason)
 ```
 
 ### TinkoffGateway
+
 ```php
 createPayment(int $paymentId, int $amount, string $orderId, ...): string
 getPaymentStatus(string $paymentId): array
@@ -128,6 +137,7 @@ WALLET_ENABLED=true
 ```
 
 ### config/payments.php
+
 ```php
 'tinkoff' => [
     'api_key' => env('TINKOFF_API_KEY'),
@@ -138,6 +148,7 @@ WALLET_ENABLED=true
 ## API Endpoints
 
 ### Public Beauty API (future - for mobile app)
+
 ```
 GET  /api/beauty/services              # List all services
 GET  /api/beauty/services/{id}         # Service details
@@ -153,33 +164,39 @@ POST /beauty/payment/callback           # Tinkoff webhook
 ## Filament Tenant Panel Resources
 
 ### SalonResource (Admin view)
+
 - ListPage: all salons, tenant filter
 - CreatePage: register new salon
 - EditPage: edit salon details, view balance
 
 ### ServiceResource
+
 - ListPage: services by salon
 - CreatePage: add service
 - EditPage: edit service
 
 ### BookingResource
+
 - ListPage: bookings by status, date range
 - ViewPage: booking details, payment status
 - Actions: complete, cancel, mark no-show
 
 ### PaymentResource
+
 - ListPage: payments with status, date range
 - ViewPage: payment details, salon payout amount
 
 ## Testing
 
 ### BookingTest
+
 - create_booking
 - booking_status_transitions
 - cancel_booking
 - upcoming_scope
 
 ### PaymentTest
+
 - payment_initiated
 - payment_confirmed_with_wallet_credit
 - payment_failed

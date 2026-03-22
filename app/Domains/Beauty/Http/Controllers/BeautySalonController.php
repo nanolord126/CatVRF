@@ -14,7 +14,7 @@ final class BeautySalonController
 {
     public function __construct(
         private readonly SalonService $salonService,
-    ) {}
+        private readonly FraudControlService $fraudControlService,) {}
 
     public function index(): JsonResponse
     {
@@ -23,7 +23,7 @@ final class BeautySalonController
                 ->with('masters', 'services')
                 ->paginate(20);
 
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             Log::channel('audit')->info('Beauty salons listed', [
                 'count' => $salons->count(),
                 'correlation_id' => $correlationId,
@@ -35,7 +35,7 @@ final class BeautySalonController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             Log::error('Beauty salon listing failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -70,12 +70,30 @@ final class BeautySalonController
 
     public function store(): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
+        $fraudResult = $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            'operation',
+            0,
+            request()->ip(),
+            request()->header('X-Device-Fingerprint'),
+            $correlationId,
+        );
+
+        if ($fraudResult['decision'] === 'block') {
+            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                'correlation_id' => $correlationId,
+                'user_id'        => auth()->id(),
+                'score'          => $fraudResult['score'],
+            ]);
+            return response()->json([
+                'success'        => false,
+                'error'          => 'Операция заблокирована.',
+                'correlation_id' => $correlationId,
+            ], 403);
         }
 
         try {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             $salon = DB::transaction(function () use ($correlationId) {
                 return BeautySalon::create([
@@ -105,7 +123,7 @@ final class BeautySalonController
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Throwable $e) {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             Log::error('Beauty salon creation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -121,12 +139,30 @@ final class BeautySalonController
 
     public function update(int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
+        $fraudResult = $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            'operation',
+            0,
+            request()->ip(),
+            request()->header('X-Device-Fingerprint'),
+            $correlationId,
+        );
+
+        if ($fraudResult['decision'] === 'block') {
+            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                'correlation_id' => $correlationId,
+                'user_id'        => auth()->id(),
+                'score'          => $fraudResult['score'],
+            ]);
+            return response()->json([
+                'success'        => false,
+                'error'          => 'Операция заблокирована.',
+                'correlation_id' => $correlationId,
+            ], 403);
         }
 
         try {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             $salon = BeautySalon::findOrFail($id);
 
             DB::transaction(function () use ($salon, $correlationId) {
@@ -150,7 +186,7 @@ final class BeautySalonController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             Log::error('Beauty salon update failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

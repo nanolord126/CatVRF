@@ -15,6 +15,7 @@ use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -62,6 +63,12 @@ final class AppointmentServiceTest extends TestCase
 
         // Bind tenant for tests
         app()->bind('tenant', fn () => $this->tenant);
+
+        // Mock FraudControlService — allow all checks in tests
+        $this->app->instance(
+            FraudControlService::class,
+            \Mockery::mock(FraudControlService::class)->shouldReceive('check')->andReturn(true)->getMock()
+        );
     }
 
     // ─── BOOKING ─────────────────────────────────────────────────────────────
