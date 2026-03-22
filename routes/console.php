@@ -72,12 +72,50 @@ Schedule::command('videocall:cleanup')->daily();
 // GLOBAL PLATFORM JOBS
 // ══════════════════════════════════════════════════════════════════════════════
 
-// Агрегация ежедневной аналитики — 01:30 UTC (dispatches per-tenant via command)
+/**
+ * Единое время проверки для всех тенантов — 03:00 по их местному времени.
+ * Этот цикл проходит по всем тенантам, проверяет текущий час в их timezone
+ * и запускает необходимые задачи, если сейчас 03:00.
+ */
 Schedule::call(function () {
-    \App\Models\Tenant::query()->pluck('id')->each(function (int $tenantId) {
-        AggregateDailyAnalyticsJob::dispatch($tenantId);
-    });
-})->dailyAt('01:30')->name('platform.aggregate-daily-analytics');
+    \App\Models\Tenant::query()
+        ->where('is_active', true)
+        ->each(function (\App\Models\Tenant $tenant) {
+            $timezone = $tenant->timezone ?? 'UTC';
+            $localHour = now($timezone)->hour;
+
+            if ($localHour === 3) {
+                $correlationId = \Illuminate\Support\Str::uuid()->toString();
+
+                // 1. Агрегация аналитики
+                AggregateDailyAnalyticsJob::dispatch($tenant->id, $correlationId);
+
+                // 2. ML-фрод: переобучение (модели тенанта)
+                FraudMLRecalculationJob::dispatch($tenant->id, $correlationId);
+
+                // 3. Прогноз спроса
+                DemandForecastJob::dispatch($tenant->id, $correlationId);
+
+                // 4. Качество рекомендаций
+                RecommendationQualityJob::dispatch($tenant->id, $correlationId);
+
+                // 5. Обработка выплат
+                PayoutProcessingJob::dispatch($tenant->id, $correlationId);
+
+                // 6. Разморозка бонусов (Cooling period)
+                \App\Jobs\Bonus\BonusUnlockJob::dispatch();
+
+                // 7. Очистка истёкших бонусов
+                CleanupExpiredBonusesJob::dispatch($tenant->id, $correlationId);
+
+                Log::channel('audit')->info('Daily schedule (03:00 local) triggered for tenant', [
+                    'tenant_id' => $tenant->id,
+                    'timezone' => $timezone,
+                    'correlation_id' => $correlationId,
+                ]);
+            }
+        });
+})->hourly()->name('platform.daily-maintenance-synchronized');
 
 // Пересчёт аналитики — каждый час (dispatches per-tenant)
 Schedule::call(function () {
@@ -86,42 +124,10 @@ Schedule::call(function () {
     });
 })->hourly()->name('platform.recalculate-analytics');
 
-// ML-фрод: переобучение модели — 02:00 UTC
-Schedule::call(fn () => FraudMLRecalculationJob::dispatch())
-    ->dailyAt('02:00')
-    ->name('platform.fraud-ml-recalculation');
-
-// Прогноз спроса — 04:30 UTC (после переобучения фрода)
-Schedule::job(new DemandForecastJob())
-    ->dailyAt('04:30')
-    ->name('platform.demand-forecast')
-    ->withoutOverlapping(120);
-
-// Качество рекомендаций — 05:00 UTC
-Schedule::call(fn () => RecommendationQualityJob::dispatch())
-    ->dailyAt('05:00')
-    ->name('platform.recommendation-quality');
-
-// Уведомления о низком остатке — 08:00 UTC
+// Уведомления о низком остатке — 08:00 UTC (оставляем фиксированным для утра)
 Schedule::job(new LowStockNotificationJob())
     ->dailyAt('08:00')
     ->name('platform.low-stock-notification')
-    ->withoutOverlapping(60);
-
-// Обработка выплат бизнесам — 10:00 UTC
-Schedule::call(fn () => PayoutProcessingJob::dispatch())
-    ->dailyAt('10:00')
-    ->name('platform.payout-processing');
-
-// Начисление бонусов за оборот — 1-е число месяца 07:00 UTC
-Schedule::call(fn () => BonusAccrualJob::dispatch())
-    ->monthlyOn(1, '07:00')
-    ->name('platform.bonus-accrual');
-
-// Очистка истёкших бонусов — каждое воскресенье 04:00 UTC
-Schedule::job(new CleanupExpiredBonusesJob())
-    ->weeklyOn(0, '04:00')
-    ->name('platform.cleanup-expired-bonuses')
     ->withoutOverlapping(60);
 
 // Очистка истёкших idempotency records — каждый день 00:30 UTC
@@ -211,23 +217,23 @@ Schedule::call(fn () => SendAppointmentRemindersJob::dispatch())
 // ══════════════════════════════════════════════════════════════════════════════
 // FOOD
 // ══════════════════════════════════════════════════════════════════════════════
-Schedule::job(new AutoCloseOrderJob())
-    ->everyFifteenMinutes()
-    ->name('food.auto-close-order')
-    ->withoutOverlapping(10);
+// Schedule::job(new AutoCloseOrderJob())
+//     ->everyFifteenMinutes()
+//     ->name('food.auto-close-order')
+//     ->withoutOverlapping(10);
 
-Schedule::job(new OrderReadyReminderJob())
-    ->everyFifteenMinutes()
-    ->name('food.order-ready-reminder')
-    ->withoutOverlapping(10);
+// Schedule::job(new OrderReadyReminderJob())
+//     ->everyFifteenMinutes()
+//     ->name('food.order-ready-reminder')
+//     ->withoutOverlapping(10);
 
 // ══════════════════════════════════════════════════════════════════════════════
 // FREELANCE
 // ══════════════════════════════════════════════════════════════════════════════
-Schedule::job(new CalculateFreelancerEarningsJob())
-    ->dailyAt('04:30')
-    ->name('freelance.calculate-earnings')
-    ->withoutOverlapping(60);
+// Schedule::job(new CalculateFreelancerEarningsJob())
+//     ->dailyAt('04:30')
+//     ->name('freelance.calculate-earnings')
+//     ->withoutOverlapping(60);
 
 Schedule::job(new UpdateDeliverableStatusJob())
     ->hourly()

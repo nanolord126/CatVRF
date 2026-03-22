@@ -33,6 +33,7 @@ final class Tenant extends Model
         'is_active',
         'is_verified',
         'verification_code',
+        'timezone',
         'correlation_id',
         'uuid',
         'tags',
@@ -46,6 +47,7 @@ final class Tenant extends Model
     protected $casts = [
         'is_active' => 'boolean',
         'is_verified' => 'boolean',
+        'timezone' => 'string',
         'tags' => 'json',
         'meta' => 'json',
     ];
