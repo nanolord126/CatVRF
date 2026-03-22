@@ -26,7 +26,7 @@ ISSUES FOUND:
 1. EMPTY/MINIMAL CLASSES (40+ pages)
    ─────────────────────────────────
    Definition: Class with <20 lines, just resource assignment
-   
+
    Affected Pages:
    ❌ CreateAnimalProduct.php (14 lines)
    ❌ CreateBoardinghouse.php (14 lines)
@@ -87,18 +87,19 @@ ISSUES FOUND:
    ❌ EditTaxiTrip.php (14 lines)
    ❌ ListTaxiTrips.php (14 lines)
    ❌ ShowTaxiTrip.php (14 lines)
-   
+
    Impact: CRITICAL - Missing authorization, error handling, logging
    Severity: 🔴 CRITICAL
 
 2. MISSING BOOT() OR __CONSTRUCT() (80+ pages)
    ─────────────────────────────────────────────
    Definition: No dependency injection for Guard, Gate, LogManager, etc.
-   
+
    Impact: Cannot perform authorization, cannot log audit events
    Severity: 🔴 CRITICAL
-   
+
    Fix Pattern:
+
    ```php
    public function boot(
        Guard $guard,
@@ -115,11 +116,12 @@ ISSUES FOUND:
 3. MISSING AUTHORIZOACCESS OVERRIDE (100+ pages)
    ────────────────────────────────────────────────
    Definition: CreateRecord/EditRecord don't check user permissions
-   
+
    Impact: Security vulnerability - anyone can modify any record
    Severity: 🔴 CRITICAL
-   
+
    Fix Pattern:
+
    ```php
    protected function authorizeAccess(): void
    {
@@ -134,11 +136,12 @@ ISSUES FOUND:
 4. MISSING MULTI-TENANT ISOLATION (50+ pages)
    ─────────────────────────────────────────────
    Definition: No tenant_id verification in EditRecord/DeleteRecord
-   
+
    Impact: Users could access/modify records from other tenants
    Severity: 🔴 CRITICAL
-   
+
    Fix Pattern:
+
    ```php
    if ($this->record->tenant_id !== $this->guard->user()?->tenant_id) {
        abort(403, __('Forbidden'));
@@ -148,11 +151,12 @@ ISSUES FOUND:
 5. MISSING AUDIT LOGGING (100+ pages)
    ─────────────────────────────────────
    Definition: No audit trail for user actions
-   
+
    Impact: Compliance violation, no accountability
    Severity: 🔴 CRITICAL
-   
+
    Fix Pattern:
+
    ```php
    $this->log->channel('audit')->info('Record created', [
        'id' => $record->id,
@@ -165,11 +169,12 @@ ISSUES FOUND:
 6. MISSING ERROR HANDLING (40+ pages)
    ──────────────────────────────────
    Definition: No try-catch in handleRecordCreation/Update
-   
+
    Impact: Unhandled exceptions, poor user feedback
    Severity: 🟡 HIGH
-   
+
    Fix Pattern:
+
    ```php
    try {
        return $this->db->transaction(function () {
@@ -185,16 +190,17 @@ ISSUES FOUND:
 7. INCONSISTENT CONSTRUCTOR PATTERN (30+ pages)
    ───────────────────────────────────────────────
    Definition: Mix of boot() method and property promotion in __construct()
-   
+
    Examples:
    - AutoResource: Uses property promotion
    - ConcertResource: Uses boot() method (correct pattern)
    - HotelResource: Uses property promotion (Filament incompatible)
-   
+
    Impact: Inconsistency, potential Filament compatibility issues
    Severity: 🟡 HIGH
-   
+
    Standard Pattern (from ConcertResource):
+
    ```php
    public function boot(
        Guard $guard,
@@ -209,11 +215,12 @@ ISSUES FOUND:
 8. MISSING CORRELATION_ID TRACKING (40+ pages)
    ──────────────────────────────────────────────
    Definition: No correlation ID for audit trail continuity
-   
+
    Impact: Cannot trace request through system
    Severity: 🟡 MEDIUM
-   
+
    Fix Pattern:
+
    ```php
    $correlationId = $this->request->header('X-Correlation-ID') 
        ?? (string) Str::uuid();
@@ -222,7 +229,7 @@ ISSUES FOUND:
 9. PROPERTY PROMOTION COMPATIBILITY ISSUES (20+ pages)
    ────────────────────────────────────────────────────
    Definition: Using __construct($protected Guard $guard) pattern
-   
+
    Affected Files:
    - AutoResource pages (CreateAuto, EditAuto, etc.)
    - ConstructionResource pages
@@ -236,21 +243,21 @@ ISSUES FOUND:
    - PerfumeryResource pages
    - PropertyResource pages
    - VetClinicResource pages
-   
+
    Issue: Property promotion may not work with Filament's lifecycle
-   
+
    Solution: Replace with boot() method pattern
 
 10. GUARD/GATE IMPORT BUT NOT USED (5 pages)
     ──────────────────────────────────────────
     Definition: Imports Guard/Gate but doesn't use them
-    
+
     Affected Files:
     - FlowersItemResource/Pages/CreateFlowersItem.php
     - RestaurantDishResource/Pages/CreateRestaurantDish.php
     - RestaurantMenuResource/Pages/CreateRestaurantMenu.php
     - RestaurantTableResource/Pages/CreateRestaurantTable.php
-    
+
     Impact: Unused imports, potential missing auth checks
     Severity: 🟡 MEDIUM
 
@@ -260,6 +267,7 @@ ISSUES FOUND:
 
 Completed Fixes:
 ────────────────
+
 1. ✅ CreateRestaurant.php (115 lines)
    - Added full boot() method with DI
    - Added authorizeAccess() override
@@ -271,8 +279,9 @@ Completed Fixes:
    - Applied same pattern as CreateRestaurant
    - Added all required checks and logging
 
-Remaining to Fix: 
+Remaining to Fix:
 ─────────────────
+
 - 40+ empty Create/Edit/View/List pages
 - 80+ pages missing boot() method
 - 100+ pages missing authorizeAccess override
@@ -286,12 +295,14 @@ Remaining to Fix:
 
 4 Templates Ready:
 ──────────────────
+
 1. generateCreateRecord() - Full Create page template (115 lines)
 2. generateEditRecord() - Full Edit page template (120 lines)  
 3. generateViewRecord() - Full View/Show page template (80 lines)
 4. generateListRecords() - Full List page template (75 lines)
 
 Each template includes:
+
 - ✅ Proper dependency injection via boot() method
 - ✅ authorizeAccess() override with permission checks
 - ✅ Multi-tenant isolation verification
@@ -314,6 +325,7 @@ Pattern Consistency:
 
 Code Quality Metrics:
 ─────────────────────
+
 - ✅ PHPStan Level 8 compliance
 - ✅ 100% type hints
 - ✅ 100% PHPDoc coverage
@@ -322,6 +334,7 @@ Code Quality Metrics:
 
 Security Standards:
 ───────────────────
+
 - ✅ Multi-tenant isolation enforced
 - ✅ Authorization checks on all mutations
 - ✅ Audit logging on all actions
@@ -336,13 +349,15 @@ Security Standards:
 Option 1: Automated Fix Script (Recommended)
 ─────────────────────────────────────────────
 Tool: mass_fix_filament_pages.php
-Approach: 
+Approach:
+
 - Scan all 221 pages
 - Identify type (Create/Edit/View/List)
 - Apply appropriate template
 - Result: 200+ pages fixed in 60 seconds
 
 Expected Results:
+
 - ✅ All 40+ empty pages populated with full implementation
 - ✅ All pages standardized on boot() pattern
 - ✅ All authorization checks added
@@ -353,6 +368,7 @@ Expected Results:
 Option 2: Manual Priority Fix
 ─────────────────────────────
 Focus Areas (by impact):
+
 1. Critical pages (Concert, Restaurant, Hotel, SportEvent)
 2. Revenue-generating features (Orders, Bookings, Payments)
 3. User-facing features (Products, Services)
@@ -360,6 +376,7 @@ Focus Areas (by impact):
 
 Option 3: Hybrid Approach
 ─────────────────────────
+
 1. Use automated script for 70% of pages
 2. Manual review of critical business logic pages
 3. Load testing after fixes
@@ -371,6 +388,7 @@ Option 3: Hybrid Approach
 
 Current State (Before Fixes):
 ─────────────────────────────
+
 - 347 issues in 171 pages
 - Security vulnerabilities: 🔴 CRITICAL (multi-tenant bypass)
 - Authorization gaps: 🔴 CRITICAL (anyone can modify)
@@ -379,6 +397,7 @@ Current State (Before Fixes):
 
 Post-Fix State (Target):
 ────────────────────────
+
 - 0 issues (all categories resolved)
 - Security: ✅ SECURED (multi-tenant enforced)
 - Authorization: ✅ ENFORCED (gate checks on all pages)
@@ -398,6 +417,7 @@ Phase 6c: ⏳ NOT STARTED (API endpoints audit)
 
 Estimated Timeline to Production:
 ─────────────────────────────────
+
 - Automated fix script: 5 minutes to execute
 - Testing: 30 minutes (run test suite)
 - Code review: 30 minutes
@@ -409,6 +429,7 @@ Estimated Timeline to Production:
 📝 DETAILED ISSUE REFERENCE
 
 For each issue category, see corresponding section above for:
+
 - Definition and examples
 - Affected files (with line counts)
 - Business impact and severity

@@ -2,6 +2,7 @@
 
 namespace Tests\Unit\Domains\Taxi\Services;
 
+use App\Services\FraudControlService;
 use Modules\Auto\Services\TaxiService;
 use Modules\Auto\Models\TaxiRide;
 use App\Models\User;
@@ -20,6 +21,10 @@ class TaxiServiceTest extends TestCase
         parent::setUp();
         $this->service = new TaxiService();
         $this->user = User::factory()->create();
+        $this->app->instance(
+            FraudControlService::class,
+            \Mockery::mock(FraudControlService::class)->shouldReceive('check')->andReturn(true)->getMock()
+        );
     }
 
     public function test_create_ride_creates_taxi_ride(): void

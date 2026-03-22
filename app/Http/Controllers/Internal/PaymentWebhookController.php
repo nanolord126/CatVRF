@@ -7,7 +7,7 @@ use App\Domains\Finances\Models\PaymentTransaction;
 use App\Services\Wallet\WalletService;
 use App\Services\Security\IdempotencyService;
 use App\Services\Payment\FiscalService;
-use App\Services\Fraud\FraudControlService;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;

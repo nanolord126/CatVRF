@@ -5,6 +5,7 @@ namespace App\Domains\Logistics\Http\Controllers;
 use App\Domains\Logistics\Models\Shipment;
 use App\Domains\Logistics\Services\ShipmentService;
 use App\Domains\Logistics\Services\TrackingService;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -15,16 +16,15 @@ final class ShipmentController
     public function __construct(
         private readonly ShipmentService $shipmentService,
         private readonly TrackingService $trackingService,
+        private readonly FraudControlService $fraudControlService,
     ) {}
 
     public function store(): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
-            $correlationId = Str::uuid();
 
             $shipment = $this->shipmentService->createShipment(
                 tenant('id'),
@@ -70,13 +70,11 @@ final class ShipmentController
 
     public function update(int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $shipment = Shipment::findOrFail($id);
-            $correlationId = Str::uuid();
 
             DB::transaction(function () use ($shipment, $correlationId) {
                 $shipment->update(['correlation_id' => $correlationId]);
@@ -93,7 +91,7 @@ final class ShipmentController
     {
         try {
             $shipment = Shipment::findOrFail($id);
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             $this->shipmentService->cancelShipment($shipment, request('reason'), $correlationId);
 
@@ -127,7 +125,7 @@ final class ShipmentController
     {
         try {
             $shipment = Shipment::findOrFail($id);
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             $this->shipmentService->updateShipmentStatus($shipment, request('status'), $correlationId);
 

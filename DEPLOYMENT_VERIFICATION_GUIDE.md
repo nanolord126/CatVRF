@@ -120,6 +120,7 @@ php artisan tinker
 ## 📊 KEY METRICS TO MONITOR
 
 ### Application Health
+
 | Metric | Target | Alert Threshold |
 |--------|--------|-----------------|
 | Response Time (p95) | < 500ms | > 1000ms |
@@ -131,6 +132,7 @@ php artisan tinker
 | Cache Hit Rate | > 80% | < 60% |
 
 ### Business Metrics
+
 | Metric | Expected | Action |
 |--------|----------|--------|
 | API Call Volume | Baseline | Monitor trending |
@@ -146,6 +148,7 @@ php artisan tinker
 ### Issue: High Response Times
 
 **Diagnosis:**
+
 ```bash
 php artisan tinker
 >>> DB::enableQueryLog();
@@ -154,6 +157,7 @@ php artisan tinker
 ```
 
 **Fix:**
+
 ```bash
 # 1. Clear caches
 php artisan cache:clear
@@ -176,6 +180,7 @@ systemctl restart catvrf-app
 ### Issue: Queue Jobs Piling Up
 
 **Diagnosis:**
+
 ```bash
 php artisan queue:failed
 php artisan tinker
@@ -183,6 +188,7 @@ php artisan tinker
 ```
 
 **Fix:**
+
 ```bash
 # 1. Restart queue worker
 systemctl restart catvrf-queue
@@ -202,6 +208,7 @@ php artisan tinker
 ### Issue: Memory Leaks
 
 **Diagnosis:**
+
 ```bash
 # Monitor memory usage
 watch -n 1 'free -h'
@@ -213,6 +220,7 @@ php artisan tinker
 ```
 
 **Fix:**
+
 ```bash
 # 1. Restart services
 systemctl restart catvrf-app
@@ -232,6 +240,7 @@ gc_enable();
 ### Issue: Database Connection Errors
 
 **Diagnosis:**
+
 ```bash
 php artisan tinker
 >>> DB::connection()->getPdo()
@@ -239,6 +248,7 @@ php artisan tinker
 ```
 
 **Fix:**
+
 ```bash
 # 1. Check database status
 systemctl status mysql  # or postgresql, etc.
@@ -264,12 +274,14 @@ systemctl restart catvrf-app
 ### Issue: Webhook Processing Failures
 
 **Diagnosis:**
+
 ```bash
 php artisan tinker
 >>> \App\Models\WebhookLog::where('status', 'failed')->latest()->take(10)->get()
 ```
 
 **Fix:**
+
 ```bash
 # 1. Verify webhook signatures
 # Check webhook_secret in .env
@@ -367,6 +379,7 @@ php artisan health:check
 ## 🎯 DEPLOYMENT SUCCESS CRITERIA
 
 ### Must Have ✅
+
 - [x] Application starts without errors
 - [x] All core endpoints respond with 200 OK
 - [x] Database migrations completed successfully
@@ -376,6 +389,7 @@ php artisan health:check
 - [x] No critical errors in logs
 
 ### Should Have ✅
+
 - [x] Response times < 500ms (p95)
 - [x] Error rate < 0.1%
 - [x] Cache hit rate > 80%
@@ -385,6 +399,7 @@ php artisan health:check
 - [x] Monitoring active
 
 ### Nice to Have ✅
+
 - [x] Zero warnings in logs
 - [x] All performance metrics green
 - [x] WebSocket connections active
@@ -396,7 +411,7 @@ php artisan health:check
 
 ## 🆘 EMERGENCY PROCEDURES
 
-### If application is down:
+### If application is down
 
 ```bash
 # 1. Check service status
@@ -420,7 +435,7 @@ top
 # Include: error logs, last changes, metrics
 ```
 
-### If database is down:
+### If database is down
 
 ```bash
 # 1. Check database service
@@ -444,9 +459,9 @@ php artisan tinker
 
 ## 📞 SUPPORT CONTACTS
 
-- **DevOps Team**: devops@company.com
-- **Database Admin**: dba@company.com
-- **Security Team**: security@company.com
+- **DevOps Team**: <devops@company.com>
+- **Database Admin**: <dba@company.com>
+- **Security Team**: <security@company.com>
 - **24/7 On-Call**: +1-555-ONCALL-1
 
 ---

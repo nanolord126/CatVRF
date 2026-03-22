@@ -570,7 +570,9 @@ php artisan cache:flush
 ## Troubleshooting
 
 ### Проблема: "Rate limit не работает"
+
 **Решение:**
+
 ```bash
 # Убедиться, что Redis работает
 redis-cli ping  # Должен вернуть PONG
@@ -582,7 +584,9 @@ REDIS_PORT=6379
 ```
 
 ### Проблема: "Webhook подпись не проверяется"
+
 **Решение:**
+
 ```bash
 # Убедиться, что secrets в .env
 echo $TINKOFF_WEBHOOK_SECRET
@@ -594,7 +598,9 @@ php artisan tinker
 ```
 
 ### Проблема: "FormRequest валидация не срабатывает"
+
 **Решение:**
+
 ```bash
 # Убедиться, что используется правильный class
 use App\Http\Requests\PaymentInitRequest;

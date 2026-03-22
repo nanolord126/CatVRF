@@ -29,7 +29,7 @@ final class RecalculateAnalyticsJob implements ShouldQueue
     }
 
     public function handle(AdvancedAnalyticsService $analyticsService): void {
-        $correlationId = Str::uuid();
+        $correlationId = Str::uuid()->toString();
 
         try {
             Log::channel('audit')->info('Analytics recalculation started', [

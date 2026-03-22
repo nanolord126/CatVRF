@@ -5,17 +5,27 @@ namespace Modules\Fitness\Services;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Modules\Fitness\Models\FitnessGym;
+use App\Services\FraudControlService;
 
 final class FitnessGymService
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function createGym(array $data, int $tenantId, string $correlationId): FitnessGym
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'createGym'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createGym', ['domain' => __CLASS__]);
 
-        return DB::transaction(function () use ($data, $tenantId, $correlationId) {
+
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(function () use ($data, $tenantId, $correlationId) {
             Log::channel('audit')->info('Creating fitness gym', ['correlation_id' => $correlationId]);
 
             return FitnessGym::create([

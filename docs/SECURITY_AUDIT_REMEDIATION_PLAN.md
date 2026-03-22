@@ -3,23 +3,27 @@ declare(strict_types=1);
 # SECURITY AUDIT & REMEDIATION PLAN — CatVRF 2026-03-17
 
 ## Executive Summary
-Выявлены **6 критических** и **6+ высокорисковых** уязвимостей безопасности. 
+
+Выявлены **6 критических** и **6+ высокорисковых** уязвимостей безопасности.
 Требуется комплексное расширение архитектуры безопасности перед production.
 
 ---
 
 ## УЯЗВИМОСТЬ #1: Отсутствие полноценного API Authentication
+
 ### Текущее состояние
+
 - routes/api.php: только базовый `auth:sanctum`
 - Нет API Key mechanism для B2B интеграций
 - Нет отдельного token scoping (чтение vs запись)
 - Нет rate limiting на уровне middleware
 
 ### Решение
+
 1. **Расширить Sanctum конфиг** (config/sanctum.php):
    - Добавить `api_token_table`
    - Добавить абилити-based токены
-   
+
 2. **Создать API Key Service**:
    - app/Services/Security/ApiKeyService.php
    - Генерация, ротация, ревокация ключей
@@ -30,6 +34,7 @@ declare(strict_types=1);
    - Проверка API Key из заголовка X-API-Key или Authorization: Bearer
 
 4. **Таблица:**
+
    ```sql
    CREATE TABLE api_keys (
        id BIGINT PRIMARY KEY,
@@ -53,14 +58,18 @@ declare(strict_types=1);
 ---
 
 ## УЯЗВИМОСТЬ #2: Слабый Rate Limiting
+
 ### Текущее состояние
+
 - RateLimiterService существует, но использует базовый Laravel throttle
 - Нет sliding window алгоритма (только fixed window)
 - Нет burst protection
 - Нет применения на критичных эндпоинтах (webhooks, платежи, поиск)
 
 ### Решение
+
 1. **Расширить RateLimiterService** (app/Services/Security/RateLimiterService.php):
+
    ```php
    - checkPaymentInit() — 10 попыток/мин на пользователя
    - checkPromoApply() — 50 попыток/мин на тенант
@@ -71,6 +80,7 @@ declare(strict_types=1);
    ```
 
 2. **Реализовать Sliding Window** в Redis:
+
    ```
    ключ: rate_limit:{tenant}:{endpoint}:{user|ip}
    TTL: 60 сек
@@ -78,13 +88,14 @@ declare(strict_types=1);
    ```
 
 3. **Добавить Burst Protection**:
+
    ```
    Если >3 отказов подряд → добавить exponential backoff
    После 5 отказов → temp ban на 5 минут
    Лог в FraudML для обнаружения DDoS
    ```
 
-4. **Middleware**: 
+4. **Middleware**:
    - app/Http/Middleware/RateLimitMiddleware.php
    - Применить к payment, promo, wishlist, search, webhook routes
 
@@ -93,13 +104,17 @@ declare(strict_types=1);
 ---
 
 ## УЯЗВИМОСТЬ #3: Нет защиты от Replay Attack в платежах
+
 ### Текущее состояние
+
 - `payment_idempotency_records` таблица создана ✅
 - Но проверка `payload_hash` **не реализована** в PaymentService
 - Нет сравнения hash при повторном запросе
 
 ### Решение
+
 1. **Создать IdempotencyService** (app/Services/Security/IdempotencyService.php):
+
    ```php
    public function check(string $operation, string $idempotencyKey, array $payload): ?array
        - Генерировать payload_hash = hash('sha256', json_encode($payload))
@@ -110,6 +125,7 @@ declare(strict_types=1);
    ```
 
 2. **Интегрировать в PaymentService**:
+
    ```php
    public function initPayment(string $idempotencyKey, array $data): PaymentResult
    {
@@ -130,7 +146,7 @@ declare(strict_types=1);
    }
    ```
 
-3. **Миграция update**: 
+3. **Миграция update**:
    - Добавить индекс: `UNIQUE (idempotency_key, expires_at)` для поддержки TTL
 
 **Статус**: ⚠️ **Таблица есть, сервис не создан, логика не интегрирована**
@@ -138,13 +154,17 @@ declare(strict_types=1);
 ---
 
 ## УЯЗВИМОСТЬ #4: Отсутствие Webhook Signature Validation
+
 ### Текущее состояние
+
 - Internal/WebhookController существует
 - Но **нет проверки подписи** от Tinkoff/Sber/СБП
 - Любой может отправить фальшивый webhook и изменить статус платежа!
 
 ### Решение
+
 1. **Создать WebhookSignatureService** (app/Services/Security/WebhookSignatureService.php):
+
    ```php
    public function verify(string $provider, string $payload, string $signature): bool
        - Для Tinkoff: HMAC-SHA256 с SECRET_KEY
@@ -154,6 +174,7 @@ declare(strict_types=1);
    ```
 
 2. **Обновить Internal/WebhookController**:
+
    ```php
    public function handle(Request $request, string $provider)
    {
@@ -174,6 +195,7 @@ declare(strict_types=1);
    ```
 
 3. **Config**: app/Config/WebhookSecrets.php
+
    ```php
    return [
        'tinkoff' => ['secret' => env('TINKOFF_WEBHOOK_SECRET')],
@@ -187,12 +209,15 @@ declare(strict_types=1);
 ---
 
 ## УЯЗВИМОСТЬ #5: RBAC не разделяет User и Tenant CRM
+
 ### Текущее состояние
+
 - TenantCRMOnly middleware существует
 - Но политики (Policies) **не проверяют абилити** пользователя
 - Обычный пользователь может потенциально получить доступ к HR, зарплатам, выплатам
 
 ### Решение
+
 1. **Создать Policies**:
    - app/Policies/EmployeePolicyy.php — только для бизнеса (не для пользователей)
    - app/Policies/PayrollPolicy.php — только для администраторов бизнеса
@@ -205,6 +230,7 @@ declare(strict_types=1);
    - PayoutResource: `->canAccess('create') → $user->hasAbility('finance')`
 
 3. **Обновить API Controllers**:
+
    ```php
    public function index(Request $request)
    {
@@ -214,6 +240,7 @@ declare(strict_types=1);
    ```
 
 4. **Gate определения** (AuthServiceProvider):
+
    ```php
    Gate::define('view-payroll', function (User $user) {
        return $user->isBusinessOwner() && $user->tenant_id === $user->tenantId();
@@ -225,12 +252,16 @@ declare(strict_types=1);
 ---
 
 ## УЯЗВИМОСТЬ #6: Нет Input Validation на всех API
+
 ### Текущее состояние
+
 - FormRequest'ы есть в некоторых местах
 - Но много контроллеров не имеют валидации (особенно B2B API)
 
 ### Решение
+
 1. **Создать Base FormRequest** (app/Http/Requests/BaseApiRequest.php):
+
    ```php
    abstract class BaseApiRequest extends FormRequest
    {
@@ -258,6 +289,7 @@ declare(strict_types=1);
    - Все B2B API endpoints
 
 3. **Применить в контроллерах**:
+
    ```php
    public function store(PaymentInitRequest $request)
    {
@@ -271,13 +303,17 @@ declare(strict_types=1);
 ---
 
 ## УЯЗВИМОСТЬ #7: CORS и CSRF не описаны
+
 ### Текущее состояние
+
 - config/cors.php существует
 - Но не ясно, какие origins разрешены для SPA
 - CSRF protection может быть слабой для API
 
 ### Решение
+
 1. **Обновить config/cors.php**:
+
    ```php
    'allowed_origins' => [
        env('FRONTEND_URL', 'http://localhost:3000'),
@@ -297,13 +333,17 @@ declare(strict_types=1);
 ---
 
 ## УЯЗВИМОСТЬ #8: API Versioning отсутствует
+
 ### Текущее состояние
+
 - Все API в одной версии `/api/`
 - Нет forward compatibility strategy
 - Невозможно deprecate endpoints
 
 ### Решение
+
 1. **Реструктурировать routes**:
+
    ```
    routes/
    ├── api.php → routes/api/v1.php (перенести существующее)
@@ -312,6 +352,7 @@ declare(strict_types=1);
    ```
 
 2. **В routes/api.php**:
+
    ```php
    Route::prefix('api')
        ->middleware(['api'])
@@ -322,6 +363,7 @@ declare(strict_types=1);
    ```
 
 3. **Accept header support**:
+
    ```php
    // Middleware для автоматического определения версии
    app/Http/Middleware/ApiVersioning.php
@@ -332,13 +374,17 @@ declare(strict_types=1);
 ---
 
 ## УЯЗВИМОСТЬ #9: IP Whitelisting отсутствует
+
 ### Текущее состояние
+
 - Нет защиты для webhook endpoints
 - Нет защиты для admin endpoints
 - Любой IP может достучаться до Internal/WebhookController
 
 ### Решение
+
 1. **Создать IPWhitelistMiddleware** (app/Http/Middleware/IpWhitelistMiddleware.php):
+
    ```php
    public function handle(Request $request, Closure $next)
    {
@@ -354,6 +400,7 @@ declare(strict_types=1);
    ```
 
 2. **Config**: app/Config/Security.php
+
    ```php
    'ip_whitelist' => [
        'webhook' => [
@@ -368,6 +415,7 @@ declare(strict_types=1);
    ```
 
 3. **Применить**:
+
    ```php
    Route::middleware([IpWhitelistMiddleware::class . ':webhook'])
        ->post('/internal/webhooks/{provider}', WebhookController@handle);
@@ -378,15 +426,19 @@ declare(strict_types=1);
 ---
 
 ## УЯЗВИМОСТЬ #10: OpenAPI/Swagger не описана
+
 ### Текущее состояние
+
 - Нет документации API
 - Нет security schemes в swagger
 - Нет rate limit информации
 
 ### Решение
+
 1. **Установить L5-Swagger**: `composer require darkaonline/l5-swagger`
 
 2. **Добавить Security Definition** в config/l5-swagger.php:
+
    ```yaml
    components:
      securitySchemes:
@@ -409,6 +461,7 @@ declare(strict_types=1);
    ```
 
 3. **Аннотации в контроллерах**:
+
    ```php
    /**
     * @OA\Post(
@@ -428,13 +481,17 @@ declare(strict_types=1);
 ---
 
 ## УЯЗВИМОСТЬ #11: Wishlist & Referral Abuse
+
 ### Текущее состояние
+
 - FraudControlService::check() вызывается, но не полностью проверяет манипуляции вишлистами
 - Нет проверки на "добавление в вишлист + сразу оплата = генерация бонуса"
 - Нет проверки на "реферальная накрутка"
 
 ### Решение
+
 1. **Расширить FraudControlService**:
+
    ```php
    public function checkWishlistManipulation(int $userId, int $itemId): bool
    {
@@ -452,6 +509,7 @@ declare(strict_types=1);
    ```
 
 2. **Таблица audit**:
+
    ```sql
    wishlist_manipulations (
        user_id, item_id, added_at, paid_at, time_diff_seconds, flagged_as_fraud
@@ -466,12 +524,16 @@ declare(strict_types=1);
 ---
 
 ## УЯЗВИМОСТЬ #12: Search API — нет rate limit на ML-запросы
+
 ### Текущее состояние
+
 - Общий rate limit на SearchController
 - Но нет отдельного лимита на тяжёлые ML-запросы (embeddings, recommendations)
 
 ### Решение
+
 1. **Разделить endpoints**:
+
    ```php
    // Легкие поиски: 1000 запросов/час
    GET /api/v1/search?q=...&fast=1
@@ -481,6 +543,7 @@ declare(strict_types=1);
    ```
 
 2. **Middleware**:
+
    ```php
    public function handle(Request $request, Closure $next)
    {
@@ -503,22 +566,26 @@ declare(strict_types=1);
 ## IMPLEMENTATION ROADMAP
 
 ### Week 1: Core Security Infrastructure
+
 - [ ] IdempotencyService (task #4)
 - [ ] WebhookSignatureService (task #5)
 - [ ] API Authentication (task #2)
 - [ ] Enhanced RateLimiter (task #3)
 
 ### Week 2: Access Control & Validation
+
 - [ ] RBAC Policies/Gates (task #6)
 - [ ] Input Validation FormRequests (task #7)
 - [ ] IPWhitelist Middleware (task #10)
 
 ### Week 3: API Maturity
+
 - [ ] API Versioning (task #9)
 - [ ] OpenAPI/Swagger (task #11)
 - [ ] CORS/CSRF Documentation (task #8)
 
 ### Week 4: Abuse Prevention & Documentation
+
 - [ ] Wishlist & Referral Abuse Protection (task #12)
 - [ ] Search API Rate Limiting (task #13)
 - [ ] Security Documentation (task #14)
@@ -531,7 +598,7 @@ declare(strict_types=1);
    - IdempotencyService: duplicate detection
    - WebhookSignatureService: signature verification
    - RateLimiter: sliding window, burst protection
-   
+
 2. **Integration Tests**:
    - API authentication flow (Sanctum + API Key)
    - Webhook processing with signature validation

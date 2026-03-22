@@ -19,6 +19,7 @@
 ## 📝 Test Files Created
 
 ### 1. **FarmDirectOrderControllerTest.php** (10 тестов)
+
 ```
 ✅ test_list_orders_returns_200
 ✅ test_show_order_returns_200
@@ -35,6 +36,7 @@
 **Покрытие**: CRUD операции, валидация, tenant scoping, audit-логирование
 
 ### 2. **FarmDirectOrderRequestTest.php** (4 теста)
+
 ```
 ✅ test_store_order_request_validates_quantity_kg
 ✅ test_store_order_request_validates_delivery_date
@@ -45,6 +47,7 @@
 **Покрытие**: FormRequest валидация с regex patterns
 
 ### 3. **HealthyFoodDietControllerTest.php** (7 тестов)
+
 ```
 ✅ test_list_diet_plans_returns_200
 ✅ test_create_diet_plan_with_valid_data_returns_201
@@ -58,6 +61,7 @@
 **Покрытие**: CRUD, валидация, подписки, tenant scoping
 
 ### 4. **PharmacyOrderControllerTest.php** (6 тестов)
+
 ```
 ✅ test_create_pharmacy_order_with_prescription
 ✅ test_verify_prescription_endpoint
@@ -70,6 +74,7 @@
 **Покрытие**: JSON валидация, возрастная верификация, рецепты
 
 ### 5. **AutoPartsCompatibilityTest.php** (7 тестов)
+
 ```
 ✅ test_find_compatible_parts_by_valid_vin
 ✅ test_find_compatible_parts_rejects_invalid_vin
@@ -83,6 +88,7 @@
 **Покрытие**: VIN валидация, regex patterns, совместимость
 
 ### 6. **ElectronicsWarrantyControllerTest.php** (7 тестов)
+
 ```
 ✅ test_create_electronics_order_with_warranty
 ✅ test_submit_warranty_claim
@@ -95,6 +101,7 @@
 **Покрытие**: Гарантийные претензии, сроки действия, валидация
 
 ### 7. **TenantScopingTest.php** (8 тестов)
+
 ```
 ✅ test_user1_cannot_see_user2_orders
 ✅ test_user2_cannot_see_user1_orders
@@ -109,6 +116,7 @@
 **Покрытие**: Multi-tenant безопасность, data isolation
 
 ### 8. **CorrelationIdTracingTest.php** (6 тестов)
+
 ```
 ✅ test_correlation_id_generated_on_request
 ✅ test_correlation_id_is_valid_uuid
@@ -125,21 +133,25 @@
 ## 🚀 Как запустить тесты
 
 ### Запуск всех тестов
+
 ```bash
 php artisan test tests/Feature/Api/
 ```
 
 ### Запуск конкретного теста
+
 ```bash
 php artisan test tests/Feature/Api/Controllers/FarmDirectOrderControllerTest.php
 ```
 
 ### Запуск с coverage
+
 ```bash
 php artisan test --coverage tests/Feature/Api/
 ```
 
 ### Запуск на основе паттерна (все tenant scoping тесты)
+
 ```bash
 php artisan test --filter=TenantScoping
 ```
@@ -228,6 +240,7 @@ public function test_specific_behavior(): void {
 ## 🔧 Prerequisites
 
 Тесты требуют:
+
 - ✅ Laravel 8+ configured
 - ✅ PHPUnit configured
 - ✅ Testing database connection
@@ -254,6 +267,7 @@ public function test_specific_behavior(): void {
 ## 🎯 Next Steps
 
 1. **Run tests locally**
+
    ```bash
    php artisan test tests/Feature/Api/ --coverage
    ```

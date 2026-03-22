@@ -10,23 +10,27 @@
 ### ✅ Выполнено
 
 **4 Модели** (Payment System):
+
 - ✅ [Wallet.php](app/Models/Wallet.php) — корневой кошелёк, balance tracking
 - ✅ [BalanceTransaction.php](app/Models/BalanceTransaction.php) — журнал операций
 - ✅ [PaymentTransaction.php](app/Models/PaymentTransaction.php) — платежные транзакции
 - ✅ [PaymentIdempotencyRecord.php](app/Models/PaymentIdempotencyRecord.php) — защита от дублей
 
 **4 Миграции** (Payment System):
+
 - ✅ `2026_03_17_000001_create_wallets_table.php` — Executed (931.22ms)
 - ✅ `2026_03_17_000002_create_balance_transactions_table.php` — Executed (65.50ms)
 - ✅ `2026_03_17_000003_create_payment_transactions_table.php` — Executed (71.74ms)
 - ✅ `2026_03_17_000004_create_payment_idempotency_records_table.php` — Executed (57.27ms)
 
 **3 Сервиса** (Payment System):
+
 - ✅ [IdempotencyService.php](app/Services/Payment/IdempotencyService.php) — 159 строк
 - ✅ [FiscalService.php](app/Services/Payment/FiscalService.php) — 155 строк (OFД интеграция)
 - ✅ WalletService.php — Обновлен с balance_before/after tracking
 
 **1 Job**:
+
 - ✅ [ReleaseHoldJob.php](app/Jobs/ReleaseHoldJob.php) — Auto-cleanup после 24h
 
 **Всего ДЕНЬ 1:** 12 файлов, ~700 строк, **7 критических блокеров исправлено**
@@ -38,6 +42,7 @@
 ### ✅ Выполнено (60%)
 
 **Enum + Models** (RBAC):
+
 - ✅ [app/Enums/Role.php](app/Enums/Role.php) — 7 ролей с методами (isPlatformAdmin, isBusiness и т.д.)
 - ✅ [app/Models/User.php](app/Models/User.php) — Complete RBAC support (189 строк)
 - ✅ [app/Models/TenantUser.php](app/Models/TenantUser.php) — Pivot с role, is_active, invitation_token
@@ -45,6 +50,7 @@
 - ✅ [app/Models/BusinessGroup.php](app/Models/BusinessGroup.php) — Филиалы (92 строки)
 
 **Policies** (Authorization):
+
 - ✅ [app/Policies/TenantPolicy.php](app/Policies/TenantPolicy.php) — Обновлена с новыми методами:
   - `view()` — Может видеть tenant
   - `update()` — Owner only
@@ -54,10 +60,12 @@
   - `withdrawMoney()` — Owner only
 
 **Миграции** (RBAC):
+
 - ✅ [2026_03_17_000000_create_users_table.php](database/migrations/2026_03_17_000000_create_users_table.php) — Users table
 - ✅ [2026_03_17_000005_create_rbac_tables.php](database/migrations/2026_03_17_000005_create_rbac_tables.php) — Tenants, tenant_user, business_groups
 
 **Payment Webhooks**:
+
 - ✅ [app/Http/Controllers/Internal/PaymentWebhookController.php](app/Http/Controllers/Internal/PaymentWebhookController.php) — 320 строк
   - `tinkoffNotification()` — Tinkoff webhook с signature verification
   - `sberNotification()` — Sberbank webhook с checksum
@@ -65,15 +73,18 @@
   - Все с idempotency check, hold release, fiscalization
 
 **Маршруты**:
+
 - ✅ [ROUTES_PAYMENT_WEBHOOKS_ADD.php](ROUTES_PAYMENT_WEBHOOKS_ADD.php) — Routes для webhook endpoints
 
 ### ⏳ В Процессе (40%)
 
 **Миграции RBAC:**
+
 - ⏳ Выполнение `create_users_table.php` — Требуется фиксинг БД
 - ⏳ Выполнение `create_rbac_tables.php` — Ожидает users table
 
 **Требуется:**
+
 1. Проверить/исправить БД конфигурацию
 2. Выполнить миграции RBAC
 3. Тестировать User/Tenant relationships
@@ -138,6 +149,7 @@
 ## 📁 СОЗДАННЫЕ ФАЙЛЫ (23 файла)
 
 ### ДЕНЬ 1: Payment System
+
 ```
 app/Models/
   ✅ Wallet.php
@@ -160,6 +172,7 @@ database/migrations/
 ```
 
 ### ДЕНЬ 2: RBAC Foundation
+
 ```
 app/Enums/
   ✅ Role.php
@@ -191,6 +204,7 @@ docs/
 ### ДЕНЬ 2 (Продолжение — 4h remaining)
 
 **Priority 1: Закончить миграции RBAC** (1h)
+
 ```bash
 # Fix DB config + execute:
 php artisan migrate --path=database/migrations/2026_03_17_000000_create_users_table.php
@@ -198,11 +212,13 @@ php artisan migrate --path=database/migrations/2026_03_17_000005_create_rbac_tab
 ```
 
 **Priority 2: Написать Middleware** (2h)
+
 - [ ] TenantCRMOnly (reject non-business roles)
 - [ ] RoleBasedAccess (check role for action)
 - [ ] TenantScoping (auto-filter by tenant_id)
 
 **Priority 3: Filament Separation** (1h)
+
 - [ ] /admin panel (SuperAdmin only)
 - [ ] /tenant panel (Tenants with access)
 - [ ] / public (customers only)
@@ -259,6 +275,7 @@ Target (Day 4): 95%+ production-ready
 ```
 
 **Time Spent:**
+
 - Day 1: 7 hours (models + services + jobs + migrations)
 - Day 2 so far: 4 hours (RBAC models + policies + webhooks)
 - Total: 11 hours
@@ -277,4 +294,3 @@ Target (Day 4): 95%+ production-ready
 ---
 
 **Status:** 🟡 IN PROGRESS — Продолжаем на ДЕНЬ 2 после фиксинга миграций
-

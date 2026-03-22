@@ -81,7 +81,7 @@ CatVRF/
 
 ### 1.1 Файлы для обработки
 
-#### Основные компоненты:
+#### Основные компоненты
 
 | Файл | Путь | Тип | Статус | Приоритет |
 |------|------|-----|--------|-----------|
@@ -92,7 +92,7 @@ CatVRF/
 | auth.php | `config/auth.php` | Config | ✅ EXISTS | MEDIUM |
 | permission.php | `config/permission.php` | Config | ❌ NOT FOUND | HIGH |
 
-#### Найдено Policies:
+#### Найдено Policies
 
 ```
 app/Policies/
@@ -116,7 +116,7 @@ app/Policies/
 
 **Всего Policies: 16 файлов (92,856 bytes)**
 
-#### Role Enum:
+#### Role Enum
 
 ```php
 app/Enums/Role.php
@@ -147,6 +147,7 @@ app/Enums/Role.php
    - Кэширование: Redis с TTL 300 сек
 
 2. **Создать config/permission.php**
+
    ```php
    return [
        'abilities' => [
@@ -176,6 +177,7 @@ app/Enums/Role.php
 #### PHASE 2: ОБНОВЛЕНИЕ POLICIES (audit)
 
 Каждый Policy проверить на:
+
 - ✅ Наличие `booted()` с tenant scoping
 - ✅ Методы: create, read, update, delete
 - ✅ FraudControlService::check() перед мутациями
@@ -183,6 +185,7 @@ app/Enums/Role.php
 - ✅ Правильная проверка business_group_id
 
 **Policies для обновления:**
+
 - `WalletManagementPolicy.php` (NEW, needs full implementation)
 - `PayoutPolicy.php`, `PayrollPolicy.php` (minimal, may need expansion)
 - Все остальные (verify against CANON 2026)
@@ -209,14 +212,14 @@ app/Enums/Role.php
 
 ### 2.1 Файлы для обработки
 
-#### Найдено:
+#### Найдено
 
 | Файл | Путь | Статус | Размер |
 |------|------|--------|---------|
 | NotificationService.php | `app/Services/NotificationService.php` | ✅ EXISTS | 4304 bytes |
 | EmailService.php | `app/Services/EmailService.php` | ✅ EXISTS | 2358 bytes |
 
-#### Отсутствует:
+#### Отсутствует
 
 ```
 ❌ app/Notifications/                    [Directory]
@@ -299,6 +302,7 @@ php artisan make:notification PaymentSuccessNotification
 #### ✅ ФАЗА 2: Реализация Mailables
 
 Каждый Mail должен:
+
 - Наследовать `Mailable`
 - Использовать markdown templates
 - Включить correlation_id в тему
@@ -428,6 +432,7 @@ php artisan make:model BonusRule -m
 #### PHASE 2: ОБНОВЛЕНИЕ SERVICES
 
 **PromoCampaignService:**
+
 - ✅ `createCampaign()` - создание с валидацией
 - ✅ `applyPromo()` - применение скидки, DB::transaction()
 - ✅ `validatePromo()` - проверка без применения
@@ -436,6 +441,7 @@ php artisan make:model BonusRule -m
 - ✅ `getActiveCampaigns()` - получить активные
 
 **ReferralService:**
+
 - ✅ `generateReferralLink()` - создание уникального кода
 - ✅ `registerReferral()` - регистрация приглашённого
 - ✅ `checkQualification()` - проверка достижения оборота
@@ -518,10 +524,12 @@ public function recalculateEmbeddings(): void
 ```
 
 **Кэширование:**
+
 - Ключ: `recommendation:user:{userId}:vertical:{vertical}:geo:{geoHash}:v1`
 - TTL: 300 сек (динамические), 3600 сек (стабильные)
 
 **Источники (приоритет):**
+
 1. Поведение (0.45) - просмотры, покупки, корзина
 2. Геолокация (0.25) - близость, радиус
 3. Embeddings (0.20) - cosine similarity
@@ -544,6 +552,7 @@ public function trainModel(string $vertical): string
 #### AnalyticsService
 
 Должен собирать:
+
 - Оборот, конверсия, LTV, churn, fraud_rate
 - Ежедневные/еженедельные отчёты
 - Метрики по вертикалям
@@ -955,6 +964,7 @@ Policies/
 ### 7.2 Найденные Domains
 
 **Auto (Taxi & Delivery):**
+
 ```
 app/Domains/Auto/
 ├── Models/
@@ -978,7 +988,7 @@ Delivery models found:
 
 ### 7.3 Обязательные компоненты (для проверки)
 
-#### Models (обязательные):
+#### Models (обязательные)
 
 ```php
 TaxiDriver         [✅ должен существовать]
@@ -991,7 +1001,7 @@ Courier            [need verification]
 CourierZone        [need verification]
 ```
 
-#### Services (обязательные):
+#### Services (обязательные)
 
 ```php
 CourierService         [✅ EXISTS]
@@ -1001,7 +1011,7 @@ DeliveryTrackingService [need verification]
 GeoService             [✅ EXISTS - 1717 bytes]
 ```
 
-#### Jobs (обязательные):
+#### Jobs (обязательные)
 
 ```php
 TaxiMatchingJob        [need verification]
@@ -1106,7 +1116,7 @@ getNearbyDrivers(Point $location, int $radius = 5000): Collection
 
 ### 8.1 SERVICES (остальные)
 
-#### Найденные сервисы:
+#### Найденные сервисы
 
 ```
 app/Services/
@@ -1169,7 +1179,7 @@ Nested Services:
 
 **Всего Services (корневые + nested): 27 файлов**
 
-#### Статус по типам:
+#### Статус по типам
 
 | Тип | Статус | Примечание |
 |-----|--------|-----------|
@@ -1199,9 +1209,10 @@ app/Jobs/
 
 **Всего: 9 Jobs (production-ready)**
 
-#### Обязательные параметры для каждого Job:
+#### Обязательные параметры для каждого Job
 
 Все Jobs должны иметь:
+
 - ✅ `protected $tries = 3;` (retry logic)
 - ✅ `protected $backoff = [10, 30, 60];` (exponential backoff)
 - ✅ `protected $tags = ['job-type'];` (tagging)
@@ -1228,6 +1239,7 @@ app/Exceptions/
 ```
 
 **Нужно добавить:**
+
 ```
 ❌ InsufficientStockException
 ❌ FraudDetectedException
@@ -1264,6 +1276,7 @@ database/factories/
 
 **Статус:** Все 20 фабрик EXISTS  
 **Нужно обновить согласно CANON:**
+
 - Добавить `correlation_id` в each factory
 - Добавить `tenant_id` scoping
 - Faker data должны быть реалистичны
@@ -1271,7 +1284,7 @@ database/factories/
 
 ### 8.6 SEEDERS (115+ всего)
 
-#### Типы:
+#### Типы
 
 | Категория | Количество | Примеры |
 |-----------|-----------|---------|
@@ -1285,7 +1298,7 @@ database/factories/
 
 **Всего: 115+ seeders**
 
-#### Структура директорий:
+#### Структура директорий
 
 ```
 database/seeders/
@@ -1332,6 +1345,7 @@ database/seeders/
 #### PHASE 3: ОБНОВЛЕНИЕ FACTORIES
 
 Каждая factory должна:
+
 ```php
 // database/factories/{Model}Factory.php
 protected $model = Model::class;
@@ -1356,6 +1370,7 @@ public function definition(): array
 #### PHASE 5: EVENTS & LISTENERS
 
 Создать недостающие события:
+
 ```php
 ✅ OrderCreatedEvent
 ✅ PaymentCompletedEvent
@@ -1368,6 +1383,7 @@ public function definition(): array
 ```
 
 И соответствующие Listeners:
+
 ```php
 ✅ SendOrderConfirmationListener
 ✅ SendPaymentNotificationListener
@@ -1466,9 +1482,10 @@ app/Domains/{Vertical}/
 
 ### 9.3 Обязательные элементы в каждой вертикали
 
-#### Models (обязательные поля):
+#### Models (обязательные поля)
 
 Все модели вертикали должны иметь:
+
 ```php
 ✅ protected $table = 'table_name';
 ✅ protected $fillable = [...];
@@ -1479,9 +1496,10 @@ app/Domains/{Vertical}/
 ✅ Методы для бизнес-логики
 ```
 
-#### Services (обязательные):
+#### Services (обязательные)
 
 Каждый vertical service должен:
+
 ```php
 ✅ Конструктор с readonly зависимостями
 ✅ DB::transaction() для мутаций
@@ -1492,7 +1510,7 @@ app/Domains/{Vertical}/
 ✅ Вызываемые из контроллеров, а не прямо в моделях
 ```
 
-#### Filament Resources:
+#### Filament Resources
 
 ```php
 ✅ protected static ?string $model = Model::class;
@@ -1517,6 +1535,7 @@ app/Domains/{Vertical}/
 ### 9.5 Обязательные Seeders для каждой вертикали
 
 Для каждой вертикали должен быть:
+
 ```
 database/seeders/{VerticalName}Seeder.php
 database/seeders/{VerticalName}VerticalSeeder.php
@@ -1526,6 +1545,7 @@ database/factories/{VerticalEntity}Factory.php
 ### 9.6 API Routes для каждой вертикали
 
 Каждая вертикаль должна иметь в routes/:
+
 ```
 routes/{vertical}.php          (main API routes)
 routes/b2b.{vertical}.php      (B2B API routes)
@@ -1553,6 +1573,7 @@ routes/b2b.{vertical}.php      (B2B API routes)
 #### PHASE 2: СТАНДАРТИЗАЦИЯ
 
 Привести все вертикали в соответствие с CANON 2026:
+
 1. Одинаковая структура папок
 2. Одинаковые методы в Services
 3. Одинаковые Filament Resources
@@ -1561,6 +1582,7 @@ routes/b2b.{vertical}.php      (B2B API routes)
 #### PHASE 3: РАСШИРЕНИЕ ФУНКЦИОНАЛА
 
 Для каждой вертикали добавить:
+
 - DemandForecastService (если applicable)
 - InventoryManagementService (если applicable)
 - StaffScheduleService (если applicable)
@@ -1577,6 +1599,7 @@ routes/b2b.{vertical}.php      (B2B API routes)
 #### PHASE 5: ДОКУМЕНТИРОВАНИЕ
 
 Для каждой вертикали:
+
 - README.md с описанием
 - API endpoints documentation
 - Database schema documentation
@@ -1592,7 +1615,7 @@ routes/b2b.{vertical}.php      (B2B API routes)
 
 ### 10.1 Найденные Controllers
 
-#### API Controllers V1:
+#### API Controllers V1
 
 ```
 app/Http/Controllers/Api/V1/
@@ -1605,14 +1628,14 @@ app/Http/Controllers/Api/V1/
 
 **Всего: 5 V1 Controllers (24,514 bytes)**
 
-#### API Controllers V2:
+#### API Controllers V2
 
 ```
 app/Http/Controllers/Api/V2/
 ├── [TBD - готовы ли файлы?]
 ```
 
-#### Основные API Controllers (корневые):
+#### Основные API Controllers (корневые)
 
 ```
 app/Http/Controllers/Api/
@@ -1622,14 +1645,14 @@ app/Http/Controllers/Api/
 └── V2/ (to be verified)
 ```
 
-#### Internal Controllers:
+#### Internal Controllers
 
 ```
 app/Http/Controllers/Internal/
 ├── [TBD - контроллеры для вебхуков]
 ```
 
-#### Auth Controllers:
+#### Auth Controllers
 
 ```
 app/Http/Controllers/Auth/
@@ -1675,7 +1698,7 @@ app/Http/Requests/
 
 **Всего: 5 FormRequests (7,229 bytes)**
 
-#### Обязательные методы в FormRequest:
+#### Обязательные методы в FormRequest
 
 ```php
 public function authorize(): bool
@@ -1715,7 +1738,7 @@ routes/
 
 **Всего: 43+ route файлов**
 
-#### Типы routes:
+#### Типы routes
 
 | Тип | Кол-во | Примеры |
 |-----|--------|---------|
@@ -1778,6 +1801,7 @@ app/Http/Controllers/Api/OpenApiController.php [✅ 10021 bytes]
 ```
 
 Должен содержать:
+
 - ✅ Swagger 3.0 schema
 - ✅ Все endpoints с примерами
 - ✅ Authentication requirements
@@ -1790,6 +1814,7 @@ app/Http/Controllers/Api/OpenApiController.php [✅ 10021 bytes]
 #### PHASE 1: AUDIT API V1
 
 Каждый V1 endpoint проверить на:
+
 ```checklist
 ✅ Использует BaseApiV1Controller
 ✅ FormRequest валидация
@@ -1805,6 +1830,7 @@ app/Http/Controllers/Api/OpenApiController.php [✅ 10021 bytes]
 #### PHASE 2: РЕАЛИЗАЦИЯ V2 ENDPOINTS (если нужны)
 
 V2 может отличаться:
+
 - Новые endpoints
 - Изменённая схема ответов
 - Дополнительная функциональность
@@ -1813,6 +1839,7 @@ V2 может отличаться:
 #### PHASE 3: WEBHOOK ENDPOINTS
 
 Создать Internal controllers для вебхуков:
+
 ```php
 app/Http/Controllers/Internal/
 ├── PaymentWebhookController.php     [Tinkoff, Sber, Tochka]
@@ -1821,6 +1848,7 @@ app/Http/Controllers/Internal/
 ```
 
 Каждый вебхук должен:
+
 - ✅ Verify signature (WebhookSignatureService)
 - ✅ Check idempotency (IdempotencyService)
 - ✅ Process in queue (Job)
@@ -1938,21 +1966,25 @@ TOTAL PROJECT SIZE:     ~1.5 MB (excluding node_modules, storage)
 ### Рекомендуемый план на следующие 4 дня
 
 **День 1: Авторизация & RBAC (4 часа)**
+
 - AuthService создание
 - config/permission.php
 - Middleware создание
 
 **День 2: HR & Payroll (6 часов)**
+
 - HR Domain создание (Models, Services, Filament)
 - Payroll Domain создание (Models, Services, Filament)
 - Miграции
 
 **День 3: Notifications & Marketing (6 часов)**
+
 - Notification system (app/Notifications/, app/Mail/)
 - Promo/Referral/Bonus Models + миграции
 - Events & Listeners
 
 **День 4: Completion & Testing (4 часа)**
+
 - Fix missing Exceptions
 - Complete API documentation
 - Run full test suite
@@ -1964,7 +1996,8 @@ TOTAL PROJECT SIZE:     ~1.5 MB (excluding node_modules, storage)
 
 ### Статус проекта: **70% готов к CANON 2026**
 
-### Сильные стороны:
+### Сильные стороны
+
 - ✅ Полный набор 22 вертикалей (Domains)
 - ✅ Security Services хорошо реализованы
 - ✅ Payment система существует (3 gateways)
@@ -1974,7 +2007,8 @@ TOTAL PROJECT SIZE:     ~1.5 MB (excluding node_modules, storage)
 - ✅ Analytics & Recommendations
 - ✅ API V1 структура готова
 
-### Слабые стороны:
+### Слабые стороны
+
 - ❌ Нет полной HR системы
 - ❌ Нет Payroll системы
 - ❌ Нет Notification системы
@@ -1983,19 +2017,22 @@ TOTAL PROJECT SIZE:     ~1.5 MB (excluding node_modules, storage)
 - ❌ Events & Listeners не интегрированы
 - ❌ API V2 не начинался
 
-### Немедленные действия (Today):
+### Немедленные действия (Today)
+
 1. Создать AuthService + config/permission.php
 2. Создать Notification систему (app/Notifications/ + Mail/)
 3. Создать Promo/Referral/Bonus Models + миграции
 4. Заполнить недостающие Custom Exceptions
 
-### 4-дневный план:
+### 4-дневный план
+
 - День 1: Авторизация COMPLETE
 - День 2: HR + Payroll COMPLETE
 - День 3: Notifications + Marketing COMPLETE
 - День 4: Testing + Finalization
 
-### Production-ready timeline:
+### Production-ready timeline
+
 **Оценка: 5-7 дней** (от текущего состояния)
 
 ---
@@ -2004,4 +2041,3 @@ TOTAL PROJECT SIZE:     ~1.5 MB (excluding node_modules, storage)
 Дата: 18 марта 2026 г.  
 Версия КАНОНА: 2026 (Production-Ready)  
 Статус: **READY FOR IMPLEMENTATION**
-

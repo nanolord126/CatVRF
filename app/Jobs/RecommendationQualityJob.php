@@ -36,7 +36,7 @@ final class RecommendationQualityJob implements ShouldQueue
     public function __construct()
     {
         $this->recommendationService = app(RecommendationService::class);
-        $this->correlationId = (string) Str::uuid();
+        $this->correlationId = (string) Str::uuid()->toString();
     }
 
     public function handle(): void

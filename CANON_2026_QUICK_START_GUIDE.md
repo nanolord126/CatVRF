@@ -1,4 +1,5 @@
 # ⚡ БЫСТРАЯ ИНСТРУКЦИЯ - CANON 2026 MODELS
+
 ## Что было сделано и что использовать
 
 ---
@@ -34,17 +35,20 @@ modules/
 ## 💻 КАК ИСПОЛЬЗОВАТЬ
 
 ### Получить цену в рублях
+
 ```php
 $model->getPriceInRubles(); // 500.0
 ```
 
 ### Установить цену в рублях
+
 ```php
 $model->setPriceInRubles(500.0);
 // автоматически сохранится как 50000 копеек в BD
 ```
 
 ### Проверить статус
+
 ```php
 if ($model->isActive()) { }
 if ($model->isCompleted()) { }
@@ -52,6 +56,7 @@ if ($model->isPending()) { }
 ```
 
 ### Изменить статус
+
 ```php
 $model->markAsCompleted();
 $model->markAsActive();
@@ -59,6 +64,7 @@ $model->cancel();
 ```
 
 ### Использовать константы
+
 ```php
 // Вместо этого:
 if ($model->status === 'active') { }
@@ -68,6 +74,7 @@ if ($model->status === Model::STATUS_ACTIVE) { }
 ```
 
 ### Автоматическая фильтрация по tenant
+
 ```php
 // АВТОМАТИЧЕСКИ фильтруется по текущему tenant
 $records = Model::all(); // только записи текущего tenant
@@ -77,6 +84,7 @@ $records = Model::where('tenant_id', tenant('id'))->get();
 ```
 
 ### Работа с деньгами
+
 ```php
 // ВСЕГДА используй целые числа (копейки)
 $model->amount_kopeki = 50000; // 500 рублей
@@ -94,6 +102,7 @@ $model->price_kopeki = 50050;
 ## 📋 БЫСТРЫЙ REFERENCE ПО МОДУЛЯМ
 
 ### Wallet
+
 ```php
 // Helper методы
 $wallet->getAvailableBalance();      // в копейках
@@ -109,6 +118,7 @@ WalletTransaction::STATUS_COMPLETED
 ```
 
 ### Hotels
+
 ```php
 // Room
 $room->getPriceInRubles();
@@ -126,6 +136,7 @@ $booking->getPricePerNightInRubles();
 ```
 
 ### Inventory
+
 ```php
 // Product
 $product->getAvailableStock();
@@ -143,6 +154,7 @@ $check->calculateDiscrepancyPercentage();
 ```
 
 ### Taxi
+
 ```php
 // Driver
 $driver->updateLocation($lat, $long);
@@ -161,6 +173,7 @@ $vehicle->getEarningsInRubles();
 ```
 
 ### Staff
+
 ```php
 // Schedule
 $schedule->markAsStarted();
@@ -180,37 +193,44 @@ $task->getDaysUntilDue();
 ## 📊 СТАТУС КОНСТАНТ ПО МОДУЛЯМ
 
 ### Wallet
+
 - `STATUS_PENDING, COMPLETED, FAILED, CANCELLED`
 - `TYPE_DEPOSIT, WITHDRAWAL, COMMISSION, BONUS, REFUND, PAYOUT, HOLD, RELEASE`
 
 ### Hotels
+
 - `Hotel`: `STATUS_ACTIVE, INACTIVE, MAINTENANCE`
 - `Room`: `STATUS_AVAILABLE, OCCUPIED, MAINTENANCE, OUT_OF_SERVICE`
 - `Booking`: `STATUS_PENDING, CONFIRMED, CHECKED_IN, CHECKED_OUT, CANCELLED`
 
 ### Inventory
+
 - `StockMovement`: `TYPE_IN, OUT, ADJUST, RESERVE, RELEASE, CORRECTION`
 - `StockMovement`: `STATUS_PENDING, APPROVED, REJECTED`
 - `InventoryCheck`: `STATUS_DRAFT, IN_PROGRESS, COMPLETED, REVIEWED`
 - `InventoryCheckItem`: `DISCREPANCY_SHORTAGE, OVERAGE, MATCH`
 
 ### Taxi
+
 - `TaxiDriver`: `STATUS_AVAILABLE, BUSY, OFFLINE, SUSPENDED, BANNED`
 - `TaxiRide`: `STATUS_REQUESTED, ACCEPTED, STARTED, COMPLETED, CANCELLED`
 - `TaxiVehicle`: `CLASS_ECONOMY, COMFORT, BUSINESS, PREMIUM`
 - `TaxiVehicle`: `STATUS_AVAILABLE, MAINTENANCE, OUT_OF_SERVICE, SUSPENDED`
 
 ### Staff
+
 - `StaffSchedule`: `SHIFT_TYPE_MORNING, AFTERNOON, NIGHT, CUSTOM`
 - `StaffSchedule`: `STATUS_SCHEDULED, CONFIRMED, STARTED, COMPLETED, CANCELLED, NO_SHOW`
 - `StaffTask`: `STATUS_OPEN, IN_PROGRESS, COMPLETED, CANCELLED, ON_HOLD`
 - `StaffTask`: `PRIORITY_LOW, MEDIUM, HIGH, CRITICAL`
 
 ### Beauty
+
 - `BeautySalon`: `CATEGORY_HAIR, NAILS, MASSAGE, SKIN_CARE, ALL`
 - `Service`: `CATEGORY_HAIR, NAILS, MASSAGE, SKIN_CARE, COSMETIC`
 
 ### GeoLogistics
+
 - `DeliveryRoute`: `STATUS_PENDING, ASSIGNED, IN_PROGRESS, COMPLETED, FAILED, CANCELLED`
 
 ---
@@ -218,6 +238,7 @@ $task->getDaysUntilDue();
 ## ✅ БЫСТРАЯ ПРОВЕРКА
 
 Все модели имеют:
+
 - [x] `declare(strict_types=1)` в начале
 - [x] `final class` объявление
 - [x] `SoftDeletes` trait
@@ -278,6 +299,7 @@ $task->getDaysUntilDue();
 ## ⚠️ ВАЖНЫЕ ЗАМЕЧАНИЯ
 
 ### ✅ ЧТО ПРАВИЛЬНО
+
 ```php
 // Используй helper методы
 $model->getPriceInRubles();
@@ -292,6 +314,7 @@ $model->price_kopeki = 50000;
 ```
 
 ### ❌ ЧТО НЕПРАВИЛЬНО
+
 ```php
 // Не обращайся напрямую к полям
 $price = $model->price / 100;
@@ -331,6 +354,7 @@ Model::where('tenant_id', $id)->get();
 ## ✨ РЕЗУЛЬТАТ
 
 Все модели теперь:
+
 - ✅ **Production-ready** - готовы к использованию
 - ✅ **Type-safe** - полная типизация
 - ✅ **Well-documented** - полная документация

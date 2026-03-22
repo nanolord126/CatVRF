@@ -38,7 +38,7 @@ final class PreferencesController extends BaseApiV2Controller
      */
     public function get(): JsonResponse
     {
-        $correlationId = (string) Str::uuid();
+        $correlationId = (string) Str::uuid()->toString();
 
         try {
             $preferences = $this->preferencesService->getPreferences(auth()->id() ?? 0);
@@ -72,7 +72,7 @@ final class PreferencesController extends BaseApiV2Controller
      */
     public function updateChannel(Request $request, string $channel): JsonResponse
     {
-        $correlationId = (string) Str::uuid();
+        $correlationId = (string) Str::uuid()->toString();
 
         try {
             $request->validate([
@@ -122,7 +122,7 @@ final class PreferencesController extends BaseApiV2Controller
      */
     public function setDND(Request $request): JsonResponse
     {
-        $correlationId = (string) Str::uuid();
+        $correlationId = (string) Str::uuid()->toString();
 
         try {
             $request->validate([
@@ -163,7 +163,7 @@ final class PreferencesController extends BaseApiV2Controller
      */
     public function disableDND(): JsonResponse
     {
-        $correlationId = (string) Str::uuid();
+        $correlationId = (string) Str::uuid()->toString();
 
         try {
             $this->preferencesService->disableDoNotDisturb(auth()->id() ?? 0);

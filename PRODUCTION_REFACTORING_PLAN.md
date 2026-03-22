@@ -3,6 +3,7 @@
 ## ✅ ЧТО УЖЕ СОЗДАНО
 
 ### Primary Models (Обновлены в этой сессии)
+
 - ✅ `app/Domains/Food/Models/FoodOrder.php` - создан
 - ✅ `app/Domains/Hotel/Models/HotelBooking.php` - создан
 - ✅ `app/Domains/Sports/Models/SportsMembership.php` - создан
@@ -12,9 +13,11 @@
 - ✅ Все остальные основные Models уже существуют
 
 ### Enums (Полностью готовы)
+
 - ✅ `app/Domains/Advertising/Enums/` - 8 Enums созданы
 
 ### Services, Policies, Controllers, Routes
+
 - ✅ Все 17 вертикалей имеют Services, Policies, Controllers
 - ✅ Все маршруты добавлены в `routes/tenant.php`
 
@@ -43,6 +46,7 @@
 15. **Finances** - TransactionStatus, PaymentMethod
 
 **Структура каждого Enum:**
+
 ```php
 enum Status: string
 {
@@ -73,6 +77,7 @@ enum Status: string
 - ❓ Clinic Controller - используется MedicalCard? (может быть другое)
 
 **Требуемые обновления:**
+
 ```php
 // app/Domains/Food/Http/Controllers/FoodController.php
 // Должно быть:
@@ -86,6 +91,7 @@ public function index() {
 ### PHASE 3: Добавить Events для всех доменов (если требуются)
 
 **Структура:**
+
 ```
 Domains/
 ├── Food/
@@ -100,6 +106,7 @@ Domains/
 **Требования:**
 
 1. **PHPDoc комментарии** - для всех классов и методов
+
 ```php
 /**
  * Creates a new order
@@ -111,18 +118,21 @@ Domains/
 public function createOrder(array $data): FoodOrder
 ```
 
-2. **Типизация** - все параметры и возвращаемые значения
+1. **Типизация** - все параметры и возвращаемые значения
+
 ```php
 public function update(UpdateRequest $request, Model $model): JsonResponse
 ```
 
-3. **Naming conventions** - правильное именование
+1. **Naming conventions** - правильное именование
+
 ```
 ✅ Models: FoodOrder, HotelBooking, TaxiRide
 ❌ Models: FoodModels, HotelModels, TaxiModels
 ```
 
-4. **Форматирование** - PSR-12
+1. **Форматирование** - PSR-12
+
 ```php
 // Правильно организованные методы:
 - Свойства вверху
@@ -131,7 +141,8 @@ public function update(UpdateRequest $request, Model $model): JsonResponse
 - Static Methods (если есть)
 ```
 
-5. **Migrations** - проверить что все миграции имеют:
+1. **Migrations** - проверить что все миграции имеют:
+
 ```php
 // FOREIGN KEYS
 ->foreignId('tenant_id')->constrained('tenants')->cascadeOnDelete()
@@ -170,6 +181,7 @@ Route::apiResources([
 ### PHASE 6: Убедиться что все FormRequests имеют правильную валидацию
 
 **Структура:**
+
 ```php
 namespace App\Domains\Food\Http\Requests;
 
@@ -196,6 +208,7 @@ class StoreFoodOrderRequest extends FormRequest
 ### PHASE 7: Убедиться что все Resources имеют правильный формат
 
 **Структура:**
+
 ```php
 namespace App\Domains\Food\Http\Resources;
 
@@ -222,6 +235,7 @@ class FoodOrderResource extends JsonResource
 ## 🎯 ИТОГОВЫЙ CHECKLIST
 
 ### Core Files (по домену)
+
 - [ ] **Model** - Primary entity with all relations
 - [ ] **Service** - Business logic
 - [ ] **Policy** - Authorization
@@ -235,6 +249,7 @@ class FoodOrderResource extends JsonResource
 - [ ] **Events** (optional) - Domain events
 
 ### Quality Checks
+
 - [ ] All namespace imports correct
 - [ ] All classes have PHPDoc comments
 - [ ] All methods are typed
@@ -248,6 +263,7 @@ class FoodOrderResource extends JsonResource
 - [ ] Correlation ID tracking
 
 ### Integration Checks
+
 - [ ] Routes include all 17 verticals
 - [ ] Controllers use correct Models
 - [ ] Services use correct Policies
@@ -262,16 +278,19 @@ class FoodOrderResource extends JsonResource
 ## 📊 PROGRESS TRACKING
 
 ### COMPLETED ✅
+
 - [x] Advertising Enums (8 шт)
 - [x] Primary Models for Food, Hotel, Sports, Clinic
 - [x] Audit checklist created
 
 ### IN PROGRESS 🔄
+
 - [ ] Create Enums for all remaining 14 domains
 - [ ] Verify Controllers use correct Models
 - [ ] Add comprehensive Events
 
 ### TODO ⏳
+
 - [ ] Production formatting pass
 - [ ] Security audit
 - [ ] Performance optimization
@@ -310,4 +329,3 @@ class FoodOrderResource extends JsonResource
 **Статус**: PHASE 1 начата - создание Enums
 **Следующий шаг**: Создать Enums для всех 14 оставшихся доменов
 **ETA**: ~2 часа на полный рефакторинг
-

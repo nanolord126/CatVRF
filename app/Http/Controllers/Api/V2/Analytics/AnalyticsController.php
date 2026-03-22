@@ -33,7 +33,7 @@ final class AnalyticsController extends Controller
      * Получить метрики за период
      */
     public function getMetrics(Request $request): JsonResponse {
-        $correlationId = Str::uuid();
+        $correlationId = Str::uuid()->toString();
 
         try {
             $validated = $request->validate([
@@ -68,7 +68,7 @@ final class AnalyticsController extends Controller
      * Получить ключевые KPI
      */
     public function getKPIs(Request $request): JsonResponse {
-        $correlationId = Str::uuid();
+        $correlationId = Str::uuid()->toString();
 
         try {
             $kpis = $this->analyticsService->calculateKPIs(
@@ -94,7 +94,7 @@ final class AnalyticsController extends Controller
      * Получить прогноз на N дней
      */
     public function getForecast(Request $request): JsonResponse {
-        $correlationId = Str::uuid();
+        $correlationId = Str::uuid()->toString();
 
         try {
             $validated = $request->validate([
@@ -127,7 +127,7 @@ final class AnalyticsController extends Controller
      * Получить кастомный отчёт
      */
     public function getReport(Request $request): JsonResponse {
-        $correlationId = Str::uuid();
+        $correlationId = Str::uuid()->toString();
 
         try {
             $validated = $request->validate([
@@ -159,7 +159,7 @@ final class AnalyticsController extends Controller
      * Сравнить метрики двух периодов
      */
     public function compareMetrics(Request $request): JsonResponse {
-        $correlationId = Str::uuid();
+        $correlationId = Str::uuid()->toString();
 
         try {
             $validated = $request->validate([

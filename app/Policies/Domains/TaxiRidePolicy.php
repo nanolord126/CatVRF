@@ -2,7 +2,7 @@
 
 namespace App\Policies\Domains;
 
-use App\Domains\Auto\Models\TaxiRide;
+use App\Domains\Taxi\Models\TaxiRide;
 use App\Models\User;
 use Illuminate\Auth\Access\HandlesAuthorization;
 

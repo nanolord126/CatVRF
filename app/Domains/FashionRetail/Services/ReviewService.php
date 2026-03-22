@@ -3,8 +3,8 @@
 namespace App\Domains\FashionRetail\Services;
 
 use Illuminate\Support\Facades\Log;
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Str;
+use App\Services\FraudControlService;
 
 
 use App\Domains\FashionRetail\Models\FashionRetailReview;
@@ -17,7 +17,6 @@ final readonly class ReviewService
     {
         $correlationId = Str::uuid()->toString();
         Log::channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
 
         return FashionRetailReview::where('product_id', $productId)
             ->where('status', 'approved')
@@ -30,7 +29,6 @@ final readonly class ReviewService
     {
         $correlationId = Str::uuid()->toString();
         Log::channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
 
         return FashionRetailReview::whereHas('product', function ($query) use ($shopId) {
             $query->where('shop_id', $shopId);
@@ -44,7 +42,6 @@ final readonly class ReviewService
     {
         $correlationId = Str::uuid()->toString();
         Log::channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
 
         return FashionRetailReview::where('status', 'pending')
             ->with('product', 'user')
@@ -56,7 +53,6 @@ final readonly class ReviewService
     {
         $correlationId = Str::uuid()->toString();
         Log::channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
 
         DB::transaction(function () use ($reviewId, $correlationId) {
             $review = FashionRetailReview::lockForUpdate()->findOrFail($reviewId);
@@ -77,7 +73,6 @@ final readonly class ReviewService
     {
         $correlationId = Str::uuid()->toString();
         Log::channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
 
         DB::transaction(function () use ($reviewId, $correlationId) {
             $review = FashionRetailReview::lockForUpdate()->findOrFail($reviewId);
@@ -98,7 +93,6 @@ final readonly class ReviewService
     {
         $correlationId = Str::uuid()->toString();
         Log::channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
 
         DB::transaction(function () use ($productId) {
             $reviews = FashionRetailReview::where('product_id', $productId)

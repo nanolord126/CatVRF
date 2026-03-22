@@ -26,15 +26,10 @@ final class AppointmentService
         ?string $notes,
         ?string $correlationId = null,
     ): MedicalAppointment {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'createAppointment'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createAppointment', ['domain' => __CLASS__]);
-
         $correlationId ??= Str::uuid()->toString();
 
         try {
-            $this->fraudService->check();
+            $this->fraudService->check(0, 'create_appointment', 0, null, null, $correlationId);
 
             return DB::transaction(function () use (
                 $tenantId,
@@ -90,11 +85,6 @@ final class AppointmentService
         array $diagnosis,
         ?string $correlationId = null,
     ): MedicalAppointment {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'completeAppointment'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL completeAppointment', ['domain' => __CLASS__]);
-
         $correlationId ??= Str::uuid()->toString();
 
         try {
@@ -132,11 +122,6 @@ final class AppointmentService
         string $reason,
         ?string $correlationId = null,
     ): MedicalAppointment {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'cancelAppointment'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL cancelAppointment', ['domain' => __CLASS__]);
-
         $correlationId ??= Str::uuid()->toString();
 
         try {

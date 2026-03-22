@@ -21,7 +21,7 @@ final class WalletController extends BaseApiV1Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $tenantId = auth()->id() ?? $request->user()->id;
+        $tenantId = (int) tenant('id');
         $correlationId = Str::uuid()->toString();
 
         try {
@@ -56,7 +56,7 @@ final class WalletController extends BaseApiV1Controller
         $correlationId = Str::uuid()->toString();
 
         try {
-            $tenantId = auth()->id() ?? $request->user()->id;
+            $tenantId = (int) tenant('id');
             
             if ($wallet->tenant_id !== $tenantId) {
                 return response()->json([
@@ -93,7 +93,7 @@ final class WalletController extends BaseApiV1Controller
                 'reason' => 'nullable|string',
             ]);
 
-            $tenantId = auth()->id() ?? $request->user()->id;
+            $tenantId = (int) tenant('id');
             
             if ($wallet->tenant_id !== $tenantId) {
                 return response()->json([
@@ -136,7 +136,7 @@ final class WalletController extends BaseApiV1Controller
                 'reason' => 'nullable|string',
             ]);
 
-            $tenantId = auth()->id() ?? $request->user()->id;
+            $tenantId = (int) tenant('id');
             
             if ($wallet->tenant_id !== $tenantId) {
                 return response()->json([

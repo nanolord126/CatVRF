@@ -4,13 +4,17 @@ namespace App\Domains\Hotels\Http\Controllers;
 
 use App\Domains\Hotels\Models\Review;
 use App\Domains\Hotels\Services\ReviewService;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 final class ReviewController extends Controller
 {
     public function __construct(
         private readonly ReviewService $reviewService,
+        private readonly FraudControlService $fraudControlService,
     ) {}
 
     public function index(string $hotelId): JsonResponse
@@ -35,9 +39,8 @@ final class ReviewController extends Controller
 
     public function store(string $hotelId): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $this->authorize('create', Review::class);
@@ -50,8 +53,6 @@ final class ReviewController extends Controller
                 'categories' => 'nullable|array',
             ]);
 
-            $correlationId = \Illuminate\Support\Str::uuid();
-
             $review = $this->reviewService->createReview(
                 hotelId: (int) $hotelId,
                 rating: $data['rating'],
@@ -60,6 +61,13 @@ final class ReviewController extends Controller
                 categories: $data['categories'] ?? null,
                 correlationId: $correlationId,
             );
+
+            Log::channel('audit')->info('Hotel review created', [
+                'correlation_id' => $correlationId,
+                'hotel_id' => $hotelId,
+                'user_id' => auth()->id(),
+                'rating' => $data['rating'],
+            ]);
 
             return response()->json([
                 'success' => true,

@@ -7,16 +7,19 @@
 ## 📖 Доступ к документации
 
 ### 1. Swagger UI (Интерактивный)
+
 ```
 http://localhost:8000/api/documentation
 ```
 
 ### 2. OpenAPI JSON (Machine-readable)
+
 ```
 http://localhost:8000/openapi.json
 ```
 
 ### 3. ReDoc (Alternative UI)
+
 ```
 http://localhost:8000/api/redoc
 ```
@@ -26,21 +29,25 @@ http://localhost:8000/api/redoc
 ## 🔧 Установка Swagger
 
 ### Шаг 1: Установить пакет
+
 ```bash
 composer require darkaonline/l5-swagger
 ```
 
 ### Шаг 2: Опубликовать конфиг
+
 ```bash
 php artisan vendor:publish --provider "L5Swagger\L5SwaggerServiceProvider"
 ```
 
 ### Шаг 3: Сгенерировать документацию
+
 ```bash
 php artisan l5-swagger:generate
 ```
 
 ### Шаг 4: Добавить в routes/api.php
+
 ```php
 Route::get('/documentation', function () {
     return view('l5-swagger::index');
@@ -52,6 +59,7 @@ Route::get('/documentation', function () {
 ## 📋 API Endpoints Summary
 
 ### Farm Direct (Фермерские заказы)
+
 ```
 ✅ GET    /api/v1/farm-orders              — Список заказов
 ✅ POST   /api/v1/farm-orders              — Создать заказ
@@ -61,6 +69,7 @@ Route::get('/documentation', function () {
 ```
 
 **Параметры запроса (POST/PUT)**:
+
 ```json
 {
   "product_id": "uuid",
@@ -72,6 +81,7 @@ Route::get('/documentation', function () {
 ```
 
 **Валидация**:
+
 - `quantity_kg`: 0.5–500 кг
 - `delivery_date`: не ранее завтра
 - `client_phone`: regex `/^\\+?[0-9]{10,15}$/`
@@ -79,6 +89,7 @@ Route::get('/documentation', function () {
 ---
 
 ### Healthy Food (Диет-планы)
+
 ```
 ✅ GET    /api/v1/diet-plans              — Список планов
 ✅ POST   /api/v1/diet-plans              — Создать план
@@ -87,18 +98,21 @@ Route::get('/documentation', function () {
 ```
 
 **Типы диет**:
+
 - `keto` — Кетогенная (белки + жиры, минимум углеводов)
 - `vegan` — Веганская (без продуктов животного происхождения)
 - `paleo` — Палео (древние продукты)
 - `balanced` — Сбалансированная (стандарт)
 
 **Валидация**:
+
 - `duration_days`: 7–365 дней
 - `daily_calories`: 1000–5000 калорий
 
 ---
 
 ### Auto Parts (Автозапчасти)
+
 ```
 ✅ GET    /api/v1/auto-parts-orders                    — Список заказов
 ✅ POST   /api/v1/auto-parts-orders                    — Создать заказ
@@ -107,6 +121,7 @@ Route::get('/documentation', function () {
 ```
 
 **VIN Validation**:
+
 - Формат: 17 символов буквы `[A-HJ-NPR-Z0-9]` (без I, O, Q)
 - Примеры:
   - `WVWZZZ3CZ9E123456` (Volkswagen)
@@ -114,6 +129,7 @@ Route::get('/documentation', function () {
   - `TMBFK47A922044644` (Toyota)
 
 **Совместимость**:
+
 ```bash
 GET /api/v1/auto-parts-orders/compatible/WVWZZZ3CZ9E123456
 
@@ -134,6 +150,7 @@ Response:
 ---
 
 ### Pharmacy (Аптека)
+
 ```
 ✅ GET    /api/v1/pharmacy-orders                      — Список заказов
 ✅ POST   /api/v1/pharmacy-orders                      — Создать заказ
@@ -141,6 +158,7 @@ Response:
 ```
 
 **Создание заказа с рецептом**:
+
 ```json
 {
   "pharmacy_id": "uuid",
@@ -152,6 +170,7 @@ Response:
 ```
 
 **Верификация рецепта**:
+
 ```bash
 POST /api/v1/pharmacy-orders/verify-prescription
 
@@ -180,6 +199,7 @@ POST /api/v1/pharmacy-orders/verify-prescription
 ## 🔐 Authentication
 
 ### Sanctum Token Authentication
+
 ```bash
 # 1. Login и получить токен
 POST /api/v1/auth/login
@@ -202,6 +222,7 @@ curl -H "Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..." \
 ```
 
 ### Headers
+
 ```
 Authorization: Bearer {token}
 Accept: application/json
@@ -213,6 +234,7 @@ Content-Type: application/json
 ## 📊 Response Format
 
 ### Success Response (200, 201)
+
 ```json
 {
   "success": true,
@@ -227,6 +249,7 @@ Content-Type: application/json
 ```
 
 ### Error Response (400, 422, 500)
+
 ```json
 {
   "success": false,
@@ -243,6 +266,7 @@ Content-Type: application/json
 ```
 
 ### Not Found (404)
+
 ```json
 {
   "success": false,
@@ -251,6 +275,7 @@ Content-Type: application/json
 ```
 
 ### Rate Limited (429)
+
 ```json
 {
   "success": false,
@@ -270,6 +295,7 @@ Content-Type: application/json
 | Search endpoints | 1000 light / 100 heavy | 1 hour |
 
 **Headers Response**:
+
 ```
 X-RateLimit-Limit: 60
 X-RateLimit-Remaining: 59
@@ -282,6 +308,7 @@ Retry-After: 60
 ## 🔍 Filtering & Pagination
 
 ### List Endpoints
+
 ```bash
 # Pagination
 GET /api/v1/farm-orders?page=1&per_page=15
@@ -294,6 +321,7 @@ GET /api/v1/farm-orders?sort_by=created_at&sort_order=desc
 ```
 
 ### Response Metadata
+
 ```json
 {
   "success": true,
@@ -314,6 +342,7 @@ GET /api/v1/farm-orders?sort_by=created_at&sort_order=desc
 ## 📝 Examples
 
 ### Example 1: Create Farm Order (cURL)
+
 ```bash
 curl -X POST http://localhost:8000/api/v1/farm-orders \
   -H "Authorization: Bearer YOUR_TOKEN" \
@@ -328,6 +357,7 @@ curl -X POST http://localhost:8000/api/v1/farm-orders \
 ```
 
 ### Example 2: Find Compatible Auto Parts (JavaScript/Fetch)
+
 ```javascript
 const vin = "WVWZZZ3CZ9E123456";
 const token = "YOUR_SANCTUM_TOKEN";
@@ -347,6 +377,7 @@ console.log(data.data); // Array of compatible parts
 ```
 
 ### Example 3: Subscribe to Diet Plan (Python/Requests)
+
 ```python
 import requests
 
@@ -371,6 +402,7 @@ print(result)  # { "success": true, "message": "Subscribed" }
 ## 🧪 Testing with Postman
 
 ### 1. Import OpenAPI
+
 - Open Postman
 - File > Import
 - Paste `openapi.json` URL или upload файл
@@ -378,12 +410,14 @@ print(result)  # { "success": true, "message": "Subscribed" }
 - Click Import
 
 ### 2. Set Collection Variables
+
 - In Postman Collection Variables:
   - `token`: Your Sanctum bearer token
-  - `base_url`: http://localhost:8000/api/v1
+  - `base_url`: <http://localhost:8000/api/v1>
   - `tenant_id`: Your tenant UUID
 
 ### 3. Test Endpoints
+
 - Every endpoint will auto-populate with variables
 - Click "Send" to execute
 
@@ -411,24 +445,32 @@ composer require openapitools/openapi-generator-cli
 ## 🐛 Common Issues
 
 ### Issue: 401 Unauthorized
-**Решение**: 
+
+**Решение**:
+
 - Проверить токен не истёк
 - Проверить header формат: `Authorization: Bearer token` (не `Token token`)
 - Перегенерировать токен через login endpoint
 
 ### Issue: 422 Validation Error
+
 **Решение**:
+
 - Проверить все required поля заполнены
 - Проверить formats (UUID, date, phone regex)
 - Проверить ranges (quantity_kg должен быть 0.5-500)
 
 ### Issue: 429 Too Many Requests
+
 **Решение**:
+
 - Выждать время указанное в `Retry-After` header
 - Использовать exponential backoff
 
 ### Issue: 404 Not Found
+
 **Решение**:
+
 - Проверить ID ресурса существует
 - Проверить tenant scoping (может быть ресурс других тенантов)
 - Проверить soft deletes (может быть удаленный ресурс)

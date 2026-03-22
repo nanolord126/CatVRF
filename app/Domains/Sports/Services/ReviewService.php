@@ -3,8 +3,8 @@
 namespace App\Domains\Sports\Services;
 
 use Illuminate\Support\Facades\Log;
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Str;
+use App\Services\FraudControlService;
 
 
 use App\Domains\Sports\Models\Review;
@@ -30,10 +30,9 @@ final readonly class ReviewService
     ): Review {
         $correlationId = Str::uuid()->toString();
         Log::channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
 
         try {
-            $correlationId = $correlationId ?? Str::uuid();
+            $correlationId = $correlationId ?? Str::uuid()->toString();
 
             if ($rating < 1 || $rating > 5) {
                 throw new \Exception('Rating must be between 1 and 5');
@@ -121,10 +120,9 @@ final readonly class ReviewService
     ): Review {
         $correlationId = Str::uuid()->toString();
         Log::channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
 
         try {
-            $correlationId = $correlationId ?? Str::uuid();
+            $correlationId = $correlationId ?? Str::uuid()->toString();
 
             if ($rating < 1 || $rating > 5) {
                 throw new \Exception('Rating must be between 1 and 5');

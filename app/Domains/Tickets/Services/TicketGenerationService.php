@@ -2,8 +2,8 @@
 
 namespace App\Domains\Tickets\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use App\Domains\Tickets\Models\{Ticket, TicketType, Event};
 use Illuminate\Support\Str;
@@ -12,6 +12,10 @@ use Throwable;
 
 final class TicketGenerationService
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function generateTickets(
         int $eventId,
         int $ticketTypeId,
@@ -19,10 +23,7 @@ final class TicketGenerationService
         int $buyerId,
         string $correlationId = '',
     ): array {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'generateTickets'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL generateTickets', ['domain' => __CLASS__]);
+
 
         try {
             Log::channel('audit')->info('Generating tickets', [
@@ -33,13 +34,22 @@ final class TicketGenerationService
                 'correlation_id' => $correlationId,
             ]);
 
+            $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
+
             $tickets = DB::transaction(function () use ($eventId, $ticketTypeId, $quantity, $buyerId, $correlationId) {
                 $ticketType = TicketType::findOrFail($ticketTypeId);
                 $generatedTickets = [];
 
                 for ($i = 0; $i < $quantity; $i++) {
                     $ticketNumber = 'TKT-' . now()->format('Y') . '-' . Str::random(10);
-                    $qrCode = Str::uuid();
+                    $qrCode = Str::uuid()->toString();
 
                     $ticket = Ticket::create([
                         'tenant_id' => tenant('id'),
@@ -77,10 +87,7 @@ final class TicketGenerationService
 
     public function checkinTicket(string $qrCode, string $correlationId = ''): Ticket
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'checkinTicket'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL checkinTicket', ['domain' => __CLASS__]);
+
 
         try {
             Log::channel('audit')->info('Checking in ticket', [

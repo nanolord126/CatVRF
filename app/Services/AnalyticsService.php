@@ -73,7 +73,7 @@ final readonly class AnalyticsService
         array $data = [],
         string $correlationId = '',
     ): bool {
-        $correlationId = $correlationId ?: (string) Str::uuid();
+        $correlationId = $correlationId ?: (string) Str::uuid()->toString();
 
         try {
             if (!$this->rateLimiter->allowTenant($tenantId, 'analytics:event', 1000, 60)) {
@@ -179,21 +179,5 @@ final readonly class AnalyticsService
             'vertical' => $vertical,
         ];
     }
-}
-    ): array {
-        try {
 
-            return [
-                ['lat' => 55.75, 'lon' => 37.62, 'intensity' => 0.95], // Москва центр
-                ['lat' => 55.78, 'lon' => 37.58, 'intensity' => 0.75], // Москва север
-            ];
-        } catch (Exception $e) {
-            Log::channel('audit')->error('Heatmap generation failed', [
-                'tenant_id' => $tenantId,
-                'error' => $e->getMessage(),
-            ]);
-
-            throw $e;
-        }
-    }
 }

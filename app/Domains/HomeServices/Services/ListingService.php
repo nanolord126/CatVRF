@@ -2,14 +2,15 @@
 
 namespace App\Domains\HomeServices\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use App\Domains\HomeServices\Models\ServiceListing;
 
 final class ListingService
 {
-    public function __construct() {}
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,) {}
 
     public function createListing(
         int $contractorId,
@@ -20,13 +21,18 @@ final class ListingService
         float $basePrice,
         string $correlationId
     ): ServiceListing {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'createListing'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createListing', ['domain' => __CLASS__]);
+
 
         try {
-            return \DB::transaction(function () use ($contractorId, $categoryId, $name, $description, $type, $basePrice, $correlationId) {
+                        $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
+            DB::transaction(function () use ($contractorId, $categoryId, $name, $description, $type, $basePrice, $correlationId) {
                 $listing = ServiceListing::create([
                     'tenant_id' => tenant('id'),
                     'contractor_id' => $contractorId,
@@ -55,13 +61,18 @@ final class ListingService
 
     public function updateListing(ServiceListing $listing, array $data, string $correlationId): ServiceListing
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'updateListing'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL updateListing', ['domain' => __CLASS__]);
+
 
         try {
-            return \DB::transaction(function () use ($listing, $data, $correlationId) {
+                        $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
+            DB::transaction(function () use ($listing, $data, $correlationId) {
                 $listing->update($data + ['correlation_id' => $correlationId]);
                 return $listing;
             });

@@ -9,6 +9,7 @@
 ## 📅 ДЕНЬ 1 (17 марта): ПЛАТЁЖНАЯ СИСТЕМА — КРИТИЧНО
 
 ### 🎯 Задачи
+
 1. **Создать модели** (2 часа)
    - `app/Models/Wallet.php` (или переместить из Domains)
    - `app/Models/BalanceTransaction.php`
@@ -39,6 +40,7 @@
    - Обработка ошибок
 
 ### ✅ Успех дня
+
 - [ ] WalletService работает без ошибок
 - [ ] При вызове `$wallet->credit(...)` не выбрасывает `Class not found`
 - [ ] Все 4 модели существуют и имеют правильные fields
@@ -53,6 +55,7 @@
 ### 🎯 Задачи (до обеда)
 
 #### Платежи: WEBHOOK (2 часа)
+
 1. **Создать Internal/PaymentWebhookController.php**
    - Метод `webhook(Request $request): JsonResponse` для каждого шлюза
    - Routes: `/internal/webhook/tinkoff`, `/internal/webhook/sber`, `/internal/webhook/tochka`
@@ -78,7 +81,9 @@
    - Логировать в audit
 
 #### RBAC: Foundation (2 часа)
+
 1. **Создать Role enum**
+
    ```php
    enum Role: string {
        case ADMIN = 'admin';
@@ -100,6 +105,7 @@
    - Методы: `viewCRM()`, `managePayout()`, `viewAnalytics()`, etc.
 
 ### ✅ Успех дня
+
 - [ ] Webhook эндпоинты созданы
 - [ ] Signature verification работает (тестировать curl)
 - [ ] ReleaseHoldJob вызывается по расписанию
@@ -114,7 +120,9 @@
 ### 🎯 Задачи (до обеда)
 
 #### RBAC: MIDDLEWARE (1.5 часа)
+
 1. **TenantCRMOnly middleware**
+
    ```php
    public function handle(Request $request, Closure $next): Response {
        if (!auth()->user() || auth()->user()->role !== Role::BUSINESS_OWNER) {
@@ -125,6 +133,7 @@
    ```
 
 2. **RoleBasedAccess middleware** (параметризованный)
+
    ```php
    Route::middleware(['auth', 'role:owner,manager'])
        ->prefix('tenant')
@@ -138,6 +147,7 @@
    - У каждой свой `AuthProvider`
 
 #### WISHLIST (2.5 часа)
+
 1. **Создать WishlistService**
    - `add(int $userId, int $itemId, string $vertical): void`
    - `remove(int $userId, int $itemId): void`
@@ -156,6 +166,7 @@
    - При ранжировании учитывать wishlist_count
 
 ### ✅ Успех дня
+
 - [ ] `/admin` доступен только для ADMIN
 - [ ] `/tenant` доступен только для OWNER/MANAGER
 - [ ] Обычный user видит ошибку 403 при попытке access /tenant
@@ -170,6 +181,7 @@
 ### 🎯 Задачи (до обеда)
 
 #### FraudML (базовый уровень, 2 часа)
+
 1. **Создать FraudMLService** (без настоящего XGBoost)
    - `scoreOperation(OperationDto $dto): float` (возвращает 0-1)
    - `shouldBlock(float $score, string $operationType): bool`
@@ -179,6 +191,7 @@
    - Миграция: id, tenant_id, user_id, operation_type, ml_score, decision, created_at
 
 3. **Интегрировать в PaymentService**
+
    ```php
    $score = $this->fraudMLService->scoreOperation($operationDto);
    if ($score > 0.8) {
@@ -187,6 +200,7 @@
    ```
 
 #### CLEANUP (1 час)
+
 1. **Удалить дубликат:**
    - `rm -rf database/migrations/real_estate/` (оставить только realestate)
    - Найти duplicate Policies и удалить
@@ -196,7 +210,9 @@
    - Убедиться что core models в правильном месте
 
 #### TESTING (1.5 часа)
+
 1. **E2E тест платежей**
+
    ```php
    $payment = $paymentGateway->initPayment($amount);
    $this->webhook->webhook($webhookData);
@@ -204,18 +220,21 @@
    ```
 
 2. **E2E тест RBAC**
+
    ```php
    $response = $this->actingAs($customer)->get('/tenant/dashboard');
    $this->assertEquals(403, $response->status());
    ```
 
 3. **E2E тест Wishlist**
+
    ```php
    $wishlist->add($userId, $itemId);
    $this->assertContains($itemId, $wishlist->getForUser($userId));
    ```
 
 ### ✅ Успех дня
+
 - [ ] FraudMLService работает и логирует fraud_attempts
 - [ ] PaymentService проверяет fraud score перед capture
 - [ ] real_estate дубликат удалён
@@ -242,6 +261,7 @@
 ## 🚀 КОМАНДЫ ДЛЯ ЗАПУСКА
 
 ### День 1: Миграции
+
 ```bash
 php artisan make:model Wallet --migration
 php artisan make:model BalanceTransaction --migration
@@ -251,12 +271,14 @@ php artisan migrate:fresh
 ```
 
 ### День 2: Controllers
+
 ```bash
 php artisan make:controller Internal/PaymentWebhookController
 php artisan make:job ReleaseHoldJob
 ```
 
 ### День 3: Services & Policies
+
 ```bash
 php artisan make:class Services/WishlistService
 php artisan make:policy BusinessOwnerPolicy
@@ -264,6 +286,7 @@ php artisan make:middleware TenantCRMOnly
 ```
 
 ### День 4: Testing
+
 ```bash
 php artisan make:test PaymentFlowTest
 php artisan make:test RBACTest
@@ -286,4 +309,3 @@ php artisan test
 **Ответственный:** GitHub Copilot  
 **Контакт:** @user для уточнений  
 **Статус:** 🔴 КРИТИЧНО, начать немедленно
-

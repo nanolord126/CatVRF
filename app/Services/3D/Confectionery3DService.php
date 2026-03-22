@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-namespace App\ServicesD;
+namespace App\Services\ThreeD;
 
 use Illuminate\Support\Str;
 
@@ -9,7 +9,7 @@ final class Confectionery3DService
     public function generateProductVisualization(array $productData): array
     {
         return [
-            'id' => Str::uuid(),
+            'id' => Str::uuid()->toString(),
             'vertical' => 'Confectionery',
             'product_id' => $productData['id'] ?? null,
             'model_url' => $this->getModelPath($productData),

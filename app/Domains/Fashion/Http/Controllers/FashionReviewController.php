@@ -3,6 +3,7 @@
 namespace App\Domains\Fashion\Http\Controllers;
 
 use App\Domains\Fashion\Models\FashionReview;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -10,6 +11,10 @@ use Illuminate\Support\Str;
 
 final class FashionReviewController
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function getProductReviews(int $id): JsonResponse
     {
         try {
@@ -26,13 +31,10 @@ final class FashionReviewController
 
     public function store(): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
-            $correlationId = Str::uuid();
-
             DB::transaction(function () use ($correlationId) {
                 FashionReview::create([
                     'uuid' => Str::uuid(),
@@ -62,13 +64,11 @@ final class FashionReviewController
 
     public function update(int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $review = FashionReview::findOrFail($id);
-            $correlationId = Str::uuid();
 
             DB::transaction(function () use ($review, $correlationId) {
                 $review->update([...request()->except(['id', 'tenant_id', 'business_group_id', 'correlation_id']), 'correlation_id' => $correlationId]);
@@ -85,7 +85,7 @@ final class FashionReviewController
     {
         try {
             $review = FashionReview::findOrFail($id);
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             DB::transaction(function () use ($review, $correlationId) {
                 $review->delete();
@@ -102,7 +102,7 @@ final class FashionReviewController
     {
         try {
             $review = FashionReview::findOrFail($id);
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             DB::transaction(function () use ($review, $correlationId) {
                 $review->increment('helpful_count');
@@ -129,7 +129,7 @@ final class FashionReviewController
     {
         try {
             $review = FashionReview::findOrFail($id);
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             DB::transaction(function () use ($review, $correlationId) {
                 $review->update(['status' => 'approved', 'correlation_id' => $correlationId]);
@@ -146,7 +146,7 @@ final class FashionReviewController
     {
         try {
             $review = FashionReview::findOrFail($id);
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             DB::transaction(function () use ($review, $correlationId) {
                 $review->delete();

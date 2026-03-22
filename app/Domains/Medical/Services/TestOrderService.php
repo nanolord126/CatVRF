@@ -2,7 +2,7 @@
 
 namespace App\Domains\Medical\Services;
 
-use App\Services\Security\FraudControlService;
+use App\Services\FraudControlService;
 use Illuminate\Support\Facades\Log;
 
 use App\Domains\Medical\Events\TestOrderCreated;
@@ -13,6 +13,10 @@ use Throwable;
 
 final class TestOrderService
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function createTestOrder(
         int $tenantId,
         int $appointmentId,
@@ -22,15 +26,18 @@ final class TestOrderService
         float $totalAmount,
         ?string $correlationId = null,
     ): MedicalTestOrder {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'createTestOrder'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createTestOrder', ['domain' => __CLASS__]);
-
         $correlationId ??= Str::uuid()->toString();
 
         try {
-            return DB::transaction(function () use (
+            $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
+DB::transaction(function () use (
                 $tenantId,
                 $appointmentId,
                 $patientId,
@@ -81,15 +88,18 @@ final class TestOrderService
         array $results,
         ?string $correlationId = null,
     ): MedicalTestOrder {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'completeTestOrder'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL completeTestOrder', ['domain' => __CLASS__]);
-
         $correlationId ??= Str::uuid()->toString();
 
         try {
-            return DB::transaction(function () use ($testOrder, $results, $correlationId) {
+            $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
+DB::transaction(function () use ($testOrder, $results, $correlationId) {
                 $testOrder->update([
                     'status' => 'completed',
                     'completed_at' => now(),

@@ -1,4 +1,5 @@
 # === ПОЛНЫЙ ОТЧЁТ ПО ТЕХНИЧЕСКИМ И ПЛАТЕЖНЫМ МОДУЛЯМ ===
+
 ## Приведение в production-ready формат КАНОНА 2026
 
 **Дата:** 17 марта 2026 г.  
@@ -20,14 +21,16 @@
 
 ## 🎯 ФАЗА 1: Payment / Wallet / Balance / Bonus / Idempotency — ✅ 100%
 
-### Файлы изменено:
+### Файлы изменено
+
 1. `modules/Payments/Migrations/2026_03_17_*_create_payment_transactions.php`
 2. `modules/Payments/Migrations/2026_03_17_*_create_balance_transactions.php`
 3. `modules/Payments/Migrations/2026_03_17_*_create_wallets.php`
 4. `modules/Payments/Migrations/2026_03_17_*_create_payment_idempotency_records.php`
 5. `modules/Payments/Migrations/2026_03_17_*_create_fraud_attempts.php`
 
-### Сервисы созданы/обновлены:
+### Сервисы созданы/обновлены
+
 - **PaymentTransaction модель** — добавлены: `idempotency_key`, `payload_hash`, `provider_payment_id`, `hold_amount`, `correlation_id`
 - **WalletService** — методы: `credit()`, `debit()`, `hold()`, `release()`, `creditBonus()`, `debitBonus()` с полными DB::transaction()
 - **IdempotencyService** — полная реализация: `checkIdempotency()`, `recordResponse()`, `hashPayload()`, `cleanupExpiredRecords()`
@@ -36,7 +39,8 @@
 - **MassPayoutService** — методы: `initiateBatchPayout()`, `executePayout()` с лимитами
 - **BatchPayoutJob** — асинхронная обработка выплат с retry-логикой
 
-### Добавлено:
+### Добавлено
+
 - ✅ Полная цепочка платежа: инициализация → холд → списание → фискализация
 - ✅ Идемпотентность со снятием хеша payload
 - ✅ FraudControl перед каждой операцией
@@ -45,13 +49,15 @@
 - ✅ DB::transaction() для всех мутаций баланса
 - ✅ Массовые выплаты с контролем бюджета
 
-### Исправлено:
+### Исправлено
+
 - ❌ return null → выброс исключения
 - ❌ Отсутствие transaction → DB::transaction() везде
 - ❌ Отсутствие correlation_id → добавлены везде
 - ❌ Отсутствие holdлогики → реализована hold/release
 
-### Удалено стабов:
+### Удалено стабов
+
 - ❌ Пустые методы PaymentService
 - ❌ TODO без реализации
 - ❌ Плейсхолдер комментарии
@@ -60,11 +66,13 @@
 
 ## 🔐 ФАЗА 2: Authorization & RBAC — ✅ 100%
 
-### Файлы созданы:
+### Файлы созданы
+
 1. `app/Policies/TenantPolicy.php`
 2. `app/Http/Middleware/TwoFactorAuthentication.php`
 
-### Реализовано:
+### Реализовано
+
 - **TenantPolicy** — методы: `manage()`, `viewCRM()`, `updatePayments()`, `createPromo()`, `withdraw()`
 - **2FA Middleware** — проверка известных устройств, DeviceHistory, код подтверждения при новом device
 - **Разделение доступа:**
@@ -72,7 +80,8 @@
   - 💼 Бизнес (tenant) → полный доступ к CRM (инвентаризация, HR, аналитика, промо, выплаты, филиалы)
   - 🔧 Admin → все функции
 
-### Добавлено:
+### Добавлено
+
 - ✅ RBAC с ролями: user, business_owner, business_employee, admin, tenant_admin
 - ✅ 2FA с историей устройств (DeviceHistory)
 - ✅ Tenant-aware authorization
@@ -82,21 +91,25 @@
 
 ## 🛒 ФАЗА 3: Wishlist + ранжирование + anti-fraud — ✅ 100%
 
-### Файлы созданы:
+### Файлы созданы
+
 1. `app/Services/WishlistService.php`
 
-### Реализовано:
+### Реализовано
+
 - **WishlistService** — методы: `addToWishlist()`, `removeFromWishlist()`, `createOrderFromWishlist()`, `getUserWishlist()`
 - **Anti-fraud для wishlist:**
   - ✅ `checkWishlistManipulation()` — выявление специального добавления/удаления товаров
   - ✅ ML-скоринг попыток манипуляции (>5 операций/час = block)
 
-### Алгоритм ранжирования:
+### Алгоритм ранжирования
+
 - ✅ Добавление товара в wishlist = +X баллов к поисковой выдаче
 - ✅ Удаление товара (>3 дней без покупки) = штраф -X баллов
 - ✅ Анонимная оплата из wishlist → автоматическое создание заказа
 
-### Добавлено:
+### Добавлено
+
 - ✅ Полная логика wishlist (добавление, удаление, покупка)
 - ✅ Anti-fraud-детекция манипуляции выдачей
 - ✅ Ранжирование через SearchRankingService (интеграция)
@@ -105,11 +118,13 @@
 
 ## 🚨 ФАЗА 4: FraudML + ML модели — ✅ 100%
 
-### Файлы созданы:
+### Файлы созданы
+
 1. `modules/Finances/Services/ML/FraudMLService.php`
 2. `modules/Finances/Services/Security/FraudControlService.php` (расширение)
 
-### Реализовано:
+### Реализовано
+
 - **FraudMLService**:
   - `scoreOperation()` — ML-скоринг 0-1 для любой операции
   - `getCurrentModelVersion()` — версионирование моделей
@@ -121,7 +136,8 @@
   - `checkBonus()` — проверка бонусов перед начислением
   - `checkPayout()` — проверка выплат перед выполнением
 
-### ML признаки (30+ фич):
+### ML признаки (30+ фич)
+
 - ✅ Количество операций за 1/5/15/60 минут
 - ✅ Сумма операций за 1/7/30 дней
 - ✅ Географическое расстояние между операциями
@@ -130,14 +146,16 @@
 - ✅ Новизна устройства, возраст аккаунта
 - ✅ История платежей (успех/неуспех)
 
-### Порог блокировки:
+### Порог блокировки
+
 - `payment_init`: 0.8 (80%)
 - `card_bind`: 0.7
 - `payout`: 0.75
 - `rating_submit`: 0.65
 - `referral_claim`: 0.6
 
-### Добавлено:
+### Добавлено
+
 - ✅ ML-скоринг обязателен перед каждой критической операцией
 - ✅ Fallback-правила при недоступности модели
 - ✅ Логирование всех попыток фрода (fraud_attempts таблица)
@@ -147,10 +165,12 @@
 
 ## 🏗️ ФАЗА 5: Bootstrap & Infrastructure — ✅ 100%
 
-### Файлы созданы/обновлены:
+### Файлы созданы/обновлены
+
 1. `app/Providers/ProductionBootstrapServiceProvider.php` (обновлено)
 
-### Реализовано:
+### Реализовано
+
 - **RateLimiter (tenant-aware):**
   - `payments` — 50 запросов/мин (по user_id или IP)
   - `promo` — 100 попыток/мин
@@ -168,7 +188,8 @@
   - ✅ correlation_id везде
   - ✅ Полный stack trace при ошибках
 
-### Добавлено:
+### Добавлено
+
 - ✅ Octane-ready (TODO: интеграция)
 - ✅ Horizon для queue monitoring
 - ✅ Redis для caching и RateLimiter
@@ -178,11 +199,13 @@
 
 ## 🔍 ФАЗА 6: Search + Recommendations — ✅ 100%
 
-### Файлы созданы:
+### Файлы созданы
+
 1. `app/Services/RecommendationService.php`
 2. `app/Services/SearchService.php`
 
-### RecommendationService:
+### RecommendationService
+
 - `getForUser()` — персонализированные рекомендации (с кэшем 5 мин)
 - `getCrossVertical()` — кросс-рекомендации (гостиница → ресторан)
 - `getB2BForTenant()` — B2B рекомендации для поставщиков
@@ -190,20 +213,23 @@
 - `invalidateUserCache()` — инвалидация при покупке/оценке
 - `recalculateEmbeddings()` — ежедневный job для OpenAI embeddings
 
-### SearchService:
+### SearchService
+
 - `search()` — поиск с ранжированием (Typesense интеграция)
 - `boostProductFromWishlist()` — +X баллов при добавлении в wishlist
 - `demoteProductFromWishlist()` — штраф за манипуляцию
 - Ранжирование по: wishlist_boost, embedding_similarity, behavior, popularity
 
-### ML источники:
+### ML источники
+
 - 45% — прямое поведение (просмотры, покупки, добавления)
 - 25% — географическая близость (GeoService)
 - 20% — embeddings similarity (cosine)
 - 10% — правила бизнеса (boost/demote)
 - 5% — популярность в tenant (fallback)
 
-### Добавлено:
+### Добавлено
+
 - ✅ Embeddings из OpenAI (text-embedding-3-large) или sentence-transformers
 - ✅ Кэширование рекомендаций (300 сек для динамических, 3600 сек для стабильных)
 - ✅ Инвалидация кэша при покупке/оценке/изменении профиля
@@ -213,34 +239,40 @@
 
 ## 🔔 ФАЗА 7: Notifications / Marketing / Analytics / HR / Зарплаты / Курьеры — ✅ 100%
 
-### Файлы созданы:
+### Файлы созданы
+
 1. `app/Services/NotificationService.php`
 2. `app/Services/AnalyticsService.php`
 3. `app/Services/HRService.php`
 4. `app/Services/CourierService.php`
 
-### NotificationService:
+### NotificationService
+
 - `send()` — уведомления по всем каналам (push, email, SMS)
 - `sendDailyReport()` — ежедневный отчёт (08:00-09:00 по TZ tenant)
 - `sendWeeklyReport()` — еженедельный отчёт (пн 07:00-08:00)
 
-### AnalyticsService:
+### AnalyticsService
+
 - `getMetrics()` — ключевые метрики (обороты, заказы, конверсия, LTV, churn)
 - `trackEvent()` — отслеживание событий (view, add_to_cart, purchase) в ClickHouse
 - `getHeatmap()` — тепловая карта спроса по географии (Leaflet + GIS)
 
-### HRService:
+### HRService
+
 - `createEmployee()` — регистрация сотрудника
 - `calculateAndPaySalaries()` — расчёт и выплата зарплат (с НДФЛ, вычетами, премиями)
 - `getSchedule()` — график работы персонала
 
-### CourierService:
+### CourierService
+
 - `registerCourier()` — регистрация курьера (для taxi/доставки)
 - `getCurrentLocation()` — GPS-трекинг
 - `assignDelivery()` — назначение доставки с расчётом времени
 - `completeDelivery()` — завершение и обновление рейтинга
 
-### Добавлено:
+### Добавлено
+
 - ✅ Firebase Cloud Messaging для push
 - ✅ Email через Laravel Mailables
 - ✅ SMS интеграция (Twililio или локально)
@@ -254,6 +286,7 @@
 ## 📋 ИЗМЕНЕНИЯ ПО КАЖДОМУ МОДУЛЮ
 
 ### 1. Payment / Wallet / Balance / Bonus — **15 файлов**
+
 ```
 + Добавлено:
   - IdempotencyService с payload_hash
@@ -274,6 +307,7 @@
 ```
 
 ### 2. Authorization & RBAC — **2 файла**
+
 ```
 + Добавлено:
   - TenantPolicy с правами управления
@@ -287,6 +321,7 @@
 ```
 
 ### 3. Wishlist + ранжирование + anti-fraud — **1 файл**
+
 ```
 + Добавлено:
   - Полная логика WishlistService
@@ -299,6 +334,7 @@
 ```
 
 ### 4. FraudML + ML модели — **2 файла**
+
 ```
 + Добавлено:
   - FraudMLService с XGBoost/LightGBM интеграцией
@@ -313,6 +349,7 @@
 ```
 
 ### 5. Bootstrap & Infrastructure — **1 файл**
+
 ```
 + Добавлено:
   - RateLimiter для всех критичных операций
@@ -325,6 +362,7 @@
 ```
 
 ### 6. Search + Recommendations — **2 файла**
+
 ```
 + Добавлено:
   - RecommendationService с embeddings
@@ -338,6 +376,7 @@
 ```
 
 ### 7. Notifications / Marketing / Analytics / HR / Зарплаты / Курьеры — **4 файла**
+
 ```
 + Добавлено:
   - NotificationService (push, email, SMS)
@@ -355,7 +394,8 @@
 
 ## 🔧 ТЕХНИЧЕСКИЕ ТРЕБОВАНИЯ КАНОНА 2026
 
-### Выполнено:
+### Выполнено
+
 - ✅ Кодировка: UTF-8 без BOM
 - ✅ Окончания строк: CRLF (Windows)
 - ✅ `declare(strict_types=1)` в начале каждого PHP-файла
@@ -372,7 +412,8 @@
 - ✅ Валидация входных данных (FormRequest или validate())
 - ✅ Обработка ошибок: try/catch + лог + понятное сообщение
 
-### Не требуется (за пределами этого отчёта):
+### Не требуется (за пределами этого отчёта)
+
 - ⚠️ Миграции для всех остальных таблиц (в отдельном цикле)
 - ⚠️ Unit + E2E тесты (следующий цикл QA)
 - ⚠️ Filament Resources для новых сервисов (следующий цикл UI)
@@ -399,7 +440,8 @@
 
 ## 🚀 СЛЕДУЮЩИЕ ШАГИ
 
-### Непосредственно для production:
+### Непосредственно для production
+
 1. **Миграции:** Запустить `php artisan migrate`
 2. **Конфиг:** Добавить в `config/fraud.php`, `config/payments.php`, `config/bonuses.php`
 3. **Queue:** Запустить `php artisan horizon` для мониторинга
@@ -407,7 +449,8 @@
 5. **Тесты:** Запустить `php artisan test` (unit + feature)
 6. **Deploy:** На staging, затем production
 
-### Оставшиеся модули (ФАЗА 8+):
+### Оставшиеся модули (ФАЗА 8+)
+
 - Filament Tenant Panel (CRM для бизнеса)
 - API Controllers для всех сервисов
 - Livewire Components для публичных страниц
@@ -423,6 +466,7 @@
 **Все 7 фаз полностью завершены и готовы к production.**
 
 Код соответствует КАНОНУ 2026:
+
 - ✅ Все критические сервисы реализованы
 - ✅ Все методы имеют полную документацию
 - ✅ Все операции логируются и отслеживаются (correlation_id)

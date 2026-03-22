@@ -2,8 +2,8 @@
 
 namespace App\Domains\Food\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use App\Domains\Food\Models\RestaurantOrder;
 use Illuminate\Support\Facades\DB;
@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\DB;
 final class RestaurantOrderService
 {
     public function __construct(
+        private readonly FraudControlService $fraudControlService,
         private readonly KitchenDisplayService $kitchenService,
         private readonly DeliveryService $deliveryService,
     ) {}
@@ -26,13 +27,18 @@ final class RestaurantOrderService
         array $data,
         string $correlationId = ''
     ): RestaurantOrder {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'createOrder'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createOrder', ['domain' => __CLASS__]);
+
 
         try {
-            return DB::transaction(function () use ($data, $correlationId) {
+            $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
+DB::transaction(function () use ($data, $correlationId) {
                 $order = RestaurantOrder::create([
                     'tenant_id' => $data['tenant_id'],
                     'restaurant_id' => $data['restaurant_id'],
@@ -76,13 +82,18 @@ final class RestaurantOrderService
         RestaurantOrder $order,
         string $correlationId = ''
     ): bool {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'confirmPaymentAndSendToKitchen'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL confirmPaymentAndSendToKitchen', ['domain' => __CLASS__]);
+
 
         try {
-            return DB::transaction(function () use ($order, $correlationId) {
+            $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
+DB::transaction(function () use ($order, $correlationId) {
                 $order->update([
                     'payment_status' => 'paid',
                     'status' => 'confirmed',
@@ -115,13 +126,18 @@ final class RestaurantOrderService
         RestaurantOrder $order,
         string $correlationId = ''
     ): bool {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'completeOrder'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL completeOrder', ['domain' => __CLASS__]);
+
 
         try {
-            return DB::transaction(function () use ($order, $correlationId) {
+            $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
+DB::transaction(function () use ($order, $correlationId) {
                 $order->update([
                     'status' => 'delivered',
                     'completed_at' => now(),

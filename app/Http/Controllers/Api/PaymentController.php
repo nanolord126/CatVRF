@@ -7,7 +7,7 @@ use App\Http\Requests\Api\PaymentInitRequest;
 use App\Services\Payment\PaymentService;
 use App\Exceptions\DuplicatePaymentException;
 use App\Exceptions\RateLimitException;
-use App\Services\Fraud\FraudControlService;
+use App\Services\FraudControlService;
 use App\Services\Security\RateLimiterService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -54,14 +54,15 @@ final class PaymentController extends Controller
                 return response()->json(['error' => 'Transaction blocked for security reasons.'], 403);
             }
 
-            $payment = DB::transaction(function () use ($request, $correlationId) {
+            $validated = $request->all();
+            $payment = DB::transaction(function () use ($validated, $correlationId) {
                 return $this->paymentService->initPayment(
-                    tenantId: $request->input('tenant_id'),
+                    tenantId: ($validated['tenant_id'] ?? null),
                     userId: $request->user()->id,
-                    amount: $request->input('amount'),
-                    currency: $request->input('currency', 'RUB'),
-                    isHold: $request->input('hold', false),
-                    idempotencyKey: $request->input('idempotency_key'),
+                    amount: ($validated['amount'] ?? null),
+                    currency: ($validated['currency'] ?? 'RUB'),
+                    isHold: ($validated['hold'] ?? false),
+                    idempotencyKey: ($validated['idempotency_key'] ?? null),
                     correlationId: $correlationId
                 );
             });

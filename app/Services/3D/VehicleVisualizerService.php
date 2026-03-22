@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-namespace App\Services\3D;
+namespace App\Services\ThreeD;
 
 use Illuminate\Support\Str;
 
@@ -9,7 +9,7 @@ final class VehicleVisualizerService
     public function generateVehicleVisualization(array $vehicleData): array
     {
         return [
-            'id' => Str::uuid(),
+            'id' => Str::uuid()->toString(),
             'vehicle_id' => $vehicleData['id'],
             'type' => $vehicleData['type'] ?? 'car',
             'model_3d_url' => $this->getVehicleModel($vehicleData),
@@ -38,3 +38,4 @@ final class VehicleVisualizerService
         return "/3d-models/vehicles/{$vehicleData['brand']}-{$vehicleData['model']}.glb";
     }
 }
+

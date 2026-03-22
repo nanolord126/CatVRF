@@ -2,8 +2,8 @@
 
 namespace App\Domains\Tickets\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use App\Domains\Tickets\Models\{EventReview, Event};
 use App\Domains\Tickets\Events\EventReviewSubmitted;
@@ -12,6 +12,10 @@ use Throwable;
 
 final class EventReviewService
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function createReview(
         int $eventId,
         int $buyerId,
@@ -20,10 +24,7 @@ final class EventReviewService
         string $content,
         string $correlationId = '',
     ): EventReview {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'createReview'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createReview', ['domain' => __CLASS__]);
+
 
         try {
             Log::channel('audit')->info('Creating event review', [
@@ -36,6 +37,15 @@ final class EventReviewService
             if ($rating < 1 || $rating > 5) {
                 throw new \Exception('Rating must be between 1 and 5');
             }
+
+            $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
 
             $review = DB::transaction(function () use ($eventId, $buyerId, $rating, $title, $content, $correlationId) {
                 $review = EventReview::create([

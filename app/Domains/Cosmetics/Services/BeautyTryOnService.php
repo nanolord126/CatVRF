@@ -2,35 +2,33 @@
 
 namespace App\Domains\Cosmetics\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use Illuminate\Support\Facades\DB;
 
 final class BeautyTryOnService
 {
-    public function __construct()
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,)
     {
     }
 
     public function logTryOn(int $productId, int $userId, bool $purchased, string $correlationId): bool
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'logTryOn'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL logTryOn', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'logTryOn'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL logTryOn', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'logTryOn'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL logTryOn', ['domain' => __CLASS__]);
+
 
         try {
+                        $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
             DB::transaction(function () use ($productId, $userId, $purchased, $correlationId) {
                 DB::table('cosmetic_tryons')->insert([
                     'product_id' => $productId,

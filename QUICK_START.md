@@ -8,42 +8,54 @@
 ## 🎯 ЧТО ВЫ ИЩЕТЕ?
 
 ### 👨‍💼 Я менеджер / стейкхолдер
+
 → Прочитайте: **[EXECUTIVE_SUMMARY.md](EXECUTIVE_SUMMARY.md)** (5 мин)
+
 - Статус проекта
 - Бизнес-выгода
 - Готовность к production
 - Финансовое влияние
 
 ### 👨‍💻 Я разработчик
+
 → Начните с: **[README_VAT_IMPLEMENTATION.md](README_VAT_IMPLEMENTATION.md)** (3 мин)
+
 - Быстрый обзор
 - Примеры использования
 - Где найти компоненты
 - Как начать использовать
 
 ### 🔧 Я DevOps / системный администратор
+
 → Используйте: **[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md)** (15 мин)
+
 - Пошаговые инструкции развертывания
 - Конфигурация окружения
 - Troubleshooting
 - Откат изменений
 
 ### 🧪 Я QA / тестировщик
+
 → Используйте: **[FINAL_CHECKLIST.md](FINAL_CHECKLIST.md)** (10 мин)
+
 - Что нужно тестировать
 - Проверочный лист
 - Ожидаемые результаты
 - Критерии принятия
 
 ### 📚 Я хочу изучить архитектуру
+
 → Прочитайте: **[VAT_IMPLEMENTATION_RU.md](VAT_IMPLEMENTATION_RU.md)** (20 мин)
+
 - Как работает система НДС
 - Поток обработки чеков
 - Интеграция с провайдерами
 - Примеры для разных систем налогообложения
 
 ### 🗺️ Я потерялся
+
 → Смотрите: **[DOCUMENTATION_MAP.md](DOCUMENTATION_MAP.md)** (5 мин)
+
 - Карта всей документации
 - Описание каждого файла
 - Навигация по темам
@@ -54,6 +66,7 @@
 ## 🔥 САМЫЕ ВАЖНЫЕ ФАЙЛЫ
 
 ### 1. Основные компоненты
+
 ```
 app/Domains/Finances/Services/Fiscal/
 ├── CloudKassirFiscalDriver.php    ✅ Production Ready
@@ -72,6 +85,7 @@ app/Domains/Finances/Interfaces/
 ```
 
 ### 2. Документация
+
 ```
 ROOT/
 ├── README_VAT_IMPLEMENTATION.md   ← Начните ОТСЮДА (3 мин)
@@ -90,6 +104,7 @@ ROOT/
 ## 💡 ПРИМЕРЫ КОДА
 
 ### Отправить чек с НДС 20% (ОСН)
+
 ```php
 $result = $fiscalService->sendReceipt(
     ['tax_system' => 'OSN', 'payment_id' => 'pay-123', ...],
@@ -99,6 +114,7 @@ $result = $fiscalService->sendReceipt(
 ```
 
 ### Отправить чек без НДС (УСН)
+
 ```php
 $result = $fiscalService->sendReceipt(
     ['tax_system' => 'USN_INCOME', 'payment_id' => 'pay-124', ...],
@@ -107,6 +123,7 @@ $result = $fiscalService->sendReceipt(
 ```
 
 ### Вернуть платеж
+
 ```php
 $refund = $fiscalService->refundReceipt(
     'fiscal-abc123',
@@ -116,6 +133,7 @@ $refund = $fiscalService->refundReceipt(
 ```
 
 ### Проверить здоровье системы
+
 ```php
 $health = $fiscalService->healthCheck();
 // ['status' => 'operational', 'provider' => 'cloudkassir', ...]
@@ -137,12 +155,14 @@ $health = $fiscalService->healthCheck();
 ## ✅ ПРОВЕРОЧНЫЙ ЛИСТ
 
 ### Перед использованием
+
 - [ ] Синтаксис проверен (`php -l`)
 - [ ] Конфиг установлен
 - [ ] Ключи API в Doppler
 - [ ] Тестовый чек отправлен успешно
 
 ### Перед production
+
 - [ ] Все файлы скопированы
 - [ ] Окружение настроено
 - [ ] Тестирование завершено
@@ -154,11 +174,13 @@ $health = $fiscalService->healthCheck();
 ## 🚨 ЧАСТЫЕ ОШИБКИ
 
 ### ❌ "Class not found"
+
 ```bash
 composer dump-autoload -o
 ```
 
 ### ❌ "Invalid credentials"
+
 ```bash
 # Проверить переменные в Doppler
 php artisan tinker
@@ -166,12 +188,14 @@ php artisan tinker
 ```
 
 ### ❌ "Timeout"
+
 ```bash
 # Увеличить timeout или проверить сеть
 curl -I https://api.cloudpayments.ru/
 ```
 
 ### ❌ "Syntax error"
+
 ```bash
 # Проверить, что файл скопирован полностью
 wc -l app/Domains/Finances/Services/Fiscal/CloudKassirFiscalDriver.php
@@ -184,9 +208,9 @@ wc -l app/Domains/Finances/Services/Fiscal/CloudKassirFiscalDriver.php
 | Проблема | Кто помогает | Контакт |
 |----------|-------------|---------|
 | Код не работает | Backend team | Slack: #backend |
-| CloudKassir API | CloudKassir support | support@cloudkassir.ru |
-| Atol API | Atol support | support@atol.ru |
-| Tinkoff платежи | Tinkoff merchant | merchant@tinkoff.ru |
+| CloudKassir API | CloudKassir support | <support@cloudkassir.ru> |
+| Atol API | Atol support | <support@atol.ru> |
+| Tinkoff платежи | Tinkoff merchant | <merchant@tinkoff.ru> |
 | Развертывание | DevOps team | Slack: #devops |
 
 ---
@@ -194,21 +218,25 @@ wc -l app/Domains/Finances/Services/Fiscal/CloudKassirFiscalDriver.php
 ## 🎯 СЛЕДУЮЩИЕ ДЕЙСТВИЯ
 
 ### Шаг 1: Ознакомиться (2 часа)
+
 1. Прочитайте README_VAT_IMPLEMENTATION.md
 2. Просмотрите примеры в FINAL_COMPLETION_REPORT_RU.md
 3. Изучите архитектуру в VAT_IMPLEMENTATION_RU.md
 
 ### Шаг 2: Настроить (1 час)
+
 1. Скопируйте файлы в production
 2. Установите конфиг config/fiscal.php
 3. Добавьте переменные в Doppler
 
 ### Шаг 3: Протестировать (1 час)
+
 1. Проверьте синтаксис
 2. Отправьте тестовый чек
 3. Проверьте логирование
 
 ### Шаг 4: Развернуть (30 мин)
+
 1. Выполните инструкции DEPLOYMENT_GUIDE.md
 2. Мониторьте логи
 3. Убедитесь в работоспособности
@@ -232,6 +260,7 @@ wc -l app/Domains/Finances/Services/Fiscal/CloudKassirFiscalDriver.php
 ## 🏆 РЕЗУЛЬТАТ
 
 После следования инструкциям вы получите:
+
 - ✅ Полностью рабочую систему НДС и фискализации
 - ✅ Соответствие ФЗ-54
 - ✅ Поддержку всех систем налогообложения
@@ -242,7 +271,8 @@ wc -l app/Domains/Finances/Services/Fiscal/CloudKassirFiscalDriver.php
 
 ## 🎁 БОНУСНОЕ СОДЕРЖАНИЕ
 
-### Внутри документации вы найдете:
+### Внутри документации вы найдете
+
 - 📋 Полный список всех методов
 - 🔍 Примеры для каждой системы налогообложения
 - 🛠️ Troubleshooting guide

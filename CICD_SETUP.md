@@ -1,4 +1,5 @@
 # CI/CD Pipeline Configuration
+
 ## CatVRF Automated Testing & Deployment
 
 ---
@@ -56,12 +57,14 @@ Complete CI/CD pipeline with automated testing, code quality checks, and deploym
 **Trigger**: `push` to main/develop, `pull_request`
 
 **Services**:
+
 - PostgreSQL 16 (database)
 - Redis 7 (cache)
 
 **Jobs**:
 
 #### test
+
 - PHP 8.3 setup with extensions
 - Composer dependency caching
 - Database setup with migrations
@@ -71,14 +74,17 @@ Complete CI/CD pipeline with automated testing, code quality checks, and deploym
 - Coverage upload to Codecov
 
 #### code-quality
+
 - PHPStan (Level 8) analysis
 - Pint (code style) validation
 
 #### security
+
 - Psalm security scanner
 - Symfony security checker
 
 #### build
+
 - Dependency cleanup (no-dev)
 - Autoloader optimization
 - Asset building
@@ -91,10 +97,12 @@ Complete CI/CD pipeline with automated testing, code quality checks, and deploym
 **Trigger**: `push` to develop (or manual)
 
 **Prerequisites**:
+
 - Tests passed
 - SSH credentials configured
 
 **Deployment Steps**:
+
 1. Pull latest develop branch
 2. Install dependencies
 3. Run migrations
@@ -111,11 +119,13 @@ Complete CI/CD pipeline with automated testing, code quality checks, and deploym
 **Trigger**: Release published or manual dispatch
 
 **Prerequisites**:
+
 - Main branch only
 - Approval required (environment protection)
 - Full backup before deployment
 
 **Deployment Steps**:
+
 1. Create full database backup
 2. Backup current application
 3. Pull latest main branch
@@ -128,6 +138,7 @@ Complete CI/CD pipeline with automated testing, code quality checks, and deploym
 10. Rollback on failure (automated)
 
 **Rollback Strategy**:
+
 - Automatic rollback if deployment fails
 - Database restoration from backup
 - Application restoration from backup
@@ -139,7 +150,9 @@ Complete CI/CD pipeline with automated testing, code quality checks, and deploym
 ### Environment Setup
 
 #### `.env.ci`
+
 Testing environment configuration:
+
 - Database: PostgreSQL (catvrf_test)
 - Cache: Redis
 - Session: Array (in-memory)
@@ -147,20 +160,26 @@ Testing environment configuration:
 - No monitoring/Sentry in tests
 
 #### `phpstan.neon.dist`
+
 Static analysis:
+
 - Level: 8 (maximum strictness)
 - Analyzes: app/ directory
 - Type aliases for ID fields
 
 #### `pint.json`
+
 Code style:
+
 - Preset: Laravel PSR12 + risky rules
 - Strict params & types
 - Auto-imports sorting
 - Trailing commas in multiline
 
 #### `.github/dependabot.yml`
+
 Automated dependency updates:
+
 - Composer: weekly updates
 - NPM: weekly updates
 - GitHub Actions: weekly updates
@@ -219,6 +238,7 @@ npm run watch
 ## 🔐 GitHub Secrets Required
 
 ### For Staging Deployment
+
 ```
 STAGING_HOST        = staging.catvrf.local
 STAGING_USER        = deploy
@@ -226,6 +246,7 @@ STAGING_SSH_KEY     = <private SSH key>
 ```
 
 ### For Production Deployment
+
 ```
 PRODUCTION_HOST     = app.catvrf.com
 PRODUCTION_USER     = deploy
@@ -234,6 +255,7 @@ DATABASE_URL        = postgresql://...
 ```
 
 ### For Notifications
+
 ```
 SLACK_WEBHOOK       = https://hooks.slack.com/services/...
 ```
@@ -274,6 +296,7 @@ SLACK_WEBHOOK       = https://hooks.slack.com/services/...
 ## 🔍 Code Quality Standards
 
 ### PHPStan (Level 8)
+
 - No mixed types allowed
 - Strict property types
 - Generic types required
@@ -281,6 +304,7 @@ SLACK_WEBHOOK       = https://hooks.slack.com/services/...
 - Type hints mandatory
 
 ### Pint (Laravel PSR-12)
+
 - Single quotes preferred
 - Imports sorted alphabetically
 - Strict types declaration required
@@ -288,6 +312,7 @@ SLACK_WEBHOOK       = https://hooks.slack.com/services/...
 - No unused imports
 
 ### Psalm Security
+
 - SQL injection prevention
 - XSS prevention
 - Unsafe functions detection
@@ -298,16 +323,19 @@ SLACK_WEBHOOK       = https://hooks.slack.com/services/...
 ## 📈 Monitoring
 
 ### Code Coverage
+
 - Tracked: Codecov integration
 - Minimum: 80% coverage required
 - Per-file tracking enabled
 
 ### Performance Metrics
+
 - Test execution: <5 minutes target
 - Build time: <3 minutes target
 - Deployment: <10 minutes target
 
 ### Health Checks
+
 - API endpoints verification
 - Database connectivity
 - Cache system check
@@ -318,6 +346,7 @@ SLACK_WEBHOOK       = https://hooks.slack.com/services/...
 ## 🛠️ Troubleshooting
 
 ### Tests Fail: Database Connection
+
 ```bash
 # Check PostgreSQL is running
 docker ps | grep postgres
@@ -330,6 +359,7 @@ php artisan migrate:fresh --seed --env=testing
 ```
 
 ### Code Quality Fails
+
 ```bash
 # Fix all formatting issues
 ./vendor/bin/pint app
@@ -342,6 +372,7 @@ composer update
 ```
 
 ### Deployment Fails
+
 - Check SSH credentials in secrets
 - Verify server disk space (ls -lh)
 - Check service status (systemctl status)
@@ -366,6 +397,7 @@ composer update
 ## ✅ Deployment Checklist
 
 ### Before Production Deployment
+
 - [ ] All tests passing
 - [ ] Code coverage ≥80%
 - [ ] No PHPStan violations
@@ -378,6 +410,7 @@ composer update
 - [ ] Team notified
 
 ### Post Deployment
+
 - [ ] Health endpoints responding
 - [ ] Admin panel accessible
 - [ ] API endpoints working
@@ -393,6 +426,7 @@ composer update
 ## 🎯 Success Metrics
 
 **Pipeline Performance**:
+
 - ✅ Tests pass: 99%+ success rate
 - ✅ Code quality: 0 violations
 - ✅ Security: 0 vulnerabilities
@@ -400,6 +434,7 @@ composer update
 - ✅ Coverage: 80%+ maintained
 
 **Reliability**:
+
 - ✅ Automatic rollback on failure
 - ✅ Backup before each deployment
 - ✅ Smoke tests post-deployment
@@ -411,6 +446,7 @@ composer update
 ## 📞 Support
 
 For CI/CD issues:
+
 1. Check GitHub Actions logs
 2. Review workflow YAML syntax
 3. Verify secrets are set correctly

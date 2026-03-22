@@ -2,7 +2,6 @@
 
 namespace App\Domains\RealEstate\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
 
 
@@ -16,10 +15,7 @@ final class CommissionCalculatorService
 
     public function calculateSaleCommission(int $salePrice, string $correlationId = ''): array
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'calculateSaleCommission'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL calculateSaleCommission', ['domain' => __CLASS__]);
+
 
         $commission = (int) ($salePrice * self::COMMISSION_PERCENT / 100);
 
@@ -39,10 +35,7 @@ final class CommissionCalculatorService
 
     public function calculateRentalCommission(int $rentPriceMonth, string $correlationId = ''): array
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'calculateRentalCommission'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL calculateRentalCommission', ['domain' => __CLASS__]);
+
 
         $commission = (int) ($rentPriceMonth * self::COMMISSION_PERCENT / 100);
 
@@ -62,10 +55,7 @@ final class CommissionCalculatorService
 
     public function getCommissionHistory(int $propertyId, string $period = 'month'): array
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'getCommissionHistory'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getCommissionHistory', ['domain' => __CLASS__]);
+
 
         return [];
     }

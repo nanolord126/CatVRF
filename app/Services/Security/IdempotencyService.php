@@ -30,7 +30,7 @@ final class IdempotencyService
         string $idempotencyKey,
         array $payload,
         int $tenantId
-    ): ?array {
+    ): array {
         $payloadHash = $this->generateHash($payload);
 
         $record = DB::table('payment_idempotency_records')
@@ -41,8 +41,8 @@ final class IdempotencyService
             ->first();
 
         if (!$record) {
-            // Новая операция
-            return null;
+            // Новая операция — пустой массив означает "продолжай выполнение"
+            return [];
         }
 
         // Проверить, совпадает ли payload
@@ -177,7 +177,7 @@ final class IdempotencyService
      * @param int $tenantId
      * @return array|null
      */
-    public function getRecord(string $idempotencyKey, int $tenantId): ?array
+    public function getRecord(string $idempotencyKey, int $tenantId): array
     {
         $record = DB::table('payment_idempotency_records')
             ->where('idempotency_key', $idempotencyKey)
@@ -185,7 +185,9 @@ final class IdempotencyService
             ->first();
 
         if (!$record) {
-            return null;
+            throw new \Illuminate\Database\Eloquent\ModelNotFoundException(
+                "Idempotency record not found for key: {$idempotencyKey}"
+            );
         }
 
         return [

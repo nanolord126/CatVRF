@@ -38,7 +38,7 @@ final class SubscriptionController extends BaseApiV2Controller
      */
     public function subscribe(Request $request): JsonResponse
     {
-        $correlationId = (string) Str::uuid();
+        $correlationId = (string) Str::uuid()->toString();
 
         try {
             $request->validate([
@@ -91,7 +91,7 @@ final class SubscriptionController extends BaseApiV2Controller
      */
     public function unsubscribe(Request $request): JsonResponse
     {
-        $correlationId = (string) Str::uuid();
+        $correlationId = (string) Str::uuid()->toString();
 
         try {
             $request->validate([
@@ -142,16 +142,20 @@ final class SubscriptionController extends BaseApiV2Controller
      */
     public function getChannels(): JsonResponse
     {
-        $correlationId = (string) Str::uuid();
+        $correlationId = (string) Str::uuid()->toString();
 
         try {
             $userId = auth()->id() ?? 0;
             $pattern = "subscription:user.{$userId}:*";
 
-            // Get all subscribed channels from cache
+            // Retrieve subscribed channels from cache using pattern scan
             $channels = [];
-            // Note: In production use proper cache driver with pattern matching
-            // For now: return empty array as placeholder
+            try {
+                $keys = \Illuminate\Support\Facades\Redis::keys($pattern);
+                $channels = array_map(fn($k) => str_replace("subscription:user.{$userId}:", '', $k), $keys);
+            } catch (\Throwable $redisEx) {
+                // Redis unavailable — return empty list gracefully
+            }
 
             Log::channel('audit')->info('Channels retrieved', [
                 'user_id' => $userId,

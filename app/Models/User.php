@@ -261,7 +261,7 @@ final class User extends Authenticatable implements FilamentUser
 
         // Generate UUID on create
         static::creating(function ($model) {
-            $model->uuid ??= \Illuminate\Support\Str::uuid();
+            $model->uuid ??= \Illuminate\Support\Str::uuid()->toString();
         });
     }
 }

@@ -40,12 +40,9 @@ final class FreshProduceService
         ?int $subscriptionId = null,
         string $correlationId = '',
     ): ProduceOrder {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'placeOrder'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL placeOrder', ['domain' => __CLASS__]);
 
-        $correlationId = $correlationId ?: (string) Str::uuid();
+
+        $correlationId = $correlationId ?: (string) Str::uuid()->toString();
 
         // Rate limiting
         $rlKey = "fresh_produce:order:{$clientId}";
@@ -79,7 +76,7 @@ final class FreshProduceService
                 'tenant_id'               => $box->tenant_id,
                 'client_id'               => $clientId,
                 'subscription_id'         => $subscriptionId,
-                'uuid'                    => (string) Str::uuid(),
+                'uuid'                    => (string) Str::uuid()->toString(),
                 'correlation_id'          => $correlationId,
                 'idempotency_key'         => md5("{$clientId}:{$box->id}:{$deliveryDate}:{$deliverySlot}"),
                 'items'                   => $box->contents ?? [],
@@ -118,12 +115,9 @@ final class FreshProduceService
         string $preferredSlot,
         string $correlationId = '',
     ): ProduceSubscription {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'subscribe'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL subscribe', ['domain' => __CLASS__]);
 
-        $correlationId = $correlationId ?: (string) Str::uuid();
+
+        $correlationId = $correlationId ?: (string) Str::uuid()->toString();
 
         $box = ProduceBox::findOrFail($boxId);
 
@@ -141,7 +135,7 @@ final class FreshProduceService
                 'tenant_id'          => $box->tenant_id,
                 'client_id'          => $clientId,
                 'box_id'             => $boxId,
-                'uuid'               => (string) Str::uuid(),
+                'uuid'               => (string) Str::uuid()->toString(),
                 'correlation_id'     => $correlationId,
                 'frequency'          => $frequency,
                 'delivery_address'   => $deliveryAddress,
@@ -176,12 +170,9 @@ final class FreshProduceService
         int $reportedBy,
         string $correlationId = '',
     ): bool {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'reportQualityIssue'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL reportQualityIssue', ['domain' => __CLASS__]);
 
-        $correlationId = $correlationId ?: (string) Str::uuid();
+
+        $correlationId = $correlationId ?: (string) Str::uuid()->toString();
         $order = ProduceOrder::findOrFail($orderId);
 
         return DB::transaction(function () use ($order, $description, $photoUrl, $reportedBy, $correlationId): bool {
@@ -213,12 +204,9 @@ final class FreshProduceService
         int $courierId,
         string $correlationId = '',
     ): ProduceOrder {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'markDelivered'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL markDelivered', ['domain' => __CLASS__]);
 
-        $correlationId = $correlationId ?: (string) Str::uuid();
+
+        $correlationId = $correlationId ?: (string) Str::uuid()->toString();
 
         return DB::transaction(function () use ($orderId, $courierId, $correlationId): ProduceOrder {
             $order = ProduceOrder::lockForUpdate()->findOrFail($orderId);
@@ -253,10 +241,7 @@ final class FreshProduceService
 
     public function getAvailableBoxes(int $tenantId): Collection
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'getAvailableBoxes'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getAvailableBoxes', ['domain' => __CLASS__]);
+
 
         return ProduceBox::where('tenant_id', $tenantId)
             ->where('status', 'active')

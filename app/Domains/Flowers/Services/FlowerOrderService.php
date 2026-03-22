@@ -3,7 +3,7 @@
 namespace App\Domains\Flowers\Services;
 
 use Illuminate\Support\Facades\Log;
-use App\Services\Security\FraudControlService;
+use App\Services\FraudControlService;
 use Illuminate\Support\Str;
 
 
@@ -22,7 +22,6 @@ final class FlowerOrderService
     ) {
         $correlationId = Str::uuid()->toString();
         Log::channel('audit')->info('Service method called in Flowers', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
 }
 
     public function createPublicOrder(
@@ -33,7 +32,7 @@ final class FlowerOrderService
         array $deliveryData,
         string $correlationId = '',
     ): FlowerOrder {
-        $correlationId = $correlationId ?: (string)Str::uuid();
+        $correlationId = $correlationId ?: (string)Str::uuid()->toString();
 
         try {
             $this->fraudControlService->check(
@@ -126,7 +125,6 @@ final class FlowerOrderService
     {
         $correlationId = Str::uuid()->toString();
         Log::channel('audit')->info('Service method called in Flowers', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
 
         return FlowerOrder::query()
             ->where('tenant_id', $tenantId)
@@ -139,7 +137,6 @@ final class FlowerOrderService
     {
         $correlationId = Str::uuid()->toString();
         Log::channel('audit')->info('Service method called in Flowers', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
 
         return DB::transaction(function () use ($orderId, $status, $correlationId) {
             $order = FlowerOrder::query()

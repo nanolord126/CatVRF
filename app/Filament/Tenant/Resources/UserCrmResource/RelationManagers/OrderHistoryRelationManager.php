@@ -2,7 +2,6 @@
 
 namespace App\Filament\Tenant\Resources\UserCrmResource\RelationManagers;
 
-use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables;
@@ -20,7 +19,7 @@ final class OrderHistoryRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
-            ->query(fn(Builder $q) => $q->where('tenant_id', Filament::getTenant()?->id)
+            ->query(fn(Builder $q) => $q->where('tenant_id', filament()->getTenant()?->id)
                 ->orderByDesc('created_at'))
             ->columns([
                 Tables\Columns\TextColumn::make('id')

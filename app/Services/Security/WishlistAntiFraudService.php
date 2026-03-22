@@ -14,7 +14,7 @@ final class WishlistAntiFraudService
      */
     public function checkWishlistPayment(int $userId, array $items): bool
     {
-        $correlationId = request()->header('X-Correlation-ID') ?? (string)\Illuminate\Support\Str::uuid();
+        $correlationId = request()->header('X-Correlation-ID') ?? (string)\Illuminate\Support\Str::uuid()->toString();
 
         // Check 1: Unusual time pattern
         if ($this->isUnusualTimePattern($userId)) {

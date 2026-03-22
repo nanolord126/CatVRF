@@ -31,7 +31,7 @@ final class SegmentationService
         array $criteria,
         array $context = []
     ): Collection {
-        $correlationId = $context['correlation_id'] ?? Str::uuid();
+        $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
 
         $segments = collect();
 
@@ -60,7 +60,7 @@ final class SegmentationService
      * Сегментировать по LTV (Customer Lifetime Value)
      */
     public function segmentByValue(int $tenantId, string $correlationId = ''): Collection {
-        $correlationId = $correlationId ?: Str::uuid();
+        $correlationId = $correlationId ?: Str::uuid()->toString();
         $cacheKey = "segments:by_value:{$tenantId}";
 
         $cached = Cache::get($cacheKey);
@@ -70,7 +70,7 @@ final class SegmentationService
 
         $segments = [
             [
-                'id' => Str::uuid(),
+                'id' => Str::uuid()->toString(),
                 'name' => 'High-Value Customers',
                 'criteria' => 'ltv > 50000',
                 'count' => rand(50, 150),
@@ -78,7 +78,7 @@ final class SegmentationService
                 'avg_order_frequency' => 12.5,
             ],
             [
-                'id' => Str::uuid(),
+                'id' => Str::uuid()->toString(),
                 'name' => 'Medium-Value Customers',
                 'criteria' => 'ltv 10000-50000',
                 'count' => rand(200, 500),
@@ -86,7 +86,7 @@ final class SegmentationService
                 'avg_order_frequency' => 5.2,
             ],
             [
-                'id' => Str::uuid(),
+                'id' => Str::uuid()->toString(),
                 'name' => 'Low-Value Customers',
                 'criteria' => 'ltv < 10000',
                 'count' => rand(1000, 2000),
@@ -110,7 +110,7 @@ final class SegmentationService
      * Сегментировать по поведению
      */
     public function segmentByBehavior(int $tenantId, string $correlationId = ''): Collection {
-        $correlationId = $correlationId ?: Str::uuid();
+        $correlationId = $correlationId ?: Str::uuid()->toString();
         $cacheKey = "segments:by_behavior:{$tenantId}";
 
         $cached = Cache::get($cacheKey);
@@ -120,7 +120,7 @@ final class SegmentationService
 
         $segments = [
             [
-                'id' => Str::uuid(),
+                'id' => Str::uuid()->toString(),
                 'name' => 'Active Customers',
                 'criteria' => 'purchase_in_last_30_days',
                 'count' => rand(300, 800),
@@ -128,7 +128,7 @@ final class SegmentationService
                 'churn_risk' => 0.05,
             ],
             [
-                'id' => Str::uuid(),
+                'id' => Str::uuid()->toString(),
                 'name' => 'Dormant Customers',
                 'criteria' => 'no_purchase_in_last_90_days',
                 'count' => rand(500, 1200),
@@ -136,7 +136,7 @@ final class SegmentationService
                 'churn_risk' => 0.80,
             ],
             [
-                'id' => Str::uuid(),
+                'id' => Str::uuid()->toString(),
                 'name' => 'At-Risk Customers',
                 'criteria' => 'declining_order_frequency',
                 'count' => rand(100, 300),
@@ -164,7 +164,7 @@ final class SegmentationService
         string $segment,
         array $context = []
     ): array {
-        $correlationId = $context['correlation_id'] ?? Str::uuid();
+        $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
         $cacheKey = "segments:metrics:{$tenantId}:{$segment}";
 
         $cached = Cache::get($cacheKey);
@@ -199,7 +199,7 @@ final class SegmentationService
         string $segment2,
         array $context = []
     ): array {
-        $correlationId = $context['correlation_id'] ?? Str::uuid();
+        $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
 
         $metrics1 = $this->getSegmentMetrics($tenantId, $segment1, $context);
         $metrics2 = $this->getSegmentMetrics($tenantId, $segment2, $context);
@@ -241,21 +241,21 @@ final class SegmentationService
     private function segmentByLocation(int $tenantId, string $correlationId): Collection {
         $segments = [
             [
-                'id' => Str::uuid(),
+                'id' => Str::uuid()->toString(),
                 'name' => 'Moscow Region',
                 'location' => 'Moscow',
                 'count' => rand(200, 600),
                 'avg_ltv' => 45000,
             ],
             [
-                'id' => Str::uuid(),
+                'id' => Str::uuid()->toString(),
                 'name' => 'St. Petersburg Region',
                 'location' => 'St. Petersburg',
                 'count' => rand(100, 300),
                 'avg_ltv' => 35000,
             ],
             [
-                'id' => Str::uuid(),
+                'id' => Str::uuid()->toString(),
                 'name' => 'Other Regions',
                 'location' => 'Other',
                 'count' => rand(500, 1500),

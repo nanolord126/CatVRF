@@ -2,8 +2,8 @@
 
 namespace App\Domains\TravelTourism\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use App\Domains\TravelTourism\Models\TravelTour;
 use App\Services\Inventory\InventoryManagementService;
@@ -14,25 +14,15 @@ use Illuminate\Support\Str;
 final class TourService
 {
     public function __construct(
+        private readonly FraudControlService $fraudControlService,
         private readonly InventoryManagementService $inventoryService,
     ) {}
 
     public function createTour(array $data): TravelTour
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'createTour'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createTour', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'createTour'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createTour', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'createTour'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createTour', ['domain' => __CLASS__]);
+
 
         Log::channel('audit')->info('TourService: Creating tour', [
             'correlation_id' => $data['correlation_id'] ?? Str::uuid(),
@@ -40,7 +30,15 @@ final class TourService
             'tenant_id' => filament()->getTenant()->id,
         ]);
 
-        return DB::transaction(fn () => TravelTour::create([
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(fn () => TravelTour::create([
             'uuid' => Str::uuid(),
             'correlation_id' => $data['correlation_id'] ?? Str::uuid(),
             'tenant_id' => filament()->getTenant()->id,
@@ -66,20 +64,9 @@ final class TourService
 
     public function updateTourDetails(int $tourId, array $data): bool
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'updateTourDetails'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL updateTourDetails', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'updateTourDetails'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL updateTourDetails', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'updateTourDetails'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL updateTourDetails', ['domain' => __CLASS__]);
+
 
         $tour = TravelTour::findOrFail($tourId);
 
@@ -88,7 +75,15 @@ final class TourService
             'tour_id' => $tourId,
         ]);
 
-        return DB::transaction(function () use ($tour, $data) {
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(function () use ($tour, $data) {
             $tour->update($data);
             return true;
         });
@@ -96,20 +91,9 @@ final class TourService
 
     public function getToursForDestination(string $country, string $city = ''): Collection
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'getToursForDestination'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getToursForDestination', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'getToursForDestination'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getToursForDestination', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'getToursForDestination'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getToursForDestination', ['domain' => __CLASS__]);
+
 
         return TravelTour::where('destination_country', $country)
             ->when($city, fn ($q) => $q->where('destination_city', $city))
@@ -121,20 +105,9 @@ final class TourService
 
     public function getAvailableDates(int $tourId): Collection
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'getAvailableDates'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getAvailableDates', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'getAvailableDates'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getAvailableDates', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'getAvailableDates'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getAvailableDates', ['domain' => __CLASS__]);
+
 
         $tour = TravelTour::findOrFail($tourId);
 
@@ -145,20 +118,9 @@ final class TourService
 
     public function publishTour(int $tourId): bool
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'publishTour'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL publishTour', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'publishTour'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL publishTour', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'publishTour'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL publishTour', ['domain' => __CLASS__]);
+
 
         $tour = TravelTour::findOrFail($tourId);
 
@@ -167,7 +129,15 @@ final class TourService
             'tour_id' => $tourId,
         ]);
 
-        return DB::transaction(function () use ($tour) {
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(function () use ($tour) {
             $tour->update(['status' => 'published']);
             return true;
         });
@@ -175,20 +145,9 @@ final class TourService
 
     public function closeTourRegistration(int $tourId): bool
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'closeTourRegistration'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL closeTourRegistration', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'closeTourRegistration'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL closeTourRegistration', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'closeTourRegistration'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL closeTourRegistration', ['domain' => __CLASS__]);
+
 
         $tour = TravelTour::findOrFail($tourId);
 
@@ -197,7 +156,15 @@ final class TourService
             'tour_id' => $tourId,
         ]);
 
-        return DB::transaction(function () use ($tour) {
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(function () use ($tour) {
             $tour->update(['status' => 'registration_closed']);
             return true;
         });
@@ -205,20 +172,9 @@ final class TourService
 
     public function completeTour(int $tourId): bool
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'completeTour'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL completeTour', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'completeTour'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL completeTour', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'completeTour'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL completeTour', ['domain' => __CLASS__]);
+
 
         $tour = TravelTour::findOrFail($tourId);
 
@@ -227,7 +183,15 @@ final class TourService
             'tour_id' => $tourId,
         ]);
 
-        return DB::transaction(function () use ($tour) {
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(function () use ($tour) {
             $tour->update(['status' => 'completed']);
             return true;
         });

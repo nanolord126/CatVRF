@@ -26,25 +26,31 @@
 ## ✅ ИСПРАВЛЕННЫЕ ПРОБЛЕМЫ
 
 ### 1️⃣ Config файлы (КРИТИЧНО)
+
 - ✅ `config/datadog.php` - удален `declare(strict_types=1);`
 - ✅ `config/sentry.php` - удален `declare(strict_types=1);`
 - **Причина**: Config файлы НЕ могут содержать declare, только классы
 
 ### 2️⃣ Service классы
+
 - ✅ `DopplerService.php` - удален пробел перед <?php
 
 ### 3️⃣ Provider классы
+
 - ✅ `AppServiceProvider.php` - пересоздан чистым
 
 ### 4️⃣ Test классы
+
 - ✅ `PolicyAuthorizationTest.php` - переформатирован из одной строки
 
 ### 5️⃣ Filament Resources
+
 - ✅ `SupermarketProductResource.php` - модель исправлена
 - ✅ 2x `mount()` методы - добавлены параметры
 - ✅ 4x `auth()->user()` - заменено на `auth('web')->user()`
 
 ### 6️⃣ TypeScript/Cypress
+
 - ✅ `cypress.config.ts` - добавлены типы для setupNodeEvents
 
 ---
@@ -52,16 +58,19 @@
 ## 📋 ОСТАЮЩИЕСЯ ОШИБКИ (NON-BLOCKING)
 
 ### ⚠️ Pylance false positives (~400 ошибок)
+
 - "strict_types declaration must be the very first statement"
 - **Статус**: Не блокирует, это ошибка Pylance
 - **Решение**: Можно игнорировать
 
 ### ⚠️ Cypress/TypeScript (~2800 ошибок)
+
 - "Cannot find name 'describe', 'cy', etc."
 - **Статус**: Тестовый код, не production
 - **Решение**: Установить @types/cypress
 
 ### ⚠️ YAML диагностики
+
 - dependabot.yml, deploy-*.yml - schema validation
 - **Статус**: Сетевые проблемы или cache VS Code
 - **Решение**: Рестарт VS Code
@@ -82,7 +91,8 @@
 
 ## 🚀 СТАТУС PRODUCTION
 
-### ✅ Готово:
+### ✅ Готово
+
 - Все .php файлы синтаксически корректны
 - Config файлы очищены
 - Service классы исправлены
@@ -90,12 +100,14 @@
 - Filament Resources готовы
 - TypeScript типы добавлены
 
-### ⏳ Требует проверки:
+### ⏳ Требует проверки
+
 - `php artisan serve` - локальный тест
 - `php artisan test` - unit-тесты
 - Database миграции - если есть
 
-### 🟢 Итог:
+### 🟢 Итог
+
 **ПРОЕКТ ГОТОВ К DEPLOYMENT** на staging/production
 
 ---

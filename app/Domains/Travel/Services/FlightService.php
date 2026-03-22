@@ -2,8 +2,8 @@
 
 namespace App\Domains\Travel\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use App\Domains\Travel\Events\FlightBooked;
 use App\Domains\Travel\Models\TravelFlight;
@@ -13,21 +13,27 @@ use Throwable;
 
 final readonly class FlightService
 {
-    public function __construct() {}
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,) {}
 
     public function bookFlight(
         TravelFlight $flight,
         string $correlationId = null,
     ): TravelFlight {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'bookFlight'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL bookFlight', ['domain' => __CLASS__]);
+
 
         $correlationId ??= Str::uuid()->toString();
 
         try {
-            return DB::transaction(function () use ($flight, $correlationId) {
+            $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
+DB::transaction(function () use ($flight, $correlationId) {
                 $flight->lockForUpdate();
 
                 if ($flight->available_seats <= 0) {
@@ -65,15 +71,20 @@ final readonly class FlightService
         TravelFlight $flight,
         string $correlationId = null,
     ): TravelFlight {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'releaseFlight'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL releaseFlight', ['domain' => __CLASS__]);
+
 
         $correlationId ??= $flight->correlation_id ?? Str::uuid()->toString();
 
         try {
-            return DB::transaction(function () use ($flight, $correlationId) {
+            $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
+DB::transaction(function () use ($flight, $correlationId) {
                 $flight->lockForUpdate();
 
                 $flight->increment('available_seats');

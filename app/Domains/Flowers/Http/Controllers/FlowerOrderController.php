@@ -4,6 +4,7 @@ namespace App\Domains\Flowers\Http\Controllers;
 
 use App\Domains\Flowers\Models\FlowerOrder;
 use App\Domains\Flowers\Services\FlowerOrderService;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,15 +16,13 @@ final class FlowerOrderController
 {
     public function __construct(
         private readonly FlowerOrderService $orderService,
+        private readonly FraudControlService $fraudControlService,
     ) {}
 
     public function store(Request $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
-
-        $correlationId = (string)Str::uuid();
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $validated = $request->validate([
@@ -68,7 +67,7 @@ final class FlowerOrderController
 
     public function myOrders(): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $orders = $this->orderService->getPublicOrders(
@@ -92,7 +91,7 @@ final class FlowerOrderController
 
     public function show(int $id): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $order = FlowerOrder::query()
@@ -118,7 +117,7 @@ final class FlowerOrderController
 
     public function cancel(int $id): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $order = FlowerOrder::query()->findOrFail($id);
@@ -160,7 +159,7 @@ final class FlowerOrderController
 
     public function receipt(int $id): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $order = FlowerOrder::query()
@@ -194,7 +193,7 @@ final class FlowerOrderController
 
     public function adminList(): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $orders = FlowerOrder::query()
@@ -217,7 +216,7 @@ final class FlowerOrderController
 
     public function adminShow(int $id): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $order = FlowerOrder::query()
@@ -241,7 +240,7 @@ final class FlowerOrderController
 
     public function adminConfirm(int $id): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $order = $this->orderService->updateOrderStatus(

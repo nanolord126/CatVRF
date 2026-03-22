@@ -297,14 +297,18 @@ CatVRF/
 ## 📋 БЫСТРЫЙ ПОИСК ПО ЗАДАЧАМ
 
 ### "Нужно добавить авторизацию"
+
 → Посмотри:
+
 - `/app/Enums/Role.php` - Roles enum
 - `/app/Policies/` - Authorization policies
 - `/config/auth.php` - Auth config
 - **НУЖНО СОЗДАТЬ:** `/app/Services/Auth/AuthService.php`, `/config/permission.php`
 
 ### "Как работает платежи?"
+
 → Посмотри:
+
 - `/app/Services/Payment/PaymentGatewayService.php` - Main service
 - `/app/Services/Payment/Gateways/` - Gateways (Sber, Tinkoff, Tochka)
 - `/app/Http/Controllers/Api/V1/PaymentController.php` - API
@@ -312,7 +316,9 @@ CatVRF/
 - `/database/migrations/` - Related migrations
 
 ### "Как работает борьба с фродом?"
+
 → Посмотри:
+
 - `/app/Services/Fraud/FraudMLService.php` - ML-based fraud detection
 - `/app/Services/Security/FraudControlService.php` - Control service
 - `/app/Services/Security/RateLimiterService.php` - Rate limiting
@@ -320,14 +326,18 @@ CatVRF/
 - `/app/Jobs/FraudMLRecalculationJob.php` - ML training job
 
 ### "Как работает рекомендация?"
+
 → Посмотри:
+
 - `/app/Services/RecommendationService.php` - Main service
 - `/app/Services/AI/RecommendationService.php` - AI version (если дублируется)
 - `/app/Jobs/RecommendationQualityJob.php` - Quality metrics
 - `/database/migrations/` - Related tables
 
 ### "Как создать новую вертикаль?"
+
 → Посмотри:
+
 - `/app/Domains/Beauty/` - Example domain structure
 - `/app/Domains/Food/` - Another example
 - `/routes/beauty.php` - Vertical routes example
@@ -335,7 +345,9 @@ CatVRF/
 - **FOLLOW PATTERN:** Models → Services → Resources → Jobs → Events → Routes
 
 ### "Как добавить новый API endpoint?"
+
 → Посмотри:
+
 - `/app/Http/Controllers/Api/V1/PaymentController.php` - Example controller
 - `/routes/api.php` - Main API routes
 - `/app/Http/Requests/PaymentInitRequest.php` - Example FormRequest
@@ -343,7 +355,9 @@ CatVRF/
 - `/app/Http/Middleware/` - Middleware examples
 
 ### "Как работает кошелёк?"
+
 → Посмотри:
+
 - `/app/Services/Wallet/WalletService.php` - Wallet service
 - `/app/Models/Wallet.php` - Wallet model
 - `/app/Models/BalanceTransaction.php` - Transactions
@@ -351,20 +365,26 @@ CatVRF/
 - `/database/migrations/` - Wallet schema
 
 ### "Как работает маркетинг?"
+
 → Посмотри:
+
 - `/app/Services/Marketing/PromoCampaignService.php` - Promo campaigns
 - `/app/Services/Marketing/ReferralService.php` - Referral program
 - `/database/seeders/NewsletterSeeder.php` - Marketing seeders
 - **НУЖНО СОЗДАТЬ:** Models (PromoCampaign, Referral, Bonus)
 
 ### "Как работает inventory?"
+
 → Посмотри:
+
 - `/app/Services/Inventory/InventoryManagementService.php` - Main service
 - `/app/Jobs/LowStockNotificationJob.php` - Notifications
 - `/app/Domains/Beauty/Services/InventoryManagementService.php` - Vertical example
 
 ### "Как работает Filament (Admin Panel)?"
+
 → Посмотри:
+
 - `/app/Filament/` - Filament structure
 - `/app/Filament/Tenant/Resources/` - Resources for tenant panel
 - `/config/filament.php` - Filament config (если есть)
@@ -411,6 +431,7 @@ php artisan route:cache
 ## 📖 ДОКУМЕНТАЦИЯ
 
 Основные документы в проекте:
+
 - `PROJECT_STRUCTURE_ANALYSIS_CANON_2026.md` - Полный анализ (этот файл)
 - `IMPLEMENTATION_PLAN_4DAYS.md` - План на 4 дня
 - `MODULE_SUMMARY_AND_STATUS.md` - Сводка по модулям
@@ -422,4 +443,3 @@ php artisan route:cache
 **Создано:** 18 марта 2026 г.  
 **Версия:** CANON 2026 Production-Ready  
 **Статус:** Navigation guide ready ✅
-

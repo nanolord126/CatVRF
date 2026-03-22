@@ -4,13 +4,19 @@ namespace App\Domains\Medical\Http\Controllers;
 
 use App\Domains\Medical\Models\MedicalClinic;
 use App\Domains\Medical\Models\MedicalAppointment;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Throwable;
 
 final class MedicalClinicController
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function index(): JsonResponse
     {
         try {
@@ -119,9 +125,8 @@ final class MedicalClinicController
 
     public function store(Request $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $this->authorize('create', MedicalClinic::class);
@@ -169,9 +174,8 @@ final class MedicalClinicController
 
     public function update(Request $request, int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $clinic = MedicalClinic::findOrFail($id);

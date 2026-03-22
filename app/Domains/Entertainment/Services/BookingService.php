@@ -2,8 +2,8 @@
 
 namespace App\Domains\Entertainment\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use App\Domains\Entertainment\Events\BookingCreated;
 use App\Domains\Entertainment\Models\Booking;
@@ -14,15 +14,13 @@ use Illuminate\Support\Str;
 final class BookingService
 {
     public function __construct(
+        private readonly FraudControlService $fraudControlService,
         private readonly \App\Domains\Entertainment\Services\TicketingService $ticketingService,
     ) {}
 
     public function createBooking(int $venueId, int $scheduleId, int $customerId, int $numberOfSeats, string $correlationId): Booking
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'createBooking'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createBooking', ['domain' => __CLASS__]);
+
 
         try {
             return DB::transaction(function () use ($venueId, $scheduleId, $customerId, $numberOfSeats, $correlationId) {
@@ -75,12 +73,17 @@ final class BookingService
 
     public function cancelBooking(Booking $booking, string $reason, string $correlationId): void
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'cancelBooking'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL cancelBooking', ['domain' => __CLASS__]);
+
 
         try {
+                        $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
             DB::transaction(function () use ($booking, $reason, $correlationId) {
                 $booking->update([
                     'status' => 'cancelled',

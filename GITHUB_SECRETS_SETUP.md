@@ -1,9 +1,10 @@
 declare(strict_types=1);
 
 /**
- * GitHub Actions Secrets Setup Guide
- * 
- * Configure required secrets for CI/CD pipelines
+
+* GitHub Actions Secrets Setup Guide
+*
+* Configure required secrets for CI/CD pipelines
  */
 
 # GitHub Secrets Configuration Guide
@@ -15,11 +16,13 @@ This guide explains how to set up GitHub repository secrets for the CI/CD pipeli
 ## Steps to Add Secrets
 
 ### 1. Access Repository Settings
+
 1. Go to your GitHub repository
 2. Click **Settings** (top right)
 3. Select **Secrets and variables** → **Actions**
 
 ### 2. Create New Secret
+
 1. Click **New repository secret**
 2. Enter secret name (see below)
 3. Paste value
@@ -32,48 +35,48 @@ This guide explains how to set up GitHub repository secrets for the CI/CD pipeli
 ### Staging Environment
 
 #### STAGING_HOST
-- **Name**: `STAGING_HOST`
-- **Value**: `staging.catvrf.local` or your staging domain
-- **Purpose**: SSH connection to staging server
+* **Name**: `STAGING_HOST`
+* **Value**: `staging.catvrf.local` or your staging domain
+* **Purpose**: SSH connection to staging server
 
 #### STAGING_USER
-- **Name**: `STAGING_USER`
-- **Value**: `deploy` (or deployment user)
-- **Purpose**: SSH user for staging server
+* **Name**: `STAGING_USER`
+* **Value**: `deploy` (or deployment user)
+* **Purpose**: SSH user for staging server
 
 #### STAGING_SSH_KEY
-- **Name**: `STAGING_SSH_KEY`
-- **Value**: Private SSH key (see SSH Key Setup below)
-- **Purpose**: SSH authentication for staging
+* **Name**: `STAGING_SSH_KEY`
+* **Value**: Private SSH key (see SSH Key Setup below)
+* **Purpose**: SSH authentication for staging
 
 ### Production Environment
 
 #### PRODUCTION_HOST
-- **Name**: `PRODUCTION_HOST`
-- **Value**: `app.catvrf.com` or your production domain
-- **Purpose**: SSH connection to production server
+* **Name**: `PRODUCTION_HOST`
+* **Value**: `app.catvrf.com` or your production domain
+* **Purpose**: SSH connection to production server
 
 #### PRODUCTION_USER
-- **Name**: `PRODUCTION_USER`
-- **Value**: `deploy` (or deployment user)
-- **Purpose**: SSH user for production server
+* **Name**: `PRODUCTION_USER`
+* **Value**: `deploy` (or deployment user)
+* **Purpose**: SSH user for production server
 
 #### PRODUCTION_SSH_KEY
-- **Name**: `PRODUCTION_SSH_KEY`
-- **Value**: Private SSH key (see SSH Key Setup below)
-- **Purpose**: SSH authentication for production
+* **Name**: `PRODUCTION_SSH_KEY`
+* **Value**: Private SSH key (see SSH Key Setup below)
+* **Purpose**: SSH authentication for production
 
 #### DATABASE_URL
-- **Name**: `DATABASE_URL`
-- **Value**: `postgresql://user:password@host:5432/database`
-- **Purpose**: Database connection for backups
+* **Name**: `DATABASE_URL`
+* **Value**: `postgresql://user:password@host:5432/database`
+* **Purpose**: Database connection for backups
 
 ### Notifications
 
 #### SLACK_WEBHOOK
-- **Name**: `SLACK_WEBHOOK`
-- **Value**: `https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXX`
-- **Purpose**: Send deployment notifications to Slack
+* **Name**: `SLACK_WEBHOOK`
+* **Value**: `https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXX`
+* **Purpose**: Send deployment notifications to Slack
 
 ---
 
@@ -143,11 +146,11 @@ ls -la catvrf-deploy
 ### Message Format
 
 Deployment notifications include:
-- Status (success/failure)
-- Environment (staging/production)
-- Branch/version deployed
-- Commit hash
-- Deploying user
+* Status (success/failure)
+* Environment (staging/production)
+* Branch/version deployed
+* Commit hash
+* Deploying user
 
 ---
 
@@ -194,6 +197,7 @@ For additional protection, create environments:
 ### Production Protection Rules
 
 For production deployments:
+
 1. Create environment: `production`
 2. Enable **Require reviewers before deploying**
 3. Add team members as reviewers
@@ -232,20 +236,20 @@ For production deployments:
 ## Security Best Practices
 
 ### ✅ DO
-- Use strong SSH keys (4096-bit RSA)
-- Rotate keys every 90 days
-- Use separate keys for staging/production
-- Restrict SSH key permissions (600)
-- Store SSH keys securely locally
-- Use RBAC for GitHub access
+* Use strong SSH keys (4096-bit RSA)
+* Rotate keys every 90 days
+* Use separate keys for staging/production
+* Restrict SSH key permissions (600)
+* Store SSH keys securely locally
+* Use RBAC for GitHub access
 
 ### ❌ DON'T
-- Store secrets in code or `.env` files
-- Use same SSH key for all environments
-- Share private keys via email/chat
-- Commit `.env` or key files to GitHub
-- Use weak passwords for backup user
-- Log or echo secret values
+* Store secrets in code or `.env` files
+* Use same SSH key for all environments
+* Share private keys via email/chat
+* Commit `.env` or key files to GitHub
+* Use weak passwords for backup user
+* Log or echo secret values
 
 ---
 
@@ -295,15 +299,16 @@ For production deployments:
 
 ### Regular Updates
 
-- [ ] Rotate SSH keys quarterly
-- [ ] Review secret access logs monthly
-- [ ] Update staging/production servers
-- [ ] Test backup restoration quarterly
-- [ ] Verify Slack webhook availability
+* [ ] Rotate SSH keys quarterly
+* [ ] Review secret access logs monthly
+* [ ] Update staging/production servers
+* [ ] Test backup restoration quarterly
+* [ ] Verify Slack webhook availability
 
 ### Audit Trail
 
 All secret access is logged in GitHub:
+
 1. Go to **Settings** → **Audit log**
 2. Filter by type: "secret"
 3. Review recent access
@@ -321,14 +326,15 @@ All secret access is logged in GitHub:
 | PRODUCTION_USER | CI/CD | Yes | username |
 | PRODUCTION_SSH_KEY | CI/CD | Yes | private key |
 | DATABASE_URL | CI/CD | Yes | postgresql://... |
-| SLACK_WEBHOOK | CI/CD | No | https://hooks... |
+| SLACK_WEBHOOK | CI/CD | No | <https://hooks>... |
 
 ---
 
 ## Support
 
 For issues setting up secrets:
-1. Check GitHub Docs: https://docs.github.com/en/actions/security-guides/encrypted-secrets
+
+1. Check GitHub Docs: <https://docs.github.com/en/actions/security-guides/encrypted-secrets>
 2. Review workflow logs in Actions tab
 3. Test SSH locally before adding to GitHub
 4. Verify all required secrets are added

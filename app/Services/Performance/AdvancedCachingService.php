@@ -92,14 +92,16 @@ final class AdvancedCachingService
                 return unserialize($data);
             }
 
-            return null;
+            throw new \RuntimeException("Cache miss for key: {$key}");
 
+        } catch (\RuntimeException $e) {
+            throw $e;
         } catch (\Throwable $e) {
             Log::channel('performance')->warning('Cache get failed', [
                 'key' => $key,
                 'error' => $e->getMessage()
             ]);
-            return null;
+            throw new \RuntimeException("Cache get failed for key: {$key}", 0, $e);
         }
     }
 

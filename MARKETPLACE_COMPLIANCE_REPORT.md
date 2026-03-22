@@ -2,6 +2,7 @@
 ════════════════════════════════════════
 
 ✅ ПОЛНЫЕ ВЕРТИКАЛИ (Resource + Pages + Model):
+
   1. B2BInvoiceResource - ✅ (4/4 Pages + Resource + Model)
   2. B2BSupplyOfferResource - ✅ (4/4 Pages + Resource + Model)
   3. BeautySalonResource - ✅ (4/4 Pages + Resource + Model)
@@ -17,8 +18,9 @@
   13. EducationCourseResource - ✅ (4/4 Pages + Resource + Model)
 
 🟡 PARTIAL IMPLEMENTATIONS:
-  - Clinic (subfolder variant) - ✅ with proper table actions
-  - Beauty (subfolder variant) - ✅ with proper Pages
+
+- Clinic (subfolder variant) - ✅ with proper table actions
+- Beauty (subfolder variant) - ✅ with proper Pages
 
 ❌ TODO/STUBS:
   (All marketplace verticals are now complete)
@@ -26,28 +28,31 @@
 ════════════════════════════════════════
 
 📊 PAGE COMPLIANCE STATUS:
-  - List Pages: All have Guard, LogManager, Gate, authorizeAccess, audit logging ✅
-  - Create Pages: All have rate limiting, transactions, whitelist validation ✅
-  - Show Pages: All have authorization checks, audit logging ✅
-  - Edit Pages: All have field tracking, transactions, audit logging ✅
+
+- List Pages: All have Guard, LogManager, Gate, authorizeAccess, audit logging ✅
+- Create Pages: All have rate limiting, transactions, whitelist validation ✅
+- Show Pages: All have authorization checks, audit logging ✅
+- Edit Pages: All have field tracking, transactions, audit logging ✅
 
 ════════════════════════════════════════
 
 🔧 PENDING TASKS:
 
 1️⃣  Create B2B Panel - move B2B Resources to separate business-only section
-   - B2BInvoiceResource → /b2b/invoices
-   - B2BSupplyOfferResource → /b2b/supply
-   - InventoryResource (NEW) → /b2b/inventory
-   - PayrollResource (NEW) → /b2b/payroll
-   - HRResource (NEW) → /b2b/personnel
-   - NewsletterResource (NEW) → /b2b/communications
+
+- B2BInvoiceResource → /b2b/invoices
+- B2BSupplyOfferResource → /b2b/supply
+- InventoryResource (NEW) → /b2b/inventory
+- PayrollResource (NEW) → /b2b/payroll
+- HRResource (NEW) → /b2b/personnel
+- NewsletterResource (NEW) → /b2b/communications
 
 2️⃣  Create supporting Models & Migrations for NEW B2B sections:
-   - Inventory (StockMovement, Warehouse)
-   - Payroll (PayslipItem, PaymentSchedule)
-   - HR (EmployeeRecord, LeaveRequest)
-   - Newsletter (CampaignSender, SubscriptionList)
+
+- Inventory (StockMovement, Warehouse)
+- Payroll (PayslipItem, PaymentSchedule)
+- HR (EmployeeRecord, LeaveRequest)
+- Newsletter (CampaignSender, SubscriptionList)
 
 3️⃣  Create Policies & Seeders for all B2B resources
 
@@ -68,6 +73,7 @@ B2B Panel Structure:
     └── NewsletterResource (Internal Messaging)
 
 Access Control:
+
 - Role-based: Only 'business' and 'admin' roles
 - Permission: 'access_b2b_panel' required
 - Tenant-scoped: Multi-tenancy isolation via stancl/tenancy

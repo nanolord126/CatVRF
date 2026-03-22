@@ -12,6 +12,10 @@ use Illuminate\Support\Facades\Log;
 
 final class B2BPetController
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function storefronts(): JsonResponse
     {
         $storefronts = B2BPetStorefront::where('tenant_id', tenant()->id)
@@ -30,7 +34,8 @@ final class B2BPetController
     public function createStorefront(Request $request): JsonResponse
     {
         try {
-            FraudControlService::check();
+            $correlationId = Str::uuid()->toString();
+            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId ?? \Illuminate\Support\Str::uuid()->toString());
 
             $validated = $request->validate([
                 'company_name' => 'required|string|max:255',
@@ -39,8 +44,6 @@ final class B2BPetController
                 'wholesale_discount' => 'nullable|numeric|min:0|max:100',
                 'min_order_amount' => 'numeric|min:1000',
             ]);
-
-            $correlationId = Str::uuid();
 
             return DB::transaction(function () use ($validated, $correlationId) {
                 $storefront = B2BPetStorefront::create([
@@ -77,7 +80,8 @@ final class B2BPetController
     public function createOrder(Request $request): JsonResponse
     {
         try {
-            FraudControlService::check();
+            $correlationId = Str::uuid()->toString();
+            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
             $validated = $request->validate([
                 'storefront_id' => 'required|exists:b2b_pet_storefronts,id',
@@ -86,7 +90,7 @@ final class B2BPetController
                 'items.*.quantity' => 'required|integer|min:1',
             ]);
 
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             return DB::transaction(function () use ($validated, $correlationId) {
                 $storefront = B2BPetStorefront::findOrFail($validated['storefront_id']);

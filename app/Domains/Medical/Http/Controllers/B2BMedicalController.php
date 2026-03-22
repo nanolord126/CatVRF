@@ -12,6 +12,10 @@ use Illuminate\Support\Facades\Log;
 
 final class B2BMedicalController
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function storefronts(): JsonResponse
     {
         $storefronts = B2BMedicalStorefront::where('tenant_id', tenant()->id)
@@ -29,9 +33,10 @@ final class B2BMedicalController
 
     public function createStorefront(Request $request): JsonResponse
     {
-        try {
-            FraudControlService::check();
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
+        try {
             $validated = $request->validate([
                 'company_name' => 'required|string|max:255',
                 'inn' => 'required|string|unique:b2b_medical_storefronts',
@@ -39,8 +44,6 @@ final class B2BMedicalController
                 'wholesale_discount' => 'nullable|numeric|min:0|max:100',
                 'min_order_amount' => 'numeric|min:1000',
             ]);
-
-            $correlationId = Str::uuid();
 
             return DB::transaction(function () use ($validated, $correlationId) {
                 $storefront = B2BMedicalStorefront::create([
@@ -76,17 +79,16 @@ final class B2BMedicalController
 
     public function createOrder(Request $request): JsonResponse
     {
-        try {
-            FraudControlService::check();
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
+        try {
             $validated = $request->validate([
                 'storefront_id' => 'required|exists:b2b_medical_storefronts,id',
                 'items' => 'required|array|min:1',
                 'items.*.product_id' => 'required|integer',
                 'items.*.quantity' => 'required|integer|min:1',
             ]);
-
-            $correlationId = Str::uuid();
 
             return DB::transaction(function () use ($validated, $correlationId) {
                 $storefront = B2BMedicalStorefront::findOrFail($validated['storefront_id']);

@@ -9,6 +9,7 @@
 ## 📋 Components Created (11 files)
 
 ### Domain Policies (6 files)
+
 | Policy | Domain | Resource | Actions |
 |--------|--------|----------|---------|
 | `TaxiRidePolicy` | Auto | TaxiRide | view, create, accept, complete, rate, cancel, update, delete |
@@ -19,11 +20,13 @@
 | `InventoryItemPolicy` | Inventory | InventoryItem | view, create, update, adjustStock, deductStock, viewHistory, delete, import, export |
 
 ### Authorization Configuration (1 file)
+
 | Component | Purpose | Status |
 |-----------|---------|--------|
 | `config/rbac.php` | RBAC roles, abilities, hierarchy, vertical-specific roles | ✅ Created |
 
 ### Middleware (3 files)
+
 | Middleware | Purpose | Status |
 |------------|---------|--------|
 | `CheckTenantPolicy` | Verify tenant scoping and basic access | ✅ Created |
@@ -31,6 +34,7 @@
 | `CheckGateAbility` | Check gate-based abilities | ✅ Created |
 
 ### Service Provider (1 file - to be updated)
+
 | Component | Purpose | Status |
 |-----------|---------|--------|
 | `AuthServiceProvider.php` | Register all policies and gates | ⏳ Requires update |
@@ -70,6 +74,7 @@
 ## 🔑 Key Authorization Features
 
 ### Tenant Scoping
+
 ```php
 // All policies enforce tenant_id matching
 if ($ride->tenant_id !== $user->tenant_id) {
@@ -78,6 +83,7 @@ if ($ride->tenant_id !== $user->tenant_id) {
 ```
 
 ### Business Group Isolation
+
 ```php
 // Multi-location businesses isolated by business_group_id
 if ($order->restaurant_id !== $user->current_business_group_id) {
@@ -86,6 +92,7 @@ if ($order->restaurant_id !== $user->current_business_group_id) {
 ```
 
 ### Status-Based Permissions
+
 ```php
 // Only allow actions on specific statuses
 if ($ride->status !== 'pending') {
@@ -94,6 +101,7 @@ if ($ride->status !== 'pending') {
 ```
 
 ### Role-Based Access
+
 ```php
 // Check specific role for action
 if ($user->id === $ride->driver_id && $user->hasRole('driver')) {
@@ -102,6 +110,7 @@ if ($user->id === $ride->driver_id && $user->hasRole('driver')) {
 ```
 
 ### Before Policy Hook
+
 ```php
 // Admins bypass all checks (but still logged)
 public function before(User $user, string $ability): bool|null
@@ -118,6 +127,7 @@ public function before(User $user, string $ability): bool|null
 ## 🚪 Gates Defined (26 total)
 
 ### Tenant-Level Gates (6)
+
 ```php
 Gate::define('view-tenant', ...)
 Gate::define('manage-tenant', ...)
@@ -128,6 +138,7 @@ Gate::define('view-audit-log', ...)
 ```
 
 ### Vertical-Specific Gates (11)
+
 ```php
 // Auto
 Gate::define('manage-drivers', ...)
@@ -152,6 +163,7 @@ Gate::define('import-inventory', ...)
 ```
 
 ### System Gates (9)
+
 ```php
 Gate::define('view-payments', ...)
 Gate::define('process-refund', ...)
@@ -164,6 +176,7 @@ Gate::define('view-fraud-ml', ...)
 ```
 
 ### Filament Panel Gates (3)
+
 ```php
 Gate::define('access-admin-panel', ...)
 Gate::define('access-business-panel', ...)
@@ -175,6 +188,7 @@ Gate::define('access-employee-panel', ...)
 ## 📝 Policy Action Methods by Domain
 
 ### Auto Vertical (TaxiRide)
+
 - ✅ view — driver/passenger/manager
 - ✅ create — passenger/manager
 - ✅ accept — driver only
@@ -185,6 +199,7 @@ Gate::define('access-employee-panel', ...)
 - ✅ delete — admin only
 
 ### Beauty Vertical (Appointment)
+
 - ✅ view — client/master/manager
 - ✅ create — client/manager
 - ✅ update — master/client (reschedule)/manager
@@ -196,6 +211,7 @@ Gate::define('access-employee-panel', ...)
 - ✅ editNotes — master/manager
 
 ### Food Vertical (RestaurantOrder)
+
 - ✅ view — customer/restaurant staff/manager
 - ✅ create — customer/manager
 - ✅ updateStatus — restaurant staff only
@@ -208,6 +224,7 @@ Gate::define('access-employee-panel', ...)
 - ✅ viewKDS — restaurant staff only
 
 ### Hotels Vertical (Booking)
+
 - ✅ view — guest/hotel staff/manager
 - ✅ create — guest/manager
 - ✅ update — guest (before checkin)/hotel staff/manager
@@ -220,6 +237,7 @@ Gate::define('access-employee-panel', ...)
 - ✅ modifyPrice — hotel manager (pending payment only)
 
 ### Payments Vertical (PaymentTransaction)
+
 - ✅ view — merchant/customer/accountant
 - ✅ create — customer/manager
 - ✅ refund — merchant/accountant (captured only)
@@ -231,6 +249,7 @@ Gate::define('access-employee-panel', ...)
 - ✅ viewFraudDetails — accountant/admin only
 
 ### Inventory System (InventoryItem)
+
 - ✅ view — business owner/manager/accountant
 - ✅ create — business owner/manager
 - ✅ update — business owner/manager
@@ -353,6 +372,7 @@ User Request
 ## 🔄 Integration with Previous Phases
 
 ### Phase 7 Events
+
 ```
 Event: RideCreated
   ↓
@@ -364,6 +384,7 @@ Authorization: TaxiRidePolicy checks access
 ```
 
 ### Phase 8 Jobs
+
 ```
 Job: DailyPayoutJob
   ↓
@@ -375,6 +396,7 @@ Audit Log: Logged with correlation_id
 ```
 
 ### Phase 6 Services
+
 ```
 Service: InventoryManagementService
   ↓
@@ -390,6 +412,7 @@ Tenant Scoping: business_group_id matched
 ## 🎯 Next Steps
 
 ### Phase 10: Integration Tests
+
 - End-to-end authorization tests
 - Policy verification for all domains
 - Gate ability tests
@@ -397,6 +420,7 @@ Tenant Scoping: business_group_id matched
 - Cross-tenant access prevention tests
 
 ### Production Deployment
+
 - Role seeding
 - Permission caching setup
 - Filament authorization integration

@@ -3,6 +3,7 @@
 ## Verified Config Files
 
 ### 1. Core Configuration
+
 - **config/app.php** ✅
   - Uses DopplerService for: APP_NAME, APP_ENV, APP_DEBUG, APP_URL, APP_LOCALE, APP_KEY
   - Status: CLEAN
@@ -28,6 +29,7 @@
   - Status: CLEAN
 
 ### 2. Tenancy & Multi-tenant
+
 - **config/tenancy.php** ✅
   - Tenant model: App\Models\Tenant
   - ID Generator: UUID
@@ -36,6 +38,7 @@
   - Status: CLEAN
 
 ### 3. Payments & Fiscal
+
 - **config/payments.php** ✅
   - Default: tinkoff
   - Drivers: tinkoff, tochka, sber
@@ -49,12 +52,14 @@
   - Status: CLEAN
 
 ### 4. Third-party Services
+
 - **config/services.php** ✅
   - Services: postmark, resend, ses, slack
   - Uses DopplerService for: POSTMARK_API_KEY, RESEND_API_KEY, AWS_*, SLACK_*
   - Status: CLEAN
 
 ### 5. Framework Features
+
 - **config/session.php** - Uses Laravel defaults
 - **config/mail.php** - Uses MAIL_* env vars
 - **config/queue.php** - Uses QUEUE_* env vars
@@ -67,7 +72,9 @@
 ## Critical Issues Found & Fixed
 
 ### Issue 1: TenantSecretManager.php ❌ → ✅
+
 **Problem**: Config paths were incorrect
+
 ```php
 // WRONG:
 Config::set('payments.gateways.tinkoff.terminal_id', ...)
@@ -77,10 +84,13 @@ Config::set('payments.ofd.atol.login', ...)
 Config::set('payments.drivers.tinkoff.terminal_id', ...)
 Config::set('fiscal.drivers.atol.login', ...)
 ```
+
 **Fixed**: Updated paths to match actual config/payments.php and config/fiscal.php structure
 
 ### Issue 2: AtolService.php ❌ → ✅
+
 **Problem**: Config path referenced wrong structure
+
 ```php
 // WRONG:
 config('payments.ofd.atol.login')
@@ -88,10 +98,13 @@ config('payments.ofd.atol.login')
 // CORRECT:
 config('fiscal.drivers.atol.login')
 ```
+
 **Fixed**: Updated to reference fiscal config, not payments
 
 ### Issue 3: Cyrillic Encoding Issues ❌ → ✅
+
 **Problem**: Multiple files had mojibake Cyrillic comments causing encoding issues
+
 - ProductionBootstrapServiceProvider.php
 - RateLimiterService.php
 - TenantSecretManager.php
@@ -135,6 +148,7 @@ Domain-Specific Configs:
 ## Config Usage in Application Code
 
 ### Core Services Using Config
+
 1. **DopplerService** (global secrets manager)
    - Reads all env vars via config/app.php, config/database.php, etc.
    - Status: ✅ CLEAN
@@ -156,6 +170,7 @@ Domain-Specific Configs:
    - Status: ✅ CLEAN
 
 ### Filament Resources Using Config
+
 - CreateConstruction.php: config('filament.rate_limits.create_construction', 10)
 - Status: ✅ CLEAN
 
@@ -174,6 +189,7 @@ Application Services (use Config::get())
 ```
 
 Example: Tinkoff Payment Terminal
+
 ```
 1. Doppler: TINKOFF_TERMINAL_ID = "1716383938760904"
 2. config/payments.php: 'terminal_id' => DopplerService::get('TINKOFF_TERMINAL_ID')
@@ -184,17 +200,20 @@ Example: Tinkoff Payment Terminal
 ## Recommendations
 
 ### ✅ Complete
+
 - All config files use DopplerService for secrets (Canon 2026)
 - Multi-tenant scoping via TenantSecretManager
 - Proper config key naming conventions
 - No hardcoded secrets in code
 
 ### ⚠️ Attention
+
 1. Ensure Doppler environment variables are set for all required services
 2. Test tenant-specific config overrides in TenantSecretManager
 3. Verify all config() calls match actual config file structure
 
 ## Summary
+
 - Total config files: 20 ✅
 - Real issues found: 2 ❌ → ✅ FIXED
 - Encoding issues: 4 ❌ → ✅ FIXED

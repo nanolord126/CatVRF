@@ -2,8 +2,8 @@
 
 namespace App\Domains\Tickets\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use App\Domains\Tickets\Models\{TicketSale, Event, TicketType};
 use App\Domains\Tickets\Events\TicketSaleCreated;
@@ -12,6 +12,10 @@ use Throwable;
 
 final class TicketSalesService
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function createSale(
         int $eventId,
         int $ticketTypeId,
@@ -19,10 +23,7 @@ final class TicketSalesService
         int $buyerId,
         string $correlationId = '',
     ): TicketSale {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'createSale'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createSale', ['domain' => __CLASS__]);
+
 
         try {
             Log::channel('audit')->info('Creating ticket sale', [
@@ -32,6 +33,15 @@ final class TicketSalesService
                 'buyer_id' => $buyerId,
                 'correlation_id' => $correlationId,
             ]);
+
+            $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
 
             $sale = DB::transaction(function () use ($eventId, $ticketTypeId, $quantity, $buyerId, $correlationId) {
                 $event = Event::findOrFail($eventId);
@@ -86,10 +96,7 @@ final class TicketSalesService
 
     public function confirmPayment(TicketSale $sale, string $transactionId, string $correlationId = ''): TicketSale
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'confirmPayment'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL confirmPayment', ['domain' => __CLASS__]);
+
 
         try {
             Log::channel('audit')->info('Confirming ticket sale payment', [
@@ -120,10 +127,7 @@ final class TicketSalesService
 
     public function refundSale(TicketSale $sale, string $reason = '', string $correlationId = ''): bool
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'refundSale'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL refundSale', ['domain' => __CLASS__]);
+
 
         try {
             Log::channel('audit')->info('Refunding ticket sale', [
@@ -132,7 +136,15 @@ final class TicketSalesService
                 'correlation_id' => $correlationId,
             ]);
 
-            DB::transaction(function () use ($sale) {
+                        $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
+DB::transaction(function () use ($sale) {
                 $sale->update([
                     'sale_status' => 'refunded',
                     'refunded_at' => now(),

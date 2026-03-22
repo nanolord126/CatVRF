@@ -4,7 +4,6 @@ namespace App\Filament\Tenant\Resources\UserCrmResource\Pages;
 
 use App\Filament\Tenant\Resources\UserCrmResource;
 use Filament\Actions;
-use Filament\Facades\Filament;
 use Filament\Infolists;
 use Filament\Infolists\Infolist;
 use Filament\Resources\Pages\ViewRecord;
@@ -27,10 +26,10 @@ final class ViewUserCrm extends ViewRecord
                         ->maxLength(500),
                 ])
                 ->action(function (array $data) {
-                    $correlationId = (string) \Illuminate\Support\Str::uuid();
+                    $correlationId = (string) \Illuminate\Support\Str::uuid()->toString();
                     \Illuminate\Support\Facades\Log::channel('audit')->info('CRM: Send notification', [
                         'user_id' => $this->record->id,
-                        'tenant_id' => Filament::getTenant()?->id,
+                        'tenant_id' => filament()->getTenant()?->id,
                         'correlation_id' => $correlationId,
                     ]);
                     // Notification::send($this->record, new CrmMessageNotification($data['message']));

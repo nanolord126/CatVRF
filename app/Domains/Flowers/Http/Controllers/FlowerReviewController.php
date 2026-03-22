@@ -4,6 +4,7 @@ namespace App\Domains\Flowers\Http\Controllers;
 
 use App\Domains\Flowers\Models\FlowerOrder;
 use App\Domains\Flowers\Models\FlowerReview;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -13,13 +14,14 @@ use Symfony\Component\HttpFoundation\Response;
 
 final class FlowerReviewController
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function store(int $orderId, Request $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
-
-        $correlationId = (string)Str::uuid();
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $order = FlowerOrder::query()->findOrFail($orderId);
@@ -89,7 +91,7 @@ final class FlowerReviewController
 
     public function shopReviews(int $shopId): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $reviews = FlowerReview::query()
@@ -114,11 +116,8 @@ final class FlowerReviewController
 
     public function update(int $id, Request $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
-
-        $correlationId = (string)Str::uuid();
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $review = FlowerReview::query()->findOrFail($id);
@@ -165,11 +164,8 @@ final class FlowerReviewController
 
     public function destroy(int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
-
-        $correlationId = (string)Str::uuid();
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $review = FlowerReview::query()->findOrFail($id);

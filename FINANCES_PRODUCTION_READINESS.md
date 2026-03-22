@@ -6,6 +6,7 @@
 ## Обновленные файлы
 
 ### Controllers
+
 - ✅ `app/Domains/Finances/Http/Controllers/SbpWebhookController.php`
   - Добавлена валидация подписи вебхука (HMAC-SHA256)
   - Реализована обработка ошибок и логирование
@@ -13,6 +14,7 @@
   - Безопасность: 401 при неверной подписи, 500 при ошибке обработки
 
 ### Models
+
 - ✅ `app/Domains/Finances/Models/PaymentTransaction.php`
   - Добавлены константы статусов платежей
   - Реализованы методы `isSuccessful()` и `updateStatus()`
@@ -37,6 +39,7 @@
     - Отслеживание качества моделей
 
 ### Interfaces
+
 - ✅ `app/Domains/Finances/Interfaces/PaymentGatewayInterface.php`
   - Полная документация каждого метода
   - Примеры возвращаемых значений
@@ -51,6 +54,7 @@
   - Поддержка: Яндекс.Касса, ККМЛ 3, СКБ-Контур
 
 ### Services
+
 - ✅ `app/Domains/Finances/Services/PaymentService.php`
   - Метод `initPayment()`: Инициация платежей с валидацией
   - Метод `handleWebhook()`: Обработка вебхуков с идемпотентностью
@@ -58,12 +62,14 @@
   - Метод `distributeFunds()`: Распределение средств (атомарная операция)
 
 ### Policies
+
 - ✅ `app/Policies/PaymentTransactionPolicy.php`
   - Методы: `viewAny()`, `view()`, `create()`, `update()`, `refund()`, `delete()`
   - Multi-tenant scoping проверка
   - Проверка статуса платежа перед возвратом
 
 ### Database
+
 - ✅ `database/migrations/2026_03_10_000000_create_finances_tables.php`
   - Полная миграция всех таблиц
   - Правильные типы данных и индексы
@@ -76,17 +82,20 @@
     - `ml_model_predictions` (предсказания)
 
 ### Factories
+
 - ✅ `database/factories/PaymentTransactionFactory.php`
   - Реалистичные тестовые данные
   - States: `settled()`, `failed()`, `refunded()`
 
 ### Seeders
+
 - ✅ `database/seeders/FinancesSeeder.php`
   - Полное заполнение БД тестовыми данными
   - Создание платежей, карт и подписок
   - Реалистичные данные для каждого типа карты
 
 ### Documentation
+
 - ✅ `app/Domains/Finances/README.md`
   - Полная документация модуля
   - Примеры использования
@@ -100,6 +109,7 @@
   - Примеры интеграции (Python, JavaScript, cURL)
 
 ### Configuration
+
 - ✅ `config/payments.php`
   - Добавлен `webhook_secret` для валидации подписей
 
@@ -123,20 +133,24 @@
 ## Безопасность
 
 ### ✅ Валидация
+
 - Подпись вебхука (HMAC-SHA256)
 - Входные данные платежа
 - Статусы платежей
 
 ### ✅ Multi-tenant
+
 - Проверка `tenant_id` в Policy
 - Скопирование `tenant_id` при создании платежа
 - Изоляция данных между тенантами
 
 ### ✅ Idempotency
+
 - Проверка на дублирование платежей в `handleWebhook()`
 - Статус уже обработанного платежа не изменяется
 
 ### ✅ Logging
+
 - `correlation_id` для отслеживания цепочки
 - Логирование в канал `payments`
 - Сентри для критических ошибок

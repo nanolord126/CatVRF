@@ -2,8 +2,8 @@
 
 namespace App\Domains\Courses\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use App\Domains\Courses\Models\Enrollment;
 use App\Domains\Courses\Models\LessonProgress;
@@ -13,16 +13,17 @@ use Throwable;
 
 final class ProgressTrackingService
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function trackLessonWatch(
         int $enrollmentId,
         int $lessonId,
         int $watchTimeSeconds,
         string $correlationId = '',
     ): LessonProgress {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'trackLessonWatch'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL trackLessonWatch', ['domain' => __CLASS__]);
+
 
         try {
             Log::channel('audit')->info('Tracking lesson watch time', [
@@ -31,6 +32,15 @@ final class ProgressTrackingService
                 'watch_time' => $watchTimeSeconds,
                 'correlation_id' => $correlationId,
             ]);
+
+            $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
 
             $progress = DB::transaction(function () use ($enrollmentId, $lessonId, $watchTimeSeconds, $correlationId) {
                 $progress = LessonProgress::firstOrCreate([
@@ -73,10 +83,7 @@ final class ProgressTrackingService
         int $lessonId,
         string $correlationId = '',
     ): LessonProgress {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'markLessonComplete'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL markLessonComplete', ['domain' => __CLASS__]);
+
 
         try {
             Log::channel('audit')->info('Marking lesson as complete', [
@@ -84,6 +91,15 @@ final class ProgressTrackingService
                 'lesson_id' => $lessonId,
                 'correlation_id' => $correlationId,
             ]);
+
+            $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
 
             $progress = DB::transaction(function () use ($enrollmentId, $lessonId, $correlationId) {
                 $progress = LessonProgress::where('enrollment_id', $enrollmentId)
@@ -128,10 +144,7 @@ final class ProgressTrackingService
 
     public function getEnrollmentProgress(int $enrollmentId, string $correlationId = ''): array
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'getEnrollmentProgress'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getEnrollmentProgress', ['domain' => __CLASS__]);
+
 
         try {
             Log::channel('audit')->info('Getting enrollment progress', [

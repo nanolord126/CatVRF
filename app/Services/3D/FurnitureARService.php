@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-namespace App\Services\3D;
+namespace App\Services\ThreeD;
 
 use Illuminate\Support\Str;
 
@@ -9,7 +9,7 @@ final class FurnitureARService
     public function generateFurniture3DModel(array $furnitureData): array
     {
         return [
-            'id' => Str::uuid(),
+            'id' => Str::uuid()->toString(),
             'product_id' => $furnitureData['product_id'],
             'type' => $furnitureData['type'] ?? 'chair', // chair, table, sofa, bed, cabinet
             'dimensions' => [
@@ -60,3 +60,4 @@ final class FurnitureARService
         return "/3d-models/furniture/{$furnitureData['type']}/{$furnitureData['sku']}.glb";
     }
 }
+

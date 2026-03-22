@@ -88,13 +88,6 @@ final class WebhookController extends Controller
             // Извлечь информацию о платеже из разных провайдеров
             $paymentInfo = $this->extractPaymentInfo($provider, $data);
 
-            if (!$paymentInfo) {
-                throw new InvalidPayloadException(
-                    'Invalid payload format',
-                    400
-                );
-            }
-
             // Найти платёж в БД
             $payment = \App\Domains\Finances\Models\PaymentTransaction::where(
                 'provider_payment_id',
@@ -174,23 +167,23 @@ final class WebhookController extends Controller
     /**
      * Извлечь информацию о платеже из вебхука.
      */
-    private function extractPaymentInfo(string $provider, array $data): ?array
+    private function extractPaymentInfo(string $provider, array $data): array
     {
         return match ($provider) {
             'tinkoff' => $this->extractTinkoffInfo($data),
             'sber' => $this->extractSberInfo($data),
             'sbp' => $this->extractSbpInfo($data),
-            default => null,
+            default => throw new InvalidPayloadException("Unknown payment provider: {$provider}", 400),
         };
     }
 
     /**
      * Парсинг Tinkoff вебхука.
      */
-    private function extractTinkoffInfo(array $data): ?array
+    private function extractTinkoffInfo(array $data): array
     {
         if (!isset($data['OrderId'])) {
-            return null;
+            throw new InvalidPayloadException('Invalid Tinkoff webhook payload: missing OrderId', 400);
         }
 
         $statusMap = [
@@ -211,10 +204,10 @@ final class WebhookController extends Controller
     /**
      * Парсинг Sber вебхука.
      */
-    private function extractSberInfo(array $data): ?array
+    private function extractSberInfo(array $data): array
     {
         if (!isset($data['ordernumber'])) {
-            return null;
+            throw new InvalidPayloadException('Invalid Sber webhook payload: missing ordernumber', 400);
         }
 
         $statusMap = [
@@ -234,10 +227,10 @@ final class WebhookController extends Controller
     /**
      * Парсинг СБП вебхука.
      */
-    private function extractSbpInfo(array $data): ?array
+    private function extractSbpInfo(array $data): array
     {
         if (!isset($data['order_id'])) {
-            return null;
+            throw new InvalidPayloadException('Invalid SBP webhook payload: missing order_id', 400);
         }
 
         $statusMap = [

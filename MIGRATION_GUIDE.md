@@ -55,26 +55,31 @@ modules/Beauty/
 ### 🚀 Запуск в development
 
 #### 1. Миграция БД
+
 ```bash
 php artisan migrate
 ```
 
 #### 2. Seeder с тестовыми данными
+
 ```bash
 php artisan db:seed --class=BeautySeeder
 ```
 
 Создаст:
+
 - 1 тестовый салон (Test Beauty Salon)
 - 3 услуги (Маникюр 500р, Педикюр 700р, Массаж 2000р)
 - 5 тестовых бронирований
 
 #### 3. Запуск Octane (Swoole)
+
 ```bash
 php artisan octane:start --watch
 ```
 
 #### 4. Запуск Horizon (очереди)
+
 ```bash
 php artisan horizon
 ```
@@ -95,6 +100,7 @@ php artisan test tests/Feature/Beauty/BookingTest::test_customer_can_create_book
 ### 💳 Платёжный поток
 
 #### 1. Инициация платежа
+
 ```php
 use Modules\Beauty\Services\PaymentService;
 
@@ -112,11 +118,13 @@ $paymentData = $paymentService->initiatePayment($booking);
 ```
 
 #### 2. Платёж в Tinkoff
+
 ```
 Customer -> Payment URL -> Tinkoff -> (pays) -> Success/Failed Redirect
 ```
 
 #### 3. Webhook callback
+
 ```
 Tinkoff -> POST /beauty/payment/callback
 -> Verify signature
@@ -126,6 +134,7 @@ Tinkoff -> POST /beauty/payment/callback
 ```
 
 #### 4. Wallet распределение
+
 ```
 Amount: 1500р
 ├─ Salon: 1200р (80%) -> wallet()->deposit()
@@ -135,6 +144,7 @@ Amount: 1500р
 ### 🔧 Конфигурация
 
 #### .env (развернуть перед запуском)
+
 ```env
 # Tinkoff Sandbox (для тестирования)
 TINKOFF_API_KEY=1716383938760904
@@ -148,6 +158,7 @@ CACHE_DRIVER=redis
 ```
 
 #### config/payments.php
+
 ```php
 return [
     'tinkoff' => [
@@ -302,4 +313,3 @@ POST /beauty/payment/initiate
 - PRODUCTION_CHECKLIST.md - готовность к production
 - CLEANUP_DELETION_LOG.txt - список удалённых файлов
 - tests/Feature/Beauty/ - примеры тестирования
-

@@ -32,7 +32,7 @@ final class LowStockNotificationJob implements ShouldQueue
 
     public function __construct()
     {
-        $this->correlationId = (string) Str::uuid();
+        $this->correlationId = (string) Str::uuid()->toString();
     }
 
     public function handle(): void

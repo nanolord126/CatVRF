@@ -4,17 +4,20 @@ namespace App\Domains\Travel\Http\Controllers;
 
 use App\Domains\Travel\Models\TravelFlight;
 use App\Domains\Travel\Services\FlightService;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
 
-final class TravelFlightController
+final class TravelFlightController extends Controller
 {
     public function __construct(
         private readonly FlightService $flightService,
+        private readonly FraudControlService $fraudControlService,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -77,11 +80,8 @@ final class TravelFlightController
 
     public function store(Request $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
-
         $correlationId = $request->get('correlation_id', Str::uuid()->toString());
+        $this->fraudControlService->check(auth()->id() ?? 0, 'flight_store', 0, $request->ip(), null, $correlationId);
 
         try {
             $request->validate([
@@ -96,20 +96,21 @@ final class TravelFlightController
                 'price' => 'required|numeric|min:0',
             ]);
 
-            $flight = DB::transaction(function () use ($request, $correlationId) {
+            $validated = $request->all();
+            $flight = DB::transaction(function () use ($validated, $correlationId) {
                 return TravelFlight::create([
                     'tenant_id' => tenant()->id,
-                    'airline' => $request->get('airline'),
-                    'flight_number' => $request->get('flight_number'),
-                    'departure_airport' => $request->get('departure_airport'),
-                    'arrival_airport' => $request->get('arrival_airport'),
-                    'departure_time' => $request->get('departure_time'),
-                    'arrival_time' => $request->get('arrival_time'),
-                    'duration_minutes' => $request->get('duration_minutes', 0),
-                    'class' => $request->get('class'),
-                    'available_seats' => $request->get('available_seats'),
-                    'price' => $request->get('price'),
-                    'commission_amount' => $request->get('price') * 0.14,
+                    'airline' => ($validated['airline'] ?? null),
+                    'flight_number' => ($validated['flight_number'] ?? null),
+                    'departure_airport' => ($validated['departure_airport'] ?? null),
+                    'arrival_airport' => ($validated['arrival_airport'] ?? null),
+                    'departure_time' => ($validated['departure_time'] ?? null),
+                    'arrival_time' => ($validated['arrival_time'] ?? null),
+                    'duration_minutes' => ($validated['duration_minutes'] ?? 0),
+                    'class' => ($validated['class'] ?? null),
+                    'available_seats' => ($validated['available_seats'] ?? null),
+                    'price' => ($validated['price'] ?? null),
+                    'commission_amount' => ($validated['price'] ?? null) * 0.14,
                     'status' => 'available',
                     'correlation_id' => $correlationId,
                     'uuid' => Str::uuid(),
@@ -138,22 +139,20 @@ final class TravelFlightController
 
     public function update(Request $request, int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
-
         $correlationId = $request->get('correlation_id', Str::uuid()->toString());
+        $this->fraudControlService->check(auth()->id() ?? 0, 'flight_update', 0, $request->ip(), null, $correlationId);
 
         try {
             $flight = TravelFlight::where('tenant_id', tenant()->id)->findOrFail($id);
 
             $this->authorize('update', $flight);
 
-            $flight = DB::transaction(function () use ($request, $flight, $correlationId) {
+            $validated = $request->all();
+            $flight = DB::transaction(function () use ($validated, $flight, $correlationId) {
                 $flight->update([
-                    'available_seats' => $request->get('available_seats', $flight->available_seats),
-                    'price' => $request->get('price', $flight->price),
-                    'status' => $request->get('status', $flight->status),
+                    'available_seats' => ($validated['available_seats'] ?? $flight->available_seats),
+                    'price' => ($validated['price'] ?? $flight->price),
+                    'status' => ($validated['status'] ?? $flight->status),
                     'correlation_id' => $correlationId,
                 ]);
 
@@ -176,11 +175,8 @@ final class TravelFlightController
 
     public function destroy(int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
-
         $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'flight_destroy', 0, request()->ip(), null, $correlationId);
 
         try {
             $flight = TravelFlight::where('tenant_id', tenant()->id)->findOrFail($id);

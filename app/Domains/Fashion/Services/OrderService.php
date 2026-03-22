@@ -2,8 +2,8 @@
 
 namespace App\Domains\Fashion\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use App\Domains\Fashion\Events\OrderPlaced;
 use App\Domains\Fashion\Models\FashionOrder;
@@ -13,6 +13,10 @@ use Throwable;
 
 final class OrderService
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function createOrder(
         int $tenantId,
         int $storeId,
@@ -23,16 +27,22 @@ final class OrderService
         string $shippingAddress,
         ?string $correlationId = null,
     ): FashionOrder {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'createOrder'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createOrder', ['domain' => __CLASS__]);
+
 
         try {
-            $correlationId ??= Str::uuid();
+            $correlationId ??= Str::uuid()->toString();
             $discountAmount = 0;
             $commissionAmount = $subtotal * 0.14;
             $totalAmount = $subtotal + $shippingCost - $discountAmount;
+
+            $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
 
             $order = DB::transaction(function () use (
                 $tenantId,
@@ -48,7 +58,7 @@ final class OrderService
                 $correlationId,
             ) {
                 $order = FashionOrder::create([
-                    'uuid' => Str::uuid(),
+                    'uuid' => Str::uuid()->toString(),
                     'tenant_id' => $tenantId,
                     'fashion_store_id' => $storeId,
                     'customer_id' => $customerId,
@@ -94,15 +104,20 @@ final class OrderService
 
     public function cancelOrder(FashionOrder $order, string $reason, ?string $correlationId = null): void
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'cancelOrder'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL cancelOrder', ['domain' => __CLASS__]);
+
 
         try {
-            $correlationId ??= Str::uuid();
+            $correlationId ??= Str::uuid()->toString();
 
-            DB::transaction(function () use ($order, $reason, $correlationId) {
+                        $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
+DB::transaction(function () use ($order, $reason, $correlationId) {
                 $order->update([
                     'status' => 'cancelled',
                     'cancellation_reason' => $reason,
@@ -129,15 +144,20 @@ final class OrderService
 
     public function updateOrderStatus(FashionOrder $order, string $status, ?string $correlationId = null): void
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'updateOrderStatus'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL updateOrderStatus', ['domain' => __CLASS__]);
+
 
         try {
-            $correlationId ??= Str::uuid();
+            $correlationId ??= Str::uuid()->toString();
 
-            DB::transaction(function () use ($order, $status, $correlationId) {
+                        $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
+DB::transaction(function () use ($order, $status, $correlationId) {
                 $updateData = [
                     'status' => $status,
                     'correlation_id' => $correlationId,

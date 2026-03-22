@@ -7,6 +7,7 @@ namespace App\Domains\Photography\Http\Controllers;
 use App\Domains\Photography\Models\PhotoGallery;
 use App\Domains\Photography\Models\Photographer;
 use App\Domains\Photography\Services\GalleryService;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,7 +17,8 @@ use Illuminate\Support\Str;
 final class PhotoGalleryController
 {
 	public function __construct(
-		private readonly GalleryService $galleryService
+		private readonly GalleryService $galleryService,
+		private readonly FraudControlService $fraudControlService,
 	) {}
 
 	public function show(int $id): JsonResponse
@@ -124,9 +126,8 @@ final class PhotoGalleryController
 
 	public function store(Request $request): JsonResponse
 	{
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
 		try {
 			$this->authorize('create', PhotoGallery::class);
@@ -137,8 +138,6 @@ final class PhotoGalleryController
 				'gallery_type' => 'required|in:portfolio,session,showcase',
 				'is_public' => 'boolean',
 			]);
-
-			$correlationId = Str::uuid()->toString();
 
 			$gallery = $this->galleryService->createGallery(
 				array_merge($validated, [
@@ -164,9 +163,8 @@ final class PhotoGalleryController
 
 	public function update(int $id, Request $request): JsonResponse
 	{
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
 		try {
 			$gallery = PhotoGallery::findOrFail($id);
@@ -195,9 +193,8 @@ final class PhotoGalleryController
 
 	public function destroy(int $id): JsonResponse
 	{
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
 		try {
 			$gallery = PhotoGallery::findOrFail($id);

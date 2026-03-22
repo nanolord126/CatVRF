@@ -10,6 +10,10 @@ use Illuminate\Support\Str;
 
 final class EntertainmentVenueController
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function index(): JsonResponse
     {
         try {
@@ -55,13 +59,31 @@ final class EntertainmentVenueController
 
     public function store(): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
+        $fraudResult = $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            'operation',
+            0,
+            request()->ip(),
+            request()->header('X-Device-Fingerprint'),
+            $correlationId,
+        );
+
+        if ($fraudResult['decision'] === 'block') {
+            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                'correlation_id' => $correlationId,
+                'user_id'        => auth()->id(),
+                'score'          => $fraudResult['score'],
+            ]);
+            return response()->json([
+                'success'        => false,
+                'error'          => 'Операция заблокирована.',
+                'correlation_id' => $correlationId,
+            ], 403);
         }
 
         try {
             DB::transaction(function () {
-                $correlationId = Str::uuid();
+                $correlationId = Str::uuid()->toString();
 
                 $venue = EntertainmentVenue::create([
                     'tenant_id' => tenant('id'),
@@ -91,13 +113,31 @@ final class EntertainmentVenueController
 
     public function update(int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
+        $fraudResult = $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            'operation',
+            0,
+            request()->ip(),
+            request()->header('X-Device-Fingerprint'),
+            $correlationId,
+        );
+
+        if ($fraudResult['decision'] === 'block') {
+            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                'correlation_id' => $correlationId,
+                'user_id'        => auth()->id(),
+                'score'          => $fraudResult['score'],
+            ]);
+            return response()->json([
+                'success'        => false,
+                'error'          => 'Операция заблокирована.',
+                'correlation_id' => $correlationId,
+            ], 403);
         }
 
         try {
             $venue = EntertainmentVenue::findOrFail($id);
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             DB::transaction(function () use ($venue, $correlationId) {
                 $venue->update([
@@ -124,7 +164,7 @@ final class EntertainmentVenueController
     {
         try {
             $venue = EntertainmentVenue::findOrFail($id);
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             DB::transaction(function () use ($venue, $correlationId) {
                 $venue->delete();

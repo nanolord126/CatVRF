@@ -530,9 +530,9 @@ mysqldumpslow -s at /var/log/mysql/slow.log | head -20
 
 ## Support & Resources
 
-- **Documentation:** https://laravel.com/docs/octane
-- **Octane GitHub:** https://github.com/laravel/octane
-- **Community Forum:** https://laracasts.com/discuss
+- **Documentation:** <https://laravel.com/docs/octane>
+- **Octane GitHub:** <https://github.com/laravel/octane>
+- **Community Forum:** <https://laracasts.com/discuss>
 
 ---
 

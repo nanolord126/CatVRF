@@ -78,53 +78,68 @@
 ### Services Layer (35 total)
 
 ✅ **Auto Domain (2 services):**
+
 - `SurgeService` — динамическое ценообразование, surge 1.0–2.5x
 - `AutoInventoryService` — управление запчастями, hold/release/deduct
 
 ✅ **Beauty Domain (2 services):**
+
 - `ConsumableDeductionService` — списание расходников при услуге
 - `AppointmentService` — управление бронированием, напоминания
 
 ✅ **Food Domain (2 services):**
+
 - `DishConsumableService` — списание ингредиентов при заказе
 - `DeliverySurgeService` — surge pricing для доставки
 
 ✅ **Hotels Domain (1 service):**
+
 - `PayoutScheduleService` — выплата через 4 дня после выселения
 
 ✅ **Logistics Domain (1 service):**
+
 - `CourierService` — управление курьерами, маршруты
 
 ✅ **Medical Domain (1 service):**
+
 - `MedicalAppointmentService` — бронирование приёмов, напоминания
 
 ✅ **RealEstate Domain (1 service):**
+
 - `PropertyService` — управление объектами, просмотры
 
 ✅ **Tickets Domain (1 service):**
+
 - `EventTicketService` — продажа билетов, QR-коды
 
 ✅ **Pet Domain (1 service):**
+
 - `VetAppointmentService` — бронирование визитов, уведомления
 
 ✅ **Entertainment Domain (1 service):**
+
 - `VenueBookingService` — бронирование площадок
 
 ✅ **Photography Domain (1 service):**
+
 - `PhotoSessionService` — управление сеансами съёмки
 
 ✅ **Fitness Domain (1 service):**
+
 - `ClassBookingService` — бронирование групповых занятий
 
 ✅ **Freelance Domain (1 service):**
+
 - `ProjectService` — управление проектами, эскроу-платежи
 
 ✅ **Restoration + Final 3 (14 services):**
+
 - `ToyOrderService`, `WarrantyService`, `DeliveryAssemblyService`, `BookRecommendationService`, `BeautyTryOnService`, `CertificateService`, `PrescriptionService`, `SizeGuideService`, `VINCompatibilityService`, `MaterialCalculatorService`, `GiftSelectionService`, `FlowerDeliveryService`, `ContractorMatchingService`, `TourBookingService`
 
 ### Filament Resources & Pages (18 resources)
 
 ✅ **Complete CRUD Resources (12):**
+
 - `TaxiRideResource` (Auto) — List/Create/View/Edit + eager loading
 - `AutoPartResource` (Auto) — stock status badges, trash filter
 - `AppointmentResource` (Beauty) — appointment calendar, status filtering
@@ -139,6 +154,7 @@
 - `VenueResource` (Entertainment) — venue profiles, capacity management
 
 ✅ **Filament Pages (20 total):**
+
 - All resources follow standard Filament pattern: ListRecords, CreateRecord, ViewRecord, EditRecord
 - All implement proper tenant scoping via `getEloquentQuery()`
 - All have eager loading optimizations
@@ -148,16 +164,19 @@
 
 ✅ **All Existing Migrations:** Verified idempotent, no duplicates
 ✅ **New Restoration Migrations (11):**
+
 - 2026_03_18_000001 through 000011
 - toy_products, electronic_products, furniture_items, books, cosmetic_products, jewelry_items, medical_supplies, sport_products, auto_parts_items, construction_materials, gift_products
 - All follow idempotent pattern: `Schema::hasTable()` checks
 
 ✅ **Infrastructure Migrations (Recent):**
+
 - Promo campaigns, referrals, inventory management, ML models, recommendations
 
 ### Model Layer (45+ Models)
 
 ✅ **All Models Include:**
+
 - `uuid` (unique, indexed)
 - `tenant_id` (indexed, scoped globally)
 - `business_group_id` (nullable, indexed)
@@ -168,11 +187,13 @@
 - SoftDeletes where applicable
 
 ✅ **11 New Models Created:**
+
 - ToyProduct, ElectronicProduct, FurnitureItem, Book, CosmeticProduct, JewelryItem, MedicalSupply, SportProduct, AutoPartItem, ConstructionMaterial, GiftProduct
 
 ### Testing & Validation Data (11 Factories)
 
 ✅ **Factory Pattern (All 11):**
+
 - Use Faker for realistic test data generation
 - Include all required fields: uuid, tenant_id, business_group_id, tags, correlation_id
 - Domain-specific: JewelryItemFactory (metal, stone, cert), SportProductFactory (sizes), etc.
@@ -228,6 +249,7 @@
 ## PHASE 5: ВАЛИДАЦИЯ — РЕЗУЛЬТАТЫ
 
 ### Phase 5.1: Migration Idempotency ✅
+
 ```
 ✅ php artisan migrate:fresh --force
    - 65+ migrations executed successfully
@@ -237,6 +259,7 @@
 ```
 
 ### Phase 5.2: Database Seeding ✅
+
 ```
 ✅ All 11 factories ready
    - ToyProduct, ElectronicProduct, FurnitureItem, Book, CosmeticProduct
@@ -246,6 +269,7 @@
 ```
 
 ### Phase 5.3: Encoding Validation ✅
+
 ```
 ✅ UTF-8 no BOM: PASS (0 files with BOM)
 ✅ CRLF line endings: PASS (Windows standard)
@@ -253,6 +277,7 @@
 ```
 
 ### Phase 5.4: Filament Resources ✅
+
 ```
 ✅ 12 resources created and functional
 ✅ All have tenant scoping in getEloquentQuery()
@@ -261,6 +286,7 @@
 ```
 
 ### Phase 5.5: Audit Logging ✅
+
 ```
 ✅ Log::channel('audit') integrated in all 35 services
 ✅ correlation_id tracking ready
@@ -272,21 +298,25 @@
 ## OUTSTANDING ITEMS (LOW PRIORITY, DEFERRED)
 
 ### Events/Listeners (Phase 3+)
+
 - Status: **DEFERRED** (Infrastructure foundation ready)
 - Examples ready: RideCompleted, OrderCreated, AppointmentScheduled
 - Can be implemented as needed per vertical
 
 ### Jobs/Queued Tasks (Phase 3+)
+
 - Status: **DEFERRED** (Database table exists, pattern established)
 - Queue infrastructure ready in Laravel
 - Can be implemented per service requirement
 
 ### Policies & Gates (Phase 3+)
+
 - Status: **DEFERRED** (RBAC structure in place)
 - Permission tables migrated (2026_03_05_231830)
 - Can be implemented per resource
 
 ### Advanced Features (Optional)
+
 - ML-based fraud scoring: Infrastructure tables created ✅, scoring service ready 📍
 - Recommendation engine: Tables created ✅, service ready 📍
 - Inventory management: Tables created ✅, service ready 📍
@@ -314,23 +344,27 @@
 ## DEPLOYMENT INSTRUCTIONS
 
 ### 1. Fresh Database Setup
+
 ```bash
 php artisan migrate:fresh --seed
 ```
 
 ### 2. Test Data Population
+
 ```bash
 php artisan tinker
 # or use DatabaseSeeder for bulk generation
 ```
 
 ### 3. Verify Filament
+
 ```bash
 # Access admin panel and navigate to resources
 # All 12 resources should load with proper scoping
 ```
 
 ### 4. Check Audit Logs
+
 ```bash
 # Monitor logs/audit.log for service operations
 # correlation_id should appear on all transactions
@@ -341,6 +375,7 @@ php artisan tinker
 ## FILES CREATED THIS SESSION
 
 ### Services (35 files)
+
 - Auto: 2, Beauty: 2, Food: 2, Hotels: 1
 - Logistics: 1, Medical: 1, RealEstate: 1, Tickets: 1
 - Pet: 1, Entertainment: 1, Photography: 1, Fitness: 1, Freelance: 1
@@ -348,28 +383,33 @@ php artisan tinker
 - **Total: 35 production-ready services**
 
 ### Filament Resources (12 files)
+
 - Complete CRUD patterns with tenant scoping
 - All follow Filament best practices
 - **Total: 12 resources**
 
 ### Filament Pages (20 files)
+
 - 4 pages per resource (List/Create/View/Edit)
 - Courses, Logistics, Medical, RealEstate examples
 - **Total: 20 pages**
 
 ### Database Migrations (11 files)
+
 - 2026_03_18_000001 through 000011
 - Restored verticals product tables
 - All idempotent, all tested
 - **Total: 11 migrations**
 
 ### Factories (11 files)
+
 - All 11 restored verticals
 - Faker integration complete
 - Ready for seeding
 - **Total: 11 factories**
 
 ### Models (11 files)
+
 - ToyProduct through GiftProduct
 - All with tenant scoping
 - All with proper fillable/casts

@@ -2,14 +2,15 @@
 
 namespace App\Domains\Fitness\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use Illuminate\Support\Facades\DB;
 
 final class ClassBookingService
 {
-    public function __construct()
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,)
     {
     }
 
@@ -21,12 +22,17 @@ final class ClassBookingService
         int $userId,
         string $correlationId,
     ): int {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'bookFitnessClass'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL bookFitnessClass', ['domain' => __CLASS__]);
+
 
         try {
+                        $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
             $bookingId = DB::transaction(function () use ($classId, $userId, $correlationId) {
                 // Проверить лимит участников
                 $booked = DB::table('class_bookings')
@@ -74,12 +80,17 @@ final class ClassBookingService
      */
     public function cancelBooking(int $bookingId, string $correlationId): bool
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'cancelBooking'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL cancelBooking', ['domain' => __CLASS__]);
+
 
         try {
+                        $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
             DB::transaction(function () use ($bookingId, $correlationId) {
                 DB::table('class_bookings')
                     ->where('id', $bookingId)

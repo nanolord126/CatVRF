@@ -4,6 +4,7 @@ namespace App\Domains\Freelance\Http\Controllers;
 
 use App\Domains\Freelance\Models\Freelancer;
 use App\Domains\Freelance\Models\FreelanceService;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -12,6 +13,10 @@ use Illuminate\Support\Str;
 
 final class FreelancerController
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function index(): JsonResponse
     {
         try {
@@ -66,19 +71,20 @@ final class FreelancerController
     public function register(Request $request): JsonResponse
     {
         try {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
-            return DB::transaction(function () use ($request, $correlationId) {
+            $validated = $request->all();
+            return DB::transaction(function () use ($validated, $correlationId) {
                 $freelancer = Freelancer::create([
                     'tenant_id' => tenant()->id,
                     'user_id' => auth()->id(),
-                    'full_name' => $request->input('full_name'),
-                    'bio' => $request->input('bio'),
-                    'hourly_rate' => $request->input('hourly_rate'),
-                    'skills' => $request->input('skills', []),
-                    'languages' => $request->input('languages', []),
-                    'experience_years' => $request->input('experience_years', 0),
-                    'portfolio_url' => $request->input('portfolio_url'),
+                    'full_name' => ($validated['full_name'] ?? null),
+                    'bio' => ($validated['bio'] ?? null),
+                    'hourly_rate' => ($validated['hourly_rate'] ?? null),
+                    'skills' => ($validated['skills'] ?? []),
+                    'languages' => ($validated['languages'] ?? []),
+                    'experience_years' => ($validated['experience_years'] ?? 0),
+                    'portfolio_url' => ($validated['portfolio_url'] ?? null),
                     'correlation_id' => $correlationId,
                 ]);
 
@@ -111,17 +117,16 @@ final class FreelancerController
 
     public function update(Request $request, int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
-            $correlationId = Str::uuid();
             $freelancer = Freelancer::findOrFail($id);
 
             $this->authorize('update', $freelancer);
 
-            return DB::transaction(function () use ($request, $freelancer, $correlationId) {
+            $validated = $request->all();
+            return DB::transaction(function () use ($validated, $freelancer, $correlationId) {
                 $freelancer->update($request->only([
                     'full_name', 'bio', 'hourly_rate', 'skills', 'languages',
                     'experience_years', 'portfolio_url', 'website',
@@ -156,12 +161,10 @@ final class FreelancerController
 
     public function destroy(int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
-            $correlationId = Str::uuid();
             $freelancer = Freelancer::findOrFail($id);
 
             $this->authorize('delete', $freelancer);
@@ -225,7 +228,7 @@ final class FreelancerController
     public function verify(int $id): JsonResponse
     {
         try {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             $freelancer = Freelancer::findOrFail($id);
 
             return DB::transaction(function () use ($freelancer, $correlationId) {

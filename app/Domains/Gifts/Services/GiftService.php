@@ -5,7 +5,7 @@ namespace App\Domains\Gifts\Services;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Services\Security\FraudControlService;
+use App\Services\FraudControlService;
 use App\Domains\Gifts\Models\GiftProduct;
 
 final readonly class GiftService
@@ -16,10 +16,17 @@ final readonly class GiftService
 
     public function createGift(array $data, string $correlationId): GiftProduct
     {
-        return DB::transaction(function () use ($data, $correlationId) {
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(function () use ($data, $correlationId) {
             Log::channel('audit')->info("СОЗДАНИЕ ПОДАРКА", ["correlation_id" => $correlationId]);
             
-            FraudControlService::check($data, $correlationId);
 
             $product = GiftProduct::create([
                 "tenant_id" => tenant("id") ?? 1,

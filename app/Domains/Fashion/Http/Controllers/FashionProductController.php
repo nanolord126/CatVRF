@@ -5,6 +5,7 @@ namespace App\Domains\Fashion\Http\Controllers;
 use App\Domains\Fashion\Models\FashionCategory;
 use App\Domains\Fashion\Models\FashionProduct;
 use App\Domains\Fashion\Services\ProductService;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -14,6 +15,7 @@ final class FashionProductController
 {
     public function __construct(
         private readonly ProductService $productService,
+        private readonly FraudControlService $fraudControlService,
     ) {}
 
     public function index(): JsonResponse
@@ -76,13 +78,10 @@ final class FashionProductController
 
     public function store(): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
-            $correlationId = Str::uuid();
-
             $product = $this->productService->createProduct(
                 tenant('id'),
                 request('store_id'),
@@ -104,13 +103,11 @@ final class FashionProductController
 
     public function update(int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $product = FashionProduct::findOrFail($id);
-            $correlationId = Str::uuid();
 
             $this->productService->updateProduct($product, request()->except(['id', 'tenant_id', 'business_group_id', 'correlation_id']), $correlationId);
 
@@ -122,11 +119,12 @@ final class FashionProductController
 
     public function delete(int $id): JsonResponse
     {
+        $correlationId = Str::uuid()->toString();
+
         try {
             $product = FashionProduct::findOrFail($id);
-            $correlationId = Str::uuid();
 
-            DB::transaction(function () use ($product, $correlationId) {
+            DB::transaction(function () use ($product, $id, $correlationId) {
                 $product->delete();
                 Log::channel('audit')->info('Fashion product deleted', ['product_id' => $id, 'correlation_id' => $correlationId]);
             });
@@ -139,9 +137,10 @@ final class FashionProductController
 
     public function updateStock(int $id): JsonResponse
     {
+        $correlationId = Str::uuid()->toString();
+
         try {
             $product = FashionProduct::findOrFail($id);
-            $correlationId = Str::uuid();
 
             $this->productService->updateStock($product, request('quantity'), $correlationId);
 

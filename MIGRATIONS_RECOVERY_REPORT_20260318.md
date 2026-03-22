@@ -7,6 +7,7 @@
 
 ВЫПОЛНЕНО:
 ✅ Восстановлены 6 CORE-миграций (переделаны/обновлены):
+
    1. 2018_11_15_124230_create_wallets_table.php (ПОЛНАЯ ПЕРЕДЕЛКА)
       - Добавлены: uuid, tenant_id, business_group_id, correlation_id, tags
       - Добавлены индексы по tenant_id + business_group_id
@@ -36,6 +37,7 @@
       - Добавлены все необходимые индексы
 
 ✅ Создано 5 НОВЫХ КРИТИЧНЫХ миграций (полностью по КАНОНУ):
+
    1. 2026_03_18_140000_create_promo_campaigns_tables.php
       - promo_campaigns (скидки, бонусы, акции)
       - promo_uses (применённые промокоды)
@@ -66,10 +68,12 @@
       - recommendation_rules (правила boost/demote)
 
 ✅ Удалено:
-   - 49 дубликатных файлов БЕЗ timestamp (create_*_table.php и т.д.)
-   - Полностью удалена папка database/migrations/tenant/ (50+ миграций)
+
+- 49 дубликатных файлов БЕЗ timestamp (create_*_table.php и т.д.)
+- Полностью удалена папка database/migrations/tenant/ (50+ миграций)
 
 СТАТИСТИКА:
+
 - Было: ~100+ файлов разбросано по папкам, множество дубликатов
 - Стало: 55 чистых файлов в database/migrations/
 - Уменьшено: на ~45 файлов (45%)
@@ -91,17 +95,20 @@
 КРИТИЧНЫЕ ТАБЛИЦЫ (всего ~35):
 
 WALLET & PAYMENTS:
+
 - wallets (uuid, tenant_id, business_group_id, current_balance, hold_amount)
 - balance_transactions (дебет/кредит: deposit, withdrawal, commission, bonus, refund, payout)
 - payment_transactions (статусы: pending, authorized, captured, refunded, failed)
 - payment_idempotency_records (защита от дублирования платежей)
 
 BUSINESS & FRAUD:
+
 - business_groups (филиалы: один ИНН = один BG)
 - fraud_attempts (попытки фрода с ML-скорами 0-1)
 - fraud_model_versions (версии ML-моделей фрода)
 
 PROMO & REFERRALS:
+
 - promo_campaigns (скидки, акции, бонусы с бюджетом)
 - promo_uses (логирование применения промокодов)
 - promo_audit_logs (аудит всех операций)
@@ -110,6 +117,7 @@ PROMO & REFERRALS:
 - referral_audit_logs (аудит реферальной системы)
 
 INVENTORY & DEMAND:
+
 - inventory_items (управление запасами)
 - stock_movements (журнал всех движений)
 - inventory_checks (инвентаризационные проверки)
@@ -118,6 +126,7 @@ INVENTORY & DEMAND:
 - demand_model_versions (версии ML-моделей)
 
 RECOMMENDATIONS & WISHLIST:
+
 - wishlists (списки желаний пользователей)
 - wishlist_items (предметы в списках)
 - user_embeddings (vectorized user profiles)

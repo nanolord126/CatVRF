@@ -7,6 +7,7 @@ use App\Domains\Courses\Models\Enrollment;
 use App\Domains\Courses\Services\CourseService;
 use App\Models\Wallet;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Services\FraudControlService;
 use Illuminate\Support\Str;
 use Tests\BaseTestCase;
 
@@ -23,6 +24,10 @@ final class CourseServiceTest extends BaseTestCase
     {
         parent::setUp();
         $this->service = app(CourseService::class);
+        $this->app->instance(
+            FraudControlService::class,
+            \Mockery::mock(FraudControlService::class)->shouldReceive('check')->andReturn(true)->getMock()
+        );
     }
 
     public function test_enrollment_created_successfully(): void

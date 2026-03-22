@@ -4,17 +4,20 @@ namespace App\Domains\Travel\Http\Controllers;
 
 use App\Domains\Travel\Models\TravelTransportation;
 use App\Domains\Travel\Services\TransportationService;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
 
-final class TravelTransportationController
+final class TravelTransportationController extends Controller
 {
     public function __construct(
         private readonly TransportationService $transportationService,
+        private readonly FraudControlService $fraudControlService,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -72,11 +75,8 @@ final class TravelTransportationController
 
     public function store(Request $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
-
         $correlationId = $request->get('correlation_id', Str::uuid()->toString());
+        $this->fraudControlService->check(auth()->id() ?? 0, 'transport_store', 0, $request->ip(), null, $correlationId);
 
         try {
             $request->validate([
@@ -90,20 +90,21 @@ final class TravelTransportationController
                 'price' => 'required|numeric|min:0',
             ]);
 
-            $transportation = DB::transaction(function () use ($request, $correlationId) {
+            $validated = $request->all();
+            $transportation = DB::transaction(function () use ($validated, $correlationId) {
                 return TravelTransportation::create([
                     'tenant_id' => tenant()->id,
-                    'type' => $request->get('type'),
-                    'provider' => $request->get('provider'),
-                    'location_pickup' => $request->get('location_pickup'),
-                    'location_dropoff' => $request->get('location_dropoff'),
-                    'pickup_time' => $request->get('pickup_time'),
-                    'dropoff_time' => $request->get('dropoff_time'),
-                    'capacity' => $request->get('capacity'),
-                    'available_count' => $request->get('capacity'),
-                    'price' => $request->get('price'),
-                    'commission_amount' => $request->get('price') * 0.14,
-                    'features' => $request->get('features', []),
+                    'type' => ($validated['type'] ?? null),
+                    'provider' => ($validated['provider'] ?? null),
+                    'location_pickup' => ($validated['location_pickup'] ?? null),
+                    'location_dropoff' => ($validated['location_dropoff'] ?? null),
+                    'pickup_time' => ($validated['pickup_time'] ?? null),
+                    'dropoff_time' => ($validated['dropoff_time'] ?? null),
+                    'capacity' => ($validated['capacity'] ?? null),
+                    'available_count' => ($validated['capacity'] ?? null),
+                    'price' => ($validated['price'] ?? null),
+                    'commission_amount' => ($validated['price'] ?? null) * 0.14,
+                    'features' => ($validated['features'] ?? []),
                     'status' => 'available',
                     'correlation_id' => $correlationId,
                     'uuid' => Str::uuid(),
@@ -132,22 +133,20 @@ final class TravelTransportationController
 
     public function update(Request $request, int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
-
         $correlationId = $request->get('correlation_id', Str::uuid()->toString());
+        $this->fraudControlService->check(auth()->id() ?? 0, 'transport_update', 0, $request->ip(), null, $correlationId);
 
         try {
             $transportation = TravelTransportation::where('tenant_id', tenant()->id)->findOrFail($id);
 
             $this->authorize('update', $transportation);
 
-            $transportation = DB::transaction(function () use ($request, $transportation, $correlationId) {
+            $validated = $request->all();
+            $transportation = DB::transaction(function () use ($validated, $transportation, $correlationId) {
                 $transportation->update([
-                    'price' => $request->get('price', $transportation->price),
-                    'status' => $request->get('status', $transportation->status),
-                    'features' => $request->get('features', $transportation->features),
+                    'price' => ($validated['price'] ?? $transportation->price),
+                    'status' => ($validated['status'] ?? $transportation->status),
+                    'features' => ($validated['features'] ?? $transportation->features),
                     'correlation_id' => $correlationId,
                 ]);
 
@@ -170,11 +169,8 @@ final class TravelTransportationController
 
     public function destroy(int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
-
         $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'transport_destroy', 0, request()->ip(), null, $correlationId);
 
         try {
             $transportation = TravelTransportation::where('tenant_id', tenant()->id)->findOrFail($id);

@@ -1,4 +1,5 @@
 ﻿# EXHAUSTIVE PROJECT MAP — CatVRF 2026
+>
 > **Актуальность:** 20 марта 2026 г. | Честная карта, без стабов и фантазий
 
 ---
@@ -27,6 +28,7 @@
 ## 🟢 СТАТУС ВЕРТИКАЛЕЙ
 
 ### Легенда
+
 - ✅ **Полная** — ≥30 PHP-файлов, есть Models + Services + Events + Jobs + Filament
 - ⚠️ **Частичная** — 3–29 файлов, базовая структура без полного набора
 - ❌ **Стаб** — 1–2 файла, требует полной реализации
@@ -59,6 +61,7 @@
 | Travel | app/Domains/Travel | 42 | — | — | ✅ Полная |
 
 **Beauty помечена отдельно:** 52% — есть Models/Services/Events, но отсутствуют:
+
 - UI-тесты записи
 - Livewire-компоненты Календаря
 - Полный ConsumableDeductionService (есть событие `ConsumableDeducted`, но нет сквозного теста)
@@ -105,6 +108,7 @@
 ## 💰 ПЛАТЁЖНАЯ СИСТЕМА
 
 ### Модели (app/Models)
+
 ```
 app/Models/
 ├── Wallet.php                    ✅ uuid, tenant_id, current_balance, hold_amount
@@ -116,6 +120,7 @@ app/Models/
 ```
 
 ### Сервисы (app/Services)
+
 ```
 app/Services/
 ├── WalletService.php             ✅ credit/debit/hold/release, DB::transaction, lockForUpdate
@@ -131,6 +136,7 @@ app/Services/
 ```
 
 ### Миграции платёжной системы
+
 ```
 database/migrations/
 ├── 2018_11_15_..._create_wallets_table.php                 ✅
@@ -148,6 +154,7 @@ database/migrations/
 > ⚠️ **КРИТИЧНО:** payment_transactions дважды патчилась 20 марта — оригинальная миграция содержала ошибки. Требует ревью и объединения.
 
 ### Банковские шлюзы
+
 | Шлюз | Файл | Статус |
 |---|---|---|
 | Tinkoff | TinkoffGateway.php | ✅ |
@@ -161,6 +168,7 @@ database/migrations/
 ## 🔐 RBAC И РАЗДЕЛЕНИЕ ДОСТУПА
 
 ### Политики (app/Policies) — 16 файлов
+
 ```
 app/Policies/
 ├── AppointmentPolicy.php      ✅
@@ -182,6 +190,7 @@ app/Policies/
 ```
 
 ### Core Models User/Tenant
+
 ```
 app/Models/
 ├── User.php          ✅ стандартная модель пользователя
@@ -191,6 +200,7 @@ app/Models/
 ```
 
 ### Разделение панелей Filament (app/Filament)
+
 ```
 app/Filament/
 ├── Admin/            ✅ суперадмин-панель
@@ -206,6 +216,7 @@ app/Filament/
 ## ❤️ WISHLIST + РАНЖИРОВАНИЕ + АНТИФРОД
 
 ### Текущее состояние
+
 ```
 app/Services/
 ├── WishlistService.php          ⚠️ ДУБЛИКАТ (два файла в разных подпапках)
@@ -217,6 +228,7 @@ app/Services/
 ```
 
 ### Статус компонентов
+
 | Компонент | Статус | Детали |
 |---|---|---|
 | WishlistService | ⚠️ | Есть, но дубликат — нужна консолидация |
@@ -235,6 +247,7 @@ app/Services/
 ## 🤖 ML / АНТИФРОД
 
 ### Fraud-сервисы (app/Services)
+
 ```
 app/Services/
 ├── FraudControlService.php       ⚠️ ДУБЛИКАТ (два файла!)
@@ -247,6 +260,7 @@ app/Services/
 > ⚠️ `FraudControlService.php` присутствует дважды — критический баг. Может приводить к неправильному resolve через IoC-контейнер.
 
 ### ML-сервисы
+
 ```
 app/Services/
 ├── DemandForecastService.php           ✅
@@ -267,6 +281,7 @@ app/Services/
 > ⚠️ **ИСТОРИЯ:** Copilot удалял и пересоздавал миграции. Текущие патчи (2026_03_20) свидетельствуют о проблемах в оригинальных миграциях payment_transactions.
 
 ### Критичные таблицы — статус
+
 | Таблица | Миграция | Статус |
 |---|---|---|
 | wallets | 2018 + rebuild 2026_03_19 | ✅ |
@@ -286,21 +301,27 @@ app/Services/
 ## 🏗️ CORE СЕРВИСНАЯ ШИНА (app/Services — 130 файлов)
 
 ### Финансы
+
 - WalletService, PaymentGatewayInterface, PaymentGatewayService, TinkoffGateway, TochkaGateway, SberGateway, FiscalService
 
 ### Безопасность
+
 - FraudMLService, FraudControlService ⚠️(дубл), FraudDetectionMLService, FraudDetectionService, IdempotencyService ⚠️(дубл), WebhookSignatureService, WebhookSignatureValidator, RateLimiterService ⚠️(дубл)
 
 ### Поиск и рекомендации
+
 - SearchService, SearchRankingService ⚠️(дубл), LiveSearchService, RecommendationService ⚠️(дубл), RecommendationMLService, RecommendationEngine
 
 ### ML/AI
+
 - DemandForecastService, DemandForecastMLService, PriceSuggestionService, PriceSuggestionMLService, CustomerLifetimeValueMLService, SegmentationService, AdvancedAnalyticsService
 
 ### Инфраструктура
+
 - GeoService, NotificationService, EmailService, ImportService, ExportService ⚠️(дубл), HRService, PromoCampaignService, ReferralService, InventoryManagementService, DopplerService, ApiKeyManagementService, LogManager, ReportingService, SecurityAuditService, MonitoringAlertingService
 
 ### 3D/AR (42 сервиса)
+
 - `{Vertical}3DService.php` для всех 41 доменов
 - У 11 стаб-вертикалей 3D-сервис — единственный файл домена
 

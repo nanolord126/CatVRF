@@ -4,6 +4,7 @@ namespace App\Domains\Logistics\Http\Controllers;
 
 use App\Domains\Logistics\Models\CourierService;
 use App\Domains\Logistics\Services\CourierServiceService;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -13,6 +14,7 @@ final class CourierServiceController
 {
     public function __construct(
         private readonly CourierServiceService $courierServiceService,
+        private readonly FraudControlService $fraudControlService,
     ) {}
 
     public function index(): JsonResponse
@@ -47,7 +49,7 @@ final class CourierServiceController
     public function register(): JsonResponse
     {
         try {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             $courier = $this->courierServiceService->createCourierService(
                 tenant('id'),
@@ -81,7 +83,7 @@ final class CourierServiceController
     {
         try {
             $courier = CourierService::where('user_id', auth()->id())->firstOrFail();
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             $updated = $this->courierServiceService->updateCourierService(
                 $courier,
@@ -122,7 +124,7 @@ final class CourierServiceController
     public function updateShipmentStatus(int $shipmentId): JsonResponse
     {
         try {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             DB::transaction(function () use ($shipmentId, $correlationId) {
                 $shipment = \App\Domains\Logistics\Models\Shipment::findOrFail($shipmentId);
@@ -159,7 +161,7 @@ final class CourierServiceController
     {
         try {
             $courier = CourierService::findOrFail($courierId);
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             DB::transaction(function () use ($courier, $correlationId) {
                 $courier->update(['is_verified' => true, 'correlation_id' => $correlationId]);
@@ -174,13 +176,11 @@ final class CourierServiceController
 
     public function update(int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $courier = CourierService::findOrFail($id);
-            $correlationId = Str::uuid();
 
             $updated = $this->courierServiceService->updateCourierService(
                 $courier,
@@ -198,7 +198,7 @@ final class CourierServiceController
     {
         try {
             $courier = CourierService::findOrFail($id);
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             DB::transaction(function () use ($courier, $correlationId) {
                 $courier->delete();

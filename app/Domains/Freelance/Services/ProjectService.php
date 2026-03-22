@@ -2,14 +2,15 @@
 
 namespace App\Domains\Freelance\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use Illuminate\Support\Facades\DB;
 
 final class ProjectService
 {
-    public function __construct()
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,)
     {
     }
 
@@ -23,12 +24,17 @@ final class ProjectService
         int $budgetCents,
         string $correlationId,
     ): int {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'createProject'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createProject', ['domain' => __CLASS__]);
+
 
         try {
+                        $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
             $projectId = DB::transaction(function () use ($clientId, $freelancerId, $title, $budgetCents, $correlationId) {
                 $projectId = DB::table('freelance_projects')->insertGetId([
                     'client_id' => $clientId,
@@ -67,12 +73,17 @@ final class ProjectService
      */
     public function completeProject(int $projectId, string $correlationId): bool
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'completeProject'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL completeProject', ['domain' => __CLASS__]);
+
 
         try {
+                        $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
             DB::transaction(function () use ($projectId, $correlationId) {
                 $project = DB::table('freelance_projects')->findOrFail($projectId);
 

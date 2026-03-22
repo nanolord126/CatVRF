@@ -5,22 +5,25 @@ namespace App\Domains\Sports\Http\Controllers;
 use App\Domains\Sports\Models\Booking;
 use App\Domains\Sports\Services\BookingService;
 use App\Domains\Sports\Jobs\BookingConfirmationJob;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 
 final class BookingController
 {
-    public function __construct(private BookingService $bookingService) {}
+    public function __construct(
+        private BookingService $bookingService,
+        private readonly FraudControlService $fraudControlService,
+    ) {}
 
     public function create(int $classId): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
-            $correlationId = Str::uuid();
 
             $booking = DB::transaction(function () use ($classId, $correlationId) {
                 return $this->bookingService->createBooking(
@@ -38,7 +41,7 @@ final class BookingController
 
             return response()->json(['success' => true, 'data' => $booking, 'correlation_id' => $correlationId], 201);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Booking creation failed', ['error' => $e->getMessage()]);
+            Log::channel('audit')->error('Booking creation failed', ['error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => 'Booking failed'], 500);
         }
     }
@@ -74,7 +77,7 @@ final class BookingController
             $booking = Booking::findOrFail($id);
             $this->authorize('cancel', $booking);
 
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             DB::transaction(fn() => $this->bookingService->cancelBooking($booking, 'User cancelled', $correlationId));
 
             return response()->json(['success' => true, 'message' => 'Booking cancelled', 'correlation_id' => $correlationId]);
@@ -87,7 +90,7 @@ final class BookingController
     {
         try {
             $booking = Booking::findOrFail($id);
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             $this->bookingService->markAsAttended($booking, $correlationId);
 
             return response()->json(['success' => true, 'message' => 'Booking marked as attended', 'correlation_id' => $correlationId]);

@@ -2,8 +2,8 @@
 
 namespace App\Domains\Logistics\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use App\Domains\Logistics\Events\ShipmentCreated;
 use App\Domains\Logistics\Models\Shipment;
@@ -13,6 +13,7 @@ use Illuminate\Support\Str;
 final class ShipmentService
 {
     public function __construct(
+        private readonly FraudControlService $fraudControlService,
         private readonly TrackingService $trackingService,
     ) {}
 
@@ -27,10 +28,7 @@ final class ShipmentService
         float $shippingCost,
         string $correlationId,
     ): Shipment {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'createShipment'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createShipment', ['domain' => __CLASS__]);
+
 
         return DB::transaction(function () use (
             $tenantId,
@@ -78,11 +76,16 @@ final class ShipmentService
 
     public function cancelShipment(Shipment $shipment, string $reason, string $correlationId): void
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'cancelShipment'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL cancelShipment', ['domain' => __CLASS__]);
 
+
+                $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
         DB::transaction(function () use ($shipment, $reason, $correlationId) {
             $shipment->update([
                 'status' => 'cancelled',
@@ -102,11 +105,16 @@ final class ShipmentService
 
     public function updateShipmentStatus(Shipment $shipment, string $status, string $correlationId): void
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'updateShipmentStatus'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL updateShipmentStatus', ['domain' => __CLASS__]);
 
+
+                $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
         DB::transaction(function () use ($shipment, $status, $correlationId) {
             $shipment->update([
                 'status' => $status,

@@ -2,8 +2,8 @@
 
 namespace App\Domains\Auto\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use App\Domains\Auto\Models\AutoPart;
 use Illuminate\Support\Facades\DB;
@@ -14,15 +14,16 @@ use Illuminate\Support\Facades\DB;
  */
 final class AutoPartsInventoryService
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     /**
      * Получить текущий остаток запчасти.
      */
     public function getCurrentStock(string $partId, string $correlationId = ''): int
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'getCurrentStock'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getCurrentStock', ['domain' => __CLASS__]);
+
 
         $part = AutoPart::query()->find($partId);
 
@@ -38,13 +39,18 @@ final class AutoPartsInventoryService
      */
     public function reserveParts(array $parts, string $reason = '', string $correlationId = ''): bool
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'reserveParts'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL reserveParts', ['domain' => __CLASS__]);
+
 
         try {
-            return DB::transaction(function () use ($parts, $reason, $correlationId) {
+            $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
+DB::transaction(function () use ($parts, $reason, $correlationId) {
                 foreach ($parts as $partData) {
                     $part = AutoPart::query()->lockForUpdate()->find($partData['id']);
 
@@ -79,13 +85,18 @@ final class AutoPartsInventoryService
      */
     public function addStock(string $partId, int $quantity, string $reason = '', string $correlationId = ''): bool
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'addStock'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL addStock', ['domain' => __CLASS__]);
+
 
         try {
-            return DB::transaction(function () use ($partId, $quantity, $reason, $correlationId) {
+            $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
+DB::transaction(function () use ($partId, $quantity, $reason, $correlationId) {
                 $part = AutoPart::query()->lockForUpdate()->find($partId);
 
                 if (!$part) {

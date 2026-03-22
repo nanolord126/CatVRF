@@ -1,7 +1,8 @@
 <?php declare(strict_types=1);
 
-namespace App\Services\3D;
+namespace App\Services\ThreeD;
 
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -12,13 +13,13 @@ final class Product3DService
 
     public function uploadProduct3DModel(string $filePath, string $productId, string $vertical): array
     {
-        $fileName = "{$vertical}-{$productId}-" . Str::uuid() . '.' . pathinfo($filePath, PATHINFO_EXTENSION);
-        $storagePath = "{$this::STORAGE_PATH}/{$vertical}/{$fileName}";
+        $fileName = "{$vertical}-{$productId}-" . Str::uuid()->toString() . '.' . pathinfo($filePath, PATHINFO_EXTENSION);
+        $storagePath = "'.self::STORAGE_PATH.'/{$vertical}/{$fileName}";
 
         Storage::disk('public')->put($storagePath, file_get_contents($filePath));
 
         return [
-            'id' => Str::uuid(),
+            'id' => Str::uuid()->toString(),
             'product_id' => $productId,
             'vertical' => $vertical,
             'path' => $storagePath,
@@ -41,9 +42,26 @@ final class Product3DService
         return in_array($extension, $this::ALLOWED_FORMATS);
     }
 
-    public function getProduct3DModel(int $productId): ?array
+    public function getProduct3DModel(int $productId): array
     {
-        // Query database for 3D model
-        return null;
+        $record = DB::table('product_3d_models')
+            ->where('product_id', $productId)
+            ->first();
+
+        if (!$record) {
+            throw new \RuntimeException("3D model not found for product {$productId}");
+        }
+
+        return [
+            'id' => $record->id,
+            'product_id' => $record->product_id,
+            'path' => $record->path,
+            'url' => Storage::url($record->path),
+            'format' => $record->format,
+            'size' => $record->size,
+            'uploaded_at' => $record->uploaded_at,
+        ];
     }
 }
+
+

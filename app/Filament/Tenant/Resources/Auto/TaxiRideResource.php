@@ -2,7 +2,7 @@
 
 namespace App\Filament\Tenant\Resources\Auto;
 
-use App\Domains\Auto\Models\TaxiRide;
+use App\Domains\Taxi\Models\TaxiRide;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Forms;

@@ -6,12 +6,18 @@ use App\Domains\Pet\Models\PetClinic;
 use App\Domains\Pet\Models\PetVet;
 use App\Domains\Pet\Models\PetGroomingService;
 use App\Http\Controllers\Controller;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 final class PetClinicController extends Controller
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function index(): JsonResponse
     {
         try {
@@ -26,7 +32,7 @@ final class PetClinicController extends Controller
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Throwable $e) {
-            \Log::error('Failed to get clinics', ['error' => $e->getMessage()]);
+            Log::error('Failed to get clinics', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve clinics',
@@ -57,13 +63,11 @@ final class PetClinicController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $this->authorize('create', PetClinic::class);
-            $correlationId = Str::uuid()->toString();
 
             $clinic = PetClinic::create([
                 ...$request->validated(),
@@ -79,7 +83,7 @@ final class PetClinicController extends Controller
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Throwable $e) {
-            \Log::error('Failed to create clinic', ['error' => $e->getMessage()]);
+            Log::error('Failed to create clinic', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create clinic',
@@ -90,14 +94,12 @@ final class PetClinicController extends Controller
 
     public function update(Request $request, $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $clinic = PetClinic::findOrFail($id);
             $this->authorize('update', $clinic);
-            $correlationId = Str::uuid()->toString();
 
             $clinic->update([
                 ...$request->validated(),

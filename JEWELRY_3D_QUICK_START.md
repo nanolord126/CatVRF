@@ -3,17 +3,20 @@
 ## 🚀 5-MINUTE SETUP
 
 ### 1. Run Migration
+
 ```bash
 php artisan migrate --path=database/migrations/2026_03_19_000000_create_3d_models_table.php
 ```
 
 ### 2. Seed Sample Data
+
 ```bash
 php artisan tinker
 >>> Database\Factories\Jewelry3DModelFactory::new()->count(5)->create()
 ```
 
 ### 3. Access Admin Panel
+
 ```
 URL: /admin/jewelry-3d-models
 Login: admin@catvrf.ru / password
@@ -24,6 +27,7 @@ Login: admin@catvrf.ru / password
 ## 📱 USAGE IN CODE
 
 ### Upload 3D Model
+
 ```php
 use App\Domains\Jewelry\Services\Jewelry3DService;
 
@@ -42,29 +46,34 @@ $model = $service->uploadModel([
 ```
 
 ### Generate AR Link
+
 ```php
 $arUrl = $service->generateARView($model->id);
 // Returns: https://viewer.example.com/embed?model=...&ar=true&format=usdz
 ```
 
 ### Generate VR Link
+
 ```php
 $vrUrl = $service->generateVRView($model->id);
 // Returns: https://viewer.example.com/embed?model=...&vr=true&format=gltf
 ```
 
 ### Rotate Model
+
 ```php
 $rotated = $service->rotate3DModel($model->id, 45, 90, 180);
 // Returns: ['model_id' => 1, 'rotationX' => 45, 'rotationY' => 90, 'rotationZ' => 180]
 ```
 
 ### Change Material
+
 ```php
 $service->changeMetalType($model->id, 'silver');
 ```
 
 ### Download Model
+
 ```php
 $downloadUrl = $service->downloadModel($model->id, 'glb');
 // Returns: storage/jewelry/models/ring.glb?format=glb
@@ -75,11 +84,13 @@ $downloadUrl = $service->downloadModel($model->id, 'glb');
 ## 🎨 DISPLAY IN BLADE VIEW
 
 ### Simple Embed
+
 ```blade
 <livewire:jewelry.jewelry-3d-viewer :modelId="$jewelry->id" />
 ```
 
 ### Custom Props
+
 ```blade
 <livewire:jewelry.jewelry-3d-viewer 
     :modelId="$jewelry->id"
@@ -89,6 +100,7 @@ $downloadUrl = $service->downloadModel($model->id, 'glb');
 ```
 
 ### With Event Listeners
+
 ```blade
 <livewire:jewelry.jewelry-3d-viewer 
     :modelId="$jewelry->id"
@@ -101,6 +113,7 @@ $downloadUrl = $service->downloadModel($model->id, 'glb');
 ## 🗄️ DATABASE QUERIES
 
 ### Get All Models for Item
+
 ```php
 use App\Domains\Jewelry\Models\Jewelry3DModel;
 
@@ -108,6 +121,7 @@ $models = Jewelry3DModel::where('jewelry_item_id', $jewelryId)->get();
 ```
 
 ### Get AR-Compatible Models
+
 ```php
 $arModels = Jewelry3DModel::where('ar_compatible', true)
     ->where('status', 'active')
@@ -115,6 +129,7 @@ $arModels = Jewelry3DModel::where('ar_compatible', true)
 ```
 
 ### Filter by Material
+
 ```php
 $goldModels = Jewelry3DModel::where('material_type', 'gold')
     ->where('tenant_id', filament()->getTenant()->id)
@@ -122,6 +137,7 @@ $goldModels = Jewelry3DModel::where('material_type', 'gold')
 ```
 
 ### Check Model Size
+
 ```php
 $largeModels = Jewelry3DModel::where('file_size_mb', '>', 20)
     ->orderBy('file_size_mb', 'desc')
@@ -133,6 +149,7 @@ $largeModels = Jewelry3DModel::where('file_size_mb', '>', 20)
 ## 🔌 INTEGRATION EXAMPLES
 
 ### With WalletService
+
 ```php
 // Charge for 3D model access
 WalletService::debit(
@@ -143,6 +160,7 @@ WalletService::debit(
 ```
 
 ### With FraudMLService
+
 ```php
 // Check before showing expensive model
 $score = FraudMLService::scoreOperation(new OperationDto(
@@ -157,6 +175,7 @@ if ($score > 0.8) {
 ```
 
 ### With RecommendationService
+
 ```php
 // Recommend similar items based on 3D properties
 $recommendations = RecommendationService::getForUser(
@@ -174,6 +193,7 @@ $recommendations = RecommendationService::getForUser(
 ## 📊 ADMIN PANEL FEATURES
 
 ### Create New 3D Model
+
 1. Go to `/admin/jewelry-3d-models/create`
 2. Select jewelry item
 3. Upload model file (GLB/GLTF/USDZ/OBJ)
@@ -184,18 +204,21 @@ $recommendations = RecommendationService::getForUser(
 8. Save
 
 ### Edit Existing Model
+
 1. Go to `/admin/jewelry-3d-models`
 2. Click pencil icon on row
 3. Update any field
 4. Save changes (audit logged)
 
 ### Filter Models
+
 - By material type (Gold, Silver, Platinum, Rose Gold)
 - By status (Uploaded, Processing, Active, Archived)
 - By AR compatibility
 - By VR compatibility
 
 ### Bulk Actions
+
 - Delete multiple models
 - Archive multiple models
 - Export list as CSV
@@ -205,12 +228,14 @@ $recommendations = RecommendationService::getForUser(
 ## 🎯 PERFORMANCE TIPS
 
 ### Optimize Model File Size
+
 ```bash
 # Using gltf-pipeline tool
 gltf-pipeline -i model.glb -o optimized.glb --draco
 ```
 
 ### Enable Caching
+
 ```php
 $modelUrl = Cache::remember(
     "jewelry_model_{$modelId}",
@@ -220,6 +245,7 @@ $modelUrl = Cache::remember(
 ```
 
 ### Use CDN for Files
+
 ```env
 CDN_URL=https://cdn.catvrf.ru/jewelry/
 STORAGE_DISK=s3
@@ -230,6 +256,7 @@ STORAGE_DISK=s3
 ## 🐛 TROUBLESHOOTING
 
 ### Model Not Loading
+
 ```php
 // Check if model exists
 $model = Jewelry3DModel::findOrFail($modelId);
@@ -245,6 +272,7 @@ if ($response->failed()) {
 ```
 
 ### AR/VR Not Working
+
 ```php
 // Verify compatibility flags
 if (!$model->ar_compatible) {
@@ -256,6 +284,7 @@ if (!$model->ar_compatible) {
 ```
 
 ### Performance Issues
+
 ```php
 // Monitor loading time
 $start = microtime(true);
@@ -289,12 +318,14 @@ Log::info("Model query time: {$time}s");
 ## 📞 SUPPORT
 
 **For issues:**
+
 1. Check `storage/logs/laravel.log`
 2. Review audit channel: `Log::channel('audit')`
 3. Monitor Sentry errors
 4. Contact DevOps team
 
 **Quick debug:**
+
 ```php
 // Tinker session
 php artisan tinker

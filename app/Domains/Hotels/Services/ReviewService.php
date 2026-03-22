@@ -2,8 +2,8 @@
 
 namespace App\Domains\Hotels\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use App\Domains\Hotels\Models\Hotel;
 use App\Domains\Hotels\Models\Review;
@@ -12,18 +12,20 @@ use Throwable;
 
 final class ReviewService
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function createReview(
         int $hotelId,
         int $rating,
         string $title,
         string $content,
+        int $guestId,
         ?array $categories = null,
         string $correlationId = '',
     ): Review {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'createReview'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createReview', ['domain' => __CLASS__]);
+
 
         try {
             Log::channel('audit')->info('Creating review', [
@@ -36,18 +38,28 @@ final class ReviewService
                 throw new \Exception('Rating must be between 1 and 5');
             }
 
+            $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
+
             $review = DB::transaction(function () use (
                 $hotelId,
                 $rating,
                 $title,
                 $content,
+                $guestId,
                 $categories,
                 $correlationId,
             ) {
                 return Review::create([
                     'tenant_id' => tenant('id'),
                     'hotel_id' => $hotelId,
-                    'guest_id' => auth()->id(),
+                    'guest_id' => $guestId,
                     'rating' => $rating,
                     'title' => $title,
                     'content' => $content,
@@ -78,10 +90,7 @@ final class ReviewService
 
     public function recalculateHotelRating(int $hotelId, string $correlationId = ''): float
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'recalculateHotelRating'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL recalculateHotelRating', ['domain' => __CLASS__]);
+
 
         try {
             Log::channel('audit')->info('Recalculating hotel rating', [

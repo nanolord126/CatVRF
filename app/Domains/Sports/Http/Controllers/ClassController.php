@@ -4,11 +4,17 @@ namespace App\Domains\Sports\Http\Controllers;
 
 use App\Domains\Sports\Models\ClassSession;
 use App\Domains\Sports\Models\Studio;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 final class ClassController
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function byStudio(int $studioId): JsonResponse
     {
         try {
@@ -31,9 +37,8 @@ final class ClassController
 
     public function store(int $studioId): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $studio = Studio::findOrFail($studioId);
@@ -60,6 +65,14 @@ final class ClassController
                 'is_active' => true,
             ]);
 
+            Log::channel('audit')->info('Sports class created', [
+                'correlation_id' => $correlationId,
+                'class_id'       => $class->id,
+                'studio_id'      => $studioId,
+                'user_id'        => auth()->id(),
+                'name'           => $class->name,
+            ]);
+
             return response()->json(['success' => true, 'data' => $class], 201);
         } catch (\Throwable $e) {
             return response()->json(['success' => false, 'message' => 'Failed to create class'], 500);
@@ -68,16 +81,24 @@ final class ClassController
 
     public function update(int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $class = ClassSession::findOrFail($id);
             $this->authorize('update', $class);
 
             $validated = request()->validate(['name' => 'sometimes|string', 'price' => 'sometimes|numeric']);
+            $before = $class->getAttributes();
             $class->update($validated);
+
+            Log::channel('audit')->info('Sports class updated', [
+                'correlation_id' => $correlationId,
+                'class_id'       => $class->id,
+                'user_id'        => auth()->id(),
+                'before'         => $before,
+                'after'          => $validated,
+            ]);
 
             return response()->json(['success' => true, 'data' => $class]);
         } catch (\Throwable $e) {
@@ -87,10 +108,19 @@ final class ClassController
 
     public function delete(int $id): JsonResponse
     {
+        $correlationId = Str::uuid()->toString();
+
         try {
             $class = ClassSession::findOrFail($id);
             $this->authorize('delete', $class);
+            $this->fraudControlService->check(auth()->id() ?? 0, 'class_delete', 0, request()->ip(), null, $correlationId);
             $class->delete();
+
+            Log::channel('audit')->info('Sports class deleted', [
+                'correlation_id' => $correlationId,
+                'class_id'       => $class->id,
+                'user_id'        => auth()->id(),
+            ]);
 
             return response()->json(['success' => true, 'message' => 'Class deleted']);
         } catch (\Throwable $e) {

@@ -80,6 +80,7 @@ cypress/e2e/
 ## 🔧 Deployment Steps (22 minutes)
 
 ### 1. Pre-deployment (5 min)
+
 ```bash
 git pull origin main
 composer install --no-dev --optimize-autoloader
@@ -90,6 +91,7 @@ php artisan key:generate --force
 ```
 
 ### 2. Database (5 min)
+
 ```bash
 php artisan migrate --env=production --force
 php artisan db:seed --class=ProductionSeeder --env=production
@@ -97,6 +99,7 @@ php artisan migrate:status
 ```
 
 ### 3. Cache (3 min)
+
 ```bash
 php artisan config:cache
 php artisan route:cache
@@ -104,6 +107,7 @@ php artisan view:cache
 ```
 
 ### 4. Octane (5 min)
+
 ```bash
 php artisan octane:start \
   --host=0.0.0.0 \
@@ -113,6 +117,7 @@ php artisan octane:start \
 ```
 
 ### 5. Queue (2 min)
+
 ```bash
 sudo supervisorctl reread
 sudo supervisorctl update
@@ -120,6 +125,7 @@ sudo supervisorctl start catvrf:*
 ```
 
 ### 6. Health Check (2 min)
+
 ```bash
 curl http://localhost:8000/up
 php artisan health:check
@@ -147,6 +153,7 @@ php artisan health:check
 ## 🎯 Key Features (POST DEPLOYMENT)
 
 ### ✅ Payment System
+
 - Wallet balance tracking
 - Idempotent payment processing
 - Hold/release mechanism
@@ -156,6 +163,7 @@ php artisan health:check
 - Audit logging (all transactions)
 
 ### ✅ RBAC & Authorization
+
 - 7-role system
 - Tenant isolation
 - Multi-user support
@@ -164,18 +172,21 @@ php artisan health:check
 - Policy-based access
 
 ### ✅ WishlistService
+
 - Add/remove items
 - Share wishlists
 - Group purchasing
 - Public sharing
 
 ### ✅ Fraud Detection
+
 - Real-time scoring (< 50ms)
 - 30+ risk factors
 - Rule-based v1
 - ML-ready architecture
 
 ### ✅ Production Features
+
 - Octane server (4+ workers)
 - Redis caching (85%+ hit rate)
 - Async job queue
@@ -203,18 +214,21 @@ php artisan health:check
 ## 🆘 Troubleshooting
 
 ### "Database connection failed"
+
 ```bash
 php artisan tinker
 >>> DB::connection('sqlite')->select('select 1')
 ```
 
 ### "Redis not available"
+
 ```bash
 redis-cli ping
 # Should return PONG
 ```
 
 ### "Payment webhooks failing"
+
 ```bash
 # Check webhook logs
 tail -f storage/logs/laravel.log | grep webhook
@@ -226,6 +240,7 @@ curl -X POST http://localhost:8000/api/internal/webhooks/payment/tinkoff \
 ```
 
 ### "Memory usage too high"
+
 ```bash
 # Check Octane worker memory
 php artisan octane:status
@@ -239,17 +254,19 @@ php artisan octane:reload
 ## 📞 Support
 
 **For issues:**
+
 1. Check logs: `storage/logs/laravel.log`
-2. Check Sentry: https://sentry.io
-3. Contact: devops@catvrf.com
+2. Check Sentry: <https://sentry.io>
+3. Contact: <devops@catvrf.com>
 
 **Critical Issues:**
+
 - On-call: +7-xxx-xxx-xxxx
 - Escalation: CTO
 
 ---
 
-## 🎉 You're Ready!
+## 🎉 You're Ready
 
 All systems are GO for production deployment.
 

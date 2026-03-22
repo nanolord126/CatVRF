@@ -4,13 +4,18 @@ namespace App\Domains\Sports\Http\Controllers;
 
 use App\Domains\Sports\Models\Review;
 use App\Domains\Sports\Services\ReviewService;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 
 final class ReviewController
 {
-    public function __construct(private ReviewService $reviewService) {}
+    public function __construct(
+        private ReviewService $reviewService,
+        private readonly FraudControlService $fraudControlService,
+    ) {}
 
     public function byStudio(int $studioId): JsonResponse
     {
@@ -37,9 +42,8 @@ final class ReviewController
 
     public function store(int $studioId): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $validated = request()->validate([
@@ -48,7 +52,7 @@ final class ReviewController
                 'content' => 'required|string',
             ]);
 
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             $review = DB::transaction(fn() => $this->reviewService->createReview(
                 $studioId,
@@ -62,6 +66,14 @@ final class ReviewController
                 null,
                 $correlationId
             ));
+
+            Log::channel('audit')->info('Sports studio review created', [
+                'correlation_id' => $correlationId,
+                'review_id'      => $review->id ?? null,
+                'studio_id'      => $studioId,
+                'user_id'        => auth()->id(),
+                'rating'         => $validated['rating'],
+            ]);
 
             return response()->json(['success' => true, 'data' => $review, 'correlation_id' => $correlationId], 201);
         } catch (\Throwable $e) {
@@ -78,7 +90,7 @@ final class ReviewController
                 'content' => 'required|string',
             ]);
 
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             $review = DB::transaction(fn() => $this->reviewService->createReview(
                 null,
@@ -101,9 +113,8 @@ final class ReviewController
 
     public function update(int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $review = Review::findOrFail($id);
@@ -114,8 +125,6 @@ final class ReviewController
                 'title' => 'sometimes|string',
                 'content' => 'sometimes|string',
             ]);
-
-            $correlationId = Str::uuid();
             $review = $this->reviewService->updateReview(
                 $review,
                 $validated['rating'] ?? $review->rating,
@@ -137,7 +146,7 @@ final class ReviewController
             $review = Review::findOrFail($id);
             $this->authorize('delete', $review);
 
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             $review->delete();
 
             return response()->json(['success' => true, 'message' => 'Review deleted', 'correlation_id' => $correlationId]);

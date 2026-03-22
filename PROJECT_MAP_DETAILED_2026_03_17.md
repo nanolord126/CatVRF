@@ -59,6 +59,7 @@ declare(strict_types=1);
 ### Группа A: Премиум Вертикали (9+ файлов)
 
 #### 1. **Auto** - Автомобили/Такси/Мойка
+
 - **Путь:** `app/Domains/Auto/`
 - **Статус:** ✅ ПОЛНАЯ (22 компонента)
 - **Описание:** Такси, мойки, автосервис, запчасти, тюнинг
@@ -84,6 +85,7 @@ declare(strict_types=1);
 ---
 
 #### 2. **Food** - Рестораны/Кафе/Доставка
+
 - **Путь:** `app/Domains/Food/`
 - **Статус:** ✅ ПОЛНАЯ (22 компонента)
 - **Описание:** Рестораны, кафе, доставка, меню, заказы
@@ -110,6 +112,7 @@ declare(strict_types=1);
 ---
 
 #### 3. **Fashion** - Одежда/Мода
+
 - **Путь:** `app/Domains/Fashion/`
 - **Статус:** ✅ ПОЛНАЯ (22 компонента)
 - **Описание:** Магазины одежды, товары, заказы
@@ -121,6 +124,7 @@ declare(strict_types=1);
 ---
 
 #### 4. **Freelance** - Фриланс/Услуги
+
 - **Путь:** `app/Domains/Freelance/`
 - **Статус:** ✅ ПОЛНАЯ (22 компонента)
 - **Описание:** Фрилансеры, проекты, контракты
@@ -150,6 +154,7 @@ declare(strict_types=1);
 | 15 | **Travel** | Путешествия и туры | `app/Domains/Travel/` |
 
 **Каждая содержит:**
+
 - 8 Моделей (Models)
 - 5 Контроллеров (Controllers)
 - 3 Сервиса (Services)
@@ -233,6 +238,7 @@ app/Domains/{VerticalName}/
 **Путь:** `app/Domains/Beauty/`
 
 **Текущий статус:** 12 компонентов (52%)
+
 ```
 ✅ Models:        8 файлов
 ❌ Controllers:   0 файлов          ← КРИТИЧНО!
@@ -241,6 +247,7 @@ app/Domains/{VerticalName}/
 ```
 
 **Существующие модели:**
+
 - `BeautySalon.php` - Салоны красоты
 - `Master.php` - Мастера
 - `Service.php` - Услуги (стрижка, маникюр и т.д.)
@@ -251,12 +258,14 @@ app/Domains/{VerticalName}/
 - `Review.php` - Отзывы
 
 **Существующие сервисы:**
+
 - `BeautyService.php`
 - `AppointmentService.php`
 - `PortfolioService.php`
 - `ReviewService.php`
 
 **ТРЕБУЕТСЯ СОЗДАТЬ:**
+
 - [ ] Controllers (5-6 файлов):
   - `SalonController.php`
   - `MasterController.php`
@@ -284,6 +293,7 @@ app/Domains/{VerticalName}/
 **Путь:** `app/Domains/Sports/`
 
 **Текущий статус:** 11 компонентов (48%)
+
 ```
 ✅ Models:        3 файла
 ✅ Controllers:   5 файлов
@@ -292,6 +302,7 @@ app/Domains/{VerticalName}/
 ```
 
 **ТРЕБУЕТСЯ СОЗДАТЬ:**
+
 - [ ] Filament Resources (4-5 файлов):
   - `SportClubResource.php`
   - `TrainerResource.php`
@@ -314,6 +325,7 @@ app/Domains/{VerticalName}/
 **Текущий статус:** 0% - НЕ РЕАЛИЗОВАНА
 
 **Существует только структура:**
+
 - ✅ `Filament/` директория (пуста)
 - ✅ `Http/` директория (пуста)
 - ✅ `Models/` директория (структура)
@@ -371,9 +383,11 @@ app/Domains/{VerticalName}/
 ## Системные/Технические Вертикали (Не в app/Domains)
 
 ### 1. **Core/Foundation** - Фундамент
+
 **Путь:** `app/Services/`, `app/Models/`, `app/Http/`
 
 **Компоненты:**
+
 - `WalletService.php` - Управление кошельками и балансом
 - `PaymentGatewayInterface.php` - Обработка платежей
 - `FraudMLService.php` - ML фрод-скоринг
@@ -386,9 +400,11 @@ app/Domains/{VerticalName}/
 ---
 
 ### 2. **Authentication & Authorization**
+
 **Путь:** `app/Models/Auth/`, `app/Policies/`
 
 **Модели:**
+
 - `User.php` - Пользователь
 - `Tenant.php` - Бизнес (клиент платформы)
 - `BusinessGroup.php` - Филиалы бизнеса
@@ -396,6 +412,7 @@ app/Domains/{VerticalName}/
 - `Permission.php` - Права
 
 **Компоненты:**
+
 - Spatie Permissions
 - Tenant Scoping
 - Policy-based Authorization
@@ -403,15 +420,18 @@ app/Domains/{VerticalName}/
 ---
 
 ### 3. **Marketplace** - Общий Маркетплейс
+
 **Путь:** `app/Http/Controllers/Marketplace/`
 
 **Контроллеры:**
+
 - `PublicMarketplaceController.php` - Публичный маркетплейс
 - `ProductSearchController.php` - Поиск товаров
 - `CategoryController.php` - Категории
 - `FacadeController.php` - Фасад для рекомендаций
 
 **Сервисы:**
+
 - `MarketplaceService.php`
 - `SearchService.php`
 - `FilterService.php`
@@ -419,9 +439,11 @@ app/Domains/{VerticalName}/
 ---
 
 ### 4. **Analytics & BI** - Аналитика
+
 **Путь:** `app/Services/Analytics/`, `app/Services/BigData/`
 
 **Компоненты:**
+
 - `AnalyticsService.php` - Аналитика
 - `BigDataAggregatorService.php` - Загрузка в ClickHouse
 - `MetricsService.php` - Метрики
@@ -431,9 +453,11 @@ app/Domains/{VerticalName}/
 ---
 
 ### 5. **Notifications & Messaging**
+
 **Путь:** `app/Notifications/`, `app/Mail/`, `app/Events/`
 
 **Компоненты:**
+
 - SMS (Twillio)
 - Email (SMTP)
 - Push-уведомления
@@ -443,9 +467,11 @@ app/Domains/{VerticalName}/
 ---
 
 ### 6. **Rate Limiting & Security**
+
 **Путь:** `app/Services/RateLimiting/`, `app/Middleware/`
 
 **Компоненты:**
+
 - Tenant-aware Rate Limiter (Redis)
 - DDOS Protection
 - IP Whitelist/Blacklist
@@ -455,9 +481,11 @@ app/Domains/{VerticalName}/
 ---
 
 ### 7. **Logging & Audit**
+
 **Путь:** `config/logging.php`, `app/Services/Audit/`
 
 **Каналы:**
+
 - `audit` - Аудит всех операций
 - `fraud_alert` - Подозрительные операции
 - `recommend` - Рекомендации
@@ -470,9 +498,11 @@ app/Domains/{VerticalName}/
 ---
 
 ### 8. **External Integrations**
+
 **Путь:** `app/Services/External/`
 
 **Интеграции:**
+
 - Payment Gateways:
   - Tinkoff
   - Sber
@@ -488,17 +518,20 @@ app/Domains/{VerticalName}/
 ---
 
 ### 9. **Migrations & Database**
+
 **Путь:** `database/migrations/`
 
 **Таблицы (100+):**
 
 **Core таблицы:**
+
 - `users` - Пользователи
 - `tenants` - Бизнесы (мультитенантность)
 - `business_groups` - Филиалы
 - `roles_permissions` - RBAC
 
 **Financial:**
+
 - `wallets` - Кошельки
 - `balance_transactions` - Транзакции
 - `payment_transactions` - Платежи
@@ -506,12 +539,14 @@ app/Domains/{VerticalName}/
 - `failed_payments` - Неудачные платежи
 
 **Commerce:**
+
 - `orders` / `bookings` / `appointments` - Заказы/бронирование
 - `inventory_items` - Запасы
 - `stock_movements` - Движение запасов
 - `demand_forecasts` - Прогнозы
 
 **Marketing:**
+
 - `promo_campaigns` - Акции
 - `promo_uses` - Применение акций
 - `referrals` - Рефералы
@@ -519,6 +554,7 @@ app/Domains/{VerticalName}/
 - `bonuses` - Бонусы
 
 **ML/Analytics:**
+
 - `fraud_attempts` - Попытки фрода
 - `fraud_model_versions` - Версии ML-моделей
 - `user_embeddings` - Embedding пользователей
@@ -528,9 +564,11 @@ app/Domains/{VerticalName}/
 ---
 
 ### 10. **Configuration**
+
 **Путь:** `config/`
 
 **Config файлы:**
+
 - `verticals.php` - Регистрация вертикалей
 - `payments.php` - Настройки платежей
 - `wallet.php` - Кошельки
@@ -1160,7 +1198,9 @@ SELECT * FROM audit_logs
 WHERE correlation_id = 'abc-123'
 ORDER BY created_at DESC;
 ```
+
 Result: Full transaction history
+
 ```
 
 ---
@@ -1168,6 +1208,7 @@ Result: Full transaction history
 ## Миграция с Других Платформ
 
 ```
+
 PLATFORM DETECTION & MIGRATION BONUS
 
 From Yandex Afisha/Travel:
@@ -1198,6 +1239,7 @@ IMPLEMENTATION
 ├─ Commission::where('platform', 'Yandex')
 ├─ MigrationBonus event
 └─ Migration proof (screenshot/email)
+
 ```
 
 ---
@@ -1207,6 +1249,7 @@ IMPLEMENTATION
 ### 1️⃣ Customer Journey (Заказ услуги)
 
 ```
+
 1. Discover
    ├─ Marketplace (RecommendationService)
    ├─ Search (Elasticsearch)
@@ -1252,11 +1295,13 @@ IMPLEMENTATION
    ├─ FraudCheck (detect fake reviews)
    ├─ Update seller rating
    └─ Trigger ReferralRewardListener
+
 ```
 
 ### 2️⃣ Seller Journey (Управление бизнесом)
 
 ```
+
 1. Onboarding
    ├─ Create Tenant (business account)
    ├─ Verify ownership (email/SMS)
@@ -1303,6 +1348,7 @@ IMPLEMENTATION
    ├─ FraudCheck + limit check
    ├─ BatchPayoutJob (4-7 days)
    └─ Notification when completed
+
 ```
 
 ---
@@ -1310,6 +1356,7 @@ IMPLEMENTATION
 ## Регистрация Новой Вертикали (Чеклист)
 
 ```
+
 ✅ ЧТО НУЖНО СДЕЛАТЬ
 
 1. Create Folder Structure
@@ -1371,6 +1418,7 @@ IMPLEMENTATION
     - Update VERTICALS_STATUS_REPORT.md
     - Add to PROJECT_MAP_DETAILED.md
     - Update README
+
 ```
 
 ---

@@ -3,8 +3,8 @@
 namespace App\Domains\Flowers\Services;
 
 use Illuminate\Support\Facades\Log;
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Str;
+use App\Services\FraudControlService;
 
 
 use App\Domains\Flowers\Events\FlowerDeliveryCompleted;
@@ -14,15 +14,27 @@ use Illuminate\Support\Facades\DB;
 
 final class FlowerDeliveryService
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function assignDelivery(
         int $orderId,
         string $courierName,
         string $courierPhone,
         string $correlationId = '',
     ): FlowerDelivery {
-        $correlationId = $correlationId ?: (string)Str::uuid();
+        $correlationId = $correlationId ?: (string)Str::uuid()->toString();
 
-        return DB::transaction(function () use ($orderId, $courierName, $courierPhone, $correlationId) {
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(function () use ($orderId, $courierName, $courierPhone, $correlationId) {
             $order = FlowerOrder::query()
                 ->where('id', $orderId)
                 ->lockForUpdate()
@@ -58,9 +70,17 @@ final class FlowerDeliveryService
         array $location = null,
         string $correlationId = '',
     ): FlowerDelivery {
-        $correlationId = $correlationId ?: (string)Str::uuid();
+        $correlationId = $correlationId ?: (string)Str::uuid()->toString();
 
-        return DB::transaction(function () use ($deliveryId, $status, $location, $correlationId) {
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(function () use ($deliveryId, $status, $location, $correlationId) {
             $delivery = FlowerDelivery::query()
                 ->where('id', $deliveryId)
                 ->lockForUpdate()
@@ -96,7 +116,6 @@ final class FlowerDeliveryService
     {
         $correlationId = Str::uuid()->toString();
         Log::channel('audit')->info('Service method called in Flowers', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
 
         return FlowerDelivery::query()
             ->where('id', $deliveryId)

@@ -4,15 +4,20 @@ namespace App\Domains\Travel\Http\Controllers;
 
 use App\Domains\Travel\Models\TravelTour;
 use App\Domains\Travel\Models\TravelAgency;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
 
-final class TravelTourController
+final class TravelTourController extends Controller
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
     public function index(Request $request): JsonResponse
     {
         try {
@@ -42,7 +47,7 @@ final class TravelTourController
                     'total' => $tours->total(),
                     'per_page' => $tours->perPage(),
                 ],
-                'correlation_id' => Str::uuid(),
+                'correlation_id' => Str::uuid()->toString(),
             ]);
         } catch (Throwable $e) {
             Log::channel('audit')->error('Failed to list tours', [
@@ -52,7 +57,7 @@ final class TravelTourController
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to list tours',
-                'correlation_id' => Str::uuid(),
+                'correlation_id' => Str::uuid()->toString(),
             ], 500);
         }
     }
@@ -65,24 +70,21 @@ final class TravelTourController
             return response()->json([
                 'success' => true,
                 'data' => $tour,
-                'correlation_id' => Str::uuid(),
+                'correlation_id' => Str::uuid()->toString(),
             ]);
         } catch (Throwable $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Tour not found',
-                'correlation_id' => Str::uuid(),
+                'correlation_id' => Str::uuid()->toString(),
             ], 404);
         }
     }
 
     public function store(Request $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
-
-        $correlationId = $request->get('correlation_id', Str::uuid()->toString());
+        $correlationId = $request->get('correlation_id', (string) Str::uuid()->toString());
+        $this->fraudControlService->check(auth()->id() ?? 0, 'tour_store', 0, $request->ip(), null, $correlationId);
 
         try {
             $request->validate([
@@ -102,24 +104,25 @@ final class TravelTourController
 
             $this->authorize('create', TravelTour::class);
 
-            $tour = DB::transaction(function () use ($request, $agency, $correlationId) {
+            $validated = $request->all();
+            $tour = DB::transaction(function () use ($validated, $agency, $correlationId) {
                 return TravelTour::create([
                     'tenant_id' => tenant()->id,
                     'agency_id' => $agency->id,
-                    'name' => $request->get('name'),
-                    'destination' => $request->get('destination'),
-                    'duration_days' => $request->get('duration_days'),
-                    'start_date' => $request->get('start_date'),
-                    'end_date' => $request->get('end_date'),
-                    'price' => $request->get('price'),
-                    'cost_price' => $request->get('cost_price', 0),
-                    'max_participants' => $request->get('max_participants'),
+                    'name' => ($validated['name'] ?? null),
+                    'destination' => ($validated['destination'] ?? null),
+                    'duration_days' => ($validated['duration_days'] ?? null),
+                    'start_date' => ($validated['start_date'] ?? null),
+                    'end_date' => ($validated['end_date'] ?? null),
+                    'price' => ($validated['price'] ?? null),
+                    'cost_price' => ($validated['cost_price'] ?? 0),
+                    'max_participants' => ($validated['max_participants'] ?? null),
                     'current_participants' => 0,
-                    'itinerary' => $request->get('itinerary', []),
-                    'inclusions' => $request->get('inclusions', []),
+                    'itinerary' => ($validated['itinerary'] ?? []),
+                    'inclusions' => ($validated['inclusions'] ?? []),
                     'status' => 'draft',
                     'correlation_id' => $correlationId,
-                    'uuid' => Str::uuid(),
+                    'uuid' => Str::uuid()->toString(),
                 ]);
             });
 
@@ -150,28 +153,26 @@ final class TravelTourController
 
     public function update(Request $request, int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
-
-        $correlationId = $request->get('correlation_id', Str::uuid()->toString());
+        $correlationId = $request->get('correlation_id', (string) Str::uuid()->toString());
+        $this->fraudControlService->check(auth()->id() ?? 0, 'tour_update', 0, $request->ip(), null, $correlationId);
 
         try {
             $tour = TravelTour::where('tenant_id', tenant()->id)->findOrFail($id);
 
             $this->authorize('update', $tour);
 
-            $tour = DB::transaction(function () use ($request, $tour, $correlationId) {
+            $validated = $request->all();
+            $tour = DB::transaction(function () use ($validated, $tour, $correlationId) {
                 $tour->update([
-                    'name' => $request->get('name', $tour->name),
-                    'destination' => $request->get('destination', $tour->destination),
-                    'duration_days' => $request->get('duration_days', $tour->duration_days),
-                    'start_date' => $request->get('start_date', $tour->start_date),
-                    'end_date' => $request->get('end_date', $tour->end_date),
-                    'price' => $request->get('price', $tour->price),
-                    'max_participants' => $request->get('max_participants', $tour->max_participants),
-                    'itinerary' => $request->get('itinerary', $tour->itinerary),
-                    'inclusions' => $request->get('inclusions', $tour->inclusions),
+                    'name' => ($validated['name'] ?? $tour->name),
+                    'destination' => ($validated['destination'] ?? $tour->destination),
+                    'duration_days' => ($validated['duration_days'] ?? $tour->duration_days),
+                    'start_date' => ($validated['start_date'] ?? $tour->start_date),
+                    'end_date' => ($validated['end_date'] ?? $tour->end_date),
+                    'price' => ($validated['price'] ?? $tour->price),
+                    'max_participants' => ($validated['max_participants'] ?? $tour->max_participants),
+                    'itinerary' => ($validated['itinerary'] ?? $tour->itinerary),
+                    'inclusions' => ($validated['inclusions'] ?? $tour->inclusions),
                     'correlation_id' => $correlationId,
                 ]);
 
@@ -199,11 +200,8 @@ final class TravelTourController
 
     public function destroy(int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
-
-        $correlationId = Str::uuid()->toString();
+        $correlationId = (string) Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'tour_destroy', 0, request()->ip(), null, $correlationId);
 
         try {
             $tour = TravelTour::where('tenant_id', tenant()->id)->findOrFail($id);
@@ -244,13 +242,13 @@ final class TravelTourController
             return response()->json([
                 'success' => true,
                 'data' => $reviews->items(),
-                'correlation_id' => Str::uuid(),
+                'correlation_id' => Str::uuid()->toString(),
             ]);
         } catch (Throwable $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to get reviews',
-                'correlation_id' => Str::uuid(),
+                'correlation_id' => Str::uuid()->toString(),
             ], 404);
         }
     }

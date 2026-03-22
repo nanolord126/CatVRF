@@ -2,7 +2,7 @@
 
 namespace App\Domains\PetServices\Services;
 
-use App\Services\Security\FraudControlService;
+use App\Services\FraudControlService;
 use Illuminate\Support\Facades\Log;
 
 use App\Domains\PetServices\Models\PetWalking;
@@ -14,33 +14,27 @@ use Illuminate\Support\Str;
 final class PetWalkingService
 {
     public function __construct(
+        private readonly FraudControlService $fraudControlService,
         private readonly WalletService $walletService,
     ) {}
 
     public function createWalkingBooking(array $data): PetWalking
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'createWalkingBooking'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createWalkingBooking', ['domain' => __CLASS__]);
-
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'createWalkingBooking'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createWalkingBooking', ['domain' => __CLASS__]);
-
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'createWalkingBooking'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createWalkingBooking', ['domain' => __CLASS__]);
-
         Log::channel('audit')->info('PetWalkingService: Creating walking booking', [
             'correlation_id' => $data['correlation_id'] ?? Str::uuid(),
             'walker_id' => $data['walker_id'],
             'tenant_id' => filament()->getTenant()->id,
         ]);
 
-        return DB::transaction(fn () => PetWalking::create([
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(fn () => PetWalking::create([
             'uuid' => Str::uuid(),
             'correlation_id' => $data['correlation_id'] ?? Str::uuid(),
             'tenant_id' => filament()->getTenant()->id,
@@ -59,21 +53,6 @@ final class PetWalkingService
 
     public function acceptWalkingBooking(int $bookingId, int $walkerId): bool
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'acceptWalkingBooking'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL acceptWalkingBooking', ['domain' => __CLASS__]);
-
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'acceptWalkingBooking'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL acceptWalkingBooking', ['domain' => __CLASS__]);
-
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'acceptWalkingBooking'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL acceptWalkingBooking', ['domain' => __CLASS__]);
-
         $booking = PetWalking::findOrFail($bookingId);
 
         Log::channel('audit')->info('PetWalkingService: Walker accepted booking', [
@@ -82,7 +61,15 @@ final class PetWalkingService
             'walker_id' => $walkerId,
         ]);
 
-        return DB::transaction(function () use ($booking) {
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(function () use ($booking) {
             $booking->update(['status' => 'accepted']);
             return true;
         });
@@ -90,21 +77,6 @@ final class PetWalkingService
 
     public function startWalk(int $bookingId): bool
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'startWalk'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL startWalk', ['domain' => __CLASS__]);
-
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'startWalk'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL startWalk', ['domain' => __CLASS__]);
-
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'startWalk'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL startWalk', ['domain' => __CLASS__]);
-
         $booking = PetWalking::findOrFail($bookingId);
 
         Log::channel('audit')->info('PetWalkingService: Walk started', [
@@ -112,7 +84,15 @@ final class PetWalkingService
             'booking_id' => $bookingId,
         ]);
 
-        return DB::transaction(function () use ($booking) {
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(function () use ($booking) {
             $booking->update([
                 'status' => 'in_progress',
                 'start_time' => now(),
@@ -123,21 +103,6 @@ final class PetWalkingService
 
     public function completeWalk(int $bookingId, array $photoUrls = [], string $notes = ''): bool
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'completeWalk'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL completeWalk', ['domain' => __CLASS__]);
-
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'completeWalk'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL completeWalk', ['domain' => __CLASS__]);
-
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'completeWalk'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL completeWalk', ['domain' => __CLASS__]);
-
         $booking = PetWalking::findOrFail($bookingId);
 
         Log::channel('audit')->info('PetWalkingService: Walk completed', [
@@ -145,7 +110,15 @@ final class PetWalkingService
             'booking_id' => $bookingId,
         ]);
 
-        return DB::transaction(function () use ($booking, $photoUrls, $notes) {
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(function () use ($booking, $photoUrls, $notes) {
             $booking->update([
                 'status' => 'completed',
                 'end_time' => now(),
@@ -167,21 +140,6 @@ final class PetWalkingService
 
     public function getAvailableWalkers(string $walkDate, string $walkTime): Collection
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'getAvailableWalkers'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getAvailableWalkers', ['domain' => __CLASS__]);
-
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'getAvailableWalkers'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getAvailableWalkers', ['domain' => __CLASS__]);
-
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'getAvailableWalkers'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getAvailableWalkers', ['domain' => __CLASS__]);
-
         return collect()->map(function () {
             return [
                 'walker_id' => random_int(1, 10),
@@ -193,21 +151,6 @@ final class PetWalkingService
 
     public function cancelWalkingBooking(int $bookingId, string $reason = ''): bool
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'cancelWalkingBooking'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL cancelWalkingBooking', ['domain' => __CLASS__]);
-
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'cancelWalkingBooking'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL cancelWalkingBooking', ['domain' => __CLASS__]);
-
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'cancelWalkingBooking'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL cancelWalkingBooking', ['domain' => __CLASS__]);
-
         $booking = PetWalking::findOrFail($bookingId);
 
         Log::channel('audit')->info('PetWalkingService: Cancelling walking booking', [
@@ -216,7 +159,15 @@ final class PetWalkingService
             'reason' => $reason,
         ]);
 
-        return DB::transaction(function () use ($booking, $reason) {
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(function () use ($booking, $reason) {
             $booking->update([
                 'status' => 'cancelled',
                 'cancellation_reason' => $reason,

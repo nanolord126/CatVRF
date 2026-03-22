@@ -4,10 +4,12 @@ namespace App\Domains\Auto\Http\Controllers;
 
 use App\Domains\Auto\Models\AutoPart;
 use App\Domains\Auto\Services\AutoPartsInventoryService;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * Controller для управления запчастями (только для персонала).
@@ -17,13 +19,14 @@ final class AutoPartController
 {
     public function __construct(
         private readonly AutoPartsInventoryService $inventoryService,
+        private readonly FraudControlService $fraudControlService,
     ) {}
 
     public function index(Request $request): JsonResponse
     {
         try {
             $parts = AutoPart::query()
-                ->where('tenant_id', tenant('id') ?? 1)
+                ->where('tenant_id', tenant('id'))
                 ->paginate(20);
 
             return response()->json([
@@ -40,8 +43,28 @@ final class AutoPartController
 
     public function store(Request $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
+        $correlationId = Str::uuid()->toString();
+        
+        $fraudResult = $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            'auto_part_creation',
+            0,
+            request()->ip(),
+            request()->header('X-Device-Fingerprint'),
+            $correlationId,
+        );
+
+        if ($fraudResult['decision'] === 'block') {
+            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                'correlation_id' => $correlationId,
+                'user_id'        => auth()->id(),
+                'score'          => $fraudResult['score'],
+            ]);
+            return response()->json([
+                'success'        => false,
+                'error'          => 'Операция заблокирована.',
+                'correlation_id' => $correlationId,
+            ], 403);
         }
 
         try {
@@ -56,15 +79,16 @@ final class AutoPartController
                 'min_stock_threshold' => 'required|integer',
             ]);
 
-            $part = DB::transaction(function () use ($request) {
+            $validated = $request->all();
+            $part = DB::transaction(function () use ($validated) {
                 return AutoPart::create([
-                    'tenant_id' => tenant('id') ?? 1,
-                    'sku' => $request->get('sku'),
-                    'name' => $request->get('name'),
-                    'brand' => $request->get('brand'),
-                    'price' => $request->get('price'),
-                    'current_stock' => $request->get('current_stock'),
-                    'min_stock_threshold' => $request->get('min_stock_threshold'),
+                    'tenant_id' => tenant('id'),
+                    'sku' => ($validated['sku'] ?? null),
+                    'name' => ($validated['name'] ?? null),
+                    'brand' => ($validated['brand'] ?? null),
+                    'price' => ($validated['price'] ?? null),
+                    'current_stock' => ($validated['current_stock'] ?? null),
+                    'min_stock_threshold' => ($validated['min_stock_threshold'] ?? null),
                 ]);
             });
 
@@ -92,8 +116,28 @@ final class AutoPartController
 
     public function update(Request $request, AutoPart $part): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
+        $correlationId = Str::uuid()->toString();
+        
+        $fraudResult = $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            'auto_part_update',
+            0,
+            request()->ip(),
+            request()->header('X-Device-Fingerprint'),
+            $correlationId,
+        );
+
+        if ($fraudResult['decision'] === 'block') {
+            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                'correlation_id' => $correlationId,
+                'user_id'        => auth()->id(),
+                'score'          => $fraudResult['score'],
+            ]);
+            return response()->json([
+                'success'        => false,
+                'error'          => 'Операция заблокирована.',
+                'correlation_id' => $correlationId,
+            ], 403);
         }
 
         try {
@@ -150,7 +194,7 @@ final class AutoPartController
     public function lowStock(Request $request): JsonResponse
     {
         $parts = AutoPart::query()
-            ->where('tenant_id', tenant('id') ?? 1)
+            ->where('tenant_id', tenant('id'))
             ->whereRaw('current_stock < min_stock_threshold')
             ->get();
 

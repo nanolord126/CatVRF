@@ -7,16 +7,19 @@ use App\Domains\Medical\Models\MedicalPrescription;
 use App\Domains\Medical\Models\MedicalRecord;
 use App\Domains\Medical\Models\MedicalService;
 use App\Domains\Medical\Services\AppointmentService;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Throwable;
 
 final class MedicalAppointmentController
 {
     public function __construct(
         private readonly AppointmentService $appointmentService,
+        private readonly FraudControlService $fraudControlService,
     ) {}
 
     public function services(): JsonResponse
@@ -53,22 +56,21 @@ final class MedicalAppointmentController
 
     public function store(Request $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
-            $correlationId = $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid();
 
-            $appointment = DB::transaction(function () use ($request, $correlationId) {
+            $validated = $request->all();
+            $appointment = DB::transaction(function () use ($validated, $correlationId) {
                 return $this->appointmentService->createAppointment(
                     tenantId: auth()->user()->tenant_id,
-                    clinicId: $request->input('clinic_id'),
-                    doctorId: $request->input('doctor_id'),
+                    clinicId: ($validated['clinic_id'] ?? null),
+                    doctorId: ($validated['doctor_id'] ?? null),
                     patientId: auth()->user()->id,
-                    serviceId: $request->input('service_id'),
-                    scheduledAt: $request->input('scheduled_at'),
-                    notes: $request->input('notes'),
+                    serviceId: ($validated['service_id'] ?? null),
+                    scheduledAt: ($validated['scheduled_at'] ?? null),
+                    notes: ($validated['notes'] ?? null),
                     correlationId: $correlationId,
                 );
             });
@@ -104,9 +106,8 @@ final class MedicalAppointmentController
 
     public function update(Request $request, int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $appointment = MedicalAppointment::findOrFail($id);

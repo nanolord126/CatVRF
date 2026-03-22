@@ -27,6 +27,7 @@
 ✅ **ДА, ВСЕ ЕСТЬ:**
 
 #### 1.1 Нагрузочные тесты (Load Testing)
+
 ```
 ✅ k6/load-test-core.js (250 LOC)
    - Authentication & Authorization
@@ -61,6 +62,7 @@
 ```
 
 #### 1.2 Тесты действий (User Actions)
+
 ```
 ✅ cypress/e2e/user-actions.cy.ts (700 LOC, 50+ тестов)
 
@@ -93,6 +95,7 @@ Idempotency:
 ```
 
 #### 1.3 Тесты ролей (RBAC)
+
 ```
 ✅ cypress/e2e/rbac-authorization.cy.ts (331 LOC, 35+ тестов)
 ✅ cypress/e2e/rbac.cy.ts (дополнительные 35+ тестов)
@@ -309,7 +312,7 @@ k6 run k6/load-test-cross-vertical.js --duration 30m --vus 200
 
 **Вопрос:** "тесты нагрузочные, действий, ролей есть в этом всем? Тесты загрузки файлов, обновления, установки фото, аватаров"
 
-**Ответ:** 
+**Ответ:**
 
 ✅ **ДА, ВСЁ ЕСТЬ И ЗАДОКУМЕНТИРОВАНО:**
 
@@ -323,6 +326,7 @@ k6 run k6/load-test-cross-vertical.js --duration 30m --vus 200
 | 🟠 Фото, аватары | 1 файл, 40+ тестов | avatar-photo-management.cy.ts |
 
 **Дополнительно:**
+
 - ✅ 23 вертикали полностью протестированы
 - ✅ Core сервисы (платежи, RBAC, wishlist)
 - ✅ Cross-vertical integration тесты

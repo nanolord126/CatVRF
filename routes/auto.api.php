@@ -1,7 +1,7 @@
 <?php declare(strict_types=1);
 
-use App\Domains\Auto\Http\Controllers\TaxiRideController;
-use App\Domains\Auto\Http\Controllers\TaxiDriverController;
+use App\Domains\Taxi\Http\Controllers\TaxiRideController;
+use App\Domains\Taxi\Http\Controllers\TaxiDriverController;
 use App\Domains\Auto\Http\Controllers\AutoServiceOrderController;
 use App\Domains\Auto\Http\Controllers\CarWashBookingController;
 use App\Domains\Auto\Http\Controllers\AutoPartController;

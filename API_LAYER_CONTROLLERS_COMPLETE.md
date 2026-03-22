@@ -3,7 +3,9 @@
 ## Status: ✅ COMPLETE
 
 ### Overview
+
 Comprehensive API layer for all 11 production-ready verticals with:
+
 - ✅ BaseApiController (JSON responses, correlation IDs)
 - ✅ 10 Vertical Order Controllers (CRUD endpoints)
 - ✅ 13 FormRequest validation classes
@@ -70,6 +72,7 @@ abstract class BaseApiController extends Controller
 ```
 
 **Features:**
+
 - Consistent JSON response format
 - correlation_id tracking
 - HTTP status codes (201 for created, 404 for not found, etc.)
@@ -79,6 +82,7 @@ abstract class BaseApiController extends Controller
 ## Controller Endpoints by Vertical
 
 ### 1. FarmDirectOrderController
+
 ```
 GET    /api/v1/farm-orders          - List all orders
 GET    /api/v1/farm-orders/{id}     - View single order
@@ -88,6 +92,7 @@ DELETE /api/v1/farm-orders/{id}     - Delete pending order
 ```
 
 **Features:**
+
 - Quantity in kg with validation (0.5–500 kg)
 - Future delivery date only
 - Full audit logging with correlation_id
@@ -95,6 +100,7 @@ DELETE /api/v1/farm-orders/{id}     - Delete pending order
 ---
 
 ### 2. HealthyFoodDietController
+
 ```
 GET    /api/v1/diet-plans           - List diet plans
 POST   /api/v1/diet-plans           - Create diet plan
@@ -102,6 +108,7 @@ POST   /api/v1/diet-plans/{id}/subscribe - Subscribe to diet plan
 ```
 
 **Features:**
+
 - Diet types: keto, vegan, paleo, low-carb, balanced, custom
 - Daily calorie range: 1000–5000
 - Subscription integration
@@ -109,6 +116,7 @@ POST   /api/v1/diet-plans/{id}/subscribe - Subscribe to diet plan
 ---
 
 ### 3. ConfectioneryOrderController
+
 ```
 GET    /api/v1/bakery-orders        - List orders
 POST   /api/v1/bakery-orders        - Create order
@@ -116,6 +124,7 @@ POST   /api/v1/bakery-orders/{id}/mark-ready - Mark order ready
 ```
 
 **Features:**
+
 - Custom messages & special requests
 - Ready status for order fulfillment
 - Delivery date scheduling
@@ -123,12 +132,14 @@ POST   /api/v1/bakery-orders/{id}/mark-ready - Mark order ready
 ---
 
 ### 4. MeatShopsOrderController
+
 ```
 GET    /api/v1/meat-orders          - List orders
 POST   /api/v1/meat-orders          - Create order
 ```
 
 **Features:**
+
 - Weight-based pricing (0.2–50 kg)
 - Product lookup validation
 - Automatic price calculation
@@ -136,6 +147,7 @@ POST   /api/v1/meat-orders          - Create order
 ---
 
 ### 5. OfficeCateringOrderController
+
 ```
 GET    /api/v1/catering-orders      - List orders
 POST   /api/v1/catering-orders      - Place order
@@ -143,6 +155,7 @@ POST   /api/v1/catering-orders/{id}/setup-recurring - Setup recurring
 ```
 
 **Features:**
+
 - Corporate client validation
 - Portion count (1–500)
 - Delivery time between 08:00–17:00
@@ -151,6 +164,7 @@ POST   /api/v1/catering-orders/{id}/setup-recurring - Setup recurring
 ---
 
 ### 6. FurnitureOrderController
+
 ```
 GET    /api/v1/furniture-orders     - List orders
 POST   /api/v1/furniture-orders     - Create order
@@ -158,6 +172,7 @@ POST   /api/v1/furniture-orders/{id}/schedule-delivery - Schedule
 ```
 
 **Features:**
+
 - Assembly flag & date scheduling
 - Client address capture
 - Delivery scheduling integration
@@ -165,6 +180,7 @@ POST   /api/v1/furniture-orders/{id}/schedule-delivery - Schedule
 ---
 
 ### 7. ElectronicsOrderController
+
 ```
 GET    /api/v1/electronics-orders   - List orders
 POST   /api/v1/electronics-orders   - Create order
@@ -172,6 +188,7 @@ POST   /api/v1/electronics-orders/warranty-claim - Submit warranty
 ```
 
 **Features:**
+
 - Serial number & IMEI capture
 - Warranty claim submission with issue description
 - Photo URL for damage documentation
@@ -179,12 +196,14 @@ POST   /api/v1/electronics-orders/warranty-claim - Submit warranty
 ---
 
 ### 8. ToysKidsOrderController
+
 ```
 GET    /api/v1/toy-orders           - List orders
 POST   /api/v1/toy-orders           - Create order
 ```
 
 **Features:**
+
 - Gift wrapping option (+5% price)
 - Quantity validation (1–50)
 - Age-appropriate product lookup
@@ -192,6 +211,7 @@ POST   /api/v1/toy-orders           - Create order
 ---
 
 ### 9. AutoPartsOrderController
+
 ```
 GET    /api/v1/auto-parts-orders    - List orders
 POST   /api/v1/auto-parts-orders    - Create order
@@ -199,6 +219,7 @@ GET    /api/v1/auto-parts/compatible/{vin} - Find compatible parts
 ```
 
 **Features:**
+
 - VIN format validation (17 chars, no I/O/Q)
 - Compatible parts search by VIN
 - Automatic part matching
@@ -206,6 +227,7 @@ GET    /api/v1/auto-parts/compatible/{vin} - Find compatible parts
 ---
 
 ### 10. PharmacyOrderController
+
 ```
 GET    /api/v1/pharmacy-orders      - List orders
 POST   /api/v1/pharmacy-orders      - Create order
@@ -213,6 +235,7 @@ POST   /api/v1/pharmacy-orders/verify-prescription - Verify Rx
 ```
 
 **Features:**
+
 - Prescription verification
 - Medicines JSON payload
 - Verified by field for pharmacist tracking
@@ -232,6 +255,7 @@ public function messages(): array - Custom error messages
 ### Validation Examples
 
 **StoreOrderRequest (common pattern):**
+
 ```php
 'client_id' => ['required', 'integer', 'exists:users,id'],
 'delivery_date' => ['required', 'date', 'after:today'],
@@ -239,6 +263,7 @@ public function messages(): array - Custom error messages
 ```
 
 **AutoPartStoreOrderRequest (VIN validation):**
+
 ```php
 'vin' => ['required', 'string', 'regex:/^[A-HJ-NPR-Z0-9]{17}$/'],
 ```
@@ -248,6 +273,7 @@ public function messages(): array - Custom error messages
 ## API Response Format
 
 ### Success Response (HTTP 200, 201)
+
 ```json
 {
     "success": true,
@@ -264,6 +290,7 @@ public function messages(): array - Custom error messages
 ```
 
 ### Error Response (HTTP 4xx, 5xx)
+
 ```json
 {
     "success": false,
@@ -280,7 +307,9 @@ public function messages(): array - Custom error messages
 ## Key Features
 
 ### 1. Audit Logging
+
 Every action logs to `Log::channel('audit')`:
+
 ```php
 Log::channel('audit')->info('FarmDirect order created', [
     'order_id' => $order->id,
@@ -291,17 +320,20 @@ Log::channel('audit')->info('FarmDirect order created', [
 ```
 
 ### 2. Correlation ID Tracking
+
 - Generated per request: `Str::uuid()->toString()`
 - Passed through service layer
 - Included in all responses for tracing
 
 ### 3. Tenant Scoping
+
 ```php
 $tenantId = auth()->user()?->tenant_id ?? tenant()->id;
 // All queries filtered by tenant_id
 ```
 
 ### 4. Exception Handling
+
 ```php
 try {
     // Business logic
@@ -318,11 +350,13 @@ try {
 ## Route Configuration
 
 Include in `routes/api.php`:
+
 ```php
 include 'api_verticals.php';
 ```
 
 Routes are automatically versioned under `/api/v1` prefix and protected by:
+
 - `auth:sanctum` - Authentication
 - `throttle:api` - Rate limiting
 - Tenant middleware (built into service layer)
@@ -332,6 +366,7 @@ Routes are automatically versioned under `/api/v1` prefix and protected by:
 ## Middleware Stack
 
 Each route passes through:
+
 1. `api` - API middleware group
 2. `auth:sanctum` - Sanctum authentication
 3. `throttle:api` - API rate limiting (60 requests/minute default)
@@ -342,6 +377,7 @@ Each route passes through:
 ## Testing Endpoints
 
 ### Example: Create a Farm Order
+
 ```bash
 curl -X POST http://localhost:8000/api/v1/farm-orders \
   -H "Authorization: Bearer YOUR_TOKEN" \
@@ -356,6 +392,7 @@ curl -X POST http://localhost:8000/api/v1/farm-orders \
 ```
 
 ### Example: Create a Diet Plan
+
 ```bash
 curl -X POST http://localhost:8000/api/v1/diet-plans \
   -H "Authorization: Bearer YOUR_TOKEN" \
@@ -373,6 +410,7 @@ curl -X POST http://localhost:8000/api/v1/diet-plans \
 ## Syntax Validation
 
 All files pass PHP syntax check:
+
 ```
 ✅ BaseApiController.php
 ✅ FarmDirectOrderController.php
@@ -394,11 +432,13 @@ All files pass PHP syntax check:
 ## Next Steps
 
 1. **Include routes in routes/api.php:**
+
    ```php
    include 'api_verticals.php';
    ```
 
 2. **Test endpoints:**
+
    ```bash
    php artisan serve
    # Test: curl http://localhost:8000/api/v1/farm-orders

@@ -19,12 +19,17 @@ final class DeliveryAssemblyService
 
     public function scheduleDelivery(int $orderId, int $tenantId, Carbon $deliveryDate, bool $needsAssembly, string $correlationId): FurnitureOrder
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'scheduleDelivery'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL scheduleDelivery', ['domain' => __CLASS__]);
 
-        return DB::transaction(function () use ($orderId, $tenantId, $deliveryDate, $needsAssembly, $correlationId) {
+
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(function () use ($orderId, $tenantId, $deliveryDate, $needsAssembly, $correlationId) {
             $order = FurnitureOrder::lockForUpdate()
                 ->where('id', $orderId)
                 ->where('tenant_id', $tenantId)
@@ -52,12 +57,17 @@ final class DeliveryAssemblyService
 
     public function scheduleAssembly(int $orderId, int $tenantId, Carbon $assemblyDate, string $correlationId): FurnitureOrder
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'scheduleAssembly'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL scheduleAssembly', ['domain' => __CLASS__]);
 
-        return DB::transaction(function () use ($orderId, $tenantId, $assemblyDate, $correlationId) {
+
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(function () use ($orderId, $tenantId, $assemblyDate, $correlationId) {
             $order = FurnitureOrder::lockForUpdate()
                 ->where('id', $orderId)
                 ->where('tenant_id', $tenantId)
@@ -84,12 +94,17 @@ final class DeliveryAssemblyService
 
     public function markDelivered(int $orderId, int $tenantId, string $correlationId): FurnitureOrder
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'markDelivered'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL markDelivered', ['domain' => __CLASS__]);
 
-        return DB::transaction(function () use ($orderId, $tenantId, $correlationId) {
+
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(function () use ($orderId, $tenantId, $correlationId) {
             $order = FurnitureOrder::lockForUpdate()
                 ->where('id', $orderId)
                 ->where('tenant_id', $tenantId)

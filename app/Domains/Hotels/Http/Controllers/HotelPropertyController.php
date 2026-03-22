@@ -4,13 +4,18 @@ namespace App\Domains\Hotels\Http\Controllers;
 
 use App\Domains\Hotels\Models\HotelProperty;
 use App\Domains\Hotels\Services\HotelPropertyService;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 final class HotelPropertyController
 {
-    public function __construct(private readonly HotelPropertyService $service) {}
+    public function __construct(
+        private readonly HotelPropertyService $service,
+        private readonly FraudControlService $fraudControlService,
+    ) {}
 
     public function index(): JsonResponse
     {
@@ -28,12 +33,10 @@ final class HotelPropertyController
 
     public function store(Request $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         $this->authorize('create', HotelProperty::class);
-        $correlationId = Str::uuid()->toString();
 
         try {
             $property = $this->service->createProperty([
@@ -45,7 +48,7 @@ final class HotelPropertyController
 
             return response()->json(['data' => $property], 201);
         } catch (\Exception $e) {
-            \Log::channel('audit')->error('Property creation failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage()]);
+            Log::channel('audit')->error('Property creation failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage()]);
 
             return response()->json(['error' => 'Failed to create property'], 422);
         }
@@ -53,16 +56,14 @@ final class HotelPropertyController
 
     public function update(Request $request, HotelProperty $property): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         $this->authorize('update', $property);
-        $correlationId = Str::uuid()->toString();
 
         try {
             $property->update($request->only(['name', 'address', 'star_rating']));
-            \Log::channel('audit')->info('Property updated', ['correlation_id' => $correlationId, 'property_id' => $property->id]);
+            Log::channel('audit')->info('Property updated', ['correlation_id' => $correlationId, 'property_id' => $property->id]);
 
             return response()->json(['data' => $property]);
         } catch (\Exception $e) {
@@ -72,16 +73,14 @@ final class HotelPropertyController
 
     public function destroy(HotelProperty $property): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         $this->authorize('delete', $property);
-        $correlationId = Str::uuid()->toString();
 
         try {
             $property->delete();
-            \Log::channel('audit')->info('Property deleted', ['correlation_id' => $correlationId, 'property_id' => $property->id]);
+            Log::channel('audit')->info('Property deleted', ['correlation_id' => $correlationId, 'property_id' => $property->id]);
 
             return response()->json(null, 204);
         } catch (\Exception $e) {

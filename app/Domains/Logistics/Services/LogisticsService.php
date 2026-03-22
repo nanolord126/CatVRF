@@ -2,8 +2,8 @@
 
 namespace App\Domains\Logistics\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use Illuminate\Support\Facades\DB;
 
@@ -13,23 +13,28 @@ use Illuminate\Support\Str;
 final class LogisticsService
 {
     public function __construct(
+        private readonly FraudControlService $fraudControlService,
         private readonly string $correlationId = '',
     ) {
         $this->correlationId = $correlationId ?: Str::uuid()->toString();
     }
 
-    public function createDeliveryOrder(array $data): DeliveryOrder
+    public function createDeliveryOrder(array $data, int $userId, int $tenantId): DeliveryOrder
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'createDeliveryOrder'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createDeliveryOrder', ['domain' => __CLASS__]);
-
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(function () use ($data, $userId, $tenantId) {
         $order = DeliveryOrder::create([
-            'tenant_id' => auth()->user()->tenant_id,
+            'tenant_id' => $tenantId,
             'uuid' => Str::uuid(),
             'correlation_id' => $this->correlationId,
-            'user_id' => auth()->id(),
+            'user_id' => $userId,
             'address' => $data['address'],
             'status' => 'pending',
             'price' => $data['price'] ?? 0,
@@ -41,6 +46,7 @@ final class LogisticsService
         ]);
 
         return $order;
+        });
     }
 
     /**
@@ -48,12 +54,17 @@ final class LogisticsService
      */
     public function executeInTransaction(callable $callback)
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'executeInTransaction'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL executeInTransaction', ['domain' => __CLASS__]);
 
-        return DB::transaction(function () use ($callback) {
+
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(function () use ($callback) {
             return $callback();
         });
     }

@@ -205,7 +205,7 @@ final class Tenant extends Model
         parent::boot();
 
         static::creating(function ($model) {
-            $model->uuid ??= \Illuminate\Support\Str::uuid();
+            $model->uuid ??= \Illuminate\Support\Str::uuid()->toString();
             $model->slug ??= \Illuminate\Support\Str::slug($model->name);
         });
     }

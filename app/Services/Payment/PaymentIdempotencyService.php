@@ -21,7 +21,7 @@ final class PaymentIdempotencyService
             return json_decode($record->response_data, true);
         }
 
-        return null;
+        return [];
     }
 
     public function record(string $idempotencyKey, array $payload, array $response, int $tenantId): void

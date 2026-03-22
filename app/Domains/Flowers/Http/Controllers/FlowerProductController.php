@@ -4,6 +4,7 @@ namespace App\Domains\Flowers\Http\Controllers;
 
 use App\Domains\Flowers\Models\FlowerProduct;
 use App\Domains\Flowers\Models\FlowerShop;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -13,9 +14,13 @@ use Symfony\Component\HttpFoundation\Response;
 
 final class FlowerProductController
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
         
         try {
             $products = FlowerProduct::query()
@@ -51,7 +56,7 @@ final class FlowerProductController
 
     public function show(int $id): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $product = FlowerProduct::query()
@@ -81,7 +86,7 @@ final class FlowerProductController
 
     public function shopProducts(int $shopId): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $shop = FlowerShop::query()->findOrFail($shopId);
@@ -103,7 +108,7 @@ final class FlowerProductController
 
     public function search(Request $request): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $query = $request->get('q', '');
@@ -136,11 +141,8 @@ final class FlowerProductController
 
     public function store(Request $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
-
-        $correlationId = (string)Str::uuid();
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $validated = $request->validate([
@@ -198,11 +200,8 @@ final class FlowerProductController
 
     public function update(int $id, Request $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
-
-        $correlationId = (string)Str::uuid();
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $product = FlowerProduct::query()->findOrFail($id);
@@ -243,11 +242,8 @@ final class FlowerProductController
 
     public function destroy(int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
-
-        $correlationId = (string)Str::uuid();
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $product = FlowerProduct::query()->findOrFail($id);

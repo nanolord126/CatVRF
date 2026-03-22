@@ -8,6 +8,7 @@ use App\Domains\FarmDirect\Models\FarmProduct;
 use App\Domains\FarmDirect\Services\FarmDirectService;
 use App\Http\Requests\FarmDirect\StoreOrderRequest;
 use App\Http\Requests\FarmDirect\UpdateOrderRequest;
+use App\Services\FraudControlService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
@@ -16,7 +17,8 @@ use Illuminate\Support\Str;
 final class FarmDirectOrderController extends BaseApiController
 {
     public function __construct(
-        private FarmDirectService $service,
+        private readonly FarmDirectService $service,
+        private readonly FraudControlService $fraudControlService,
     ) {}
 
     public function index(): JsonResponse
@@ -72,12 +74,10 @@ final class FarmDirectOrderController extends BaseApiController
 
     public function store(StoreOrderRequest $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'farmdirect_order_store', 0, $request->ip(), null, $correlationId);
 
         try {
-            $correlationId = Str::uuid()->toString();
             $tenantId = auth()->user()?->tenant_id ?? tenant()->id;
             $clientId = auth()->id() ?? 0;
 
@@ -109,12 +109,10 @@ final class FarmDirectOrderController extends BaseApiController
 
     public function update(int $id, UpdateOrderRequest $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'farmdirect_order_update', 0, $request->ip(), null, $correlationId);
 
         try {
-            $correlationId = Str::uuid()->toString();
             $tenantId = auth()->user()?->tenant_id ?? tenant()->id;
 
             $order = FarmOrder::where('tenant_id', $tenantId)->findOrFail($id);
@@ -144,12 +142,10 @@ final class FarmDirectOrderController extends BaseApiController
 
     public function destroy(int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'farmdirect_order_destroy', 0, request()->ip(), null, $correlationId);
 
         try {
-            $correlationId = Str::uuid()->toString();
             $tenantId = auth()->user()?->tenant_id ?? tenant()->id;
 
             $order = FarmOrder::where('tenant_id', $tenantId)->findOrFail($id);

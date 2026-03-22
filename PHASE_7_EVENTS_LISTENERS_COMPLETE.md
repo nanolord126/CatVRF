@@ -8,20 +8,24 @@
 ## СОЗДАННЫЕ СОБЫТИЯ (8 total)
 
 ### Auto Domain (3 Events)
+
 ✅ `RideCreated` — When driver accepts a ride
 ✅ `RideCompleted` — When ride ends and payment processed  
 ✅ `SurgeUpdated` — When surge multiplier changes in zone
 
 ### Beauty Domain (3 Events)
+
 ✅ `AppointmentScheduled` — When client books appointment
 ✅ `ConsumableDeducted` — When consumables used during service
 ✅ *(AppointmentCompleted pre-existed)*
 
 ### Food Domain (2 Events)
+
 ✅ `OrderCreated` — When customer places order
 ✅ `OrderDelivered` — When order arrives at customer
 
 ### Hotels Domain (2 Events)
+
 ✅ *(BookingCreated pre-existed)*
 ✅ `CheckoutCompleted` — When guest checks out
 
@@ -30,18 +34,22 @@
 ## СОЗДАННЫЕ LISTENERS (6 total)
 
 ### Auto Domain (2 Listeners)
+
 ✅ `NotifyDriverRideCreated` — Notifies driver of new ride assignment
 ✅ `ProcessRideCompletedPayout` — Credits driver wallet on completion
 
 ### Beauty Domain (2 Listeners)
+
 ✅ `SendAppointmentReminder` — Schedules reminder notifications
 ✅ `UpdateConsumableInventory` — Deducts consumables from inventory
 
 ### Food Domain (2 Listeners)
+
 ✅ `NotifyRestaurantNewOrder` — Alerts restaurant of new order
 ✅ `ProcessOrderDeliveredCommission` — Calculates and processes payout
 
 ### Hotels Domain (1 Listener)
+
 ✅ `ScheduleHotelPayout` — Schedules 4-day delayed payout
 
 ---
@@ -75,7 +83,8 @@ EventServiceProvider::$listen = [
 
 ## USAGE EXAMPLE
 
-### In Service:
+### In Service
+
 ```php
 // Auto/Services/TaxiService.php
 $ride = $rideRepository->create($data);
@@ -87,7 +96,8 @@ RideCreated::dispatch(
 );
 ```
 
-### Listener automatically handles:
+### Listener automatically handles
+
 - Driver notification
 - Audit logging with correlation_id
 - Exception handling with trace logging
@@ -118,6 +128,7 @@ RideCreated::dispatch(
 **Status:** ✅ **PHASE 7 COMPLETE**
 
 Phase 7 Event/Listener infrastructure ready for:
+
 - Real-time notifications
 - Audit trail recording
 - Workflow automation

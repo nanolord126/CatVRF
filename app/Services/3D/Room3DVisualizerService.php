@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-namespace App\Services\3D;
+namespace App\Services\ThreeD;
 
 use Illuminate\Support\Str;
 
@@ -9,7 +9,7 @@ final class Room3DVisualizerService
     public function generateRoomVisualization(array $roomData): array
     {
         return [
-            'room_id' => $roomData['id'] ?? Str::uuid(),
+            'room_id' => $roomData['id'] ?? Str::uuid()->toString(),
             'type' => $roomData['type'] ?? 'standard',
             'dimensions' => [
                 'length' => $roomData['length'] ?? 5,
@@ -33,7 +33,7 @@ final class Room3DVisualizerService
     public function generatePropertyVisualization(array $propertyData): array
     {
         return [
-            'property_id' => $propertyData['id'] ?? Str::uuid(),
+            'property_id' => $propertyData['id'] ?? Str::uuid()->toString(),
             'type' => $propertyData['type'] ?? 'apartment',
             'rooms' => array_map(fn ($room) => $this->generateRoomVisualization($room), $propertyData['rooms'] ?? []),
             'exterior' => [
@@ -58,3 +58,4 @@ final class Room3DVisualizerService
             ->all();
     }
 }
+

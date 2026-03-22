@@ -12,6 +12,7 @@
 ### 1. Фискальные драйверы
 
 #### AtolFiscalDriver.php ✅
+
 - **Файл**: `app/Domains/Finances/Services/Fiscal/AtolFiscalDriver.php`
 - **Статус**: ✅ Синтаксис проверен, работает
 - **Функции**:
@@ -25,6 +26,7 @@
 - **Поддерживаемые системы налогообложения**: ОСН (0%, 10%, 20%), УСН (без НДС), ЕСХН (без НДС), ЕНВД (без НДС), ПСН (без НДС)
 
 #### CloudKassirFiscalDriver.php ✅
+
 - **Файл**: `app/Domains/Finances/Services/Fiscal/CloudKassirFiscalDriver.php`
 - **Статус**: ✅ Синтаксис проверен, работает
 - **Функции**:
@@ -41,6 +43,7 @@
 ### 2. Сервисы
 
 #### FiscalService.php ✅
+
 - **Файл**: `app/Domains/Finances/Services/FiscalService.php`
 - **Статус**: ✅ Обновлена документация и сигнатуры методов
 - **Функции**:
@@ -50,6 +53,7 @@
   - Поддерживает переключение между Atol (основной) и CloudKassir (резервный)
 
 #### PaymentService.php ✅
+
 - **Файл**: `app/Domains/Finances/Services/PaymentService.php`
 - **Статус**: ✅ Интегрирована поддержка tax_system
 - **Изменения**:
@@ -59,6 +63,7 @@
 ### 3. Платежные шлюзы
 
 #### TinkoffDriver.php ✅
+
 - **Файл**: `app/Domains/Finances/Services/TinkoffDriver.php`
 - **Статус**: ✅ Синтаксис проверен, работает
 - **Функции**:
@@ -67,11 +72,13 @@
 - **Поддерживаемые налоговые коды**: `vat0`, `vat10`, `vat20`, `none`
 
 #### SberDriver.php ✅
+
 - **Файл**: `app/Domains/Finances/Services/SberDriver.php`
 - **Статус**: ✅ Синтаксис проверен, документация обновлена
 - **Функции**: Стандартные платежи SBP с поддержкой налогов
 
 #### TochkaDriver.php ✅
+
 - **Файл**: `app/Domains/Finances/Services/TochkaDriver.php`
 - **Статус**: ✅ Документация обновлена
 - **Функции**: Корпоративные платежи и расчеты зарплаты с поддержкой налогов
@@ -79,9 +86,11 @@
 ### 4. Интерфейсы
 
 #### FiscalDriverInterface.php ✅
+
 - **Файл**: `app/Domains/Finances/Interfaces/FiscalDriverInterface.php`
 - **Статус**: ✅ Контракты правильны
 - **Методы**:
+
   ```php
   public function sendReceipt(array $transaction, array $items): array;
   public function refundReceipt(string $fiscalId, float $amount, array $data = []): array;
@@ -89,28 +98,34 @@
   ```
 
 #### FiscalServiceInterface.php ✅
+
 - **Файл**: `app/Domains/Finances/Interfaces/FiscalServiceInterface.php`
 - **Статус**: ✅ Контракты соответствуют имплементации
 
 ## Исправленные проблемы
 
 ### 1. Ошибка интерфейса validateItems ✅
+
 **Проблема**: `AtolFiscalDriver::validateItems()` возвращала `bool`, но интерфейс требовал `array`
 **Решение**: Обновлены все имплементации для возврата `['valid' => bool, 'errors' => array]`
 
 ### 2. Отсутствие поддержки НДС ✅
+
 **Проблема**: Драйверы не различали системы налогообложения
 **Решение**: Добавлены методы `getTaxRate()` и `processItemsWithTax()` с поддержкой всех систем
 
 ### 3. Неправильные налоговые ставки ✅
+
 **Проблема**: Использовалась НДС 18%, которой не существует с 2019 года
-**Решение**: 
+**Решение**:
+
 - Atol: Заменены `VAT_18` на `VAT_20`
 - CloudKassir: Заменены `Vat18` на `Vat20`
 - Tinkoff: Заменены `vat18` на `vat20`
 - **Поддерживаемые ставки**: 0%, 10%, 20%
 
 ### 4. Структурные ошибки CloudKassirFiscalDriver ✅
+
 **Проблема**: Метод `sendReceipt` имел некорректную структуру
 **Решение**: Восстановлена правильная структура методов `processItemsWithTax` и `sendReceipt`
 
@@ -228,7 +243,8 @@ $fiscalService->refundReceipt(
 
 Реализация НДС и фискализации полностью завершена. Система готова к production-использованию и соответствует всем требованиям российского законодательства по фискализации (ФЗ-54) и налогообложению.
 
-**Основной результат**: 
+**Основной результат**:
+
 - Полная поддержка НДС для ОСН (0%, 10%, 20%)
 - Корректная обработка налоговых систем без НДС (УСН, ЕСХН, ЕНВД, ПСН)
 - Интеграция с тремя провайдерами фискализации (Atol, CloudKassir, платежные шлюзы)

@@ -565,11 +565,17 @@ final class FraudControlService
         int $amountCopeki,
         string $correlationId = ''
     ): array {
-        // TODO: ML-скоринг для бонусов
+        // ML-скоринг для бонусных операций
+        $features = $this->extractBonusFeatures($tenantId, $recipientId, $amountCopeki);
+        $mlResult = $this->fraudMLService->scoreOperation($features, 'bonus_award', $correlationId);
+        
+        $allowed = $mlResult['decision'] !== 'block';
+        
         return [
-            'allowed' => true,
-            'score' => 0.1,
-            'reason' => null,
+            'allowed' => $allowed,
+            'score' => $mlResult['score'],
+            'reason' => $allowed ? null : 'Suspicious bonus activity detected',
+            'ml_decision' => $mlResult['decision'],
         ];
     }
 
@@ -581,11 +587,58 @@ final class FraudControlService
         int $amountCopeki,
         string $correlationId = ''
     ): array {
-        // TODO: ML-скоринг для выплат
+        // ML-скоринг для выплат
+        $features = $this->extractPayoutFeatures($tenantId, $amountCopeki);
+        $mlResult = $this->fraudMLService->scoreOperation($features, 'payout', $correlationId);
+        
+        $allowed = $mlResult['decision'] !== 'block';
+        
         return [
-            'allowed' => true,
-            'score' => 0.1,
-            'reason' => null,
+            'allowed' => $allowed,
+            'score' => $mlResult['score'],
+            'reason' => $allowed ? null : 'Suspicious payout activity detected',
+            'ml_decision' => $mlResult['decision'],
+        ];
+    }
+
+    /**
+     * Извлекает признаки для бонусной операции.
+     */
+    private function extractBonusFeatures(int $tenantId, int $recipientId, int $amountCopeki): array
+    {
+        return [
+            'amount' => $amountCopeki,
+            'tenant_id' => $tenantId,
+            'recipient_id' => $recipientId,
+            'bonus_count_today' => \DB::table('bonus_transactions')
+                ->where('recipient_id', $recipientId)
+                ->whereDate('created_at', today())
+                ->count(),
+            'total_bonus_today' => \DB::table('bonus_transactions')
+                ->where('recipient_id', $recipientId)
+                ->whereDate('created_at', today())
+                ->sum('amount') ?? 0,
+        ];
+    }
+
+    /**
+     * Извлекает признаки для выплаты.
+     */
+    private function extractPayoutFeatures(int $tenantId, int $amountCopeki): array
+    {
+        return [
+            'amount' => $amountCopeki,
+            'tenant_id' => $tenantId,
+            'payout_count_today' => \DB::table('payment_transactions')
+                ->where('tenant_id', $tenantId)
+                ->where('type', 'payout')
+                ->whereDate('created_at', today())
+                ->count(),
+            'total_payout_today' => \DB::table('payment_transactions')
+                ->where('tenant_id', $tenantId)
+                ->where('type', 'payout')
+                ->whereDate('created_at', today())
+                ->sum('amount') ?? 0,
         ];
     }
 

@@ -7,12 +7,14 @@
 ### E2E Тесты (Cypress)
 
 #### Core Services (4 файла)
+
 - **payment-flow.cy.ts** - Полный цикл платежей (hold → fraud check → capture → refund)
 - **rbac.cy.ts** - Role-Based Access Control для всех ролей
 - **wishlist.cy.ts** - Вишлист: создание, обмен, конверсия
 - **payment-integration.cy.ts** - Интеграция платежей со всеми вертикалями (300+ проверок)
 
 #### Beauty & Wellness (2 файла)
+
 - **beauty-salon.cy.ts** - Полный цикл салона (470 LOC, 50+ тестов)
   - Управление салоном, мастерами, услугами
   - Резервирование, расходники, платежи
@@ -24,6 +26,7 @@
   - Командная работа, обучение, выплаты
 
 #### Auto & Mobility (3 файла)
+
 - **auto-mobility.cy.ts** - Такси и каршеринг (500 LOC, 60+ тестов)
   - Onboarding водителей, управление авто
   - Поиск и матчинг поездок, surge pricing
@@ -40,6 +43,7 @@
   - Техническое обслуживание, аналитика
 
 #### Food & Delivery (2 файла)
+
 - **food-delivery.cy.ts** - Полная доставка (550 LOC, 70+ тестов)
   - Рестораны, меню, заказы, KDS
   - Доставка, платежи, интеграция агрегаторов
@@ -51,6 +55,7 @@
   - Столики, аналитика, производительность
 
 #### Real Estate (3 файла)
+
 - **real-estate.cy.ts** - Общая платформа недвижимости
   - Объявления, виртуальные туры
   - Назначения просмотров, управление агентами
@@ -68,49 +73,61 @@
 ### Load Тесты (k6)
 
 #### Core Services
+
 ```bash
 k6 run k6/load-test-core.js
 ```
+
 - **Ramp**: 0 → 100 VUs за 24 минуты
 - **Scenarios**: Платежи (hold/capture/idempotency), fraud scoring, RBAC, DB queries, wishlist
 - **Thresholds**: payment p95<150ms, fraud<50ms, auth<30ms, error<5%
 
 #### Beauty Vertical
+
 ```bash
 k6 run k6/load-test-beauty.js
 ```
+
 - **Ramp**: 0 → 50 VUs за 11 минут
 - **Scenarios**: Availability check, appointment creation, consumables, ratings
 - **Thresholds**: appointment p95<300ms, consumables p95<50ms, error<2%
 
 #### Taxi/Auto Vertical
+
 ```bash
 k6 run k6/load-test-taxi.js
 ```
+
 - **Ramp**: 0 → 100 → 50 VUs за 20 минут
 - **Scenarios**: Driver status, ride requests (5 location updates), surge pricing, completion
 - **Thresholds**: ride creation p95<400ms, location p95<50ms, error<15%
 
 #### Food/Delivery Vertical
+
 ```bash
 k6 run k6/load-test-food.js
 ```
+
 - **Ramp**: 0 → 100 → 50 VUs за 22 минуты
 - **Scenarios**: Menu, orders, consumables check, payment, KDS (3 stages), delivery, ratings
 - **Thresholds**: order p95<500ms, KDS p95<100ms, delivery p95<2000ms, error<8%
 
 #### Real Estate Vertical
+
 ```bash
 k6 run k6/load-test-realestate.js
 ```
+
 - **Ramp**: 0 → 50 VUs за 17 минут
 - **Scenarios**: Listings, search, viewing bookings, analytics, offers, mortgage checks
 - **Thresholds**: listing p95<1000ms, search p95<300ms, error<3%
 
 #### Cross-Vertical Integration
+
 ```bash
 k6 run k6/load-test-cross-vertical.js
 ```
+
 - **Ramp**: 0 → 50 VUs за 20 минут
 - **Scenarios**: Параллельные операции Beauty + Food + Auto + RealEstate
 - **Validates**: Wallet consistency, payment idempotency, fraud checks, inventory deduction
@@ -119,6 +136,7 @@ k6 run k6/load-test-cross-vertical.js
 ## 🚀 Быстрый старт
 
 ### Установка зависимостей
+
 ```bash
 npm install  # Cypress
 brew install k6  # macOS
@@ -127,6 +145,7 @@ choco install k6  # Windows
 ```
 
 ### Запуск E2E тестов
+
 ```bash
 # Все E2E тесты
 npx cypress run
@@ -142,6 +161,7 @@ npx cypress open
 ```
 
 ### Запуск load тестов
+
 ```bash
 # Все load тесты последовательно
 for test in k6/load-test-*.js; do k6 run $test; done
@@ -187,12 +207,14 @@ k6 run --vus 500 --duration 30m k6/load-test-core.js
 ## ✅ Что тестируется
 
 ### Идемпотентность
+
 - ✅ Duplicate payment holds возвращают тот же transaction_id
 - ✅ Duplicate captures не создают двойные списания
 - ✅ Duplicate appointment bookings возвращают тот же ID
 - ✅ Duplicate delivery orders идемпотентны
 
 ### Платежи и кошельки
+
 - ✅ Hold → Capture → Refund полный цикл
 - ✅ Fraud check перед hold
 - ✅ Wallet balance consistency under load
@@ -200,6 +222,7 @@ k6 run --vus 500 --duration 30m k6/load-test-core.js
 - ✅ Concurrent payments без race conditions
 
 ### Инвентарь и расходники
+
 - ✅ Stock check перед операцией
 - ✅ Автоматическое списание после завершения
 - ✅ Reserve on booking → Release on cancel
@@ -207,6 +230,7 @@ k6 run --vus 500 --duration 30m k6/load-test-core.js
 - ✅ Demand forecasting
 
 ### Real-time Features
+
 - ✅ Location tracking с задержкой <50ms
 - ✅ KDS workflow updates <100ms
 - ✅ Progress tracking с live updates
@@ -214,6 +238,7 @@ k6 run --vus 500 --duration 30m k6/load-test-core.js
 - ✅ Concurrent user operations
 
 ### Multi-Vertical Integration
+
 - ✅ Simultaneous payments через все вертикали
 - ✅ Cross-vertical wallet deductions
 - ✅ Commission calculation across verticals
@@ -221,6 +246,7 @@ k6 run --vus 500 --duration 30m k6/load-test-core.js
 - ✅ Inventory management consistency
 
 ### RBAC & Security
+
 - ✅ Role-based access control
 - ✅ Tenant isolation
 - ✅ Permission enforcement
@@ -230,6 +256,7 @@ k6 run --vus 500 --duration 30m k6/load-test-core.js
 ## 📊 Performance Targets
 
 ### Response Times (p95)
+
 | Service | Target | Actual |
 |---------|--------|--------|
 | Payment Hold | 150ms | ✓ |
@@ -242,6 +269,7 @@ k6 run --vus 500 --duration 30m k6/load-test-core.js
 | Search | 300ms | ✓ |
 
 ### Concurrency
+
 - ✅ 100 concurrent beauty appointments без очереди
 - ✅ 100 concurrent taxi rides с matching
 - ✅ 100 concurrent food orders с KDS
@@ -251,6 +279,7 @@ k6 run --vus 500 --duration 30m k6/load-test-core.js
 ## 🔍 Интеграционные тесты
 
 ### Payment Integration Flow
+
 ```
 User Operation (appointment/order/ride/booking)
     ↓
@@ -277,6 +306,7 @@ PayoutService.schedule()
 ## 📈 Load Test Profiles
 
 ### Standard Profile (default)
+
 ```
 0-5m:   0 → 20 VUs (ramp up)
 5-15m:  20 → peak VUs
@@ -286,6 +316,7 @@ PayoutService.schedule()
 ```
 
 ### Stress Profile
+
 ```
 0-5m:   0 → 500 VUs
 5-35m:  500 VUs (sustained stress)
@@ -293,6 +324,7 @@ PayoutService.schedule()
 ```
 
 ### Custom Profile
+
 ```bash
 k6 run --vus 250 --duration 10m k6/load-test-core.js
 ```
@@ -300,7 +332,9 @@ k6 run --vus 250 --duration 10m k6/load-test-core.js
 ## 🛠️ Конфигурация
 
 ### config/comprehensive-testing.php
+
 Полная конфигурация всех тестов:
+
 - E2E test suites с описаниями
 - Load test suites с ramp profiles
 - Command shortcuts для выполнения
@@ -310,6 +344,7 @@ k6 run --vus 250 --duration 10m k6/load-test-core.js
 ## 🎯 CI/CD Integration
 
 ### GitHub Actions Workflow
+
 ```yaml
 name: Tests
 on: [push, pull_request]
@@ -338,6 +373,7 @@ jobs:
 ## 🤝 Вклад
 
 При добавлении новых функций:
+
 1. Добавьте E2E тесты для каждого сценария
 2. Добавьте load test для критичных операций
 3. Обновите config/comprehensive-testing.php

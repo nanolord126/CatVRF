@@ -4,26 +4,26 @@ namespace App\Domains\Travel\Http\Controllers;
 
 use App\Domains\Travel\Models\TravelBooking;
 use App\Domains\Travel\Services\BookingService;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
 
-final class TravelBookingController
+final class TravelBookingController extends Controller
 {
     public function __construct(
         private readonly BookingService $bookingService,
+        private readonly FraudControlService $fraudControlService,
     ) {}
 
     public function store(Request $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
-
         $correlationId = $request->get('correlation_id', Str::uuid()->toString());
+        $this->fraudControlService->check(auth()->id() ?? 0, 'booking_store', 0, $request->ip(), null, $correlationId);
 
         try {
             $request->validate([
@@ -32,14 +32,15 @@ final class TravelBookingController
                 'participants_data' => 'nullable|array',
             ]);
 
-            $booking = DB::transaction(function () use ($request, $correlationId) {
-                $tour = \App\Domains\Travel\Models\TravelTour::findOrFail($request->get('tour_id'));
+            $validated = $request->all();
+            $booking = DB::transaction(function () use ($validated, $correlationId) {
+                $tour = \App\Domains\Travel\Models\TravelTour::findOrFail(($validated['tour_id'] ?? null));
 
                 return $this->bookingService->createBooking(
                     $tour,
                     auth()->user(),
-                    $request->get('participants_count'),
-                    $request->get('participants_data', []),
+                    ($validated['participants_count'] ?? null),
+                    ($validated['participants_data'] ?? []),
                     $correlationId,
                 );
             });
@@ -86,21 +87,19 @@ final class TravelBookingController
 
     public function update(Request $request, int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
-
         $correlationId = $request->get('correlation_id', Str::uuid()->toString());
+        $this->fraudControlService->check(auth()->id() ?? 0, 'booking_update', 0, $request->ip(), null, $correlationId);
 
         try {
             $booking = TravelBooking::where('tenant_id', tenant()->id)->findOrFail($id);
 
             $this->authorize('update', $booking);
 
-            $booking = DB::transaction(function () use ($request, $booking, $correlationId) {
+            $validated = $request->all();
+            $booking = DB::transaction(function () use ($validated, $booking, $correlationId) {
                 $booking->update([
-                    'participants_count' => $request->get('participants_count', $booking->participants_count),
-                    'participants_data' => $request->get('participants_data', $booking->participants_data),
+                    'participants_count' => ($validated['participants_count'] ?? $booking->participants_count),
+                    'participants_data' => ($validated['participants_data'] ?? $booking->participants_data),
                     'correlation_id' => $correlationId,
                 ]);
 
@@ -128,11 +127,8 @@ final class TravelBookingController
 
     public function destroy(int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
-
         $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'booking_destroy', 0, request()->ip(), null, $correlationId);
 
         try {
             $booking = TravelBooking::where('tenant_id', tenant()->id)->findOrFail($id);

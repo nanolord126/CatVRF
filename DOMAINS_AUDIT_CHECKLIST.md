@@ -29,6 +29,7 @@
 ## 🔴 ПРОБЛЕМЫ, НАЙДЕННЫЕ
 
 ### 1. **Неправильное именование Models**
+
 ```
 ❌ EducationModels.php          → ДОЛЖНО: Course.php (уже есть ✅)
 ❌ FoodModels.php               → ДОЛЖНО: FoodOrder.php (+ др.)
@@ -38,6 +39,7 @@
 ```
 
 ### 2. **Архитектура Advertising - Множественные Models**
+
 ```
 ✅ AdCampaign.php               (PRIMARY - используется в Controllers)
 ✅ AdBanner.php                 (related)
@@ -47,24 +49,28 @@
 ```
 
 ### 3. **Архитектура Clinic - Множественные Models**
+
 ```
 ✅ MedicalCard.php              (не найдена, но есть ClinicModels.php)
 ❌ Нужна проверка содержимого ClinicModels.php
 ```
 
 ### 4. **Архитектура Hotel - Множественные Models**
+
 ```
 ✅ HotelBooking.php             (PRIMARY)
 ❌ HotelModels.php - содержит что?
 ```
 
 ### 5. **Архитектура Food - Множественные Models**
+
 ```
 ✅ FoodOrder.php                (PRIMARY)
 ❌ FoodModels.php - содержит что?
 ```
 
 ### 6. **Архитектура Sports - Множественные Models**
+
 ```
 ✅ SportsMembership.php         (PRIMARY)
 ❌ SportsModels.php - содержит что?
@@ -119,6 +125,7 @@
 ### PHASE 4: Привести к Production формату
 
 Все файлы должны иметь:
+
 - ✅ Правильные PHPDoc комментарии
 - ✅ Правильные namespace
 - ✅ Правильные use statements
@@ -167,6 +174,7 @@ Domains/
 ## 🎯 ПРИОРИТЕТЫ ФИКСОВ
 
 **Критичные (PHASE 1 - немедленно):**
+
 1. Разобраться с файлами *Models.php - слить или разделить
 2. Убедиться что все основные Models есть (TaxiRide, FoodOrder, HotelBooking, etc.)
 3. Проверить Controllers используют правильные Models
@@ -186,6 +194,7 @@ Domains/
 ## 📊 ТЕКУЩИЙ СТАТУС ПО ДОМЕНАМ
 
 ### ✅ ПОЛНОСТЬЮ ГОТОВЫЕ (5 доменов)
+
 - Delivery
 - Education
 - Events  
@@ -195,6 +204,7 @@ Domains/
 - Taxi (нужна проверка TaxiModelsAux.php)
 
 ### ⚠️ ЧАСТИЧНО ГОТОВЫЕ (нужны правки)
+
 - Advertising (нужна проверка структуры, Enums уже есть ✅)
 - Beauty
 - Clinic
@@ -205,6 +215,7 @@ Domains/
 - Sports (нужна проверка SportsModels.php)
 
 ### ❌ ТРЕБУЮТ ПОЛНОГО ВОССТАНОВЛЕНИЯ
+
 - Finances (множество моделей, нужна проверка структуры)
 - Common (утилитарный домен)
 
@@ -212,4 +223,3 @@ Domains/
 
 **Статус**: ТРЕБУЕТСЯ АУДИТ И РЕФАКТОРИНГ
 **Начать с**: Проверка содержимого файлов *Models.php
-

@@ -2,14 +2,15 @@
 
 namespace App\Domains\Tickets\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use Illuminate\Support\Facades\DB;
 
 final class EventTicketService
 {
-    public function __construct()
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,)
     {
     }
 
@@ -18,12 +19,17 @@ final class EventTicketService
      */
     public function purchaseTicket(int $eventId, int $ticketTypeId, string $correlationId): bool
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'purchaseTicket'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL purchaseTicket', ['domain' => __CLASS__]);
+
 
         try {
+                        $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
             DB::transaction(function () use ($eventId, $ticketTypeId, $correlationId) {
                 DB::table('ticket_orders')->insert([
                     'event_id' => $eventId,
@@ -57,12 +63,17 @@ final class EventTicketService
      */
     public function refundTicket(int $ticketOrderId, string $correlationId): bool
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'refundTicket'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL refundTicket', ['domain' => __CLASS__]);
+
 
         try {
+                        $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
             DB::transaction(function () use ($ticketOrderId, $correlationId) {
                 DB::table('ticket_orders')
                     ->where('id', $ticketOrderId)

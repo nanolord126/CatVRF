@@ -3,6 +3,7 @@
 ## 📦 Обновленные компоненты
 
 ### Fiscal Layer (Фискализация)
+
 - [x] **AtolFiscalDriver** - методы getTaxRate, processItemsWithTax
 - [x] **CloudKassirFiscalDriver** - методы getTaxRate, processItemsWithTax
 - [x] **FiscalService** - документация и refundReceipt
@@ -10,17 +11,20 @@
 - [x] **FiscalDriverInterface** - корректные контракты
 
 ### Payment Gateway Layer (Платежи)
+
 - [x] **TinkoffDriver** - getTaxCode, buildReceipt с товарами
 - [x] **SberDriver** - поддержка в документации
 - [x] **TochkaDriver** - поддержка в документации
 - [x] **PaymentService** - интеграция с фискальным сервисом
 
 ### Validation
+
 - [x] Все методы validateItems возвращают array
 - [x] Проверка налоговых кодов в товарах
 - [x] Валидация обязательных полей
 
 ### Documentation
+
 - [x] **FISCAL_VAT_SUPPORT.md** - полная документация
 - [x] **BANKING_VAT_UPDATE.md** - поддержка в банках
 - [x] **FISCAL_VAT_SUMMARY.md** - краткая сводка
@@ -60,6 +64,7 @@
 ### Fiscal Drivers
 
 #### AtolFiscalDriver
+
 ```
 - getTaxRate(string, ?string): array
 - processItemsWithTax(array, string): array
@@ -71,6 +76,7 @@
 ```
 
 #### CloudKassirFiscalDriver
+
 ```
 - getTaxRate(string, ?string): string
 - processItemsWithTax(array, string): array
@@ -82,6 +88,7 @@
 ```
 
 #### FiscalService
+
 ```
 - sendReceipt(array, array): array
 - refundReceipt(string, float, array): array
@@ -93,6 +100,7 @@
 ### Payment Drivers
 
 #### TinkoffDriver
+
 ```
 - getTaxCode(string, ?string): string
 - buildReceipt(array): array
@@ -101,12 +109,14 @@
 ```
 
 #### SberDriver
+
 ```
 - initPayment(array, bool): array
 - handleWebhook(array): array
 ```
 
 #### TochkaDriver
+
 ```
 - initPayment(array, bool): array
 - handleWebhook(array): array
@@ -205,6 +215,7 @@ $fiscal->refundReceipt(
 **Статус:** ✅ PRODUCTION READY
 
 Все компоненты:
+
 - ✅ Синтаксически корректны
 - ✅ Полностью документированы
 - ✅ Протестированы на совместимость

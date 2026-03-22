@@ -118,10 +118,19 @@ final readonly class MassPayoutService
                 'correlation_id' => $correlationId,
             ]);
 
-            // TODO: интеграция с реальным gateway
-            // На текущем этапе — симуляция успеха
+            // Интеграция с gateway через PaymentGatewayInterface
+            $gatewayService = app(\Modules\Payments\Contracts\PaymentGatewayInterface::class);
+            $result = $gatewayService->createPayout(
+                $payment->amount,
+                $payment->recipient_account ?? '',
+                ['payment_id' => $paymentId, 'correlation_id' => $correlationId]
+            );
 
-            DB::transaction(function () use ($payment, $gateway) {
+            if (!$result['success']) {
+                throw new \Exception('Payout failed: ' . ($result['error'] ?? 'Unknown error'));
+            }
+
+            DB::transaction(function () use ($payment, $gateway, $result) {
                 $payment->update([
                     'status' => 'captured',
                     'gateway' => $gateway,

@@ -2,7 +2,6 @@
 
 namespace App\Domains\Food\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
 
 use App\Domains\Food\Models\DeliveryZone;
@@ -23,10 +22,7 @@ final class DeliverySurgeService
      */
     public function getSurgeMultiplier(string $zoneId, string $correlationId): float
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'getSurgeMultiplier'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getSurgeMultiplier', ['domain' => __CLASS__]);
+
 
         $cacheKey = "delivery_surge:zone:{$zoneId}";
         
@@ -46,10 +42,7 @@ final class DeliverySurgeService
      */
     public function recalculateSurges(string $correlationId): array
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'recalculateSurges'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL recalculateSurges', ['domain' => __CLASS__]);
+
 
         $results = [];
 

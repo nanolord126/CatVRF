@@ -3,10 +3,13 @@
 ## 🚀 5-Minute Setup
 
 ### Step 1: Database Migration
+
 ```bash
 php artisan migrate
 ```
+
 Creates 6 new tables:
+
 - marketplace_products
 - marketplace_services
 - customer_accounts
@@ -15,10 +18,13 @@ Creates 6 new tables:
 - customer_addresses
 
 ### Step 2: Seed Test Data
+
 ```bash
 php artisan db:seed
 ```
+
 Automatically runs:
+
 1. DatabaseSeeder
 2. → TenantMasterSeeder
 3. → MarketplaceProductSeeder
@@ -29,15 +35,17 @@ Automatically runs:
 8. → CustomerAddressSeeder
 
 ### Step 3: Verify Resources
+
 ```bash
 php artisan filament:show-resources
 ```
 
 ### Step 4: Access Panels
-- **CRM Panel**: http://localhost/crm
+
+- **CRM Panel**: <http://localhost/crm>
   - Manage products/services for Marketplace
   
-- **Marketplace Panel**: http://localhost/marketplace
+- **Marketplace Panel**: <http://localhost/marketplace>
   - Manage customer accounts, reviews, wishlists, addresses
 
 ---
@@ -45,6 +53,7 @@ php artisan filament:show-resources
 ## ✅ Verification Checklist
 
 ### Database
+
 ```bash
 php artisan tinker
 > DB::table('marketplace_products')->count() // Should be > 0
@@ -52,6 +61,7 @@ php artisan tinker
 ```
 
 ### Models
+
 ```bash
 php artisan tinker
 > App\Models\Tenants\MarketplaceProduct::all()
@@ -59,12 +69,14 @@ php artisan tinker
 ```
 
 ### Policies
+
 ```bash
 php artisan tinker
 > Gate::denies('view', App\Models\Tenants\MarketplaceProduct::first())
 ```
 
 ### Tenant Isolation
+
 ```bash
 php artisan tinker
 > tenant('grand-hotel');
@@ -78,6 +90,7 @@ php artisan tinker
 ## 🔧 Configuration Files
 
 All properly configured:
+
 - ✅ `app/Providers/AuthServiceProvider.php` - 6 Policies registered
 - ✅ `app/Providers/FilamentServiceProvider.php` (or panel provider) - CRM discovery
 - ✅ `database/seeders/DatabaseSeeder.php` - Calls TenantMasterSeeder
@@ -88,6 +101,7 @@ All properly configured:
 ## 📦 What's New
 
 ### Models (6)
+
 - MarketplaceProduct
 - MarketplaceService
 - CustomerAccount
@@ -96,6 +110,7 @@ All properly configured:
 - CustomerAddress
 
 ### Policies (6)
+
 - MarketplaceProductPolicy
 - MarketplaceServicePolicy
 - CustomerAccountPolicy
@@ -104,6 +119,7 @@ All properly configured:
 - CustomerAddressPolicy
 
 ### Resources (6)
+
 - MarketplaceProductResource
 - MarketplaceServiceResource
 - CustomerAccountResource
@@ -112,6 +128,7 @@ All properly configured:
 - CustomerAddressResource
 
 ### Pages (21)
+
 - 4 for MarketplaceProductResource
 - 4 for MarketplaceServiceResource
 - 4 for CustomerAccountResource
@@ -124,18 +141,21 @@ All properly configured:
 ## 🎯 Key Features
 
 ### CRM Panel
+
 ✅ Product Management (for Marketplace publication)
 ✅ Service Management (for Marketplace publication)
 ✅ Bulk operations
 ✅ Search and filtering
 
 ### Marketplace Panel
+
 ✅ Customer Account Management
 ✅ Review Moderation
 ✅ Wishlist Management
 ✅ Address Management
 
 ### Multi-Tenancy
+
 ✅ Automatic tenant scoping
 ✅ Data isolation
 ✅ Correlation ID tracking
@@ -149,7 +169,7 @@ All properly configured:
 2. **Tenants**: Automatically created:
    - grand-hotel (domain: hotel.localhost)
    - spa-beauty (domain: beauty.localhost)
-3. **Admin**: admin@hotelbeauty.crm
+3. **Admin**: <admin@hotelbeauty.crm>
 4. **Encoding**: All files UTF-8 CRLF
 
 ---
@@ -157,18 +177,21 @@ All properly configured:
 ## 🆘 Troubleshooting
 
 ### Resources not showing in Filament?
+
 ```bash
 php artisan cache:clear
 php artisan filament:show-resources
 ```
 
 ### Database errors?
+
 ```bash
 php artisan migrate:fresh
 php artisan db:seed
 ```
 
 ### Tenant not set?
+
 ```bash
 # In Filament context, tenant is automatically set
 # In CLI: php artisan tinker

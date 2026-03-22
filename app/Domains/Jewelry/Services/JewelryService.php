@@ -2,8 +2,8 @@
 
 namespace App\Domains\Jewelry\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use App\Domains\Jewelry\Models\JewelryItem;
 use App\Domains\Jewelry\Models\JewelryOrder;
@@ -13,29 +13,23 @@ use Illuminate\Support\Facades\DB;
 final class JewelryService
 {
     public function __construct(
+        private readonly FraudControlService $fraudControlService,
         private readonly string $correlationId = '',
     ) {
         $this->correlationId = $correlationId ?: Str::uuid()->toString();
     }
 
-    public function orderItem(int $itemId, int $quantity): JewelryOrder
+    public function orderItem(int $itemId, int $quantity, int $userId, int $tenantId): JewelryOrder
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'orderItem'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL orderItem', ['domain' => __CLASS__]);
-
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'orderItem'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL orderItem', ['domain' => __CLASS__]);
-
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'orderItem'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL orderItem', ['domain' => __CLASS__]);
-
-        return DB::transaction(function () use ($itemId, $quantity) {
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(function () use ($itemId, $quantity, $userId, $tenantId) {
             $item = JewelryItem::lockForUpdate()->find($itemId);
             
             if (!$item || $item->stock < $quantity) {
@@ -43,11 +37,11 @@ final class JewelryService
             }
 
             $order = JewelryOrder::create([
-                'tenant_id' => auth()->user()->tenant_id,
+                'tenant_id' => $tenantId,
                 'uuid' => Str::uuid(),
                 'correlation_id' => $this->correlationId,
                 'item_id' => $itemId,
-                'user_id' => auth()->id(),
+                'user_id' => $userId,
                 'quantity' => $quantity,
                 'total_price' => $item->price * $quantity,
                 'status' => 'pending',

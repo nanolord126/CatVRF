@@ -37,7 +37,7 @@ final class FraudMLRecalculationJob implements ShouldQueue
     public function __construct()
     {
         $this->fraudMLService = app(FraudMLService::class);
-        $this->correlationId = (string) Str::uuid();
+        $this->correlationId = (string) Str::uuid()->toString();
     }
 
     public function handle(): void

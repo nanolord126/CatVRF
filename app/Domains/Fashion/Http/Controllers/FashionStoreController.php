@@ -4,6 +4,7 @@ namespace App\Domains\Fashion\Http\Controllers;
 
 use App\Domains\Fashion\Models\FashionStore;
 use App\Domains\Fashion\Services\OrderService;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -13,6 +14,7 @@ final class FashionStoreController
 {
     public function __construct(
         private readonly OrderService $orderService,
+        private readonly FraudControlService $fraudControlService,
     ) {}
 
     public function index(): JsonResponse
@@ -64,13 +66,10 @@ final class FashionStoreController
 
     public function store(): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
-            $correlationId = Str::uuid();
-
             DB::transaction(function () use ($correlationId) {
                 FashionStore::create([
                     'uuid' => Str::uuid(),
@@ -108,13 +107,11 @@ final class FashionStoreController
 
     public function update(int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $store = FashionStore::findOrFail($id);
-            $correlationId = Str::uuid();
 
             DB::transaction(function () use ($store, $correlationId) {
                 $store->update([...request()->except(['id', 'tenant_id', 'business_group_id', 'correlation_id']), 'correlation_id' => $correlationId]);
@@ -131,7 +128,7 @@ final class FashionStoreController
     {
         try {
             $store = FashionStore::findOrFail($id);
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             DB::transaction(function () use ($store, $correlationId) {
                 $store->delete();
@@ -148,7 +145,7 @@ final class FashionStoreController
     {
         try {
             $store = FashionStore::findOrFail($id);
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             DB::transaction(function () use ($store, $correlationId) {
                 $store->update(['is_verified' => true, 'correlation_id' => $correlationId]);

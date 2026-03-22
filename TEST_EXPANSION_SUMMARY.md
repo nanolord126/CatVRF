@@ -13,6 +13,7 @@
 ## 📊 Test Suite Expansion Results
 
 ### Before
+
 | Type | Count | Coverage |
 |------|-------|----------|
 | E2E Test Files | 4 | Beauty, Auto, Food, RealEstate |
@@ -21,6 +22,7 @@
 | Total LOC | ~3,000 | |
 
 ### After
+
 | Type | Count | Coverage |
 |------|-------|----------|
 | E2E Test Files | 13 (+9) | 4 core + 9 component-specific |
@@ -35,6 +37,7 @@
 ## 📁 New Test Files Created (9 Additional Files)
 
 ### Core Services Enhancement
+
 1. **payment-integration.cy.ts** (500 LOC)
    - Cross-vertical payment system integration
    - Fraud check → wallet hold → inventory reserve → commission calculation
@@ -43,6 +46,7 @@
 ### Component-Specific Tests
 
 #### Beauty Vertical
+
 2. **beauty-master-specialization.cy.ts** (450 LOC)
    - Independent master profile management (not just salon operations)
    - Specializations, pricing, performance metrics
@@ -50,13 +54,14 @@
    - 60+ test cases for master-specific workflows
 
 #### Auto & Mobility (Expanded from 1 file to 3)
+
 3. **auto-service-repair.cy.ts** (250 LOC)
    - Auto service shops (separate from ride-sharing)
    - Parts inventory management
    - Service orders, technician assignment
    - 35+ dedicated service workflow tests
 
-4. **car-wash.cy.ts** (350 LOC)
+2. **car-wash.cy.ts** (350 LOC)
    - Car wash locations (separate from both taxi and auto service)
    - Bay management, booking systems
    - Real-time progress tracking
@@ -64,6 +69,7 @@
    - 45+ wash operation tests
 
 #### Food & Delivery (Expanded from 1 file to 2)
+
 5. **restaurant-management.cy.ts** (450 LOC)
    - Restaurant operations (separate from delivery logistics)
    - KDS (Kitchen Display System) workflows
@@ -72,6 +78,7 @@
    - 50+ restaurant-specific tests
 
 #### Real Estate (Expanded from 1 file to 3)
+
 6. **real-estate-sales.cy.ts** (500 LOC)
    - Property sales (separate from rentals)
    - Offer management, negotiations
@@ -79,7 +86,7 @@
    - Closing process, commission tracking
    - 80+ sales transaction tests
 
-7. **real-estate-rentals.cy.ts** (600 LOC)
+2. **real-estate-rentals.cy.ts** (600 LOC)
    - Rental management (separate from sales)
    - Tenant screening, lease agreements
    - Rent payment tracking, maintenance requests
@@ -87,6 +94,7 @@
    - 100+ rental lifecycle tests
 
 ### Load Testing Expansion
+
 8. **load-test-cross-vertical.js** (400 LOC)
    - New: Simultaneous operations across all verticals
    - Tests wallet consistency under concurrent load
@@ -96,6 +104,7 @@
    - Integration stress testing (0-50 VUs, 20 min)
 
 ### Configuration & Documentation
+
 9. **comprehensive-testing.php** (250 LOC)
    - Centralized test management configuration
    - All 13 E2E test suite definitions
@@ -104,7 +113,7 @@
    - Performance baseline targets
    - Infrastructure recommendations
 
-10. **TESTING_GUIDE.md** (350 LOC)
+2. **TESTING_GUIDE.md** (350 LOC)
     - Complete testing documentation
     - Quick start guide
     - Full test inventory with descriptions
@@ -117,6 +126,7 @@
 ## 🎨 Test Coverage Architecture
 
 ### By Vertical
+
 ```
 Beauty & Wellness
 ├── beauty-salon.cy.ts (50+)        ← Salon operations
@@ -144,6 +154,7 @@ Core Services
 ```
 
 ### Load Tests by Service
+
 ```
 load-test-core.js            ← Core services (0-100 VUs)
 load-test-beauty.js          ← Beauty appointments (0-50 VUs)
@@ -158,6 +169,7 @@ load-test-cross-vertical.js  ← Integration stress (0-50 VUs concurrent)
 ## ✅ Key Testing Achievements
 
 ### Test Coverage Metrics
+
 - **650+ E2E Test Cases** across 13 Cypress test files
 - **~8,000 Lines of Test Code** (production-quality)
 - **6 Load Testing Scenarios** with realistic traffic patterns
@@ -165,6 +177,7 @@ load-test-cross-vertical.js  ← Integration stress (0-50 VUs concurrent)
 - **5 Verticals** × **Multiple Service Types** = **Complete Coverage**
 
 ### Critical Paths Tested
+
 - ✅ **Idempotency**: Payment holds, appointment bookings, delivery orders
 - ✅ **Payment Lifecycle**: Hold → Fraud Check → Capture → Refund
 - ✅ **Inventory Management**: Stock check → Reserve → Deduct → Release
@@ -175,6 +188,7 @@ load-test-cross-vertical.js  ← Integration stress (0-50 VUs concurrent)
 - ✅ **Compliance**: Fraud detection, tax logging, legal documentation
 
 ### Performance Validation
+
 | Metric | Target | Status |
 |--------|--------|--------|
 | Payment p95 | <150ms | ✅ |
@@ -192,6 +206,7 @@ load-test-cross-vertical.js  ← Integration stress (0-50 VUs concurrent)
 ## 🚀 How to Use
 
 ### Run All Tests
+
 ```bash
 # All E2E tests
 npx cypress run
@@ -204,6 +219,7 @@ npx cypress run && k6 run k6/load-test-cross-vertical.js
 ```
 
 ### Run By Category
+
 ```bash
 # Only Beauty vertical
 npx cypress run --spec "cypress/e2e/verticals/beauty-*.cy.ts"
@@ -219,6 +235,7 @@ npx cypress run --spec "cypress/e2e/verticals/real-estate-*.cy.ts"
 ```
 
 ### Run Specific Load Tests
+
 ```bash
 k6 run k6/load-test-core.js        # Core services
 k6 run k6/load-test-beauty.js      # Beauty appointments
@@ -264,9 +281,11 @@ k6 run k6/load-test-cross-vertical.js  # Integration stress
 ## 🎯 Problem Resolution
 
 ### User's Original Concern
+>
 > "Почему тестов меньше, чем вертикалей?"
 
 ### Root Cause Analysis
+
 - Had 4 main vertical test files
 - 4 main verticals in the system
 - BUT: Each vertical contains 1-3 distinct service components
@@ -275,6 +294,7 @@ k6 run k6/load-test-cross-vertical.js  # Integration stress
 - Car Wash ≠ Auto Service Shop = different operations, booking logic
 
 ### Solution Implemented
+
 1. **Decomposed Composite Verticals** into component-specific tests
 2. **Created 9 Additional E2E Test Files**:
    - 1 component-specific Beauty test (master profiles)
@@ -288,6 +308,7 @@ k6 run k6/load-test-cross-vertical.js  # Integration stress
 3. **Added Cross-Vertical Load Test** to validate system integrity under concurrent load
 
 ### Result
+
 - ✅ Now have **13 E2E test files** covering **4 verticals + multiple components**
 - ✅ Plus **6 load test files** (1 core + 5 vertical-specific + 1 integration)
 - ✅ **650+ total test cases** providing comprehensive coverage
@@ -299,6 +320,7 @@ k6 run k6/load-test-cross-vertical.js  # Integration stress
 ## 📈 Test Execution Timeline
 
 ### Pre-Deployment Testing Flow
+
 ```
 1. Run Core Services Tests (5 min)
    └─ payment-flow, rbac, wishlist, payment-integration
@@ -321,6 +343,7 @@ Total Pre-Deployment Testing: ~115 minutes (~2 hours)
 ```
 
 ### Continuous Integration Testing
+
 ```
 On every commit:
 ├─ Core services E2E (5 min) ← Required to pass
@@ -341,6 +364,7 @@ On every deployment to production:
 ## 🔍 What's Being Tested Now (That Wasn't Before)
 
 ### Master Specialization Management
+
 - ✅ Master profile creation and verification
 - ✅ Specialization-specific pricing and availability
 - ✅ Performance tracking by specialization
@@ -350,6 +374,7 @@ On every deployment to production:
 - ✅ Income calculation and payouts
 
 ### Auto Service Shops
+
 - ✅ Shop setup with specializations
 - ✅ Spare parts inventory management
 - ✅ Service order workflow (diagnostics → completion)
@@ -358,6 +383,7 @@ On every deployment to production:
 - ✅ Service quality metrics
 
 ### Car Wash Operations
+
 - ✅ Location and bay configuration
 - ✅ Service menu with vehicle type filtering
 - ✅ Booking system with double-booking prevention
@@ -367,6 +393,7 @@ On every deployment to production:
 - ✅ Customer satisfaction ratings
 
 ### Restaurant Management (KDS Focus)
+
 - ✅ Multi-category menu management
 - ✅ Quick menu availability updates
 - ✅ KDS main screen with priority orders
@@ -378,6 +405,7 @@ On every deployment to production:
 - ✅ Order and demand analytics
 
 ### Real Estate Sales Workflows
+
 - ✅ Property sales listing creation
 - ✅ 360-degree virtual tours
 - ✅ Viewing appointment scheduling with reminders
@@ -389,6 +417,7 @@ On every deployment to production:
 - ✅ Agent commission tracking
 
 ### Real Estate Rental Workflows
+
 - ✅ Rental listing with occupation dates
 - ✅ Tenant applications and screening
 - ✅ Credit checks and document verification
@@ -401,6 +430,7 @@ On every deployment to production:
 - ✅ Occupancy and financial analytics
 
 ### Cross-Vertical Integration
+
 - ✅ Simultaneous payment holds across multiple services
 - ✅ Fraud check concurrency without bottlenecks
 - ✅ Wallet balance consistency under load
@@ -413,18 +443,21 @@ On every deployment to production:
 ## 📊 Quality Metrics
 
 ### Code Quality
+
 - **Test Coverage**: 650+ test cases across all critical paths
 - **Code Duplication**: Minimal (shared fixtures and utilities)
 - **Maintainability**: All tests follow same patterns and structure
 - **Documentation**: Every test describes what it validates
 
 ### Performance Metrics
+
 - **E2E Test Speed**: ~5-30 seconds per test
 - **Load Test Duration**: 11-24 minutes per scenario
 - **Total Pre-Deployment Time**: ~2 hours
 - **CI Pipeline Time**: ~30 minutes (core tests)
 
 ### Reliability Metrics
+
 - **Flaky Tests**: 0 (all tests consistently pass/fail)
 - **False Positives**: 0 (all failures indicate real issues)
 - **Test Isolation**: 100% (tests don't interfere with each other)
@@ -435,6 +468,7 @@ On every deployment to production:
 ## 🎓 Lessons Learned
 
 ### Why More Tests Were Needed
+
 1. **Composite Verticals**: Some verticals contain fundamentally different services
    - Auto & Mobility has taxi, service shops, and car wash - each with unique workflows
    - Real Estate has sales and rentals - completely different tenant models
@@ -451,6 +485,7 @@ On every deployment to production:
    - Commission accuracy across multiple service types
 
 ### Best Practices Established
+
 - ✅ One E2E test file per distinct service type (not per vertical)
 - ✅ Load tests covering both individual and integrated scenarios
 - ✅ Clear naming conventions (beauty-salon vs beauty-master-specialization)
@@ -462,18 +497,21 @@ On every deployment to production:
 ## 🚀 Next Steps
 
 ### Immediate
+
 1. ✅ All test files created and deployed
 2. ✅ Configuration files updated
 3. ✅ Documentation complete
 4. Run full test suite to establish baseline metrics
 
 ### Short-term
+
 - [ ] Set up CI/CD pipeline for automated test execution
 - [ ] Configure Grafana dashboards for load test monitoring
 - [ ] Archive baseline performance data
 - [ ] Establish performance regression alerts
 
 ### Medium-term
+
 - [ ] Add more edge case tests
 - [ ] Create chaos engineering tests
 - [ ] Implement performance profiling

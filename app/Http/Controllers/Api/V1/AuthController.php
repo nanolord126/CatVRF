@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\TokenCreateRequest;
 use App\Http\Requests\Api\V1\TokenRefreshRequest;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -17,6 +18,9 @@ use Illuminate\Support\Facades\Log;
  */
 final class AuthController extends Controller
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
     /**
      * Create new personal access token
      * POST /api/v1/auth/tokens
@@ -54,12 +58,10 @@ final class AuthController extends Controller
      */
     public function store(TokenCreateRequest $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = $request->header('X-Correlation-ID') ?? (string) Str::uuid()->toString();
+        $this->fraudControlService->check(0, 'token_store', 0, $request->ip(), null, $correlationId);
 
         try {
-            $correlationId = $request->header('X-Correlation-ID') ?? Str::uuid();
 
             // Validate credentials
             $user = DB::table('users')
@@ -80,7 +82,7 @@ final class AuthController extends Controller
                 now()->addDays((int)env('SANCTUM_EXPIRATION_DAYS', 365))
             );
 
-            \Log::channel('audit')->info('Token created', [
+            Log::channel('audit')->info('Token created', [
                 'user_id' => $user->id,
                 'token_name' => $request->name,
                 'correlation_id' => $correlationId,
@@ -93,14 +95,14 @@ final class AuthController extends Controller
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Token creation failed', [
+            Log::channel('audit')->error('Token creation failed', [
                 'error' => $e->getMessage(),
-                'correlation_id' => $correlationId ?? Str::uuid(),
+                'correlation_id' => $correlationId ?? (string) Str::uuid()->toString(),
             ]);
 
             return response()->json([
                 'error' => 'Token creation failed',
-                'correlation_id' => $correlationId ?? Str::uuid(),
+                'correlation_id' => $correlationId ?? Str::uuid()->toString(),
             ], 500);
         }
     }
@@ -112,7 +114,7 @@ final class AuthController extends Controller
     public function refresh(TokenRefreshRequest $request): JsonResponse
     {
         try {
-            $correlationId = $request->header('X-Correlation-ID') ?? Str::uuid();
+            $correlationId = $request->header('X-Correlation-ID') ?? Str::uuid()->toString();
             $user = auth()->user();
 
             if (!$user) {
@@ -137,7 +139,7 @@ final class AuthController extends Controller
                 now()->addDays((int)env('SANCTUM_EXPIRATION_DAYS', 365))
             );
 
-            \Log::channel('audit')->info('Token refreshed', [
+            Log::channel('audit')->info('Token refreshed', [
                 'user_id' => $user->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -149,14 +151,14 @@ final class AuthController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Token refresh failed', [
+            Log::channel('audit')->error('Token refresh failed', [
                 'error' => $e->getMessage(),
-                'correlation_id' => $correlationId ?? Str::uuid(),
+                'correlation_id' => $correlationId ?? (string) Str::uuid()->toString(),
             ]);
 
             return response()->json([
                 'error' => 'Token refresh failed',
-                'correlation_id' => $correlationId ?? Str::uuid(),
+                'correlation_id' => $correlationId ?? Str::uuid()->toString(),
             ], 500);
         }
     }
@@ -167,12 +169,10 @@ final class AuthController extends Controller
      */
     public function destroy(int $tokenId): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = request()->header('X-Correlation-ID') ?? (string) Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'token_destroy', 0, request()->ip(), null, $correlationId);
 
         try {
-            $correlationId = request()->header('X-Correlation-ID') ?? Str::uuid();
             $user = auth()->user();
 
             if (!$user) {
@@ -188,7 +188,7 @@ final class AuthController extends Controller
                 ->where('tokenable_id', $user->id)
                 ->update(['revoked' => true]);
 
-            \Log::channel('audit')->info('Token revoked', [
+            Log::channel('audit')->info('Token revoked', [
                 'user_id' => $user->id,
                 'token_id' => $tokenId,
                 'correlation_id' => $correlationId,
@@ -199,14 +199,14 @@ final class AuthController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Token revocation failed', [
+            Log::channel('audit')->error('Token revocation failed', [
                 'error' => $e->getMessage(),
-                'correlation_id' => $correlationId ?? Str::uuid(),
+                'correlation_id' => $correlationId ?? (string) Str::uuid()->toString(),
             ]);
 
             return response()->json([
                 'error' => 'Token revocation failed',
-                'correlation_id' => $correlationId ?? Str::uuid(),
+                'correlation_id' => $correlationId ?? Str::uuid()->toString(),
             ], 500);
         }
     }
@@ -218,7 +218,7 @@ final class AuthController extends Controller
     public function index(): JsonResponse
     {
         $user = auth()->user();
-        $correlationId = request()->header('X-Correlation-ID') ?? Str::uuid();
+        $correlationId = request()->header('X-Correlation-ID') ?? Str::uuid()->toString();
 
         if (!$user) {
             return response()->json([

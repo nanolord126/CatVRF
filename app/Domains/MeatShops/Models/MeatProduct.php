@@ -28,3 +28,5 @@ final class MeatProduct extends Model
         'has_vet_certificate'  => 'boolean',
         'is_vacuum_packed'     => 'boolean',
         'tags'                 => 'json',
+    ];
+}

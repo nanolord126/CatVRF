@@ -2,8 +2,8 @@
 
 namespace App\Domains\Entertainment\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use App\Domains\Entertainment\Events\TicketSold;
 use App\Domains\Entertainment\Models\Booking;
@@ -13,15 +13,24 @@ use Illuminate\Support\Str;
 
 final class TicketingService
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function generateTickets(Booking $booking, string $correlationId): void
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'generateTickets'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL generateTickets', ['domain' => __CLASS__]);
+
 
         try {
-            DB::transaction(function () use ($booking, $correlationId) {
+                        $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
+DB::transaction(function () use ($booking, $correlationId) {
                 for ($i = 1; $i <= $booking->number_of_seats; $i++) {
                     $ticket = TicketSale::create([
                         'tenant_id' => $booking->tenant_id,
@@ -55,13 +64,18 @@ final class TicketingService
 
     public function refundTickets(Booking $booking, string $correlationId): void
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'refundTickets'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL refundTickets', ['domain' => __CLASS__]);
+
 
         try {
-            DB::transaction(function () use ($booking, $correlationId) {
+                        $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
+DB::transaction(function () use ($booking, $correlationId) {
                 TicketSale::where('booking_id', $booking->id)
                     ->update([
                         'status' => 'refunded',

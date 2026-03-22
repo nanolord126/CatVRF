@@ -26,39 +26,35 @@ final class FraudCheckMiddleware
             ], 401);
         }
 
-        $correlationId = $request->header('X-Correlation-ID') ?? (string)\Illuminate\Support\Str::uuid();
+        $correlationId = $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid()->toString();
 
-        // Prepare fraud check data
-        $operationData = [
-            'user_id' => auth()->id(),
-            'ip_address' => $request->ip() ?? '0.0.0.0',
-            'user_agent' => $request->header('User-Agent'),
-            'endpoint' => $request->path(),
-            'method' => $request->method(),
-            'amount' => $request->input('amount'),
-            'correlation_id' => $correlationId,
-        ];
+        // Run fraud check via FraudControlService::check()
+        $fraudResult = $this->fraudControlService->check(
+            (int) auth()->id(),
+            'http_request',
+            (int) $request->input('amount', 0),
+            $request->ip(),
+            $request->header('X-Device-Fingerprint'),
+            $correlationId,
+        );
 
-        // Run fraud check
-        $fraudScore = $this->fraudControlService->scoreOperation($operationData);
-
-        if ($fraudScore >= 0.8) {
+        if ($fraudResult['decision'] === 'block') {
             \Illuminate\Support\Facades\Log::channel('fraud_alert')->warning('High fraud score detected', [
-                'user_id' => auth()->id(),
-                'score' => $fraudScore,
-                'endpoint' => $request->path(),
+                'user_id'        => auth()->id(),
+                'score'          => $fraudResult['score'],
+                'endpoint'       => $request->path(),
                 'correlation_id' => $correlationId,
             ]);
 
             return response()->json([
-                'error' => 'Operation blocked: suspicious activity detected',
-                'score' => $fraudScore,
+                'error'          => 'Operation blocked: suspicious activity detected',
+                'score'          => $fraudResult['score'],
                 'correlation_id' => $correlationId,
             ], 403);
         }
 
-        // Store fraud score in request for later use
-        $request->attributes->set('fraud_score', $fraudScore);
+        // Store fraud result in request for later use
+        $request->attributes->set('fraud_score', $fraudResult['score']);
         $request->attributes->set('correlation_id', $correlationId);
 
         return $next($request);

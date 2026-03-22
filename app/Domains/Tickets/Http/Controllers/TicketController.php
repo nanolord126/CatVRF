@@ -91,7 +91,7 @@ final class TicketController
                 'qr_code' => 'required|string',
             ]);
 
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             $this->generationService->checkinTicket($validated['qr_code'], $correlationId);
 

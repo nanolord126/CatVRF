@@ -20,7 +20,7 @@ final class B2BFlowerController
 
     public function register(Request $request): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $validated = $request->validate([
@@ -70,7 +70,7 @@ final class B2BFlowerController
 
     public function profile(): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $storefront = B2BFlowerStorefront::query()
@@ -93,7 +93,7 @@ final class B2BFlowerController
 
     public function updateProfile(Request $request): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $validated = $request->validate([
@@ -133,7 +133,7 @@ final class B2BFlowerController
 
     public function products(): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $storefront = B2BFlowerStorefront::query()
@@ -161,7 +161,7 @@ final class B2BFlowerController
 
     public function productDetail(int $id): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $product = \App\Domains\Flowers\Models\FlowerProduct::query()
@@ -183,7 +183,7 @@ final class B2BFlowerController
 
     public function productInquiry(int $id, Request $request): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $validated = $request->validate([
@@ -213,7 +213,7 @@ final class B2BFlowerController
 
     public function createOrder(Request $request): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $storefront = B2BFlowerStorefront::query()
@@ -256,7 +256,7 @@ final class B2BFlowerController
 
     public function listOrders(): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $storefront = B2BFlowerStorefront::query()
@@ -283,7 +283,7 @@ final class B2BFlowerController
 
     public function orderDetail(int $id): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $order = B2BFlowerOrder::query()
@@ -306,7 +306,7 @@ final class B2BFlowerController
 
     public function updateOrder(int $id, Request $request): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $order = B2BFlowerOrder::query()->findOrFail($id);
@@ -351,7 +351,7 @@ final class B2BFlowerController
 
     public function submitOrder(int $id): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $order = B2BFlowerOrder::query()->findOrFail($id);
@@ -383,7 +383,7 @@ final class B2BFlowerController
 
     public function cancelOrder(int $id): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $order = B2BFlowerOrder::query()->findOrFail($id);
@@ -423,7 +423,7 @@ final class B2BFlowerController
 
     public function orderInvoice(int $id): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $order = B2BFlowerOrder::query()->findOrFail($id);
@@ -452,7 +452,7 @@ final class B2BFlowerController
 
     public function ordersAnalytics(): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $storefront = B2BFlowerStorefront::query()
@@ -484,7 +484,7 @@ final class B2BFlowerController
 
     public function spendingAnalytics(): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $storefront = B2BFlowerStorefront::query()
@@ -516,7 +516,7 @@ final class B2BFlowerController
 
     public function adminStorefronts(): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $storefronts = B2BFlowerStorefront::query()->paginate(20);
@@ -537,7 +537,7 @@ final class B2BFlowerController
 
     public function adminVerifyStorefront(int $id): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $storefront = B2BFlowerStorefront::query()->findOrFail($id);
@@ -569,7 +569,7 @@ final class B2BFlowerController
 
     public function adminDeleteStorefront(int $id): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             DB::transaction(function () use ($id, $correlationId) {

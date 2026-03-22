@@ -136,11 +136,13 @@ php artisan view:cache
 ### 🚀 Deploy Steps
 
 1. **Database**
+
    ```bash
    php artisan migrate --force
    ```
 
 2. **Cache**
+
    ```bash
    php artisan config:cache
    php artisan route:cache
@@ -148,12 +150,14 @@ php artisan view:cache
    ```
 
 3. **Start Services**
+
    ```bash
    php artisan octane:start --workers=4 --task-workers=2 --max-requests=500
    php artisan horizon
    ```
 
 4. **Health Check**
+
    ```bash
    curl http://localhost:8000/health
    ```

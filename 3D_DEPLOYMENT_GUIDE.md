@@ -3,6 +3,7 @@
 ## 🚀 QUICK START
 
 ### 1. Generate 3D Services for All Verticals
+
 ```bash
 php generate-3d-verticals.php
 ```
@@ -10,17 +11,21 @@ php generate-3d-verticals.php
 **Output**: Creates 41 `{Vertical}3DService` classes and 41 `{Vertical}3DViewer` components
 
 ### 2. Register API Routes
+
 Add to `routes/api.php`:
+
 ```php
 include base_path('routes/api-3d.php');
 ```
 
 ### 3. Publish Configuration
+
 ```bash
 php artisan vendor:publish --tag=3d-config
 ```
 
 ### 4. Create Storage Directories
+
 ```bash
 mkdir -p storage/app/public/3d-models
 mkdir -p storage/app/public/3d-previews
@@ -32,6 +37,7 @@ php artisan storage:link
 ## 📋 IMPLEMENTATION CHECKLIST
 
 ### Backend Setup
+
 - [ ] Run `php generate-3d-verticals.php`
 - [ ] Include `routes/api-3d.php`
 - [ ] Publish configuration
@@ -40,18 +46,21 @@ php artisan storage:link
 - [ ] Install Three.js library
 
 ### 3D Model Management
+
 - [ ] Upload 3D models to `/storage/app/public/3d-models/`
 - [ ] Organize by vertical: `/3d-models/{vertical}/{sku}.glb`
 - [ ] Create previews/thumbnails
 - [ ] Test model loading
 
 ### Frontend Integration
+
 - [ ] Include Three.js in `<head>`
 - [ ] Include AR.js for mobile
 - [ ] Register Livewire components
 - [ ] Test 3D rendering
 
 ### Testing & QA
+
 - [ ] Test on desktop browsers
 - [ ] Test on mobile devices (iOS/Android)
 - [ ] Test AR functionality
@@ -59,6 +68,7 @@ php artisan storage:link
 - [ ] Security audit
 
 ### Production Deployment
+
 - [ ] Enable CDN for model distribution
 - [ ] Configure caching headers
 - [ ] Setup monitoring
@@ -71,11 +81,13 @@ php artisan storage:link
 ### Step 1: Backend Service Setup
 
 #### Generate Services
+
 ```bash
 php generate-3d-verticals.php
 ```
 
 Output:
+
 ```
 ✅ Created: Auto3DService.php
 ✅ Created: Beauty3DService.php
@@ -84,6 +96,7 @@ Output:
 ```
 
 #### Verify Generated Files
+
 ```bash
 ls -la app/Services/3D/
 ls -la app/Livewire/3D/
@@ -92,6 +105,7 @@ ls -la app/Livewire/3D/
 ### Step 2: API Configuration
 
 #### 1. Update `routes/api.php`
+
 ```php
 <?php
 use Illuminate\Support\Facades\Route;
@@ -102,7 +116,9 @@ Route::middleware('api')->prefix('api')->group(function () {
 ```
 
 #### 2. Create `routes/api-3d.php` (Already Done ✅)
+
 Contains all 3D endpoints:
+
 - `/api/v1/3d/products/*`
 - `/api/v1/3d/rooms/*`
 - `/api/v1/3d/vehicles/*`
@@ -111,6 +127,7 @@ Contains all 3D endpoints:
 ### Step 3: Model Storage Setup
 
 #### Create Directory Structure
+
 ```bash
 mkdir -p storage/app/public/3d-models
 mkdir -p storage/app/public/3d-previews
@@ -123,11 +140,13 @@ mkdir -p storage/app/public/3d-models/RealEstate
 ```
 
 #### Create Symbolic Link
+
 ```bash
 php artisan storage:link
 ```
 
 #### Upload Models
+
 ```bash
 # Upload .glb files to:
 # storage/app/public/3d-models/{vertical}/{product-sku}.glb
@@ -140,6 +159,7 @@ php artisan storage:link
 ### Step 4: Frontend Integration
 
 #### 1. Add CDN Libraries to `app.blade.php`
+
 ```blade
 <!-- Three.js for 3D Rendering -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -155,6 +175,7 @@ php artisan storage:link
 ```
 
 #### 2. Register Livewire Components
+
 ```php
 // app/Providers/AppServiceProvider.php
 
@@ -171,6 +192,7 @@ public function boot(): void
 ```
 
 #### 3. Use in Blade Views
+
 ```blade
 <livewire:3d.product-card :product-id="1" vertical="Electronics" />
 <livewire:3d.room-tour :room-id="101" hotel-id="1" />
@@ -180,11 +202,13 @@ public function boot(): void
 ### Step 5: Testing
 
 #### Unit Tests
+
 ```bash
 php artisan test tests/Feature/ThreeDVisualizationTest.php
 ```
 
 #### Manual Testing
+
 ```bash
 # Test 3D API endpoints
 curl http://localhost:8000/api/v1/3d/products/1
@@ -207,6 +231,7 @@ curl -X POST http://localhost:8000/api/v1/3d/vehicles/1/visualize \
 ### Performance Optimization
 
 #### 1. Canvas Settings (`config/3d.php`)
+
 ```php
 'performance' => [
     'enable_shadows' => true,      // High quality but slower
@@ -218,6 +243,7 @@ curl -X POST http://localhost:8000/api/v1/3d/vehicles/1/visualize \
 ```
 
 #### 2. Mobile Optimization
+
 ```php
 // In 3D Component
 if ($isMobile) {
@@ -232,6 +258,7 @@ if ($isMobile) {
 ```
 
 #### 3. Loading Strategy
+
 ```php
 // Progressive Loading
 1. Show thumbnail (instant)
@@ -246,6 +273,7 @@ if ($isMobile) {
 ### 1. CDN Setup
 
 #### Upload Models to CDN
+
 ```bash
 # Example: AWS S3 + CloudFront
 aws s3 cp storage/app/public/3d-models s3://catvrf-3d-models/ --recursive
@@ -255,12 +283,14 @@ aws s3 cp storage/app/public/3d-models s3://catvrf-3d-models/ --recursive
 ```
 
 #### Update Model URLs
+
 ```php
 // In ProductCard3D.php
 $modelUrl = config('3d.cdn_url') . "{$vertical}/{$sku}.glb";
 ```
 
 ### 2. Caching Headers
+
 ```php
 // In API Controller
 return response()->json($data)
@@ -271,6 +301,7 @@ return response()->json($data)
 ### 3. Monitoring
 
 #### Monitor 3D Performance
+
 ```php
 // Log rendering times
 Log::channel('3d')->info('Model loaded', [
@@ -281,6 +312,7 @@ Log::channel('3d')->info('Model loaded', [
 ```
 
 #### Setup Alerts
+
 ```php
 if ($loadTimeMs > 5000) {
     Sentry::captureMessage('Slow 3D model load: ' . $productId);
@@ -288,6 +320,7 @@ if ($loadTimeMs > 5000) {
 ```
 
 ### 4. Rollback Plan
+
 ```bash
 # If 3D rendering fails, fallback to 2D
 # In ProductCard3D.php
@@ -301,6 +334,7 @@ if ($threeDFailed) {
 ## 📱 MOBILE & AR SETUP
 
 ### iOS Setup
+
 ```swift
 // Enable camera access in Info.plist
 <key>NSCameraUsageDescription</key>
@@ -308,6 +342,7 @@ if ($threeDFailed) {
 ```
 
 ### Android Setup
+
 ```xml
 <!-- AndroidManifest.xml -->
 <uses-permission android:name="android.permission.CAMERA" />
@@ -315,6 +350,7 @@ if ($threeDFailed) {
 ```
 
 ### AR.js Configuration
+
 ```javascript
 // In Blade view
 window.ARConfig = {
@@ -333,6 +369,7 @@ window.ARConfig = {
 ## 🔐 SECURITY CONSIDERATIONS
 
 ### 1. Authentication
+
 ```php
 // All 3D endpoints require auth
 Route::middleware('auth:sanctum')->group(function () {
@@ -341,6 +378,7 @@ Route::middleware('auth:sanctum')->group(function () {
 ```
 
 ### 2. File Upload Validation
+
 ```php
 $request->validate([
     '3d_model' => 'required|file|mimes:glb,gltf|max:100000',
@@ -348,6 +386,7 @@ $request->validate([
 ```
 
 ### 3. Rate Limiting
+
 ```php
 // Limited to 1000 requests/hour
 RateLimiter::for('3d-api', function (Request $request) {
@@ -356,6 +395,7 @@ RateLimiter::for('3d-api', function (Request $request) {
 ```
 
 ### 4. CORS Configuration
+
 ```php
 // config/cors.php
 'allowed_origins' => [
@@ -369,6 +409,7 @@ RateLimiter::for('3d-api', function (Request $request) {
 ## 📊 MONITORING & ANALYTICS
 
 ### 1. Performance Metrics
+
 ```php
 // Track 3D rendering performance
 MetricsCollector::record('3d.model.load_time', $milliseconds);
@@ -377,6 +418,7 @@ MetricsCollector::record('3d.error_rate', $errorPercentage);
 ```
 
 ### 2. User Analytics
+
 ```php
 // Track 3D feature usage
 event(new ThreeDModelViewed($productId, $userId, $device));
@@ -384,6 +426,7 @@ event(new ARViewActivated($productId, $userId, $device));
 ```
 
 ### 3. Error Tracking
+
 ```php
 try {
     $visualization = $this->service->generateVisualization($data);
@@ -398,6 +441,7 @@ try {
 ## ✅ FINAL CHECKLIST
 
 ### Pre-Launch
+
 - [ ] All 41 verticals have 3D services
 - [ ] All API endpoints tested
 - [ ] 3D models uploaded to CDN
@@ -407,6 +451,7 @@ try {
 - [ ] Monitoring configured
 
 ### Launch
+
 - [ ] Deploy to production
 - [ ] Enable 3D rendering globally
 - [ ] Monitor error rates
@@ -414,6 +459,7 @@ try {
 - [ ] Optimize based on metrics
 
 ### Post-Launch
+
 - [ ] Weekly performance reviews
 - [ ] Monthly model updates
 - [ ] Quarterly feature expansions
@@ -434,6 +480,7 @@ try {
 ## 🆘 TROUBLESHOOTING
 
 ### Issue: Models not loading
+
 ```bash
 # Check storage symlink
 php artisan storage:link
@@ -442,6 +489,7 @@ ls -la storage/app/public/3d-models/
 ```
 
 ### Issue: AR not working on mobile
+
 ```bash
 # Check HTTPS (AR requires HTTPS)
 # Verify camera permissions
@@ -449,6 +497,7 @@ ls -la storage/app/public/3d-models/
 ```
 
 ### Issue: Slow rendering
+
 ```bash
 # Reduce max_textures in config
 # Disable shadows for lower-end devices
@@ -459,4 +508,3 @@ ls -la storage/app/public/3d-models/
 
 **Status**: 🟢 READY FOR DEPLOYMENT  
 **Next Step**: Run `php generate-3d-verticals.php` and upload 3D models
-

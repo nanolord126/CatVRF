@@ -34,7 +34,7 @@ final readonly class CourierService
         array $data,
         string $correlationId = '',
     ): array {
-        $correlationId = $correlationId ?: (string) Str::uuid();
+        $correlationId = $correlationId ?: (string) Str::uuid()->toString();
 
         try {
             // Фрод-проверка
@@ -57,7 +57,7 @@ final readonly class CourierService
             $result = DB::transaction(function () use ($tenantId, $data, $correlationId) {
                 $courier = Courier::create([
                     'tenant_id' => $tenantId,
-                    'uuid' => Str::uuid(),
+                    'uuid' => Str::uuid()->toString(),
                     'name' => $data['name'],
                     'phone' => $data['phone'],
                     'vehicle_type' => $data['vehicle_type'] ?? 'bike',
@@ -140,7 +140,7 @@ final readonly class CourierService
         int $deliveryOrderId,
         string $correlationId = '',
     ): array {
-        $correlationId = $correlationId ?: (string) Str::uuid();
+        $correlationId = $correlationId ?: (string) Str::uuid()->toString();
 
         try {
             // Фрод-проверка
@@ -206,7 +206,7 @@ final readonly class CourierService
         int $ratingScore = 5,
         string $correlationId = '',
     ): bool {
-        $correlationId = $correlationId ?: (string) Str::uuid();
+        $correlationId = $correlationId ?: (string) Str::uuid()->toString();
 
         try {
             // Фрод-проверка

@@ -3,9 +3,11 @@
 namespace App\Domains\RealEstate\Http\Controllers;
 
 use App\Domains\RealEstate\Models\ViewingAppointment;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 /**
  * Controller для управления просмотрами объектов.
@@ -13,6 +15,10 @@ use Illuminate\Support\Facades\Log;
  */
 final class ViewingAppointmentController
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function index(): JsonResponse
     {
         try {
@@ -32,9 +38,8 @@ final class ViewingAppointmentController
 
     public function create(Request $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $request->validate([
@@ -65,9 +70,8 @@ final class ViewingAppointmentController
 
     public function update(ViewingAppointment $appointment, Request $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         $this->authorize('update', $appointment);
 

@@ -57,7 +57,7 @@ final class AnalyticsEventListener implements ShouldQueue
     public function handleOrderCompleted(OrderCompletedEvent $event): void
     {
         $tenantId = $event->order->tenant_id;
-        $correlationId = $event->correlationId ?? Str::uuid();
+        $correlationId = $event->correlationId ?? Str::uuid()->toString();
 
         try {
             // Инвалидируем KPI-кэш
@@ -109,7 +109,7 @@ final class AnalyticsEventListener implements ShouldQueue
     public function handlePaymentProcessed(PaymentProcessedEvent $event): void
     {
         $tenantId = $event->payment->tenant_id;
-        $correlationId = $event->correlationId ?? Str::uuid();
+        $correlationId = $event->correlationId ?? Str::uuid()->toString();
 
         try {
             // Инвалидируем только если платёж успешен
@@ -155,7 +155,7 @@ final class AnalyticsEventListener implements ShouldQueue
     public function handleUserRegistered(UserRegisteredEvent $event): void
     {
         $tenantId = $event->user->tenant_id ?? null;
-        $correlationId = $event->correlationId ?? Str::uuid();
+        $correlationId = $event->correlationId ?? Str::uuid()->toString();
 
         try {
             if ($tenantId) {
@@ -195,7 +195,7 @@ final class AnalyticsEventListener implements ShouldQueue
     public function handleReviewSubmitted(ReviewSubmittedEvent $event): void
     {
         $tenantId = $event->review->tenant_id;
-        $correlationId = $event->correlationId ?? Str::uuid();
+        $correlationId = $event->correlationId ?? Str::uuid()->toString();
 
         try {
             // Инвалидируем кэш рейтингов

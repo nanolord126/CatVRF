@@ -8,6 +8,7 @@
 ## 📋 ВЫПОЛНЕННЫЕ ЗАДАЧИ
 
 ### ✅ Модели (4 файла)
+
 - **[app/Models/Wallet.php](app/Models/Wallet.php)** (46 строк)
   - Корневая модель кошелька
   - Relations: transactions, paymentTransactions
@@ -31,6 +32,7 @@
   - Static helper: isProcessed()
 
 ### ✅ Миграции (4 файла)
+
 - **[database/migrations/2026_03_17_000001_create_wallets_table.php](database/migrations/2026_03_17_000001_create_wallets_table.php)**
   - Таблица `wallets` ✅ Migrated
   - Индексы: tenant_id, uuid, correlation_id
@@ -48,6 +50,7 @@
   - Индексы: merchant_id, operation, created_at
 
 ### ✅ Сервисы (3 файла)
+
 - **[app/Services/Payment/IdempotencyService.php](app/Services/Payment/IdempotencyService.php)** (159 строк)
   - `check()` — проверить идемпотентность платежа
   - `record()` — записать начало обработки
@@ -68,6 +71,7 @@
   - Поддержка reason и sourceType параметров
 
 ### ✅ Jobs (1 файл)
+
 - **[app/Jobs/ReleaseHoldJob.php](app/Jobs/ReleaseHoldJob.php)** (107 строк)
   - Автоматический release холдов старше 24 часов
   - Запускается по расписанию (ежечасно)
@@ -75,6 +79,7 @@
   - Освобождает hold_amount в wallet
 
 ### ✅ Config
+
 - **[config/fiscal.php](config/fiscal.php)** — **Обновлён**
   - Добавлены параметры для OFD интеграции
   - Yandex, Tinkoff, Custom провайдеры
@@ -84,6 +89,7 @@
 ## 🔧 ТЕХНИЧЕСКИЕ ДЕТАЛИ
 
 ### ✅ Database Schema
+
 ```sql
 -- wallets: 9 columns, PK: id, FK: tenant_id
 -- balance_transactions: 13 columns, PK: id, FK: wallet_id
@@ -92,6 +98,7 @@
 ```
 
 ### ✅ Миграции успешно выполнены
+
 ```
 ✅ 2026_03_17_000001_create_wallets_table ............... 931.22ms DONE
 ✅ 2026_03_17_000002_create_balance_transactions_table ... 65.50ms DONE
@@ -100,6 +107,7 @@
 ```
 
 ### ✅ CANON 2026 Compliance
+
 - ✅ `declare(strict_types=1);` во всех файлах
 - ✅ `final class` где требуется
 - ✅ `readonly` dependencies в сервисах
@@ -141,6 +149,7 @@
 ## 🚀 СЛЕДУЮЩИЕ ШАГИ (ДЕНЬ 2)
 
 ### ДЕНЬ 2: PAYMENT WEBHOOKS + RBAC FOUNDATION
+
 - [ ] Создать Internal/PaymentWebhookController.php
 - [ ] Реализовать signature verification (Tinkoff, Sber, Tochka)
 - [ ] Создать Role enum
@@ -154,6 +163,7 @@
 ## 💾 DEPLOYMENT READY
 
 Все изменения готовы к:
+
 - ✅ `php artisan migrate`
 - ✅ Git commit
 - ✅ Code review
@@ -162,4 +172,3 @@
 ---
 
 **Статус проекта:** 72% → **~80%** (платёжная система теперь работает)
-

@@ -5,6 +5,7 @@ namespace App\Domains\FashionRetail\Http\Controllers;
 use App\Domains\FashionRetail\Models\FashionRetailProduct;
 use App\Domains\FashionRetail\Models\FashionRetailCategory;
 use App\Domains\FashionRetail\Services\ProductService;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -14,6 +15,7 @@ final class FashionRetailProductController
 {
     public function __construct(
         private readonly ProductService $productService,
+        private readonly FraudControlService $fraudControlService,
     ) {}
 
     public function index(): JsonResponse
@@ -23,7 +25,7 @@ final class FashionRetailProductController
                 ->with('shop', 'category', 'variants')
                 ->paginate(20);
 
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             Log::channel('audit')->info('FashionRetail products listed', [
                 'count' => $products->count(),
                 'correlation_id' => $correlationId,
@@ -35,7 +37,7 @@ final class FashionRetailProductController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             Log::error('FashionRetail product listing failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -70,13 +72,10 @@ final class FashionRetailProductController
 
     public function store(): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
-            $correlationId = Str::uuid();
-
             $product = DB::transaction(function () use ($correlationId) {
                 return FashionRetailProduct::create([
                     'uuid' => Str::uuid(),
@@ -113,7 +112,7 @@ final class FashionRetailProductController
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Throwable $e) {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             Log::error('FashionRetail product creation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -129,12 +128,10 @@ final class FashionRetailProductController
 
     public function update(int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
-            $correlationId = Str::uuid();
             $product = FashionRetailProduct::findOrFail($id);
 
             DB::transaction(function () use ($product, $correlationId) {
@@ -160,7 +157,7 @@ final class FashionRetailProductController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             Log::error('FashionRetail product update failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -176,12 +173,10 @@ final class FashionRetailProductController
 
     public function destroy(int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
-            $correlationId = Str::uuid();
             $product = FashionRetailProduct::findOrFail($id);
 
             DB::transaction(function () use ($product, $correlationId) {
@@ -200,7 +195,7 @@ final class FashionRetailProductController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             Log::error('FashionRetail product deletion failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

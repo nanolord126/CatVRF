@@ -7,6 +7,7 @@ namespace App\Services\Analytics;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -39,7 +40,7 @@ final class AdvancedAnalyticsService
         string $endDate,
         array $context = []
     ): array {
-        $correlationId = $context['correlation_id'] ?? Str::uuid();
+        $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
         $cacheKey = "analytics:metrics:{$tenantId}:{$metricType}:{$startDate}:{$endDate}";
 
         $cached = Cache::get($cacheKey);
@@ -98,7 +99,7 @@ final class AdvancedAnalyticsService
         int $daysAhead = 30,
         array $context = []
     ): array {
-        $correlationId = $context['correlation_id'] ?? Str::uuid();
+        $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
 
         if ($daysAhead > self::MAX_FORECAST_DAYS) {
             $daysAhead = self::MAX_FORECAST_DAYS;
@@ -143,7 +144,7 @@ final class AdvancedAnalyticsService
         array $filters = [],
         array $context = []
     ): array {
-        $correlationId = $context['correlation_id'] ?? Str::uuid();
+        $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
 
         $report = [
             'correlation_id' => $correlationId,
@@ -187,7 +188,7 @@ final class AdvancedAnalyticsService
      * Рассчитать ключевые KPI (выручка, ROI, LTV, Churn)
      */
     public function calculateKPIs(int $tenantId, array $context = []): array {
-        $correlationId = $context['correlation_id'] ?? Str::uuid();
+        $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
 
         $kpis = [
             'correlation_id' => $correlationId,
@@ -220,7 +221,7 @@ final class AdvancedAnalyticsService
         string $period2,
         array $context = []
     ): array {
-        $correlationId = $context['correlation_id'] ?? Str::uuid();
+        $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
 
         $dates1 = $this->parsePeriodString($period1);
         $dates2 = $this->parsePeriodString($period2);
@@ -320,12 +321,17 @@ final class AdvancedAnalyticsService
             'predictions' => [],
         ];
 
-        // Простая линейная интерполяция
+        // Линейная экстраполяция на основе последних значений
+        $lastValues = array_values(array_filter($metrics, 'is_numeric'));
+        $count = count($lastValues);
+        $avg = $count > 0 ? array_sum($lastValues) / $count : 0;
+        $trend_slope = $count > 1 ? ($lastValues[$count - 1] - $lastValues[0]) / max($count - 1, 1) : 0;
+
         for ($i = 1; $i <= $daysAhead; $i++) {
             $trend['predictions'][] = [
                 'day' => $i,
-                'value' => rand(100, 1000), // Placeholder
-                'confidence' => 0.75 - ($i * 0.01),
+                'value' => (int) max(0, round($avg + $trend_slope * $i)),
+                'confidence' => max(0.30, 0.75 - ($i * 0.01)),
             ];
         }
 
@@ -348,26 +354,173 @@ final class AdvancedAnalyticsService
         return (float)(($new - $old) / $old * 100);
     }
 
-    // Placeholder methods — реальная реализация использует DB запросы
-    private function getTotalRevenue(int $tenantId, int $days): int { return rand(50000, 200000); }
-    private function getTotalOrders(int $tenantId, int $days): int { return rand(100, 500); }
-    private function getAverageOrderValue(int $tenantId, int $days): float { return round(rand(2000, 5000) / 100, 2); }
-    private function getConversionRate(int $tenantId, int $days): float { return round(rand(2, 8) / 100, 3); }
-    private function estimateLTV(int $tenantId): float { return round(rand(50000, 500000) / 100, 2); }
-    private function getChurnRate(int $tenantId, int $days): float { return round(rand(1, 5) / 100, 3); }
-    private function estimateROI(int $tenantId): float { return round(rand(150, 300) / 100, 2); }
+    private function getTotalRevenue(int $tenantId, int $days): int
+    {
+        return (int) DB::table('balance_transactions')
+            ->where('tenant_id', $tenantId)
+            ->where('type', 'deposit')
+            ->where('created_at', '>=', now()->subDays($days))
+            ->sum('amount');
+    }
 
-    private function getTotalRevenueForRange(int $tenantId, string $start, string $end): int { return rand(50000, 200000); }
-    private function getTotalOrdersForRange(int $tenantId, string $start, string $end): int { return rand(100, 500); }
-    private function getAOVForRange(int $tenantId, string $start, string $end): float { return round(rand(2000, 5000) / 100, 2); }
+    private function getTotalOrders(int $tenantId, int $days): int
+    {
+        return (int) DB::table('payment_transactions')
+            ->where('tenant_id', $tenantId)
+            ->where('status', 'captured')
+            ->where('created_at', '>=', now()->subDays($days))
+            ->count();
+    }
 
-    private function getDailyAverageRevenue(int $tenantId, string $start, string $end): float { return round(rand(5000, 20000) / 100, 2); }
-    private function getDailyAverageOrders(int $tenantId, string $start, string $end): float { return round(rand(10, 50) / 10, 2); }
-    private function getPeakRevenueDay(int $tenantId, string $start, string $end): string { return now()->format('Y-m-d'); }
-    private function getPeakOrderDay(int $tenantId, string $start, string $end): string { return now()->format('Y-m-d'); }
+    private function getAverageOrderValue(int $tenantId, int $days): float
+    {
+        return (float) DB::table('payment_transactions')
+            ->where('tenant_id', $tenantId)
+            ->where('status', 'captured')
+            ->where('created_at', '>=', now()->subDays($days))
+            ->avg('amount') ?? 0.0;
+    }
 
-    private function getConversionRateForRange(int $tenantId, string $start, string $end): float { return round(rand(2, 8) / 100, 3); }
-    private function getDailyAverageConversion(int $tenantId, string $start, string $end): float { return round(rand(2, 8) / 1000, 3); }
-    private function getDailyAverageAOV(int $tenantId, string $start, string $end): float { return round(rand(2000, 5000) / 100, 2); }
-    private function getConversionRateForRange(int $tenantId, string $start, string $end): float { return round(rand(2, 8) / 100, 3); }
+    private function getConversionRate(int $tenantId, int $days): float
+    {
+        $total = DB::table('payment_transactions')
+            ->where('tenant_id', $tenantId)
+            ->where('created_at', '>=', now()->subDays($days))
+            ->count();
+        if ($total === 0) return 0.0;
+        $captured = DB::table('payment_transactions')
+            ->where('tenant_id', $tenantId)
+            ->where('status', 'captured')
+            ->where('created_at', '>=', now()->subDays($days))
+            ->count();
+        return round($captured / $total, 3);
+    }
+
+    private function estimateLTV(int $tenantId): float
+    {
+        return (float) DB::table('payment_transactions')
+            ->where('tenant_id', $tenantId)
+            ->where('status', 'captured')
+            ->avg('amount') ?? 0.0;
+    }
+
+    private function getChurnRate(int $tenantId, int $days): float
+    {
+        $prevPeriodUsers = DB::table('payment_transactions')
+            ->where('tenant_id', $tenantId)
+            ->where('created_at', '<', now()->subDays($days))
+            ->where('created_at', '>=', now()->subDays($days * 2))
+            ->distinct('client_id')
+            ->count('client_id');
+        if ($prevPeriodUsers === 0) return 0.0;
+        $retained = DB::table('payment_transactions')
+            ->where('tenant_id', $tenantId)
+            ->where('created_at', '>=', now()->subDays($days))
+            ->distinct('client_id')
+            ->count('client_id');
+        return round(max(0, ($prevPeriodUsers - $retained) / $prevPeriodUsers), 3);
+    }
+
+    private function estimateROI(int $tenantId): float
+    {
+        $revenue = $this->getTotalRevenue($tenantId, 30);
+        $costs = (int) DB::table('balance_transactions')
+            ->where('tenant_id', $tenantId)
+            ->where('type', 'commission')
+            ->where('created_at', '>=', now()->subDays(30))
+            ->sum('amount');
+        if ($costs === 0) return 0.0;
+        return round($revenue / $costs, 2);
+    }
+
+    private function getTotalRevenueForRange(int $tenantId, string $start, string $end): int
+    {
+        return (int) DB::table('balance_transactions')
+            ->where('tenant_id', $tenantId)
+            ->where('type', 'deposit')
+            ->whereBetween('created_at', [$start, $end])
+            ->sum('amount');
+    }
+
+    private function getTotalOrdersForRange(int $tenantId, string $start, string $end): int
+    {
+        return (int) DB::table('payment_transactions')
+            ->where('tenant_id', $tenantId)
+            ->where('status', 'captured')
+            ->whereBetween('created_at', [$start, $end])
+            ->count();
+    }
+
+    private function getAOVForRange(int $tenantId, string $start, string $end): float
+    {
+        return (float) DB::table('payment_transactions')
+            ->where('tenant_id', $tenantId)
+            ->where('status', 'captured')
+            ->whereBetween('created_at', [$start, $end])
+            ->avg('amount') ?? 0.0;
+    }
+
+    private function getDailyAverageRevenue(int $tenantId, string $start, string $end): float
+    {
+        $days = max(1, (int) now()->parse($start)->diffInDays($end));
+        return round($this->getTotalRevenueForRange($tenantId, $start, $end) / $days, 2);
+    }
+
+    private function getDailyAverageOrders(int $tenantId, string $start, string $end): float
+    {
+        $days = max(1, (int) now()->parse($start)->diffInDays($end));
+        return round($this->getTotalOrdersForRange($tenantId, $start, $end) / $days, 2);
+    }
+
+    private function getPeakRevenueDay(int $tenantId, string $start, string $end): string
+    {
+        $row = DB::table('balance_transactions')
+            ->where('tenant_id', $tenantId)
+            ->where('type', 'deposit')
+            ->whereBetween('created_at', [$start, $end])
+            ->selectRaw('DATE(created_at) as day, SUM(amount) as total')
+            ->groupBy('day')
+            ->orderByDesc('total')
+            ->first();
+        return $row?->day ?? now()->format('Y-m-d');
+    }
+
+    private function getPeakOrderDay(int $tenantId, string $start, string $end): string
+    {
+        $row = DB::table('payment_transactions')
+            ->where('tenant_id', $tenantId)
+            ->where('status', 'captured')
+            ->whereBetween('created_at', [$start, $end])
+            ->selectRaw('DATE(created_at) as day, COUNT(*) as total')
+            ->groupBy('day')
+            ->orderByDesc('total')
+            ->first();
+        return $row?->day ?? now()->format('Y-m-d');
+    }
+
+    private function getConversionRateForRange(int $tenantId, string $start, string $end): float
+    {
+        $total = DB::table('payment_transactions')
+            ->where('tenant_id', $tenantId)
+            ->whereBetween('created_at', [$start, $end])
+            ->count();
+        if ($total === 0) return 0.0;
+        $captured = DB::table('payment_transactions')
+            ->where('tenant_id', $tenantId)
+            ->where('status', 'captured')
+            ->whereBetween('created_at', [$start, $end])
+            ->count();
+        return round($captured / $total, 3);
+    }
+
+    private function getDailyAverageConversion(int $tenantId, string $start, string $end): float
+    {
+        $days = max(1, (int) now()->parse($start)->diffInDays($end));
+        return round($this->getConversionRateForRange($tenantId, $start, $end) / $days, 4);
+    }
+
+    private function getDailyAverageAOV(int $tenantId, string $start, string $end): float
+    {
+        return $this->getAOVForRange($tenantId, $start, $end);
+    }
 }

@@ -6,11 +6,16 @@ use App\Domains\Courses\Models\CourseReview;
 use App\Domains\Courses\Models\Course;
 use App\Domains\Courses\Models\Enrollment;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 
 final class CourseReviewController
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function indexByCourse(int $id): JsonResponse
     {
         try {
@@ -38,8 +43,26 @@ final class CourseReviewController
 
     public function store(int $courseId): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
+        $fraudResult = $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            'operation',
+            0,
+            request()->ip(),
+            request()->header('X-Device-Fingerprint'),
+            $correlationId,
+        );
+
+        if ($fraudResult['decision'] === 'block') {
+            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                'correlation_id' => $correlationId,
+                'user_id'        => auth()->id(),
+                'score'          => $fraudResult['score'],
+            ]);
+            return response()->json([
+                'success'        => false,
+                'error'          => 'Операция заблокирована.',
+                'correlation_id' => $correlationId,
+            ], 403);
         }
 
         try {
@@ -54,7 +77,7 @@ final class CourseReviewController
                 'content' => 'required|string|max:2000',
             ]);
 
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             $review = DB::transaction(function () use ($course, $enrollment, $validated, $courseId, $correlationId) {
                 $review = CourseReview::create([
@@ -126,8 +149,26 @@ final class CourseReviewController
 
     public function update(int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
+        $fraudResult = $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            'operation',
+            0,
+            request()->ip(),
+            request()->header('X-Device-Fingerprint'),
+            $correlationId,
+        );
+
+        if ($fraudResult['decision'] === 'block') {
+            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                'correlation_id' => $correlationId,
+                'user_id'        => auth()->id(),
+                'score'          => $fraudResult['score'],
+            ]);
+            return response()->json([
+                'success'        => false,
+                'error'          => 'Операция заблокирована.',
+                'correlation_id' => $correlationId,
+            ], 403);
         }
 
         try {
@@ -140,7 +181,7 @@ final class CourseReviewController
                 'content' => 'sometimes|string|max:2000',
             ]);
 
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             $review->update($validated + ['correlation_id' => $correlationId]);
 
             \Log::channel('audit')->info('Review updated', [
@@ -170,7 +211,7 @@ final class CourseReviewController
             $review = CourseReview::findOrFail($id);
             $this->authorize('delete', $review);
 
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             $review->delete();
 
             \Log::channel('audit')->info('Review deleted', [

@@ -19,9 +19,11 @@
 ## ✅ Исправленные ошибки
 
 ### 1. TypeScript/JavaScript файлы Cypress
+
 **Проблема**: В 5 файлах Cypress обнаружены PHP директивы `declare(strict_types=1);`
 
 **Файлы**:
+
 - `cypress/e2e/auth.cy.ts` ✅
 - `cypress/e2e/marketplace.cy.ts` ✅
 - `cypress/e2e/performance.cy.ts` ✅
@@ -35,6 +37,7 @@
 ---
 
 ### 2. TypeScript конфиг
+
 **Файл**: `cypress.config.ts`
 **Проблема**: Содержал `declare(strict_types=1);` (PHP код в TS файле)
 **Решение**: Удалена PHP декларация
@@ -43,8 +46,10 @@
 ---
 
 ### 3. JSON конфигурация
+
 **Файл**: `pint.json`
-**Проблема**: 
+**Проблема**:
+
 - Содержит `<?php declare(strict_types=1);` в JSON файле
 - Это не валидный JSON синтаксис
 - Файл должен быть `pint.php` а не `pint.json`
@@ -56,13 +61,16 @@
 ## 📋 Классификация оставшихся ошибок (3202)
 
 ### Категория 1: Pylance False Positives (~400 ошибок)
+
 **Причина**: Pylance неправильно интерпретирует `declare(strict_types=1)` на строке 2
 **Статус**: Это валидный PHP код (нет реальной проблемы)
 **Файлы**: Все PHP файлы в `app/Filament/Tenant/Resources/`
 
 ### Категория 2: Cypress/TypeScript (Non-Production) (~2800 ошибок)
+
 **Статус**: Тестовый код, не блокирует production
 **Типичные ошибки**:
+
 - "Cannot find name 'describe'"
 - "Cannot find name 'cy'"
 - "Cannot find module 'cypress'"
@@ -84,7 +92,8 @@
 
 ## 📌 Рекомендация
 
-**Проект готов к**: 
+**Проект готов к**:
+
 - ✅ Deployment на staging
 - ✅ Production ready
 - ✅ Прохождение code review

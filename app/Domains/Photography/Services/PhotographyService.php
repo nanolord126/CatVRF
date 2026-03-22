@@ -3,8 +3,8 @@
 namespace App\Domains\Photography\Services;
 
 use Illuminate\Support\Facades\Log;
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Str;
+use App\Services\FraudControlService;
 
 
 use Illuminate\Support\Facades\DB;
@@ -14,26 +14,28 @@ use App\Domains\Photography\Models\PhotoSession;
 final class PhotographyService
 {
     public function __construct(
+        private readonly FraudControlService $fraudControlService,
         private readonly string $correlationId = '',
     ) {
-        $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Photography', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
-
         $this->correlationId = $correlationId ?: Str::uuid()->toString();
     }
 
-    public function bookSession(array $data): PhotoSession
+    public function bookSession(array $data, int $clientId, int $tenantId): PhotoSession
     {
-        $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Photography', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
-
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(function () use ($data, $clientId, $tenantId) {
         $session = PhotoSession::create([
-            'tenant_id' => auth()->user()->tenant_id,
+            'tenant_id' => $tenantId,
             'uuid' => Str::uuid(),
             'correlation_id' => $this->correlationId,
-            'client_id' => auth()->id(),
+            'client_id' => $clientId,
             'photographer_id' => $data['photographer_id'],
             'datetime' => $data['datetime'],
             'location' => $data['location'],
@@ -47,6 +49,7 @@ final class PhotographyService
         ]);
 
         return $session;
+        });
     }
 
     /**
@@ -54,11 +57,15 @@ final class PhotographyService
      */
     public function executeInTransaction(callable $callback)
     {
-        $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Photography', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
-
-        return DB::transaction(function () use ($callback) {
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(function () use ($callback) {
             return $callback();
         });
     }

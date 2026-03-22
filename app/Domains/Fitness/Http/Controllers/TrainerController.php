@@ -51,7 +51,7 @@ final class TrainerController
 
     public function register(): JsonResponse
     {
-        $correlationId = Str::uuid();
+        $correlationId = Str::uuid()->toString();
         try {
             request()->validate([
                 'gym_id' => 'required|exists:gyms,id',
@@ -97,7 +97,7 @@ final class TrainerController
 
     public function updateProfile(): JsonResponse
     {
-        $correlationId = Str::uuid();
+        $correlationId = Str::uuid()->toString();
         try {
             $trainer = Trainer::where('user_id', auth()->id())->firstOrFail();
             $trainer->update(array_merge(request()->except(['id', 'tenant_id', 'business_group_id', 'correlation_id']), ['correlation_id' => $correlationId]));
@@ -124,7 +124,7 @@ final class TrainerController
 
     public function updateSchedule(): JsonResponse
     {
-        $correlationId = Str::uuid();
+        $correlationId = Str::uuid()->toString();
         try {
             $trainer = Trainer::where('user_id', auth()->id())->firstOrFail();
 

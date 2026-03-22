@@ -3,6 +3,7 @@
 namespace App\Domains\Flowers\Http\Controllers;
 
 use App\Domains\Flowers\Models\FlowerShop;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -12,9 +13,13 @@ use Symfony\Component\HttpFoundation\Response;
 
 final class FlowerShopController
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $shops = FlowerShop::query()
@@ -40,7 +45,7 @@ final class FlowerShopController
 
     public function show(int $id): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $shop = FlowerShop::query()
@@ -69,7 +74,7 @@ final class FlowerShopController
 
     public function myShop(): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $shop = auth()->user()->flowerShop;
@@ -98,11 +103,8 @@ final class FlowerShopController
 
     public function store(Request $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
-
-        $correlationId = (string)Str::uuid();
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $validated = $request->validate([
@@ -151,11 +153,8 @@ final class FlowerShopController
 
     public function update(int $id, Request $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
-
-        $correlationId = (string)Str::uuid();
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $shop = FlowerShop::query()->findOrFail($id);
@@ -196,7 +195,7 @@ final class FlowerShopController
 
     public function adminList(): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $shops = FlowerShop::query()
@@ -219,7 +218,7 @@ final class FlowerShopController
 
     public function adminShow(int $id): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $shop = FlowerShop::query()
@@ -243,7 +242,7 @@ final class FlowerShopController
 
     public function verify(int $id): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $shop = DB::transaction(function () use ($id, $correlationId) {
@@ -278,7 +277,7 @@ final class FlowerShopController
 
     public function adminDestroy(int $id): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             DB::transaction(function () use ($id, $correlationId) {
@@ -307,7 +306,7 @@ final class FlowerShopController
 
     public function adminAnalytics(): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $totalShops = FlowerShop::query()->count();
@@ -338,7 +337,7 @@ final class FlowerShopController
 
     public function adminEarnings(): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $earnings = FlowerShop::query()

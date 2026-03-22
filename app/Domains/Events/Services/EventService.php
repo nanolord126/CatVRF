@@ -5,7 +5,7 @@ namespace App\Domains\Events\Services;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Services\Security\FraudControlService;
+use App\Services\FraudControlService;
 use App\Domains\Events\Models\Event;
 
 final readonly class EventService
@@ -16,10 +16,17 @@ final readonly class EventService
 
     public function createEvent(array $data, string $correlationId): Event
     {
-        return DB::transaction(function () use ($data, $correlationId) {
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(function () use ($data, $correlationId) {
             Log::channel('audit')->info("СОЗДАНИЕ МЕРОПРИЯТИЯ", ["correlation_id" => $correlationId, "data" => $data]);
             
-            FraudControlService::check($data, $correlationId);
 
             $event = Event::create([
                 "tenant_id" => tenant("id") ?? 1,

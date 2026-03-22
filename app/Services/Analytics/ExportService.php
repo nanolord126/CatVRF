@@ -28,12 +28,12 @@ final class ExportService
      * Экспортировать в CSV
      */
     public function exportToCSV(array $data, string $filename, array $context = []): array {
-        $correlationId = $context['correlation_id'] ?? Str::uuid();
+        $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
 
         $csv = $this->convertToCSV($data);
 
         $result = [
-            'id' => Str::uuid(),
+            'id' => Str::uuid()->toString(),
             'filename' => $filename . '.csv',
             'format' => 'csv',
             'size_bytes' => strlen($csv),
@@ -55,68 +55,30 @@ final class ExportService
      * Экспортировать в Excel
      */
     public function exportToExcel(array $data, string $filename, array $context = []): array {
-        $correlationId = $context['correlation_id'] ?? Str::uuid();
+        $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
 
-        // Placeholder для Excel generation
-        $excelContent = "Excel export placeholder";
-
-        $result = [
-            'id' => Str::uuid(),
-            'filename' => $filename . '.xlsx',
-            'format' => 'excel',
-            'size_bytes' => strlen($excelContent),
-            'url' => $this->generateDownloadURL($filename, 'xlsx'),
-            'created_at' => now()->toIso8601String(),
-            'correlation_id' => $correlationId,
-        ];
-
-        Log::channel('audit')->info('Excel export created', [
-            'correlation_id' => $correlationId,
-            'filename' => $filename,
-            'size' => $result['size_bytes'],
-        ]);
-
-        return $result;
+        throw new \RuntimeException('Excel export not yet configured. Install maatwebsite/excel.');
     }
 
     /**
      * Экспортировать в PDF
      */
     public function exportToPDF(array $data, string $filename, array $context = []): array {
-        $correlationId = $context['correlation_id'] ?? Str::uuid();
+        $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
 
-        // Placeholder для PDF generation
-        $pdfContent = "PDF export placeholder";
-
-        $result = [
-            'id' => Str::uuid(),
-            'filename' => $filename . '.pdf',
-            'format' => 'pdf',
-            'size_bytes' => strlen($pdfContent),
-            'url' => $this->generateDownloadURL($filename, 'pdf'),
-            'created_at' => now()->toIso8601String(),
-            'correlation_id' => $correlationId,
-        ];
-
-        Log::channel('audit')->info('PDF export created', [
-            'correlation_id' => $correlationId,
-            'filename' => $filename,
-            'size' => $result['size_bytes'],
-        ]);
-
-        return $result;
+        throw new \RuntimeException('PDF export not yet configured. Install barryvdh/laravel-dompdf.');
     }
 
     /**
      * Экспортировать в JSON
      */
     public function exportToJSON(array $data, string $filename, array $context = []): array {
-        $correlationId = $context['correlation_id'] ?? Str::uuid();
+        $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
 
         $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
 
         $result = [
-            'id' => Str::uuid(),
+            'id' => Str::uuid()->toString(),
             'filename' => $filename . '.json',
             'format' => 'json',
             'size_bytes' => strlen($json),
@@ -157,7 +119,7 @@ final class ExportService
      * Получить историю экспортов
      */
     public function getExportHistory(int $tenantId, int $limit = 50, array $context = []): array {
-        $correlationId = $context['correlation_id'] ?? Str::uuid();
+        $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
         $cacheKey = "exports:history:{$tenantId}";
 
         $cached = Cache::get($cacheKey);
@@ -167,21 +129,21 @@ final class ExportService
 
         $history = [
             [
-                'id' => Str::uuid(),
+                'id' => Str::uuid()->toString(),
                 'filename' => 'revenue_report_2026_03_18.csv',
                 'format' => 'csv',
                 'created_at' => now()->subHours(2)->toIso8601String(),
                 'created_by' => 'user@example.com',
             ],
             [
-                'id' => Str::uuid(),
+                'id' => Str::uuid()->toString(),
                 'filename' => 'monthly_summary_2026_02.xlsx',
                 'format' => 'excel',
                 'created_at' => now()->subDays(1)->toIso8601String(),
                 'created_by' => 'manager@example.com',
             ],
             [
-                'id' => Str::uuid(),
+                'id' => Str::uuid()->toString(),
                 'filename' => 'customer_analysis_2026_q1.pdf',
                 'format' => 'pdf',
                 'created_at' => now()->subDays(7)->toIso8601String(),

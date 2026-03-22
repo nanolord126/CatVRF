@@ -5,14 +5,18 @@ namespace App\Domains\Hotels\Http\Controllers;
 use App\Domains\Hotels\Models\Hotel;
 use App\Domains\Hotels\Services\BookingService;
 use App\Domains\Hotels\Services\PricingService;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 final class HotelController extends Controller
 {
     public function __construct(
         private readonly BookingService $bookingService,
         private readonly PricingService $pricingService,
+        private readonly FraudControlService $fraudControlService,
     ) {}
 
     public function index(): JsonResponse
@@ -54,76 +58,106 @@ final class HotelController extends Controller
 
     public function store(): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
+        $correlationId = Str::uuid()->toString();
+        $fraudResult   = $this->fraudControlService->check(auth()->id() ?? 0, 'hotel_create', 0, request()->ip(), null, $correlationId);
+
+        if ($fraudResult['decision'] === 'block') {
+            Log::channel('fraud_alert')->warning('Hotel create blocked', [
+                'correlation_id' => $correlationId,
+                'user_id'        => auth()->id(),
+                'score'          => $fraudResult['score'],
+            ]);
+            return response()->json(['success' => false, 'error' => 'Операция заблокирована.', 'correlation_id' => $correlationId], 403);
         }
 
-        try {
-            $this->authorize('create', Hotel::class);
+        Log::channel('audit')->info('Hotel create start', ['correlation_id' => $correlationId, 'user_id' => auth()->id()]);
 
+        try {
             $data = request()->validate([
-                'name' => 'required|string',
-                'address' => 'required|string',
+                'name'        => 'required|string',
+                'address'     => 'required|string',
                 'star_rating' => 'required|integer|between:1,5',
                 'total_rooms' => 'required|integer',
                 'description' => 'nullable|string',
-                'amenities' => 'nullable|array',
+                'amenities'   => 'nullable|array',
             ]);
 
             $hotel = Hotel::create([
-                'tenant_id' => tenant('id'),
+                'tenant_id'      => tenant('id'),
                 ...$data,
-                'correlation_id' => \Illuminate\Support\Str::uuid(),
+                'correlation_id' => $correlationId,
             ]);
 
-            return response()->json([
-                'success' => true,
-                'data' => $hotel,
-            ], 201);
+            Log::channel('audit')->info('Hotel created', [
+                'correlation_id' => $correlationId,
+                'user_id'        => auth()->id(),
+                'hotel_id'       => $hotel->id,
+            ]);
+
+            return response()->json(['success' => true, 'data' => $hotel, 'correlation_id' => $correlationId], 201);
         } catch (\Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'error' => $e->getMessage(),
-            ], 500);
+            Log::error('Hotel create failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
     }
 
     public function update(string $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
+        $correlationId = Str::uuid()->toString();
+        $fraudResult   = $this->fraudControlService->check(auth()->id() ?? 0, 'hotel_update', 0, request()->ip(), null, $correlationId);
+
+        if ($fraudResult['decision'] === 'block') {
+            Log::channel('fraud_alert')->warning('Hotel update blocked', [
+                'correlation_id' => $correlationId,
+                'user_id'        => auth()->id(),
+                'score'          => $fraudResult['score'],
+            ]);
+            return response()->json(['success' => false, 'error' => 'Операция заблокирована.', 'correlation_id' => $correlationId], 403);
         }
 
         try {
             $hotel = Hotel::findOrFail($id);
             $this->authorize('update', $hotel);
 
+            $before = $hotel->toArray();
+
             $data = request()->validate([
-                'name' => 'nullable|string',
-                'address' => 'nullable|string',
+                'name'        => 'nullable|string',
+                'address'     => 'nullable|string',
                 'star_rating' => 'nullable|integer|between:1,5',
                 'description' => 'nullable|string',
-                'amenities' => 'nullable|array',
+                'amenities'   => 'nullable|array',
             ]);
 
             $hotel->update($data);
 
-            return response()->json([
-                'success' => true,
-                'data' => $hotel,
+            Log::channel('audit')->info('Hotel updated', [
+                'correlation_id' => $correlationId,
+                'user_id'        => auth()->id(),
+                'hotel_id'       => $id,
+                'before'         => $before,
+                'after'          => $hotel->fresh()->toArray(),
             ]);
+
+            return response()->json(['success' => true, 'data' => $hotel, 'correlation_id' => $correlationId]);
         } catch (\Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'error' => $e->getMessage(),
-            ], 500);
+            Log::error('Hotel update failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
     }
 
     public function destroy(string $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
+        $correlationId = Str::uuid()->toString();
+        $fraudResult   = $this->fraudControlService->check(auth()->id() ?? 0, 'hotel_delete', 0, request()->ip(), null, $correlationId);
+
+        if ($fraudResult['decision'] === 'block') {
+            Log::channel('fraud_alert')->warning('Hotel destroy blocked', [
+                'correlation_id' => $correlationId,
+                'user_id'        => auth()->id(),
+                'score'          => $fraudResult['score'],
+            ]);
+            return response()->json(['success' => false, 'error' => 'Операция заблокирована.', 'correlation_id' => $correlationId], 403);
         }
 
         try {
@@ -132,14 +166,16 @@ final class HotelController extends Controller
 
             $hotel->delete();
 
-            return response()->json([
-                'success' => true,
+            Log::channel('audit')->info('Hotel deleted', [
+                'correlation_id' => $correlationId,
+                'user_id'        => auth()->id(),
+                'hotel_id'       => $id,
             ]);
+
+            return response()->json(['success' => true, 'correlation_id' => $correlationId]);
         } catch (\Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'error' => $e->getMessage(),
-            ], 500);
+            Log::error('Hotel destroy failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
     }
 
@@ -174,21 +210,34 @@ final class HotelController extends Controller
 
     public function verify(string $id): JsonResponse
     {
+        $correlationId = Str::uuid()->toString();
+        $fraudResult   = $this->fraudControlService->check(auth()->id() ?? 0, 'hotel_verify', 0, request()->ip(), null, $correlationId);
+
+        if ($fraudResult['decision'] === 'block') {
+            Log::channel('fraud_alert')->warning('Hotel verify blocked', [
+                'correlation_id' => $correlationId,
+                'user_id'        => auth()->id(),
+                'score'          => $fraudResult['score'],
+            ]);
+            return response()->json(['success' => false, 'error' => 'Операция заблокирована.', 'correlation_id' => $correlationId], 403);
+        }
+
         try {
             $hotel = Hotel::findOrFail($id);
             $this->authorize('delete', $hotel);
 
             $hotel->update(['is_verified' => true]);
 
-            return response()->json([
-                'success' => true,
-                'data' => $hotel,
+            Log::channel('audit')->info('Hotel verified', [
+                'correlation_id' => $correlationId,
+                'user_id'        => auth()->id(),
+                'hotel_id'       => $id,
             ]);
+
+            return response()->json(['success' => true, 'data' => $hotel, 'correlation_id' => $correlationId]);
         } catch (\Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'error' => $e->getMessage(),
-            ], 500);
+            Log::error('Hotel verify failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
     }
 }

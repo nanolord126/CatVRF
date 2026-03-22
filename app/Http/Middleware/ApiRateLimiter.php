@@ -20,7 +20,7 @@ final class ApiRateLimiter
      */
     public function handle(Request $request, Closure $next, string $limit = '100', string $window = '3600'): mixed
     {
-        $tenantId = $request->attributes->get('tenant_id') ?? auth()->id() ?? 0;
+        $tenantId = tenant('id') ?? $request->attributes->get('tenant_id') ?? 0;
         $userId = auth()->id() ?? 'anonymous';
         $ip = $request->ip() ?? '0.0.0.0';
         $endpoint = $request->path();

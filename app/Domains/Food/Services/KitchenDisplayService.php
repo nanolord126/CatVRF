@@ -2,8 +2,8 @@
 
 namespace App\Domains\Food\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use App\Domains\Food\Models\KDSOrder;
 use App\Domains\Food\Models\RestaurantOrder;
@@ -15,6 +15,10 @@ use Illuminate\Support\Facades\DB;
  */
 final class KitchenDisplayService
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     /**
      * Создать KDS-заказ при оплате.
      */
@@ -22,10 +26,7 @@ final class KitchenDisplayService
         RestaurantOrder $order,
         string $correlationId = ''
     ): KDSOrder {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'createKDSOrder'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createKDSOrder', ['domain' => __CLASS__]);
+
 
         try {
             Log::channel('audit')->info('Creating KDS order', [
@@ -33,7 +34,15 @@ final class KitchenDisplayService
                 'correlation_id' => $correlationId,
             ]);
 
-            return DB::transaction(function () use ($order, $correlationId) {
+            $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
+DB::transaction(function () use ($order, $correlationId) {
                 $kdsOrder = KDSOrder::create([
                     'tenant_id' => $order->tenant_id,
                     'restaurant_order_id' => $order->id,
@@ -65,10 +74,7 @@ final class KitchenDisplayService
      */
     public function calculateCookingTime(RestaurantOrder $order): int
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'calculateCookingTime'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL calculateCookingTime', ['domain' => __CLASS__]);
+
 
         $maxTime = 0;
 
@@ -87,13 +93,18 @@ final class KitchenDisplayService
      */
     public function markAsReady(KDSOrder $kdsOrder, string $correlationId = ''): bool
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'markAsReady'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL markAsReady', ['domain' => __CLASS__]);
+
 
         try {
-            return DB::transaction(function () use ($kdsOrder, $correlationId) {
+            $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
+DB::transaction(function () use ($kdsOrder, $correlationId) {
                 $kdsOrder->update([
                     'status' => 'ready',
                     'ready_at' => now(),

@@ -1,6 +1,7 @@
 # ADVANCED FEATURES GUIDE - Phase 5d
 
 ## 📋 Содержание
+
 1. [Advanced Caching](#advanced-caching)
 2. [GraphQL API](#graphql-api)
 3. [WebSocket Real-time Updates](#websocket-real-time-updates)
@@ -11,7 +12,9 @@
 ## ADVANCED CACHING
 
 ### Overview
+
 Multi-tier caching strategy с двумя уровнями:
+
 - **L1 Cache**: In-memory (Laravel cache memory driver)
 - **L2 Cache**: Redis (distributed, persistent)
 
@@ -22,6 +25,7 @@ Multi-tier caching strategy с двумя уровнями:
 ### Основные методы
 
 #### 1. Cache-Aside Pattern
+
 ```php
 $this->caching->remember(
     'concerts:list:page:1',
@@ -32,12 +36,14 @@ $this->caching->remember(
 ```
 
 **Поток**:
+
 1. Проверка L1 (memory)
 2. Если не найдено → проверка L2 (Redis)
 3. Если не найдено → выполнение callback
 4. Сохранение в L1 и L2
 
 #### 2. Write-Through Pattern
+
 ```php
 $this->caching->writeThrough(
     'concert:123:details',
@@ -47,11 +53,13 @@ $this->caching->writeThrough(
 ```
 
 **Поток**:
+
 1. Выполнение callback (обновление БД)
 2. Сохранение результата в Redis
 3. Возврат результата
 
 #### 3. Cache Warming
+
 ```php
 $this->caching->warmCache([
     'concerts:trending' => fn () => Concert::trending()->limit(20),
@@ -63,6 +71,7 @@ $this->caching->warmCache([
 **Использование**: Pre-populate cache перед пиковой нагрузкой
 
 #### 4. Tag-Based Invalidation
+
 ```php
 // Инвалидировать все кэши с тегом 'concerts'
 $this->caching->invalidateTag('concerts');
@@ -72,6 +81,7 @@ $this->caching->invalidateTag(['concerts', 'venues']);
 ```
 
 #### 5. Cache Statistics
+
 ```php
 $stats = $this->caching->getStats();
 
@@ -86,11 +96,13 @@ $stats = $this->caching->getStats();
 ```
 
 #### 6. Cache Optimization
+
 ```php
 $this->caching->optimize();
 ```
 
 **Действия**:
+
 - Удаление истекших ключей
 - Оптимизация памяти Redis (AOF rewrite)
 - Статистика оптимизации
@@ -98,6 +110,7 @@ $this->caching->optimize();
 ### Implementation Examples
 
 #### Кэширование списка концертов
+
 ```php
 public function getConcerts(int $page = 1, int $perPage = 20): LengthAwarePaginator
 {
@@ -111,6 +124,7 @@ public function getConcerts(int $page = 1, int $perPage = 20): LengthAwarePagina
 ```
 
 #### Кэширование рекомендаций
+
 ```php
 public function getRecommendations(int $userId): Collection
 {
@@ -124,6 +138,7 @@ public function getRecommendations(int $userId): Collection
 ```
 
 #### Кэширование поиска
+
 ```php
 public function searchConcerts(string $query): Collection
 {
@@ -137,6 +152,7 @@ public function searchConcerts(string $query): Collection
 ```
 
 ### Cache Keys Strategy
+
 ```
 concerts:list:page:{page}
 concerts:trending
@@ -150,6 +166,7 @@ artist:{id}:schedule
 ```
 
 ### Cache Invalidation Events
+
 ```php
 // В Concert model
 protected static function booted(): void
@@ -173,11 +190,13 @@ protected static function booted(): void
 ## GraphQL API
 
 ### Overview
+
 RESTful API + GraphQL для гибкого доступа к данным
 
 ### Query Examples
 
 #### Get Concerts with Pagination
+
 ```graphql
 query GetConcerts {
   concerts(first: 20, after: "cursor123") {
@@ -200,6 +219,7 @@ query GetConcerts {
 ```
 
 #### Search with Filters
+
 ```graphql
 query SearchConcerts {
   concerts(
@@ -219,6 +239,7 @@ query SearchConcerts {
 ```
 
 #### Get Single Concert
+
 ```graphql
 query GetConcert {
   concert(id: "123") {
@@ -243,6 +264,7 @@ query GetConcert {
 ### Mutation Examples
 
 #### Create Concert
+
 ```graphql
 mutation CreateConcert {
   createConcert(
@@ -263,6 +285,7 @@ mutation CreateConcert {
 ```
 
 #### Update Concert
+
 ```graphql
 mutation UpdateConcert {
   updateConcert(
@@ -280,6 +303,7 @@ mutation UpdateConcert {
 ```
 
 #### Delete Concert
+
 ```graphql
 mutation DeleteConcert {
   deleteConcert(id: "123") {
@@ -290,6 +314,7 @@ mutation DeleteConcert {
 ```
 
 ### GraphQL Configuration
+
 **Файл**: `config/graphql.php`
 
 ```php
@@ -309,6 +334,7 @@ mutation DeleteConcert {
 ```
 
 ### GraphQL Type Definitions
+
 **Файл**: `app/GraphQL/Types/ConcertType.php`
 
 ```php
@@ -339,11 +365,13 @@ class ConcertType extends ObjectType
 ```
 
 ### GraphQL Endpoint
+
 ```
 POST /graphql
 ```
 
 **Headers**:
+
 ```
 Authorization: Bearer {token}
 Content-Type: application/json
@@ -354,6 +382,7 @@ Content-Type: application/json
 ## WebSocket Real-time Updates
 
 ### Overview
+
 Real-time broadcasting через Laravel Echo + Pusher/Soketi
 
 ### RealtimeUpdatesService
@@ -363,6 +392,7 @@ Real-time broadcasting через Laravel Echo + Pusher/Soketi
 ### Broadcast Events
 
 #### 1. Concert Update Broadcast
+
 ```php
 $this->realtime->broadcastConcertUpdate(
     concertId: 123,
@@ -377,6 +407,7 @@ $this->realtime->broadcastConcertUpdate(
 **Event Channel**: `concerts.{id}.updates`
 
 **Clients Receive**:
+
 ```javascript
 Echo.channel(`concerts.123.updates`)
     .listen('ConcertUpdated', (event) => {
@@ -385,6 +416,7 @@ Echo.channel(`concerts.123.updates`)
 ```
 
 #### 2. User Presence
+
 ```php
 $this->realtime->broadcastPresence(
     userId: $user->id,
@@ -396,6 +428,7 @@ $this->realtime->broadcastPresence(
 **Event Channel**: `presence-concerts`
 
 #### 3. Direct Notifications
+
 ```php
 $this->realtime->notifyUser(
     userId: 456,
@@ -406,6 +439,7 @@ $this->realtime->notifyUser(
 ```
 
 #### 4. Analytics Broadcasting
+
 ```php
 $this->realtime->broadcastAnalytics([
     'active_users' => 1250,
@@ -417,6 +451,7 @@ $this->realtime->broadcastAnalytics([
 **Event Channel**: `analytics`
 
 #### 5. Active Users Tracking
+
 ```php
 // Add user
 $this->realtime->updateActiveUsers($userId, 'add');
@@ -428,6 +463,7 @@ $activeCount = $this->realtime->getActiveUsers();
 ### JavaScript Integration (Echo)
 
 #### Subscribe to Concerts Channel
+
 ```javascript
 // Real-time updates for specific concert
 Echo.channel(`concerts.123.updates`)
@@ -437,6 +473,7 @@ Echo.channel(`concerts.123.updates`)
 ```
 
 #### Subscribe to Presence
+
 ```javascript
 // Presence on marketplace
 Echo.join(`presence-concerts`)
@@ -452,6 +489,7 @@ Echo.join(`presence-concerts`)
 ```
 
 #### Subscribe to Notifications
+
 ```javascript
 // Direct user notifications
 Echo.private(`notifications.user.${userId}`)
@@ -461,6 +499,7 @@ Echo.private(`notifications.user.${userId}`)
 ```
 
 ### Pusher/Soketi Configuration
+
 **Файл**: `.env`
 
 ```env
@@ -482,6 +521,7 @@ SOKETI_SCHEME=http
 ## Elasticsearch Integration
 
 ### Overview
+
 Full-text search с faceting и aggregations
 
 ### ElasticsearchSearchService
@@ -491,6 +531,7 @@ Full-text search с faceting и aggregations
 ### Search Features
 
 #### 1. Full-Text Search
+
 ```php
 $concerts = $this->elasticsearch->searchConcerts(
     query: 'jazz festival',
@@ -500,6 +541,7 @@ $concerts = $this->elasticsearch->searchConcerts(
 ```
 
 #### 2. Advanced Filtering
+
 ```php
 $concerts = $this->elasticsearch->searchConcerts(
     query: 'concert',
@@ -514,6 +556,7 @@ $concerts = $this->elasticsearch->searchConcerts(
 ```
 
 #### 3. Autocomplete/Suggestions
+
 ```php
 $suggestions = $this->elasticsearch->getSuggestions(
     query: 'jaz',
@@ -529,6 +572,7 @@ $suggestions = $this->elasticsearch->getSuggestions(
 ```
 
 #### 4. Faceted Search
+
 ```php
 $facets = $this->elasticsearch->getFacets('concert');
 
@@ -552,6 +596,7 @@ $facets = $this->elasticsearch->getFacets('concert');
 ### Indexing
 
 #### Automatic Indexing on Create/Update
+
 ```php
 // In Concert model
 use Laravel\Scout\Searchable;
@@ -577,6 +622,7 @@ class Concert extends Model
 ```
 
 #### Manual Indexing
+
 ```php
 // Index single concert
 $this->elasticsearch->indexModel($concert);
@@ -589,6 +635,7 @@ $this->elasticsearch->reindexAll();
 ```
 
 ### Laravel Scout Configuration
+
 **Файл**: `config/scout.php`
 
 ```php
@@ -604,6 +651,7 @@ $this->elasticsearch->reindexAll();
 ```
 
 ### Elasticsearch Mapping
+
 ```json
 {
   "mappings": {
@@ -629,11 +677,13 @@ $this->elasticsearch->reindexAll();
 ### API Integration
 
 #### Search Endpoint
+
 ```
 GET /api/v1/search/concerts?q=jazz&status=published&venue=Blue+Note
 ```
 
 **Response**:
+
 ```json
 {
   "data": [
@@ -668,6 +718,7 @@ GET /api/v1/search/concerts?q=jazz&status=published&venue=Blue+Note
 ## Performance Benchmarks
 
 ### Cache Performance
+
 ```
 Cache-Aside (hit):     0.5ms
 Cache-Aside (miss):    50ms  (with DB query)
@@ -677,6 +728,7 @@ Memory Access:         <1ms
 ```
 
 ### GraphQL Performance
+
 ```
 Simple Query:          25-50ms
 Query + Pagination:    50-100ms
@@ -685,6 +737,7 @@ Large Mutation:        150-300ms
 ```
 
 ### WebSocket Performance
+
 ```
 Broadcast Latency:     50-200ms
 Presence Update:       100-300ms
@@ -693,6 +746,7 @@ Message Delivery:      20-50ms
 ```
 
 ### Elasticsearch Performance
+
 ```
 Full-Text Search:      50-150ms
 Faceted Search:        100-300ms
@@ -723,6 +777,7 @@ Reindex (1M docs):     5-10 minutes
 ## 🚀 Production Deployment
 
 ### Pre-Deployment Commands
+
 ```bash
 # Build search index
 php artisan scout:import App\\Models\\Tenants\\Concert
@@ -742,6 +797,7 @@ php artisan test
 ```
 
 ### Deployment Steps
+
 1. Deploy code changes
 2. Run migrations
 3. Rebuild Elasticsearch indices
@@ -751,6 +807,7 @@ php artisan test
 7. Run smoke tests
 
 ### Rollback Procedure
+
 ```bash
 # Revert code
 git revert {commit}

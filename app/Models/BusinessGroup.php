@@ -96,7 +96,7 @@ final class BusinessGroup extends Model
         parent::boot();
 
         static::creating(function ($model) {
-            $model->uuid ??= \Illuminate\Support\Str::uuid();
+            $model->uuid ??= \Illuminate\Support\Str::uuid()->toString();
         });
     }
 

@@ -71,7 +71,7 @@ final class ContractController
     public function releaseMilestone(Request $request, int $id): JsonResponse
     {
         try {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             $contract = FreelanceContract::findOrFail($id);
 
             $this->authorize('release', $contract);
@@ -111,7 +111,7 @@ final class ContractController
     public function complete(int $id): JsonResponse
     {
         try {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             $contract = FreelanceContract::findOrFail($id);
 
             $this->authorize('complete', $contract);
@@ -140,7 +140,7 @@ final class ContractController
     public function pause(Request $request, int $id): JsonResponse
     {
         try {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             $contract = FreelanceContract::findOrFail($id);
 
             $this->authorize('pause', $contract);
@@ -169,7 +169,7 @@ final class ContractController
     public function cancel(Request $request, int $id): JsonResponse
     {
         try {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             $contract = FreelanceContract::findOrFail($id);
 
             $this->authorize('cancel', $contract);

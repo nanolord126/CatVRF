@@ -49,28 +49,36 @@ CatVRF/
 ## 🎯 QUICK START
 
 ### Запустить Unit Tests (20 сек)
+
 ```bash
 ./vendor/bin/pest tests/Unit --parallel
 ```
+
 **Expected**: ✅ 18 tests passed
 
 ### Запустить все Feature Tests (2-5 мин)
+
 ```bash
 ./vendor/bin/pest tests/Feature tests/Security tests/Chaos
 ```
+
 **Expected**: ✅ 68 tests passed
 
 ### Запустить Load Test (10 мин)
+
 ```bash
 k6 run k6/payment-flow-loadtest.js
 ```
+
 **Expected**: ✅ P95 < 500ms, Error rate < 0.1%
 
 ### Генерировать Coverage Report (1-2 мин)
+
 ```bash
 ./vendor/bin/pest --coverage --coverage-html=storage/coverage
 open storage/coverage/index.html
 ```
+
 **Expected**: ✅ 85%+ coverage for core services
 
 ---
@@ -78,11 +86,13 @@ open storage/coverage/index.html
 ## 📊 TEST CATEGORIES
 
 ### Category 1: Unit Tests (WalletService)
+
 **File**: `tests/Unit/Services/Wallet/WalletServiceTest.php`  
 **Count**: 18 tests  
 **Coverage**: 95%  
 
 Tests:
+
 1. Wallet creation with tenant scoping
 2. Credit operation and audit logging
 3. Debit operation
@@ -100,11 +110,13 @@ Tests:
 15-18. Edge cases and boundary conditions
 
 ### Category 2: Feature Tests (PaymentService)
+
 **File**: `tests/Feature/Payment/PaymentInitTest.php`  
 **Count**: 12 tests  
 **Coverage**: 85%  
 
 Tests:
+
 1. Payment initialization request
 2. High amount triggers fraud score
 3. Input validation (negative, unsupported currency)
@@ -119,11 +131,13 @@ Tests:
 12. High fraud score requires 3DS
 
 ### Category 3: Security Tests (FraudDetectionService)
+
 **File**: `tests/Feature/Fraud/FraudDetectionTest.php`  
 **Count**: 22 tests  
 **Coverage**: 90%  
 
 Tests:
+
 1. ✅ Replay attack protection
 2. ✅ Idempotency payload mismatch
 3. ✅ Rate limit DDoS blocking
@@ -148,11 +162,13 @@ Tests:
 22. ✅ 429 response format
 
 ### Category 4: Chaos Engineering Tests
+
 **File**: `tests/Chaos/ChaosEngineeringTest.php`  
 **Count**: 16 tests  
 **Coverage**: 100% of scenarios  
 
 Scenarios:
+
 1. Redis down → DB fallback
 2. Fraud ML unavailable → hardcoded rules
 3. Database slow queries → timeout + retry
@@ -170,12 +186,14 @@ Scenarios:
 15-16. Advanced resilience patterns
 
 ### Category 5: Load Testing Script
+
 **File**: `k6/payment-flow-loadtest.js`  
 **Stages**: 5 (ramp-up, spike, peak, cool-down, soak)  
 **Max VUs**: 5,000  
 **Target RPS**: 5,000 (spike phase)  
 
 Test functions:
+
 - paymentFlowTest() — Default scenario
 - spikeTest() — 100 → 10k → 0 VUs
 - soakTest() — 1k VUs for 30 min
@@ -183,6 +201,7 @@ Test functions:
 - errorRecoveryTest() — Test recovery
 
 Metrics collected:
+
 - P50, P95, P99 response times
 - Error rate
 - Requests per second (RPS)
@@ -190,6 +209,7 @@ Metrics collected:
 - Memory usage trend
 
 SLA Thresholds:
+
 - ✅ P95 < 500ms
 - ✅ P99 < 1000ms
 - ✅ Error rate < 0.1%
@@ -203,6 +223,7 @@ SLA Thresholds:
 **Purpose**: Base class for all tests (unit + feature)
 
 **Key methods**:
+
 ```php
 // Setup/Teardown
 setUp()                           // Auto-create tenant + user
@@ -230,6 +251,7 @@ createSecondTenant()               // Create test tenant #2
 **Purpose**: Security & fraud testing framework
 
 **Key methods**:
+
 ```php
 // Fraud attack detection
 assertReplayAttackProtection(...)
@@ -416,7 +438,7 @@ Before deploying to production staging:
 
 ## 🎯 WHAT'S NEXT?
 
-### Priority Order:
+### Priority Order
 
 1. **Validate PHASE 1** (Today)
    - Run all tests locally
@@ -453,6 +475,7 @@ Before deploying to production staging:
 ## 📞 SUPPORT
 
 **Questions?** Check the relevant docs:
+
 - Full strategy → `TESTING_STRATEGY_2026.md`
 - How to run → `READINESS_CHECKLIST.md`
 - Results → `PHASE1_TEST_REPORT.md`

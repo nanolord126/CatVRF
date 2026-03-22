@@ -54,10 +54,12 @@ final class MemoryProfilingService
      * @param string $label2
      * @return array|null
      */
-    public static function compareSnapshots(string $label1, string $label2): ?array
+    public static function compareSnapshots(string $label1, string $label2): array
     {
         if (!isset(self::$snapshots[$label1]) || !isset(self::$snapshots[$label2])) {
-            return null;
+            throw new \InvalidArgumentException(
+                "One or both memory snapshots not found: '{$label1}', '{$label2}'"
+            );
         }
 
         $snap1 = self::$snapshots[$label1];

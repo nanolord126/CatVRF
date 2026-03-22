@@ -15,16 +15,34 @@ final class BookingController
     public function __construct(
         private readonly BookingService $bookingService,
         private readonly TicketingService $ticketingService,
-    ) {}
+        private readonly FraudControlService $fraudControlService,) {}
 
     public function store(): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
+        $fraudResult = $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            'operation',
+            0,
+            request()->ip(),
+            request()->header('X-Device-Fingerprint'),
+            $correlationId,
+        );
+
+        if ($fraudResult['decision'] === 'block') {
+            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                'correlation_id' => $correlationId,
+                'user_id'        => auth()->id(),
+                'score'          => $fraudResult['score'],
+            ]);
+            return response()->json([
+                'success'        => false,
+                'error'          => 'Операция заблокирована.',
+                'correlation_id' => $correlationId,
+            ], 403);
         }
 
         try {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             DB::transaction(function () use ($correlationId) {
                 $booking = $this->bookingService->createBooking(
@@ -72,13 +90,31 @@ final class BookingController
 
     public function update(int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
+        $fraudResult = $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            'operation',
+            0,
+            request()->ip(),
+            request()->header('X-Device-Fingerprint'),
+            $correlationId,
+        );
+
+        if ($fraudResult['decision'] === 'block') {
+            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                'correlation_id' => $correlationId,
+                'user_id'        => auth()->id(),
+                'score'          => $fraudResult['score'],
+            ]);
+            return response()->json([
+                'success'        => false,
+                'error'          => 'Операция заблокирована.',
+                'correlation_id' => $correlationId,
+            ], 403);
         }
 
         try {
             $booking = Booking::findOrFail($id);
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             DB::transaction(function () use ($booking, $correlationId) {
                 $booking->update(['correlation_id' => $correlationId]);
@@ -95,7 +131,7 @@ final class BookingController
     {
         try {
             $booking = Booking::findOrFail($id);
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             $this->authorize('cancel', $booking);
 
@@ -114,7 +150,7 @@ final class BookingController
     {
         try {
             $booking = Booking::findOrFail($id);
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             DB::transaction(function () use ($booking, $correlationId) {
                 $booking->update(['status' => 'confirmed', 'correlation_id' => $correlationId]);
@@ -131,7 +167,7 @@ final class BookingController
     {
         try {
             $booking = Booking::findOrFail($id);
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             DB::transaction(function () use ($booking, $correlationId) {
                 $booking->update(['status' => 'completed', 'correlation_id' => $correlationId]);

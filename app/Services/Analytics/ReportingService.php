@@ -34,10 +34,10 @@ final class ReportingService
         array $recipients,
         array $context = []
     ): array {
-        $correlationId = $context['correlation_id'] ?? Str::uuid();
+        $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
 
         $schedule = [
-            'id' => Str::uuid(),
+            'id' => Str::uuid()->toString(),
             'tenant_id' => $tenantId,
             'report_type' => $reportType,
             'frequency' => $frequency,  // daily, weekly, monthly
@@ -70,7 +70,7 @@ final class ReportingService
         string $dateRange = '30_days',
         array $context = []
     ): array {
-        $correlationId = $context['correlation_id'] ?? Str::uuid();
+        $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
 
         $cacheKey = "reporting:report:{$tenantId}:{$reportType}:{$dateRange}";
         $cached = Cache::get($cacheKey);
@@ -79,7 +79,7 @@ final class ReportingService
         }
 
         $report = [
-            'id' => Str::uuid(),
+            'id' => Str::uuid()->toString(),
             'tenant_id' => $tenantId,
             'report_type' => $reportType,
             'date_range' => $dateRange,
@@ -104,7 +104,7 @@ final class ReportingService
      * Получить запланированные отчёты
      */
     public function getScheduledReports(int $tenantId, array $context = []): array {
-        $correlationId = $context['correlation_id'] ?? Str::uuid();
+        $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
         $cacheKey = "reporting:schedules:{$tenantId}";
 
         $cached = Cache::get($cacheKey);
@@ -114,14 +114,14 @@ final class ReportingService
 
         $schedules = [
             [
-                'id' => Str::uuid(),
+                'id' => Str::uuid()->toString(),
                 'report_type' => 'weekly_summary',
                 'frequency' => 'weekly',
                 'recipients' => ['manager@example.com'],
                 'next_send_at' => now()->addWeek()->toIso8601String(),
             ],
             [
-                'id' => Str::uuid(),
+                'id' => Str::uuid()->toString(),
                 'report_type' => 'monthly_detailed',
                 'frequency' => 'monthly',
                 'recipients' => ['cfo@example.com'],
@@ -143,7 +143,7 @@ final class ReportingService
         array $updates,
         array $context = []
     ): array {
-        $correlationId = $context['correlation_id'] ?? Str::uuid();
+        $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
 
         $schedule = [
             'id' => $reportId,
@@ -171,7 +171,7 @@ final class ReportingService
      * Удалить расписание отчёта
      */
     public function deleteReportSchedule(string $reportId, int $tenantId, array $context = []): bool {
-        $correlationId = $context['correlation_id'] ?? Str::uuid();
+        $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
 
         Cache::forget("reporting:schedule:{$reportId}");
 
@@ -193,7 +193,7 @@ final class ReportingService
         array $recipients,
         array $context = []
     ): array {
-        $correlationId = $context['correlation_id'] ?? Str::uuid();
+        $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
 
         $result = [
             'report_id' => $reportId,

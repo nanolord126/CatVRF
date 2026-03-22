@@ -3,11 +3,13 @@
 ## 🚀 QUICK START
 
 ### Database Setup
+
 ```bash
 php artisan migrate:fresh --seed
 ```
 
 ### Access Filament Admin
+
 ```
 URL: /admin
 Resources: 12 complete CRUD resources
@@ -15,6 +17,7 @@ Scoping: Auto-applied to active tenant
 ```
 
 ### Service Usage Pattern
+
 ```php
 <?php
 use App\Domains\Auto\Services\SurgeService;
@@ -35,6 +38,7 @@ $multiplier = $service->getSurgeMultiplier(
 ## 📂 FILE STRUCTURE
 
 ### Services (Production-Ready)
+
 ```
 app/Domains/{Vertical}/Services/{Service}Service.php
 ├── Constructor: readonly DI
@@ -44,6 +48,7 @@ app/Domains/{Vertical}/Services/{Service}Service.php
 ```
 
 ### Filament Resources (Full CRUD)
+
 ```
 app/Filament/Tenant/Resources/{Vertical}/{Resource}Resource/
 ├── {Resource}Resource.php (form, table, queries)
@@ -56,6 +61,7 @@ app/Filament/Tenant/Resources/{Vertical}/{Resource}Resource/
 ```
 
 ### Models (Tenant-Scoped)
+
 ```
 app/Domains/{Vertical}/Models/{Model}.php
 ├── Fields: uuid, tenant_id, business_group_id, correlation_id, tags
@@ -65,6 +71,7 @@ app/Domains/{Vertical}/Models/{Model}.php
 ```
 
 ### Migrations (Idempotent)
+
 ```
 database/migrations/2026_03_18_000XXX_create_{table}.php
 ├── Check: Schema::hasTable() before create
@@ -77,6 +84,7 @@ database/migrations/2026_03_18_000XXX_create_{table}.php
 ## 🔑 KEY PATTERNS
 
 ### Service Pattern (All 35 services)
+
 ```php
 <?php declare(strict_types=1);
 
@@ -117,6 +125,7 @@ final class {Service}Service
 ```
 
 ### Filament Resource Pattern (All 12 resources)
+
 ```php
 <?php declare(strict_types=1);
 
@@ -158,6 +167,7 @@ final class {Resource}Resource extends Resource
 ```
 
 ### Model Pattern (All 45+ models)
+
 ```php
 <?php declare(strict_types=1);
 
@@ -185,6 +195,7 @@ final class {Model} extends Model
 ```
 
 ### Factory Pattern (All 11 restoration factories)
+
 ```php
 <?php declare(strict_types=1);
 
@@ -215,6 +226,7 @@ final class {Model}Factory extends Factory
 ## 🔍 DEBUGGING CHECKLIST
 
 ### Service Issues
+
 - [ ] `DB::transaction()` wrapping all mutations?
 - [ ] `Log::channel('audit')` logging with correlation_id?
 - [ ] Tenant scoping applied in queries?
@@ -222,6 +234,7 @@ final class {Model}Factory extends Factory
 - [ ] No null returns (exceptions instead)?
 
 ### Filament Resource Issues
+
 - [ ] `getEloquentQuery()` has tenant filter?
 - [ ] Eager loading relations included?
 - [ ] Form has all required fields?
@@ -229,6 +242,7 @@ final class {Model}Factory extends Factory
 - [ ] 4 Page classes exist (List/Create/View/Edit)?
 
 ### Database Issues
+
 - [ ] All migrations in database/migrations/?
 - [ ] Migration names follow 2026_03_18_XXXXX format?
 - [ ] `Schema::hasTable()` check in `up()`?
@@ -256,6 +270,7 @@ All audit logs follow this structure:
 ```
 
 Monitor with:
+
 ```bash
 tail -f storage/logs/audit.log | grep correlation_id
 ```
@@ -265,6 +280,7 @@ tail -f storage/logs/audit.log | grep correlation_id
 ## 🎯 COMMON TASKS
 
 ### Create New Service
+
 1. Create `app/Domains/{Vertical}/Services/{Service}.php`
 2. Follow service pattern with readonly DI
 3. Add `DB::transaction()` wrapper
@@ -272,6 +288,7 @@ tail -f storage/logs/audit.log | grep correlation_id
 5. Test with: `php artisan tinker`
 
 ### Add Filament Resource
+
 1. Create `app/Filament/Tenant/Resources/{Vertical}/{Resource}Resource.php`
 2. Create `Pages/List{Resource}s.php`, `Create{Resource}.php`, etc.
 3. Implement `form()`, `table()`, `getEloquentQuery()`
@@ -279,14 +296,17 @@ tail -f storage/logs/audit.log | grep correlation_id
 5. Test: navigate to /admin/{resource}
 
 ### Create Migration
+
 1. Create file: `database/migrations/2026_03_18_NNNNN_create_table.php`
 2. Add `Schema::hasTable()` check in `up()`
 3. Include: uuid, tenant_id, business_group_id, correlation_id, tags
 4. Test: `php artisan migrate:fresh`
 
 ### Seed Test Data
+
 1. Run: `php artisan db:seed`
 2. Or in tinker:
+
    ```php
    \App\Models\ToyProduct::factory(10)->create();
    ```
@@ -311,6 +331,7 @@ tail -f storage/logs/audit.log | grep correlation_id
 ## 📞 SUPPORT
 
 **For questions on:**
+
 - **Services:** Check `app/Domains/{Vertical}/Services/`
 - **UI/Resources:** Check `app/Filament/Tenant/Resources/`
 - **Database:** Check `database/migrations/`

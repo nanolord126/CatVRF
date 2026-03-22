@@ -5,7 +5,6 @@ namespace App\Filament\Tenant\Resources;
 use App\Filament\Tenant\Resources\UserCrmResource\Pages;
 use App\Filament\Tenant\Resources\UserCrmResource\RelationManagers;
 use App\Models\User;
-use Filament\Facades\Filament;
 use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Tables;
@@ -155,10 +154,10 @@ final class UserCrmResource extends Resource
                         ->label('Экспорт выбранных')
                         ->icon('heroicon-o-arrow-down-tray')
                         ->action(function ($records) {
-                            $correlationId = (string) \Illuminate\Support\Str::uuid();
+                            $correlationId = (string) \Illuminate\Support\Str::uuid()->toString();
                             Log::channel('audit')->info('CRM: Export triggered', [
                                 'count' => $records->count(),
-                                'tenant_id' => Filament::getTenant()?->id,
+                                'tenant_id' => filament()->getTenant()?->id,
                                 'correlation_id' => $correlationId,
                             ]);
                         }),
@@ -196,7 +195,7 @@ final class UserCrmResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        $tenantId = Filament::getTenant()?->id;
+        $tenantId = filament()->getTenant()?->id;
 
         return parent::getEloquentQuery()
             ->withCount('paymentTransactions')

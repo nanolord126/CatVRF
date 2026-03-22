@@ -3,8 +3,8 @@
 namespace App\Domains\Sports\Services;
 
 use Illuminate\Support\Facades\Log;
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Str;
+use App\Services\FraudControlService;
 
 
 use App\Domains\Sports\Models\Purchase;
@@ -27,10 +27,9 @@ final readonly class PurchaseService
     ): Purchase {
         $correlationId = Str::uuid()->toString();
         Log::channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
 
         try {
-            $correlationId = $correlationId ?? Str::uuid();
+            $correlationId = $correlationId ?? Str::uuid()->toString();
 
             Log::channel('audit')->info('Creating purchase', [
                 'studio_id' => $studioId,
@@ -96,10 +95,9 @@ final readonly class PurchaseService
     {
         $correlationId = Str::uuid()->toString();
         Log::channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
 
         try {
-            $correlationId = $correlationId ?? Str::uuid();
+            $correlationId = $correlationId ?? Str::uuid()->toString();
 
             Log::channel('audit')->info('Confirming purchase payment', [
                 'purchase_id' => $purchase->id,
@@ -130,10 +128,9 @@ final readonly class PurchaseService
     {
         $correlationId = Str::uuid()->toString();
         Log::channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
 
         try {
-            $correlationId = $correlationId ?? Str::uuid();
+            $correlationId = $correlationId ?? Str::uuid()->toString();
 
             Log::channel('audit')->info('Refunding purchase', [
                 'purchase_id' => $purchase->id,

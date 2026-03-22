@@ -6,13 +6,14 @@ use App\Domains\Courses\Models\Lesson;
 use App\Domains\Courses\Models\Course;
 use App\Domains\Courses\Services\ProgressTrackingService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 final class LessonController
 {
     public function __construct(
         private readonly ProgressTrackingService $progressService,
-    ) {}
+        private readonly FraudControlService $fraudControlService,) {}
 
     public function indexByCourse(int $id): JsonResponse
     {
@@ -40,8 +41,26 @@ final class LessonController
 
     public function store(int $courseId): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
+        $fraudResult = $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            'operation',
+            0,
+            request()->ip(),
+            request()->header('X-Device-Fingerprint'),
+            $correlationId,
+        );
+
+        if ($fraudResult['decision'] === 'block') {
+            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                'correlation_id' => $correlationId,
+                'user_id'        => auth()->id(),
+                'score'          => $fraudResult['score'],
+            ]);
+            return response()->json([
+                'success'        => false,
+                'error'          => 'Операция заблокирована.',
+                'correlation_id' => $correlationId,
+            ], 403);
         }
 
         try {
@@ -57,7 +76,7 @@ final class LessonController
                 'sort_order' => 'sometimes|integer',
             ]);
 
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             $lesson = Lesson::create([
                 'tenant_id' => tenant('id'),
@@ -95,8 +114,26 @@ final class LessonController
 
     public function update(int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
+        $fraudResult = $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            'operation',
+            0,
+            request()->ip(),
+            request()->header('X-Device-Fingerprint'),
+            $correlationId,
+        );
+
+        if ($fraudResult['decision'] === 'block') {
+            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                'correlation_id' => $correlationId,
+                'user_id'        => auth()->id(),
+                'score'          => $fraudResult['score'],
+            ]);
+            return response()->json([
+                'success'        => false,
+                'error'          => 'Операция заблокирована.',
+                'correlation_id' => $correlationId,
+            ], 403);
         }
 
         try {
@@ -112,7 +149,7 @@ final class LessonController
                 'is_published' => 'sometimes|boolean',
             ]);
 
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             $lesson->update($validated + ['correlation_id' => $correlationId]);
 
             \Log::channel('audit')->info('Lesson updated', [
@@ -142,7 +179,7 @@ final class LessonController
             $lesson = Lesson::findOrFail($id);
             $this->authorize('delete', $lesson);
 
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             $lesson->delete();
 
             \Log::channel('audit')->info('Lesson deleted', [
@@ -174,7 +211,7 @@ final class LessonController
                 'mark_complete' => 'sometimes|boolean',
             ]);
 
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             if ($validated['mark_complete'] ?? false) {
                 $progress = $this->progressService->markLessonComplete(

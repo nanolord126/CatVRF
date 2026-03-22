@@ -4,6 +4,7 @@ namespace App\Domains\Fashion\Http\Controllers;
 
 use App\Domains\Fashion\Models\FashionReturn;
 use App\Domains\Fashion\Services\ReturnService;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -13,26 +14,26 @@ final class FashionReturnController
 {
     public function __construct(
         private readonly ReturnService $returnService,
+        private readonly FraudControlService $fraudControlService,
     ) {}
 
     public function myReturns(): JsonResponse
     {
         try {
             $returns = FashionReturn::where('customer_id', auth()->id())->paginate(20);
-            return response()->json(['success' => true, 'data' => $returns, 'correlation_id' => Str::uuid()]);
+            return response()->json(['success' => true, 'data' => $returns, 'correlation_id' => Str::uuid()->toString()]);
         } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+            return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()->toString()], 500);
         }
     }
 
     public function store(): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = (string) Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'fashion_return_store', 0, request()->ip(), null, $correlationId);
 
         try {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             $return = $this->returnService->requestReturn(
                 tenant('id'),
@@ -45,7 +46,7 @@ final class FashionReturnController
 
             return response()->json(['success' => true, 'data' => $return, 'correlation_id' => $correlationId], 201);
         } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 400);
+            return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()->toString()], 400);
         }
     }
 
@@ -53,30 +54,27 @@ final class FashionReturnController
     {
         try {
             $return = FashionReturn::findOrFail($id);
-            return response()->json(['success' => true, 'data' => $return, 'correlation_id' => Str::uuid()]);
+            return response()->json(['success' => true, 'data' => $return, 'correlation_id' => Str::uuid()->toString()]);
         } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'message' => 'Return not found', 'correlation_id' => Str::uuid()], 404);
+            return response()->json(['success' => false, 'message' => 'Return not found', 'correlation_id' => Str::uuid()->toString()], 404);
         }
     }
 
     public function update(int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
-
         try {
             $return = FashionReturn::findOrFail($id);
-            $correlationId = Str::uuid();
+            $correlationId = (string) Str::uuid()->toString();
+            $this->fraudControlService->check(auth()->id() ?? 0, 'fashion_return_update', 0, request()->ip(), null, $correlationId);
 
-            DB::transaction(function () use ($return, $correlationId) {
+            DB::transaction(function () use ($return, $id, $correlationId) {
                 $return->update([...request()->except(['id', 'tenant_id', 'business_group_id', 'correlation_id']), 'correlation_id' => $correlationId]);
                 Log::channel('audit')->info('Fashion return updated', ['return_id' => $id, 'correlation_id' => $correlationId]);
             });
 
             return response()->json(['success' => true, 'data' => $return, 'correlation_id' => $correlationId]);
         } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+            return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()->toString()], 500);
         }
     }
 
@@ -84,9 +82,9 @@ final class FashionReturnController
     {
         try {
             $returns = FashionReturn::with('order', 'customer')->paginate(50);
-            return response()->json(['success' => true, 'data' => $returns, 'correlation_id' => Str::uuid()]);
+            return response()->json(['success' => true, 'data' => $returns, 'correlation_id' => Str::uuid()->toString()]);
         } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+            return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()->toString()], 500);
         }
     }
 
@@ -94,13 +92,13 @@ final class FashionReturnController
     {
         try {
             $return = FashionReturn::findOrFail($id);
-            $correlationId = Str::uuid();
+            $correlationId = (string) Str::uuid()->toString();
 
             $this->returnService->approveReturn($return, request('refund_amount'), $correlationId);
 
             return response()->json(['success' => true, 'data' => $return, 'correlation_id' => $correlationId]);
         } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+            return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()->toString()], 500);
         }
     }
 
@@ -108,16 +106,16 @@ final class FashionReturnController
     {
         try {
             $return = FashionReturn::findOrFail($id);
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
-            DB::transaction(function () use ($return, $correlationId) {
+            DB::transaction(function () use ($return, $id, $correlationId) {
                 $return->update(['status' => 'rejected', 'correlation_id' => $correlationId]);
                 Log::channel('audit')->info('Fashion return rejected', ['return_id' => $id, 'correlation_id' => $correlationId]);
             });
 
             return response()->json(['success' => true, 'data' => null, 'correlation_id' => $correlationId]);
         } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+            return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()->toString()], 500);
         }
     }
 
@@ -135,10 +133,10 @@ final class FashionReturnController
                     'approved' => $approvedReturns,
                     'total_refunded' => round($totalRefundAmount, 2),
                 ],
-                'correlation_id' => Str::uuid(),
+                'correlation_id' => Str::uuid()->toString(),
             ]);
         } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+            return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()->toString()], 500);
         }
     }
 }

@@ -33,7 +33,7 @@ final class ExportController extends Controller
      * Создать экспорт данных
      */
     public function createExport(Request $request): JsonResponse {
-        $correlationId = Str::uuid();
+        $correlationId = Str::uuid()->toString();
 
         try {
             $validated = $request->validate([
@@ -83,7 +83,7 @@ final class ExportController extends Controller
      * Получить историю экспортов
      */
     public function getHistory(Request $request): JsonResponse {
-        $correlationId = Str::uuid();
+        $correlationId = Str::uuid()->toString();
 
         try {
             $validated = $request->validate([
@@ -114,7 +114,7 @@ final class ExportController extends Controller
      * Получить сегменты клиентов
      */
     public function getSegments(Request $request): JsonResponse {
-        $correlationId = Str::uuid();
+        $correlationId = Str::uuid()->toString();
 
         try {
             $validated = $request->validate([
@@ -152,7 +152,7 @@ final class ExportController extends Controller
      * Сравнить два сегмента
      */
     public function compareSegments(Request $request): JsonResponse {
-        $correlationId = Str::uuid();
+        $correlationId = Str::uuid()->toString();
 
         try {
             $validated = $request->validate([

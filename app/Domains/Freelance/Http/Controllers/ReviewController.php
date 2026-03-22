@@ -3,6 +3,7 @@
 namespace App\Domains\Freelance\Http\Controllers;
 
 use App\Domains\Freelance\Models\FreelanceReview;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -11,39 +12,42 @@ use Illuminate\Support\Str;
 
 final class ReviewController
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function store(Request $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
-            $correlationId = Str::uuid();
 
-            return DB::transaction(function () use ($request, $correlationId) {
+            $validated = $request->all();
+            return DB::transaction(function () use ($validated, $correlationId) {
                 $review = FreelanceReview::create([
                     'tenant_id' => tenant()->id,
-                    'contract_id' => $request->input('contract_id'),
+                    'contract_id' => ($validated['contract_id'] ?? null),
                     'reviewer_id' => auth()->id(),
-                    'freelancer_id' => $request->input('freelancer_id'),
-                    'client_id' => $request->input('client_id'),
-                    'review_type' => $request->input('review_type', 'client_to_freelancer'),
-                    'communication_rating' => $request->input('communication_rating'),
-                    'work_quality_rating' => $request->input('work_quality_rating'),
-                    'timeliness_rating' => $request->input('timeliness_rating'),
-                    'overall_rating' => $request->input('overall_rating'),
-                    'comment' => $request->input('comment'),
-                    'review_aspects' => $request->input('review_aspects', []),
+                    'freelancer_id' => ($validated['freelancer_id'] ?? null),
+                    'client_id' => ($validated['client_id'] ?? null),
+                    'review_type' => ($validated['review_type'] ?? 'client_to_freelancer'),
+                    'communication_rating' => ($validated['communication_rating'] ?? null),
+                    'work_quality_rating' => ($validated['work_quality_rating'] ?? null),
+                    'timeliness_rating' => ($validated['timeliness_rating'] ?? null),
+                    'overall_rating' => ($validated['overall_rating'] ?? null),
+                    'comment' => ($validated['comment'] ?? null),
+                    'review_aspects' => ($validated['review_aspects'] ?? []),
                     'verified_contract' => true,
-                    'would_hire_again' => $request->input('would_hire_again'),
+                    'would_hire_again' => ($validated['would_hire_again'] ?? null),
                     'status' => 'approved',
                     'correlation_id' => $correlationId,
                 ]);
 
                 Log::channel('audit')->info('Freelance review submitted', [
                     'review_id' => $review->id,
-                    'contract_id' => $request->input('contract_id'),
-                    'overall_rating' => $request->input('overall_rating'),
+                    'contract_id' => ($validated['contract_id'] ?? null),
+                    'overall_rating' => ($validated['overall_rating'] ?? null),
                     'correlation_id' => $correlationId,
                 ]);
 
@@ -122,7 +126,7 @@ final class ReviewController
     public function markHelpful(int $id): JsonResponse
     {
         try {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             $review = FreelanceReview::findOrFail($id);
 
             $review->increment('helpful_count');
@@ -154,7 +158,7 @@ final class ReviewController
     public function markUnhelpful(int $id): JsonResponse
     {
         try {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             $review = FreelanceReview::findOrFail($id);
 
             $review->increment('unhelpful_count');

@@ -6,14 +6,17 @@ use App\Domains\Pet\Models\PetAppointment;
 use App\Domains\Pet\Models\PetMedicalRecord;
 use App\Domains\Pet\Services\AppointmentService;
 use App\Http\Controllers\Controller;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 final class PetAppointmentController extends Controller
 {
     public function __construct(
         private readonly AppointmentService $appointmentService,
+        private readonly FraudControlService $fraudControlService,
     ) {}
 
     public function index(): JsonResponse
@@ -30,7 +33,7 @@ final class PetAppointmentController extends Controller
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Throwable $e) {
-            \Log::error('Failed to get appointments', ['error' => $e->getMessage()]);
+            Log::error('Failed to get appointments', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve appointments',
@@ -63,16 +66,21 @@ final class PetAppointmentController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
-            $correlationId = Str::uuid()->toString();
             $appointment = $this->appointmentService->createAppointment(
                 $request->validated(),
                 $correlationId
             );
+
+            Log::channel('audit')->info('Pet appointment created', [
+                'correlation_id' => $correlationId,
+                'appointment_id' => $appointment->id ?? null,
+                'tenant_id'      => $appointment->tenant_id ?? null,
+                'user_id'        => auth()->id(),
+            ]);
 
             return response()->json([
                 'success' => true,
@@ -80,7 +88,7 @@ final class PetAppointmentController extends Controller
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Throwable $e) {
-            \Log::error('Failed to create appointment', ['error' => $e->getMessage()]);
+            Log::error('Failed to create appointment', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create appointment',
@@ -91,18 +99,26 @@ final class PetAppointmentController extends Controller
 
     public function update(Request $request, $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $appointment = PetAppointment::findOrFail($id);
             $this->authorize('update', $appointment);
-            $correlationId = Str::uuid()->toString();
+
+            $before = $appointment->getAttributes();
 
             $appointment->update([
                 ...$request->validated(),
                 'correlation_id' => $correlationId,
+            ]);
+
+            Log::channel('audit')->info('Pet appointment updated', [
+                'correlation_id' => $correlationId,
+                'appointment_id' => $appointment->id,
+                'tenant_id'      => $appointment->tenant_id,
+                'user_id'        => auth()->id(),
+                'before'         => $before,
             ]);
 
             return response()->json([
@@ -121,16 +137,21 @@ final class PetAppointmentController extends Controller
 
     public function destroy($id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $appointment = PetAppointment::findOrFail($id);
             $this->authorize('cancel', $appointment);
-            $correlationId = Str::uuid()->toString();
 
             $appointment->delete();
+
+            Log::channel('audit')->info('Pet appointment deleted', [
+                'correlation_id' => $correlationId,
+                'appointment_id' => $appointment->id,
+                'tenant_id'      => $appointment->tenant_id,
+                'user_id'        => auth()->id(),
+            ]);
 
             return response()->json([
                 'success' => true,
@@ -195,6 +216,8 @@ final class PetAppointmentController extends Controller
         try {
             $correlationId = Str::uuid()->toString();
 
+            $this->fraudControlService->check(auth()->id() ?? 0, 'medical_record_create', 0, request()->ip(), null, $correlationId);
+
             $record = PetMedicalRecord::create([
                 ...$request->validated(),
                 'tenant_id' => tenant()->id,
@@ -202,6 +225,13 @@ final class PetAppointmentController extends Controller
                 'correlation_id' => $correlationId,
                 'uuid' => Str::uuid(),
                 'recorded_at' => now(),
+            ]);
+
+            Log::channel('audit')->info('Pet medical record created', [
+                'correlation_id' => $correlationId,
+                'record_id'      => $record->id,
+                'tenant_id'      => $record->tenant_id,
+                'user_id'        => auth()->id(),
             ]);
 
             return response()->json([

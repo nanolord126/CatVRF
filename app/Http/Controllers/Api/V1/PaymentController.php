@@ -4,9 +4,13 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Requests\PaymentInitRequest;
+use App\Services\FraudControlService;
 use App\Services\Security\IdempotencyService;
 use App\Services\Security\RateLimiterService;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use OpenApi\Annotations as OA;
 
 /**
@@ -18,6 +22,7 @@ use OpenApi\Annotations as OA;
 final class PaymentController extends BaseApiV1Controller
 {
     public function __construct(
+        private readonly FraudControlService $fraudControlService,
         private readonly IdempotencyService $idempotencyService,
         private readonly RateLimiterService $rateLimiterService,
     ) {
@@ -71,8 +76,22 @@ final class PaymentController extends BaseApiV1Controller
      */
     public function init(PaymentInitRequest $request): \Illuminate\Routing\ResponseFactory
     {
+        $correlationId = Str::uuid()->toString();
         try {
-            // КАНОН 2026: FraudControl проверка
+            $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                'payment_init',
+                (int) $request->get('amount', 0),
+                $request->ip(),
+                null,
+                $correlationId
+            );
+
+            Log::channel('audit')->info('PaymentController::init called', [
+                'user_id' => auth()->id(),
+                'amount' => $request->get('amount'),
+                'correlation_id' => $correlationId,
+            ]);
 
             // Rate limiting check
             if (!$this->rateLimiterService->checkPaymentInit(
@@ -90,20 +109,20 @@ final class PaymentController extends BaseApiV1Controller
                 return $this->respondWithError('Duplicate payment', 409);
             }
 
-            // КАНОН 2026: DB::transaction() для создания платежа
-            return DB::transaction(function () use ($request) {
-                $paymentId = \Str::uuid();
+            $validated = $request->all();
+            return DB::transaction(function () use ($validated, $correlationId) {
+                $paymentId = \Str::uuid()->toString();
                 
                 $payment = \App\Domains\Finances\Models\PaymentTransaction::create([
                     'uuid' => $paymentId,
-                    'tenant_id' => auth()->id(),
-                    'correlation_id' => (string) $paymentId,
+                    'tenant_id' => (int) tenant('id'),
+                    'correlation_id' => $correlationId,
                     'idempotency_key' => $request->header('Idempotency-Key'),
-                    'amount' => $request->get('amount'),
-                    'currency' => $request->get('currency', 'RUB'),
+                    'amount' => ($validated['amount'] ?? null),
+                    'currency' => ($validated['currency'] ?? 'RUB'),
                     'status' => 'pending',
                     'metadata' => [
-                        'description' => $request->get('description'),
+                        'description' => ($validated['description'] ?? null),
                         'api_version' => 'v1',
                     ],
                 ]);
@@ -117,7 +136,7 @@ final class PaymentController extends BaseApiV1Controller
                     [
                         'payment_id' => $paymentId,
                         'status' => 'pending',
-                        'amount' => $request->get('amount'),
+                        'amount' => ($validated['amount'] ?? null),
                     ],
                     'Payment initialized',
                     201
@@ -133,11 +152,11 @@ final class PaymentController extends BaseApiV1Controller
      */
     public function show(string $paymentId): \Illuminate\Routing\ResponseFactory
     {
-        $correlationId = (string) \Illuminate\Support\Str::uuid();
+        $correlationId = (string) \Illuminate\Support\Str::uuid()->toString();
 
         try {
             $payment = \App\Domains\Finances\Models\PaymentTransaction::where('uuid', $paymentId)
-                ->where('tenant_id', auth()->id())
+                ->where('tenant_id', (int) tenant('id'))
                 ->firstOrFail();
 
             \Illuminate\Support\Facades\Log::channel('audit')->info('Payment retrieved', [

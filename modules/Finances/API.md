@@ -5,6 +5,7 @@
 ### Платежи
 
 #### Инициирование платежа
+
 ```http
 POST /api/payments
 Content-Type: application/json
@@ -34,6 +35,7 @@ Response 201:
 ```
 
 #### Получить статус платежа
+
 ```http
 GET /api/payments/{paymentId}
 Authorization: Bearer {token}
@@ -51,6 +53,7 @@ Response 200:
 ```
 
 #### Возврат платежа (возврат средств)
+
 ```http
 POST /api/payments/{paymentId}/refund
 Content-Type: application/json
@@ -74,6 +77,7 @@ Response 200:
 ### Платёжные карты
 
 #### Получить сохранённые карты пользователя
+
 ```http
 GET /api/wallet/cards
 Authorization: Bearer {token}
@@ -102,6 +106,7 @@ Response 200:
 ```
 
 #### Добавить новую карту
+
 ```http
 POST /api/wallet/cards
 Content-Type: application/json
@@ -127,6 +132,7 @@ Response 201:
 ```
 
 #### Удалить карту
+
 ```http
 DELETE /api/wallet/cards/{cardId}
 Authorization: Bearer {token}
@@ -137,6 +143,7 @@ Response 204: No Content
 ### Подписки
 
 #### Создать подписку
+
 ```http
 POST /api/subscriptions
 Content-Type: application/json
@@ -168,6 +175,7 @@ Response 201:
 ```
 
 #### Получить подписки пользователя
+
 ```http
 GET /api/subscriptions
 Authorization: Bearer {token}
@@ -185,6 +193,7 @@ Response 200:
 ```
 
 #### Отменить подписку
+
 ```http
 POST /api/subscriptions/{subscriptionId}/cancel
 Content-Type: application/json
@@ -205,6 +214,7 @@ Response 200:
 ### Вебхуки
 
 #### Обработка вебхука платёжной системы
+
 ```http
 POST /webhooks/sbp
 Content-Type: application/json
@@ -267,6 +277,7 @@ Response 200:
 ## Примеры интеграции
 
 ### Python (requests)
+
 ```python
 import requests
 
@@ -286,6 +297,7 @@ print(f"Платёж создан: {payment['payment_url']}")
 ```
 
 ### JavaScript (fetch)
+
 ```javascript
 const createPayment = async (amount, orderId) => {
   const response = await fetch('/api/payments', {
@@ -308,6 +320,7 @@ const createPayment = async (amount, orderId) => {
 ```
 
 ### cURL
+
 ```bash
 curl -X POST https://api.example.com/api/payments \
   -H "Authorization: Bearer token" \
@@ -323,6 +336,7 @@ curl -X POST https://api.example.com/api/payments \
 ## Webhook обработка
 
 ### Подпись вебхука
+
 Все вебхуки подписаны с использованием HMAC-SHA256:
 
 ```php
@@ -330,12 +344,15 @@ $signature = hash_hmac('sha256', $payload, config('payments.webhook_secret'));
 ```
 
 Проверка:
+
 ```php
 hash_equals($expectedSignature, $receivedSignature);
 ```
 
 ### Retry policy
+
 Если обработка вебхука вернёт 5xx ошибку, система переправит вебхук:
+
 - 1-я попытка: сразу
 - 2-я попытка: +5 минут
 - 3-я попытка: +15 минут
@@ -343,6 +360,7 @@ hash_equals($expectedSignature, $receivedSignature);
 - 5-я попытка: +3 часа
 
 ### Idempotency
+
 Одна и та же платёжная транзакция обрабатывается только один раз, даже если вебхук отправлен несколько раз.
 
 ## Rate limiting

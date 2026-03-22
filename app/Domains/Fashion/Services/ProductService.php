@@ -2,8 +2,8 @@
 
 namespace App\Domains\Fashion\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use App\Domains\Fashion\Models\FashionProduct;
 use Illuminate\Support\Facades\DB;
@@ -12,6 +12,10 @@ use Throwable;
 
 final class ProductService
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function createProduct(
         int $tenantId,
         int $storeId,
@@ -24,13 +28,19 @@ final class ProductService
         array $sizes = [],
         ?string $correlationId = null,
     ): FashionProduct {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'createProduct'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createProduct', ['domain' => __CLASS__]);
+
 
         try {
-            $correlationId ??= Str::uuid();
+            $correlationId ??= Str::uuid()->toString();
+
+            $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
 
             $product = DB::transaction(function () use (
                 $tenantId,
@@ -45,7 +55,7 @@ final class ProductService
                 $correlationId,
             ) {
                 $product = FashionProduct::create([
-                    'uuid' => Str::uuid(),
+                    'uuid' => Str::uuid()->toString(),
                     'tenant_id' => $tenantId,
                     'fashion_store_id' => $storeId,
                     'category_id' => $categoryId,
@@ -84,15 +94,20 @@ final class ProductService
 
     public function updateProduct(FashionProduct $product, array $data, ?string $correlationId = null): void
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'updateProduct'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL updateProduct', ['domain' => __CLASS__]);
+
 
         try {
-            $correlationId ??= Str::uuid();
+            $correlationId ??= Str::uuid()->toString();
 
-            DB::transaction(function () use ($product, $data, $correlationId) {
+                        $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
+DB::transaction(function () use ($product, $data, $correlationId) {
                 $product->update([...$data, 'correlation_id' => $correlationId]);
 
                 Log::channel('audit')->info('Fashion product updated', [
@@ -113,15 +128,20 @@ final class ProductService
 
     public function updateStock(FashionProduct $product, int $quantity, ?string $correlationId = null): void
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'updateStock'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL updateStock', ['domain' => __CLASS__]);
+
 
         try {
-            $correlationId ??= Str::uuid();
+            $correlationId ??= Str::uuid()->toString();
 
-            DB::transaction(function () use ($product, $quantity, $correlationId) {
+                        $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
+DB::transaction(function () use ($product, $quantity, $correlationId) {
                 $product->update([
                     'current_stock' => $quantity,
                     'correlation_id' => $correlationId,

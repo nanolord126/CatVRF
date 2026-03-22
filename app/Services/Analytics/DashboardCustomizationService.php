@@ -32,7 +32,7 @@ final class DashboardCustomizationService
         array $widgets,
         array $context = []
     ): array {
-        $correlationId = $context['correlation_id'] ?? Str::uuid();
+        $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
 
         $layout = [
             'user_id' => $userId,
@@ -59,7 +59,7 @@ final class DashboardCustomizationService
      * Получить макет дашборда
      */
     public function getDashboardLayout(int $userId, int $tenantId, array $context = []): array {
-        $correlationId = $context['correlation_id'] ?? Str::uuid();
+        $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
         $cacheKey = "dashboard:layout:{$tenantId}:{$userId}";
 
         $cached = Cache::get($cacheKey);
@@ -90,7 +90,7 @@ final class DashboardCustomizationService
      * Удалить кастомный макет
      */
     public function deleteDashboardLayout(int $userId, int $tenantId, array $context = []): bool {
-        $correlationId = $context['correlation_id'] ?? Str::uuid();
+        $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
         $cacheKey = "dashboard:layout:{$tenantId}:{$userId}";
 
         Cache::forget($cacheKey);
@@ -121,7 +121,7 @@ final class DashboardCustomizationService
         string $name,
         array $context = []
     ): array {
-        $correlationId = $context['correlation_id'] ?? Str::uuid();
+        $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
 
         $nameData = [
             'user_id' => $userId,

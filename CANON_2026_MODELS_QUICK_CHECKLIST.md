@@ -1,4 +1,5 @@
 # 🔍 CANON 2026 - QUICK REFERENCE CHECKLIST
+
 ## Все обновленные файлы и их стандарты
 
 ---

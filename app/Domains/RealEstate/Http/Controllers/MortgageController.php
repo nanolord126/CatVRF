@@ -4,8 +4,10 @@ namespace App\Domains\RealEstate\Http\Controllers;
 
 use App\Domains\RealEstate\Models\MortgageApplication;
 use App\Domains\RealEstate\Services\MortgageCalculatorService;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 /**
  * Controller для управления заявками на ипотеку.
@@ -15,6 +17,7 @@ final class MortgageController
 {
     public function __construct(
         private readonly MortgageCalculatorService $mortgageService,
+        private readonly FraudControlService $fraudControlService,
     ) {}
 
     public function index(): JsonResponse
@@ -46,9 +49,8 @@ final class MortgageController
 
     public function store(Request $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $request->validate([

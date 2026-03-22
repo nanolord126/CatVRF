@@ -2,8 +2,8 @@
 
 namespace App\Domains\Jewelry\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use App\Domains\Jewelry\Models\Jewelry3DModel;
 use Illuminate\Support\Facades\DB;
@@ -12,22 +12,15 @@ use Illuminate\Support\Str;
 
 final class Jewelry3DService
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function uploadModel(array $data): Jewelry3DModel
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'uploadModel'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL uploadModel', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'uploadModel'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL uploadModel', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'uploadModel'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL uploadModel', ['domain' => __CLASS__]);
+
 
         Log::channel('audit')->info('Jewelry3DService: Uploading 3D model', [
             'correlation_id' => $data['correlation_id'] ?? Str::uuid(),
@@ -35,7 +28,15 @@ final class Jewelry3DService
             'tenant_id' => filament()->getTenant()->id,
         ]);
 
-        return DB::transaction(function () use ($data) {
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(function () use ($data) {
             $modelFile = $data['model_file'];
             $textureFile = $data['texture_file'] ?? null;
             $previewFile = $data['preview_file'] ?? null;
@@ -67,20 +68,9 @@ final class Jewelry3DService
 
     public function generateARView(int $modelId): string
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'generateARView'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL generateARView', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'generateARView'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL generateARView', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'generateARView'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL generateARView', ['domain' => __CLASS__]);
+
 
         $model = Jewelry3DModel::findOrFail($modelId);
 
@@ -102,20 +92,9 @@ final class Jewelry3DService
 
     public function generateVRView(int $modelId): string
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'generateVRView'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL generateVRView', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'generateVRView'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL generateVRView', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'generateVRView'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL generateVRView', ['domain' => __CLASS__]);
+
 
         $model = Jewelry3DModel::findOrFail($modelId);
 
@@ -137,20 +116,9 @@ final class Jewelry3DService
 
     public function getEmbeddedViewer(int $modelId, string $viewerType = 'web'): string
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'getEmbeddedViewer'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getEmbeddedViewer', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'getEmbeddedViewer'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getEmbeddedViewer', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'getEmbeddedViewer'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getEmbeddedViewer', ['domain' => __CLASS__]);
+
 
         $model = Jewelry3DModel::findOrFail($modelId);
 
@@ -167,20 +135,9 @@ final class Jewelry3DService
 
     public function rotate3DModel(int $modelId, float $rotationX, float $rotationY, float $rotationZ): array
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'rotate3DModel'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL rotate3DModel', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'rotate3DModel'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL rotate3DModel', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'rotate3DModel'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL rotate3DModel', ['domain' => __CLASS__]);
+
 
         $model = Jewelry3DModel::findOrFail($modelId);
 
@@ -195,20 +152,9 @@ final class Jewelry3DService
 
     public function zoomModel(int $modelId, float $zoomLevel): array
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'zoomModel'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL zoomModel', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'zoomModel'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL zoomModel', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'zoomModel'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL zoomModel', ['domain' => __CLASS__]);
+
 
         $model = Jewelry3DModel::findOrFail($modelId);
 
@@ -224,20 +170,9 @@ final class Jewelry3DService
 
     public function changeMetalType(int $modelId, string $metalType): Jewelry3DModel
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'changeMetalType'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL changeMetalType', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'changeMetalType'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL changeMetalType', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'changeMetalType'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL changeMetalType', ['domain' => __CLASS__]);
+
 
         $model = Jewelry3DModel::findOrFail($modelId);
 
@@ -247,7 +182,15 @@ final class Jewelry3DService
             'to' => $metalType,
         ]);
 
-        return DB::transaction(function () use ($model, $metalType) {
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(function () use ($model, $metalType) {
             $model->update(['material_type' => $metalType]);
             return $model;
         });
@@ -255,20 +198,9 @@ final class Jewelry3DService
 
     public function downloadModel(int $modelId, string $format = 'glb'): string
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'downloadModel'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL downloadModel', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'downloadModel'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL downloadModel', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'downloadModel'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL downloadModel', ['domain' => __CLASS__]);
+
 
         $model = Jewelry3DModel::findOrFail($modelId);
 
@@ -283,20 +215,9 @@ final class Jewelry3DService
 
     public function createModelPreview(int $modelId, array $angles = []): array
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'createModelPreview'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createModelPreview', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'createModelPreview'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createModelPreview', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'createModelPreview'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createModelPreview', ['domain' => __CLASS__]);
+
 
         $model = Jewelry3DModel::findOrFail($modelId);
 

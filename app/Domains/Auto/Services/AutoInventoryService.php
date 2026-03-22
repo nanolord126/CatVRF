@@ -2,15 +2,16 @@
 
 namespace App\Domains\Auto\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use App\Domains\Auto\Models\AutoPart;
 use Illuminate\Support\Facades\DB;
 
 final class AutoInventoryService
 {
-    public function __construct()
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,)
     {
     }
 
@@ -19,13 +20,25 @@ final class AutoInventoryService
      */
     public function reserveParts(int $orderId, array $parts, string $correlationId): bool
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'reserveParts'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL reserveParts', ['domain' => __CLASS__]);
+        $fraudResult = $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+
+        if ($fraudResult['decision'] === 'block') {
+            Log::channel('fraud_alert')->warning('Parts reservation blocked', [
+                'correlation_id' => $correlationId,
+                'order_id' => $orderId,
+                'score' => $fraudResult['score'],
+            ]);
+            throw new \Exception('Operation blocked by fraud control');
+        }
 
         try {
-            DB::transaction(function () use ($orderId, $parts, $correlationId) {
                 foreach ($parts as $partId => $quantity) {
                     $part = AutoPart::lockForUpdate()->findOrFail($partId);
 
@@ -61,10 +74,23 @@ final class AutoInventoryService
      */
     public function deductParts(int $orderId, array $parts, string $correlationId): bool
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'deductParts'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL deductParts', ['domain' => __CLASS__]);
+        $fraudResult = $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+
+        if ($fraudResult['decision'] === 'block') {
+            Log::channel('fraud_alert')->warning('Parts deduction blocked', [
+                'correlation_id' => $correlationId,
+                'order_id' => $orderId,
+                'score' => $fraudResult['score'],
+            ]);
+            throw new \Exception('Operation blocked by fraud control');
+        }
 
         try {
             DB::transaction(function () use ($orderId, $parts, $correlationId) {
@@ -101,10 +127,23 @@ final class AutoInventoryService
      */
     public function releaseParts(int $orderId, array $parts, string $correlationId): bool
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'releaseParts'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL releaseParts', ['domain' => __CLASS__]);
+        $fraudResult = $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+
+        if ($fraudResult['decision'] === 'block') {
+            Log::channel('fraud_alert')->warning('Parts release blocked', [
+                'correlation_id' => $correlationId,
+                'order_id' => $orderId,
+                'score' => $fraudResult['score'],
+            ]);
+            throw new \Exception('Operation blocked by fraud control');
+        }
 
         try {
             DB::transaction(function () use ($orderId, $parts, $correlationId) {

@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
-use App\Domains\Auto\Models\TaxiRide;
+use App\Domains\Taxi\Models\TaxiRide;
 use App\Domains\Beauty\Models\Appointment;
 use App\Domains\Food\Models\RestaurantOrder;
 use App\Domains\Hotels\Models\Booking;
@@ -19,6 +19,10 @@ use App\Policies\EmployeePolicy;
 use App\Policies\PayoutPolicy;
 use App\Policies\PayrollPolicy;
 use App\Policies\WalletManagementPolicy;
+use App\Policies\ChannelPolicy;
+use App\Policies\PostPolicy;
+use App\Domains\Channels\Models\BusinessChannel;
+use App\Domains\Channels\Models\Post;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 
@@ -36,6 +40,9 @@ final class AuthServiceProvider extends ServiceProvider
         Payroll::class => PayrollPolicy::class,
         Payout::class => PayoutPolicy::class,
         Wallet::class => WalletManagementPolicy::class,
+        // Channels
+        BusinessChannel::class => ChannelPolicy::class,
+        Post::class             => PostPolicy::class,
     ];
 
     public function boot(): void

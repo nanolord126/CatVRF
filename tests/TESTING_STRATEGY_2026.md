@@ -5,6 +5,7 @@ declare(strict_types=1);
 ## 1. ОБЗОР
 
 Проект CatVRF требует **production-grade** тестирования на 100% критичных путей с покрытием:
+
 - ✅ Unit-тесты (Pest) — все сервисы, модели, вспомогательные классы
 - ✅ Feature-тесты (Pest) — все API endpoints, контроллеры, flow'ы
 - ✅ Integration-тесты — взаимодействие Wallet ↔ Payment ↔ FraudML, Inventory ↔ Recommendation
@@ -15,6 +16,7 @@ declare(strict_types=1);
 ## 2. СТРУКТУРА ПРОЕКТА (АРТЕФАКТЫ ДЛЯ ТЕСТИРОВАНИЯ)
 
 ### Core Services (КРИТИЧНЫЕ)
+
 ```
 app/Services/
 ├── Wallet/
@@ -44,6 +46,7 @@ app/Services/
 ```
 
 ### Models (40 вертикалей + Core)
+
 ```
 app/Domains/{Vertical}/Models/
 - Auto: TaxiDriver, TaxiRide, AutoRepairOrder, CarWashBooking
@@ -55,6 +58,7 @@ app/Domains/{Vertical}/Models/
 ```
 
 ### Controllers
+
 ```
 app/Http/Controllers/
 ├── PaymentController.php ← CRITICAL
@@ -64,6 +68,7 @@ app/Http/Controllers/
 ```
 
 ### Livewire Components (17+)
+
 ```
 app/Livewire/
 ├── Wishlist/WishlistComponent.php ← Fraud: манипуляция рейтингом через wishlist
@@ -73,6 +78,7 @@ app/Livewire/
 ```
 
 ### Filament Resources
+
 ```
 app/Filament/Tenant/Resources/
 ├── PaymentTransactionResource.php ← CRITICAL
@@ -82,6 +88,7 @@ app/Filament/Tenant/Resources/
 ```
 
 ### Jobs, Events, Listeners, Policies
+
 ```
 app/Jobs/ ← Asynctask execution, retry logic, correlation_id
 app/Events/ ← Event dispatch, serialization
@@ -94,6 +101,7 @@ app/Policies/ ← RBAC, tenant scoping, fraud check
 ## 3. ПЛАН ФАЗ РЕАЛИЗАЦИИ
 
 ### ✅ ФАЗА 1: Фундамент + Core Services (НЕДЕЛЯ 1)
+
 **Приоритет**: CRITICAL
 
 - [ ] Создать Base Test Classes (BaseTestCase, SecurityTestCase, LoadTestCase, ChaosTestCase)
@@ -105,6 +113,7 @@ app/Policies/ ← RBAC, tenant scoping, fraud check
 - [ ] Результат: 200+ тестов, 85%+ покрытие Core
 
 ### 📋 ФАЗА 2: Вертикали (TOP-5) + Models + Controllers (НЕДЕЛЯ 2)
+
 **Приоритет**: HIGH
 
 - [ ] Unit-тесты для моделей всех 40 вертикалей (relationships, scopes, casts)
@@ -114,6 +123,7 @@ app/Policies/ ← RBAC, tenant scoping, fraud check
 - [ ] Результат: 400+ тестов, 75%+ покрытие Domains
 
 ### 🔐 ФАЗА 3: Advanced Services + Livewire + Filament (НЕДЕЛЯ 3)
+
 **Приоритет**: HIGH
 
 - [ ] Unit-тесты для Recommendation, Inventory, Promo, Referral, Search
@@ -124,6 +134,7 @@ app/Policies/ ← RBAC, tenant scoping, fraud check
 - [ ] Результат: 300+ тестов, 70%+ покрытие Advanced services
 
 ### ⚡ ФАЗА 4: Jobs, Events, Policies, Middleware (НЕДЕЛЯ 4)
+
 **Приоритет**: MEDIUM
 
 - [ ] Unit-тесты для всех Jobs (correlation_id, retry logic, queue handling)
@@ -134,6 +145,7 @@ app/Policies/ ← RBAC, tenant scoping, fraud check
 - [ ] Результат: 250+ тестов, 80%+ покрытие Infrastructure
 
 ### 🚀 ФАЗА 5: Load + Chaos + ML Testing (НЕДЕЛЯ 5)
+
 **Приоритет**: HIGH (для production)
 
 - [ ] Load-тесты k6: Payment flow, Search, Marketplace browse — 50k RPS
@@ -149,6 +161,7 @@ app/Policies/ ← RBAC, tenant scoping, fraud check
 ## 4. ТРЕБОВАНИЯ К ТЕСТАМ (ОБЯЗАТЕЛЬНЫ)
 
 ### Unit Tests (Pest)
+
 ```
 - Все методы сервисов покрыты
 - Все edge cases и boundary values протестированы
@@ -158,6 +171,7 @@ app/Policies/ ← RBAC, tenant scoping, fraud check
 ```
 
 ### Feature Tests (Pest)
+
 ```
 - Все HTTP endpoints покрыты (GET, POST, PUT, DELETE)
 - Authentication & Authorization (middleware, policies)
@@ -167,6 +181,7 @@ app/Policies/ ← RBAC, tenant scoping, fraud check
 ```
 
 ### Security Tests (ОБЯЗАТЕЛЬНЫ)
+
 ```
 ✅ Fraud Attacks:
   - Replay attack: Платёж twice с одинаковым idempotency_key
@@ -191,6 +206,7 @@ app/Policies/ ← RBAC, tenant scoping, fraud check
 ```
 
 ### Load Tests (k6 / Artillery)
+
 ```
 Сценарии:
 1. Ramp-up: 0 → 5k RPS за 5 минут
@@ -208,6 +224,7 @@ app/Policies/ ← RBAC, tenant scoping, fraud check
 ```
 
 ### Chaos Tests
+
 ```
 Сценарии:
 1. Redis down: Должен fallback на DB cache
@@ -238,21 +255,25 @@ app/Policies/ ← RBAC, tenant scoping, fraud check
 ## 6. ИНСТРУМЕНТЫ И КОНФИГУРАЦИЯ
 
 ### Тестирование
+
 - **Pest** — PHP Testing Framework (Unit + Feature)
 - **PHPUnit** — Fallback для специфичных случаев
 - **PHPCOV** — Code coverage report
 
 ### Load Testing
+
 - **k6** — JavaScript-based load testing
 - **Artillery** — Alternative, node-based
 - **Apache JMeter** — Optional, UI-based
 
 ### Chaos Engineering
+
 - **Chaos Monkey** (PHP имитация)
 - **Toxiproxy** — TCP/HTTP proxy для network failures
 - **Fault Injection** — Произвольные ошибки в коде
 
 ### Monitoring & Metrics
+
 - **Prometheus** — Сбор метрик
 - **Grafana** — Визуализация
 - **Sentry** — Error tracking
@@ -398,6 +419,7 @@ pest --watch tests/Unit/Services/Wallet
 ## 10. КРИТИЧНЫЕ ЗАМЕЧАНИЯ
 
 ⚠️ **Обязательно соблюдать**:
+
 - Все тесты должны использовать `declare(strict_types=1);`
 - Все файлы — UTF-8 с CRLF
 - Корреляция ID обязательна во всех тестах (assert $response->headers())

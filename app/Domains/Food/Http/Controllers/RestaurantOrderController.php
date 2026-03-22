@@ -4,6 +4,7 @@ namespace App\Domains\Food\Http\Controllers;
 
 use App\Domains\Food\Models\RestaurantOrder;
 use App\Domains\Food\Services\RestaurantOrderService;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +19,7 @@ final class RestaurantOrderController
 {
     public function __construct(
         private readonly RestaurantOrderService $orderService,
+        private readonly FraudControlService $fraudControlService,
     ) {}
 
     public function index(): JsonResponse
@@ -26,7 +28,7 @@ final class RestaurantOrderController
             $correlationId = Str::uuid()->toString();
 
             $orders = RestaurantOrder::query()
-                ->where('tenant_id', tenant('id') ?? 1)
+                ->where('tenant_id', tenant('id'))
                 ->where('client_id', auth()->id() ?? 0)
                 ->with(['restaurant', 'delivery', 'kds'])
                 ->paginate(15);
@@ -43,12 +45,10 @@ final class RestaurantOrderController
 
     public function store(Request $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
-            $correlationId = Str::uuid()->toString();
 
             $request->validate([
                 'restaurant_id' => 'required|exists:restaurants,id',
@@ -58,7 +58,7 @@ final class RestaurantOrderController
             ]);
 
             $order = $this->orderService->createOrder([
-                'tenant_id' => tenant('id') ?? 1,
+                'tenant_id' => tenant('id'),
                 'restaurant_id' => $request->get('restaurant_id'),
                 'client_id' => auth()->id(),
                 'items' => $request->get('items'),

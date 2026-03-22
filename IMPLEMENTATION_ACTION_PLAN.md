@@ -10,9 +10,11 @@
 ## 🚨 CRITICAL FIRST - Foundation Layer (8-12 hours)
 
 ### 1. Policy Files (50 files) ⏱️ 2 hours
+
 **Why First:** Blocks all authorization logic
 
 **Template to Create:**
+
 ```php
 <?php
 
@@ -68,6 +70,7 @@ class {ResourceName}Policy
 ```
 
 **Action Items:**
+
 - [ ] Create base policy template above
 - [ ] Copy to all 50 policy files
 - [ ] Replace {ResourceName} and {resource} placeholders
@@ -78,9 +81,11 @@ class {ResourceName}Policy
 ---
 
 ### 2. BaseModel + Relationships (4-6 hours)
+
 **Why:** All models inherit from this
 
 **Template Structure:**
+
 ```php
 <?php
 
@@ -110,6 +115,7 @@ abstract class BaseModel extends Model
 ```
 
 **Action Items:**
+
 - [ ] Create base model class
 - [ ] Update all 180 models to extend BaseModel
 - [ ] Add relationship methods
@@ -119,9 +125,11 @@ abstract class BaseModel extends Model
 ---
 
 ### 3. Core Services (5-8 hours)
+
 **Why:** Business logic foundation
 
 **Files to Complete:**
+
 - GlobalAIBusinessForecastingService.php (47→120 lines)
 - MarketplaceAISearchService.php (56→150 lines)
 - RecommendationEngine.php (54→120 lines)
@@ -129,6 +137,7 @@ abstract class BaseModel extends Model
 - FinancialAutomationService.php (56→120 lines)
 
 **Structure Template:**
+
 ```php
 <?php
 
@@ -178,9 +187,11 @@ class {ServiceName}Service
 ## 📦 PHASE 2: Core Implementation (40-60 hours)
 
 ### 4. Model Completions (50 core models)
+
 **Duration:** 3-5 hours per model type group
 
 **Priority Order:**
+
 1. User models (5 files)
 2. Financial models (8 files)
 3. Inventory models (6 files)
@@ -189,6 +200,7 @@ class {ServiceName}Service
 6. Vertical models (11 files)
 
 **Template Additions:**
+
 ```php
 // Add to each model:
 - Relationships (hasMany, belongsTo, hasOne, etc.)
@@ -203,14 +215,17 @@ class {ServiceName}Service
 ---
 
 ### 5. Filament Resources (250 files)
+
 **Duration:** 2-4 hours per resource
 
 **Breaking Down by Type:**
+
 - List Pages (100 files) - 2 hours each = 200 hours
 - Create/Edit Pages (80 files) - 2 hours each = 160 hours
 - View Pages (70 files) - 1 hour each = 70 hours
 
 **Minimum Requirements:**
+
 ```php
 public static function form(Form $form): Form
 {
@@ -240,9 +255,11 @@ public static function table(Table $table): Table
 ---
 
 ### 6. Controllers (150 files)
+
 **Duration:** 2-3 hours per controller
 
 **Template Methods to Add:**
+
 ```php
 public function index(Request $request)
 {
@@ -273,9 +290,11 @@ public function destroy($id)
 ---
 
 ### 7. Jobs (80 files)
+
 **Duration:** 1-2 hours per job type
 
 **Template Structure:**
+
 ```php
 <?php
 
@@ -312,9 +331,11 @@ class {JobName} implements ShouldQueue
 ## ✅ PHASE 3: Finalization (20-40 hours)
 
 ### 8. Seeders (40 files)
+
 **Duration:** 1-2 hours per seeder
 
 **Add to Each:**
+
 ```php
 $factory = {ModelName}::factory();
 for ($i = 0; $i < 50; $i++) {
@@ -326,9 +347,11 @@ for ($i = 0; $i < 50; $i++) {
 ```
 
 ### 9. Vue Components (15 files)
+
 **Duration:** 1-2 hours per component
 
 **Minimum Structure:**
+
 ```vue
 <template>
   <div class="component">
@@ -380,6 +403,7 @@ onMounted(() => {
 ## 🎯 Daily Targets (5 Developers)
 
 ### Week 1: Foundation
+
 - **Monday:** Policies + Base Services (16 hrs)
 - **Tuesday:** BaseModel + 30 Core Models (18 hrs)
 - **Wednesday:** Remaining Models (16 hrs)
@@ -387,12 +411,15 @@ onMounted(() => {
 - **Friday:** Testing + Bug Fixes (16 hrs)
 
 ### Week 2: Core Features
+
 - **Monday-Friday:** 75 Filament Resources + 30 Controllers (100 hrs)
 
 ### Week 3: Services & Jobs
+
 - **Monday-Friday:** 40 Jobs + 20 Services + 30 Controllers (90 hrs)
 
 ### Week 4: Completion
+
 - **Monday-Friday:** Remaining Resources + Vue + Seeders (80 hrs)
 
 **Total: 4 weeks with 5 developers**
@@ -402,6 +429,7 @@ onMounted(() => {
 ## 🔧 Tools & Automation
 
 ### Code Generation Script Needed
+
 ```powershell
 # Generate policy files from audit list
 # Generate empty controller methods
@@ -410,6 +438,7 @@ onMounted(() => {
 ```
 
 ### Validation Checklist per File
+
 - ✅ Minimum 60 lines
 - ✅ No syntax errors
 - ✅ Required methods implemented
@@ -423,15 +452,19 @@ onMounted(() => {
 ## 📋 Risk Mitigation
 
 **Risk 1:** Time estimation too optimistic
+
 - Mitigation: Add 20% buffer = 5 weeks instead of 4
 
 **Risk 2:** Integration issues between components
+
 - Mitigation: Daily integration testing + automated CI/CD
 
 **Risk 3:** Missing business requirements
+
 - Mitigation: Daily standups with product team
 
 **Risk 4:** Code quality issues
+
 - Mitigation: Code review process + automated linting
 
 ---
@@ -439,6 +472,7 @@ onMounted(() => {
 ## ✨ Success Criteria
 
 **Definition of Done (per file):**
+
 1. ✅ ≥60 lines of substantive code
 2. ✅ All required methods implemented
 3. ✅ Multi-tenant scoping applied
@@ -449,6 +483,7 @@ onMounted(() => {
 8. ✅ Code review approved
 
 **Project Ready When:**
+
 - ✅ All 1173 files > 60 lines
 - ✅ All tests passing
 - ✅ All authorization policies working
@@ -461,18 +496,21 @@ onMounted(() => {
 ## 🚀 Next Steps (This Week)
 
 **Today (Tuesday):**
+
 - [ ] Review this plan with team
 - [ ] Assign developers to categories
 - [ ] Create code generation scripts
 - [ ] Start with Policies (quick win)
 
 **Wednesday:**
+
 - [ ] Complete all 50 Policy files
 - [ ] Review and merge
 - [ ] Begin BaseModel work
 - [ ] Start core Service completions
 
 **Thursday-Friday:**
+
 - [ ] Complete 50 core Models
 - [ ] Begin Filament Resources
 - [ ] Setup automated validation

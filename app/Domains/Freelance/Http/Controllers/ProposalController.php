@@ -4,6 +4,7 @@ namespace App\Domains\Freelance\Http\Controllers;
 
 use App\Domains\Freelance\Models\FreelanceProposal;
 use App\Domains\Freelance\Services\ProposalService;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -13,17 +14,15 @@ final class ProposalController
 {
     public function __construct(
         private readonly ProposalService $proposalService,
+        private readonly FraudControlService $fraudControlService,
     ) {}
 
     public function store(Request $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
-            $correlationId = Str::uuid();
-
             $proposal = $this->proposalService->submitProposal(
                 jobId: $request->input('job_id'),
                 freelancerId: auth()->user()->freelancer->id ?? 0,
@@ -53,12 +52,10 @@ final class ProposalController
 
     public function update(Request $request, int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
-            $correlationId = Str::uuid();
             $proposal = FreelanceProposal::findOrFail($id);
 
             $this->authorize('update', $proposal);
@@ -92,12 +89,10 @@ final class ProposalController
 
     public function destroy(int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
-            $correlationId = Str::uuid();
             $proposal = FreelanceProposal::findOrFail($id);
 
             $this->authorize('delete', $proposal);
@@ -126,7 +121,7 @@ final class ProposalController
     public function accept(int $id): JsonResponse
     {
         try {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             $proposal = FreelanceProposal::findOrFail($id);
 
             $this->authorize('accept', $proposal);
@@ -156,7 +151,7 @@ final class ProposalController
     public function reject(int $id): JsonResponse
     {
         try {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             $proposal = FreelanceProposal::findOrFail($id);
 
             $this->authorize('reject', $proposal);

@@ -3,7 +3,7 @@
 namespace App\Domains\Flowers\Services;
 
 use Illuminate\Support\Facades\Log;
-use App\Services\Security\FraudControlService;
+use App\Services\FraudControlService;
 use Illuminate\Support\Str;
 
 
@@ -20,7 +20,6 @@ final class B2BFlowerOrderService
     ) {
         $correlationId = Str::uuid()->toString();
         Log::channel('audit')->info('Service method called in Flowers', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
 }
 
     public function createB2BOrder(
@@ -30,7 +29,7 @@ final class B2BFlowerOrderService
         array $deliveryData,
         string $correlationId = '',
     ): B2BFlowerOrder {
-        $correlationId = $correlationId ?: (string)Str::uuid();
+        $correlationId = $correlationId ?: (string)Str::uuid()->toString();
 
         try {
             $this->fraudControlService->check(

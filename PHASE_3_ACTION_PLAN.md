@@ -1,4 +1,5 @@
 # PHASE 3 ACTION PLAN - Policies & Config
+
 **Следующий шаг для полного CANON 2026 compliance**
 
 **Target**: 100% Production Ready  
@@ -11,7 +12,8 @@
 
 ### 1. CREATE POLICIES (10+ files) - CRITICAL
 
-#### Critical Policies (Do First):
+#### Critical Policies (Do First)
+
 ```php
 // app/Policies/PaymentPolicy.php
 - Can create payment (fraud check required)
@@ -36,14 +38,16 @@
 - Can delete hotel (soft delete, with data cleanup)
 ```
 
-#### Supporting Policies (Medium Priority):
+#### Supporting Policies (Medium Priority)
+
 - BeautyPolicy.php (salon CRUD)
 - AppointmentPolicy.php (booking management)
 - ProductPolicy.php (inventory management)
 - InventoryPolicy.php (stock operations)
 - CommissionPolicy.php (view own commissions)
 
-#### Template for All Policies:
+#### Template for All Policies
+
 ```php
 <?php declare(strict_types=1);
 
@@ -82,6 +86,7 @@ final class XyzPolicy
 ### 2. CREATE CONFIG FILES (5 files) - HIGH
 
 #### config/fraud.php
+
 ```php
 <?php declare(strict_types=1);
 
@@ -114,6 +119,7 @@ return [
 ```
 
 #### config/payments.php
+
 ```php
 <?php declare(strict_types=1);
 
@@ -159,6 +165,7 @@ return [
 ```
 
 #### config/wallet.php
+
 ```php
 <?php declare(strict_types=1);
 
@@ -203,6 +210,7 @@ return [
 ```
 
 #### config/bonuses.php
+
 ```php
 <?php declare(strict_types=1);
 
@@ -238,6 +246,7 @@ return [
 ```
 
 #### config/verticals.php
+
 ```php
 <?php declare(strict_types=1);
 
@@ -282,6 +291,7 @@ return [
 ## 📋 IMPLEMENTATION CHECKLIST
 
 ### Step 1: Create Policies (1 hour)
+
 - [ ] PaymentPolicy.php (CRITICAL)
 - [ ] WalletPolicy.php (CRITICAL)
 - [ ] OrderPolicy.php (CRITICAL)
@@ -294,6 +304,7 @@ return [
 - [ ] TenantPolicy.php (review existing)
 
 Register in: `AuthServiceProvider.php`
+
 ```php
 Gate::policy(Payment::class, PaymentPolicy::class);
 Gate::policy(Wallet::class, WalletPolicy::class);
@@ -301,6 +312,7 @@ Gate::policy(Wallet::class, WalletPolicy::class);
 ```
 
 ### Step 2: Create Config Files (1 hour)
+
 - [ ] config/fraud.php
 - [ ] config/payments.php
 - [ ] config/wallet.php
@@ -308,12 +320,15 @@ Gate::policy(Wallet::class, WalletPolicy::class);
 - [ ] config/verticals.php
 
 Publish configs:
+
 ```bash
 php artisan config:clear
 ```
 
 ### Step 3: Register Policies in Controllers (30 min)
+
 Update each Controller's method:
+
 ```php
 public function store(StorePaymentRequest $request): JsonResponse
 {
@@ -325,6 +340,7 @@ public function store(StorePaymentRequest $request): JsonResponse
 ```
 
 ### Step 4: Test Authorization (30 min)
+
 ```bash
 php artisan test --filter PolicyTest
 php artisan test --filter PaymentTest
@@ -377,6 +393,7 @@ php artisan test
 ## ⚠️ CRITICAL NOTES
 
 1. **Policies must use tenant scoping**
+
    ```php
    public function view(User $user, Model $model): bool
    {
@@ -385,17 +402,20 @@ php artisan test
    ```
 
 2. **Config values must be env() with fallbacks**
+
    ```php
    'terminal_id' => env('TINKOFF_TERMINAL_ID', 'TEST_TERMINAL'),
    ```
 
 3. **All authorization checks must happen BEFORE data operations**
+
    ```php
    $this->authorize('create', Model::class);
    // THEN do operations
    ```
 
 4. **Log all authorization denials**
+
    ```php
    public function create(User $user): bool
    {

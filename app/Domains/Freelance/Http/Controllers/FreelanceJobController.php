@@ -3,6 +3,7 @@
 namespace App\Domains\Freelance\Http\Controllers;
 
 use App\Domains\Freelance\Models\FreelanceJob;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -11,6 +12,10 @@ use Illuminate\Support\Str;
 
 final class FreelanceJobController
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
         try {
@@ -72,26 +77,24 @@ final class FreelanceJobController
 
     public function store(Request $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
-            $correlationId = Str::uuid();
-
-            return DB::transaction(function () use ($request, $correlationId) {
+            $validated = $request->all();
+            return DB::transaction(function () use ($validated, $correlationId) {
                 $job = FreelanceJob::create([
                     'tenant_id' => tenant()->id,
                     'client_id' => auth()->id(),
-                    'title' => $request->input('title'),
-                    'description' => $request->input('description'),
-                    'categories' => $request->input('categories', []),
-                    'skills_required' => $request->input('skills_required', []),
-                    'job_type' => $request->input('job_type', 'one-time'),
-                    'pricing_type' => $request->input('pricing_type', 'fixed'),
-                    'budget_min' => $request->input('budget_min'),
-                    'budget_max' => $request->input('budget_max'),
-                    'duration_days' => $request->input('duration_days'),
+                    'title' => ($validated['title'] ?? null),
+                    'description' => ($validated['description'] ?? null),
+                    'categories' => ($validated['categories'] ?? []),
+                    'skills_required' => ($validated['skills_required'] ?? []),
+                    'job_type' => ($validated['job_type'] ?? 'one-time'),
+                    'pricing_type' => ($validated['pricing_type'] ?? 'fixed'),
+                    'budget_min' => ($validated['budget_min'] ?? null),
+                    'budget_max' => ($validated['budget_max'] ?? null),
+                    'duration_days' => ($validated['duration_days'] ?? null),
                     'status' => 'open',
                     'posted_at' => now(),
                     'correlation_id' => $correlationId,
@@ -100,8 +103,8 @@ final class FreelanceJobController
                 Log::channel('audit')->info('Freelance job posted', [
                     'job_id' => $job->id,
                     'client_id' => auth()->id(),
-                    'budget_min' => $request->input('budget_min'),
-                    'budget_max' => $request->input('budget_max'),
+                    'budget_min' => ($validated['budget_min'] ?? null),
+                    'budget_max' => ($validated['budget_max'] ?? null),
                     'correlation_id' => $correlationId,
                 ]);
 
@@ -128,17 +131,16 @@ final class FreelanceJobController
 
     public function update(Request $request, int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
-            $correlationId = Str::uuid();
             $job = FreelanceJob::findOrFail($id);
 
             $this->authorize('update', $job);
 
-            return DB::transaction(function () use ($request, $job, $correlationId) {
+            $validated = $request->all();
+            return DB::transaction(function () use ($validated, $job, $correlationId) {
                 $job->update($request->only([
                     'title', 'description', 'categories', 'skills_required',
                     'budget_min', 'budget_max', 'duration_days',
@@ -172,12 +174,10 @@ final class FreelanceJobController
 
     public function destroy(int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
-            $correlationId = Str::uuid();
             $job = FreelanceJob::findOrFail($id);
 
             $this->authorize('delete', $job);
@@ -213,7 +213,7 @@ final class FreelanceJobController
     public function close(int $id): JsonResponse
     {
         try {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             $job = FreelanceJob::findOrFail($id);
 
             $this->authorize('close', $job);

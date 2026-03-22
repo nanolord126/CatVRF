@@ -21,7 +21,7 @@ final class TicketSaleController
                 'quantity' => 'required|integer|min:1|max:100',
             ]);
 
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             $sale = DB::transaction(function () use ($eventId, $validated, $correlationId) {
                 return $this->salesService->createSale(
@@ -114,7 +114,7 @@ final class TicketSaleController
             $this->authorize('refund', $sale);
 
             $reason = request()->input('reason', 'User requested refund');
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             DB::transaction(function () use ($sale, $reason, $correlationId) {
                 $this->salesService->refundSale($sale, $reason, $correlationId);

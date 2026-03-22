@@ -9,12 +9,14 @@
 ## 📋 Jobs Created (9 files)
 
 ### Auto Vertical
+
 | Job | Purpose | Schedule | Retry |
 |-----|---------|----------|-------|
 | `SurgeRecalculationJob` | Recalculate surge multipliers across zones | Every 5 min | 5 min |
 | Status | ✅ Created | `app/Jobs/Auto/` | Production-ready |
 
 ### Payments Vertical
+
 | Job | Purpose | Schedule | Retry |
 |-----|---------|----------|-------|
 | `DailyPayoutJob` | Process pending payouts from yesterday | 08:00 UTC daily | 8 hours |
@@ -22,30 +24,35 @@
 | Status | ✅ Created (2 jobs) | `app/Jobs/Payments/` | Production-ready |
 
 ### Inventory System
+
 | Job | Purpose | Schedule | Retry |
 |-----|---------|----------|-------|
 | `LowStockAlertJob` | Check items below min_stock_threshold | Hourly | 2 hours |
 | Status | ✅ Created | `app/Jobs/Inventory/` | Production-ready |
 
 ### Beauty Vertical
+
 | Job | Purpose | Schedule | Retry |
 |-----|---------|----------|-------|
 | `ConsumableDeductionJob` | Deduct consumables after appointment completion | On-demand | 15 min |
 | Status | ✅ Created | `app/Jobs/Beauty/` | Production-ready |
 
 ### Food Vertical
+
 | Job | Purpose | Schedule | Retry |
 |-----|---------|----------|-------|
 | `RestaurantIngredientDeductionJob` | Deduct ingredients after order completion | On-demand | 20 min |
 | Status | ✅ Created | `app/Jobs/Food/` | Production-ready |
 
 ### Notifications System
+
 | Job | Purpose | Schedule | Retry |
 |-----|---------|----------|-------|
 | `SendQueuedNotificationsJob` | Process push/email/SMS notifications | Every 2 min | 30 min |
 | Status | ✅ Created | `app/Jobs/Notifications/` | Production-ready |
 
 ### Analytics & AI
+
 | Job | Purpose | Schedule | Retry |
 |-----|---------|----------|-------|
 | `DailyAnalyticsJob` | Forecast + recommendation embeddings | 03:00 UTC daily | 6 hours |
@@ -53,6 +60,7 @@
 | Status | ✅ Created (2 jobs) | `app/Jobs/Analytics/`, `app/Jobs/AI/` | Production-ready |
 
 ### Scheduler Configuration
+
 | Component | Purpose | Status |
 |-----------|---------|--------|
 | `Kernel.php` | Centralized schedule definition | ✅ Updated |
@@ -63,6 +71,7 @@
 ## 🏗️ CANON 2026 Compliance
 
 ✅ **All 9 jobs follow:**
+
 - `declare(strict_types=1)` at top of each file
 - `final class` declarations
 - `Queueable` trait implementation
@@ -99,6 +108,7 @@ On-demand:
 ## 🚀 Queue Configuration Required
 
 **In `config/queue.php`:**
+
 ```php
 'default' => env('QUEUE_CONNECTION', 'redis'),
 
@@ -128,6 +138,7 @@ On-demand:
 ## 📊 Job Dependencies & Integrations
 
 ### Listeners → Jobs
+
 ```
 AppointmentScheduled → ConsumableDeductionJob (Beauty)
 OrderCreated → RestaurantIngredientDeductionJob (Food)
@@ -137,6 +148,7 @@ OrderDelivered → ProcessOrderDeliveredCommission (then payout queue)
 ```
 
 ### Service Integrations
+
 ```
 SurgeRecalculationJob
   └─ SurgePricingService::calculateSurgeMultiplier()
@@ -180,7 +192,9 @@ MLRecalculateJob
 ## 🔍 Monitoring & Observability
 
 ### Log Channels
+
 All jobs log to `Log::channel('audit')` with:
+
 - ✅ correlation_id (unique per job run)
 - ✅ action (what was done)
 - ✅ data (affected entities)
@@ -188,6 +202,7 @@ All jobs log to `Log::channel('audit')` with:
 - ✅ trace (full stack trace)
 
 ### Sentry Integration Points
+
 ```
 MLRecalculateJob        → Alert if AUC-ROC < 0.85
 BatchPayoutJob          → Alert if > 100 retries/hour
@@ -197,6 +212,7 @@ SendQueuedNotificationsJob → Alert if > 10% failures
 ```
 
 ### Metrics & Dashboard
+
 ```
 - Queue depth (Redis LLEN)
 - Job execution time (avg, p95, p99)
@@ -209,9 +225,10 @@ SendQueuedNotificationsJob → Alert if > 10% failures
 
 ## 🛠️ Usage Examples
 
-### Dispatch on-demand jobs from listeners:
+### Dispatch on-demand jobs from listeners
 
 **BeautyListener:**
+
 ```php
 ConsumableDeductionJob::dispatch(
     appointmentId: $event->appointmentId,
@@ -220,6 +237,7 @@ ConsumableDeductionJob::dispatch(
 ```
 
 **FoodListener:**
+
 ```php
 RestaurantIngredientDeductionJob::dispatch(
     orderId: $event->orderId,
@@ -227,13 +245,15 @@ RestaurantIngredientDeductionJob::dispatch(
 )->onQueue('inventory');
 ```
 
-### Trigger scheduled jobs manually (for testing):
+### Trigger scheduled jobs manually (for testing)
+
 ```bash
 php artisan schedule:run
 php artisan schedule:work  # For development
 ```
 
-### Monitor queue:
+### Monitor queue
+
 ```bash
 php artisan queue:failed   # View failed jobs
 php artisan queue:retry {id}  # Retry specific job
@@ -273,11 +293,13 @@ php artisan queue:forget {id}  # Forget job
 ## 🎯 Next Steps
 
 **Phase 9 Options:**
+
 - 🔐 Implement Policies & Authorization (RBAC layer)
 - 🧪 Create Integration Tests (end-to-end workflows)
 - 📦 Deploy to Production (go-live)
 
 **Queue Production Setup:**
+
 ```bash
 # Start queue worker for all queues
 php artisan queue:work redis --queue=high,payouts,inventory,notifications,analytics,ml-training

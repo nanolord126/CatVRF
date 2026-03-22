@@ -46,6 +46,7 @@
 **Статус:** ⚠️ ТРЕБУЕТ РАСШИРЕНИЯ
 
 **Найденные файлы:**
+
 ```
 ✅ app/Enums/Role.php                    [2848 bytes]
 ✅ app/Policies/*                        [16 files, 92KB]
@@ -56,16 +57,19 @@
 ```
 
 **НУЖНО СОЗДАТЬ:**
+
 - [ ] AuthService (auth logic, token generation, permission checking)
 - [ ] config/permission.php (abilities + role matrix)
 - [ ] CheckAbilityMiddleware (authorization enforcement)
 - [ ] UpdateAuthController (to use new AuthService)
 
 **Миграции (если нужны):**
+
 - [ ] permissions_table (если используется spatie/laravel-permission)
 - [ ] role_has_permissions_table
 
 **Обновить Policies:**
+
 - [ ] WalletManagementPolicy (новый, минимальный)
 - [ ] PayoutPolicy (минимальный, нужно расширить)
 - [ ] PayrollPolicy (минимальный, нужно расширить)
@@ -78,6 +82,7 @@
 **Статус:** ❌ ОТСУТСТВУЕТ (нужно создавать с нуля)
 
 **Структура для создания:**
+
 ```
 ✅ app/Notifications/
    - OrderConfirmationNotification
@@ -121,6 +126,7 @@
 **Статус:** ✅ СУЩЕСТВУЕТ (базовое) + ⚠️ ТРЕБУЕТ РАСШИРЕНИЯ
 
 **Найденные файлы:**
+
 ```
 ✅ app/Services/Marketing/PromoCampaignService.php    [3274 bytes]
 ✅ app/Services/Marketing/ReferralService.php         [4145 bytes]
@@ -130,6 +136,7 @@
 ```
 
 **НУЖНО СОЗДАТЬ (Models):**
+
 ```
 ❌ app/Models/PromoCampaign.php
 ❌ app/Models/PromoUse.php
@@ -164,6 +171,7 @@
 **Статус:** ✅ ЧАСТИЧНО СУЩЕСТВУЕТ (нужны улучшения)
 
 **Найденные файлы:**
+
 ```
 ✅ app/Services/AnalyticsService.php              [4096 bytes]
 ✅ app/Services/AI/DemandForecastService.php      [3306 bytes]
@@ -175,6 +183,7 @@
 ```
 
 **НУЖНО СОЗДАТЬ:**
+
 ```
 ❌ app/Services/BigDataAggregator.php
 ❌ app/Services/AI/AnomalyDetectorService.php
@@ -202,6 +211,7 @@
 **Статус:** ❌ ОТСУТСТВУЕТ (нужно создавать Domain)
 
 **Структура для создания:**
+
 ```
 ✅ app/Domains/HR/
    ├── Models/
@@ -260,6 +270,7 @@
 **Статус:** ❌ ОТСУТСТВУЕТ (CRITICAL - нужно создавать Domain)
 
 **Структура для создания:**
+
 ```
 ✅ app/Domains/Payroll/
    ├── Models/
@@ -318,6 +329,7 @@
 **Статус:** ✅ СУЩЕСТВУЕТ (нужен audit + обновление)
 
 **Найденные files:**
+
 ```
 ✅ app/Services/CourierService.php              [6847 bytes]
 ✅ app/Services/GeoService.php                  [1717 bytes]
@@ -329,6 +341,7 @@
 ```
 
 **НУЖНО (дополнить/обновить):**
+
 ```
 ⚠️ TaxiSurgeService (пересчёт коэффициентов)
 ⚠️ TaxiMatchingService (подбор водителей)
@@ -433,6 +446,7 @@
 
 **СТАТУС:** ✅ ВСЕ ГОТОВЫ  
 **ОБНОВИТЬ (per CANON 2026):**
+
 - [ ] Добавить $tries = 3, $backoff = [10, 30, 60]
 - [ ] Добавить protected $tags
 - [ ] Проверить correlation_id
@@ -444,6 +458,7 @@
 ```
 
 **НУЖНО СОЗДАТЬ:**
+
 ```
 app/Listeners/
 ├── SendOrderConfirmationListener
@@ -498,6 +513,7 @@ app/Listeners/
 
 **СТАТУС:** ✅ ВСЕ 20 ГОТОВЫ  
 **ОБНОВИТЬ (per CANON 2026):**
+
 - [ ] Добавить correlation_id в каждую
 - [ ] Добавить tenant_id scoping
 
@@ -573,6 +589,7 @@ app/Listeners/
 
 **СТАТУС:** ✅ 90% ГОТОВЫ  
 **НУЖНЫ УЛУЧШЕНИЯ:**
+
 - [ ] Standardize structure (все вертикали должны быть одинаковыми)
 - [ ] Add missing DomainService в каждую
 - [ ] Add InventoryManagementService (где applicable)
@@ -587,6 +604,7 @@ app/Listeners/
 **Статус:** ✅ СУЩЕСТВУЕТ (V1 готов, V2 pending)
 
 **CONTROLLERS:**
+
 ```
 ✅ api/V1/
    ├── AuthController.php              [8176 bytes]
@@ -612,6 +630,7 @@ app/Listeners/
 ```
 
 **FORM REQUESTS:**
+
 ```
 ✅ BaseApiRequest.php              [2346 bytes]
 ✅ CreateApiKeyRequest.php          [1258 bytes]
@@ -621,6 +640,7 @@ app/Listeners/
 ```
 
 **ROUTES:**
+
 ```
 ✅ 43+ route файлов (vertical API + B2B routes)
 ```
@@ -665,6 +685,7 @@ app/Listeners/
 **Текущая оценка:** 70/100
 
 **Что нужно для 100/100:**
+
 - [x] Авторизация COMPLETE (60% → 100%)
 - [x] Уведомления COMPLETE (20% → 100%)
 - [x] HR COMPLETE (30% → 100%)
@@ -674,9 +695,10 @@ app/Listeners/
 - [ ] Documentation COMPLETE (30% → 100%)
 
 **Оценка времени:**
+
 - День 1: RBAC (+20%) → 80%
 - День 2: HR + Payroll (+25%) → 95%
-- День 3: Notifications + Marketing (+10%) → 100% 
+- День 3: Notifications + Marketing (+10%) → 100%
 - День 4: Testing + Documentation (refinement) → 100%
 
 ---
@@ -684,6 +706,7 @@ app/Listeners/
 ## 📝 ИТОГИ
 
 ### Сильные стороны
+
 - ✅ **22 полные вертикали** (огромная работа)
 - ✅ **27+ production-ready сервисов**
 - ✅ **Security Services** хорошо реализованы
@@ -693,6 +716,7 @@ app/Listeners/
 - ✅ **Inventory + Wishlist** реализованы
 
 ### Слабые стороны
+
 - ❌ **Отсутствует HR Domain** (CRITICAL)
 - ❌ **Отсутствует Payroll система** (CRITICAL)
 - ❌ **Нет Notification системы** (важно)
@@ -702,13 +726,16 @@ app/Listeners/
 - ❌ **Tests покрытие низкое** (40%)
 
 ### Рекомендация
+
 **СРОЧНО (Today):**
+
 1. Создать AuthService + config/permission.php
 2. Создать Notification систему
 3. Создать HR Domain (базовая версия)
 4. Создать Payroll Domain (базовая версия)
 
 **ЗАТЕМ (После 4 дней):**
+
 1. API V2 endpoints
 2. Advanced Analytics
 3. ML models training
@@ -720,4 +747,3 @@ app/Listeners/
 **Документ подготовлен:** 18 марта 2026 г.  
 **Версия:** CANON 2026 Production-Ready  
 **Статус:** READY FOR IMPLEMENTATION ✅
-

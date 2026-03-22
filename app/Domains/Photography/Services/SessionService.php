@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Domains\Photography\Services;
 
 use Illuminate\Support\Facades\Log;
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Str;
+use App\Services\FraudControlService;
 
 
 use App\Domains\Photography\Models\PhotoSession;
@@ -18,7 +18,6 @@ final readonly class SessionService
 	{
         $correlationId = Str::uuid()->toString();
         Log::channel('audit')->info('Service method called in Photography', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
 
 		return DB::transaction(function () use ($data) {
 			$correlationId = $data['correlation_id'] ?? Str::uuid()->toString();
@@ -54,7 +53,6 @@ final readonly class SessionService
 	{
         $correlationId = Str::uuid()->toString();
         Log::channel('audit')->info('Service method called in Photography', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
 
 		return DB::transaction(function () use ($session, $status) {
 			$session->update(['status' => $status]);
@@ -73,7 +71,6 @@ final readonly class SessionService
 	{
         $correlationId = Str::uuid()->toString();
         Log::channel('audit')->info('Service method called in Photography', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
 
 		DB::transaction(function () use ($session) {
 			$session->update(['status' => 'cancelled']);

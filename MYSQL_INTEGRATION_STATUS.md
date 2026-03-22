@@ -8,18 +8,21 @@
 ## 📋 ЧТО БЫЛО СДЕЛАНО
 
 ### ✅ Конфигурация
+
 - [x] Обновлен `docker-compose.yml` - MySQL 8.0 образ
 - [x] Обновлена `config/database.php` - default connection на mysql
 - [x] Обновлен `.env` - DB_CONNECTION переменные
 - [x] Все 44 миграции совместимы с MySQL 8
 
 ### ✅ Готовность к развёртыванию
+
 - [x] Docker Compose полностью готов
 - [x] Тестовые данные готовы (16 factories + seeders)
 - [x] Multi-tenancy настроен для MySQL
 - [x] Документация написана
 
 ### ✅ Локальная разработка
+
 - [x] SQLite остаётся для быстрой локальной разработки
 - [x] Легко переключение между SQLite и MySQL
 - [x] Оба драйвера полностью поддерживаются
@@ -29,6 +32,7 @@
 ## 🚀 DEPLOYMENT НА PRODUCTION
 
 ### Вариант 1: Docker (Рекомендуется)
+
 ```bash
 # 1. Клонировать репозиторий
 git clone ...
@@ -45,6 +49,7 @@ docker-compose exec app php artisan db:seed
 ```
 
 ### Вариант 2: Прямо на сервер (Linux/Ubuntu)
+
 ```bash
 # 1. Установить MySQL 8
 sudo apt-get install mysql-server-8.0
@@ -112,12 +117,14 @@ curl http://localhost:8000/api/taxi
 ## 🔄 ПЕРЕКЛЮЧЕНИЕ МЕЖДУ SQLite И MYSQL
 
 ### Перейти на SQLite (локально)
+
 ```bash
 # .env
 DB_CONNECTION=sqlite
 ```
 
 ### Перейти на MySQL (production)
+
 ```bash
 # .env
 DB_CONNECTION=mysql
@@ -132,12 +139,14 @@ DB_PASSWORD=secret
 ## 📝 ИЗВЕСТНЫЕ ВОПРОСЫ
 
 ### ✅ Решено
+
 - Все миграции совместимы
 - Foreign keys работают
 - JSON столбцы поддерживаются
 - Multi-tenancy полностью работает
 
 ### ⏳ Может понадобиться после deployment
+
 - SSL/TLS сертификат для БД
 - Backups стратегия
 - Monitoring и alerting

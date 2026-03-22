@@ -26,18 +26,21 @@
 ### Шаг 1: Подготовка окружения
 
 #### 1.1 Проверить PHP версию
+
 ```bash
 php -v
 # Требуется: PHP 8.0+
 ```
 
 #### 1.2 Проверить конфигурацию Laravel
+
 ```bash
 php artisan config:clear
 php artisan cache:clear
 ```
 
 #### 1.3 Убедиться, что все зависимости установлены
+
 ```bash
 composer install --no-dev
 ```
@@ -45,6 +48,7 @@ composer install --no-dev
 ### Шаг 2: Обновление файлов
 
 #### 2.1 Копировать основные компоненты
+
 ```bash
 # Фискальные драйверы
 cp CloudKassirFiscalDriver.php app/Domains/Finances/Services/Fiscal/
@@ -65,6 +69,7 @@ cp FiscalDriverInterface.php app/Domains/Finances/Interfaces/
 ```
 
 #### 2.2 Проверить синтаксис
+
 ```bash
 php -l app/Domains/Finances/Services/Fiscal/CloudKassirFiscalDriver.php
 php -l app/Domains/Finances/Services/Fiscal/AtolFiscalDriver.php
@@ -74,6 +79,7 @@ php -l app/Domains/Finances/Services/TochkaDriver.php
 ```
 
 **Ожидаемый результат**:
+
 ```
 No syntax errors detected in CloudKassirFiscalDriver.php
 No syntax errors detected in AtolFiscalDriver.php
@@ -85,6 +91,7 @@ No syntax errors detected in TochkaDriver.php
 ### Шаг 3: Конфигурация
 
 #### 3.1 Проверить config/fiscal.php
+
 ```php
 // Убедитесь, что конфиг выглядит так:
 return [
@@ -111,6 +118,7 @@ return [
 ```
 
 #### 3.2 Установить переменные окружения в Doppler
+
 ```bash
 # Основной провайдер (CloudKassir)
 FISCAL_DRIVER=cloudkassir
@@ -130,11 +138,13 @@ FISCAL_TAXATION_SYSTEM=usn_income  # По умолчанию УСН
 ### Шаг 4: Миграция и инициализация
 
 #### 4.1 Выполнить миграции (если требуются)
+
 ```bash
 php artisan migrate --force
 ```
 
 #### 4.2 Очистить кеш
+
 ```bash
 php artisan cache:clear
 php artisan config:clear
@@ -142,6 +152,7 @@ php artisan route:clear
 ```
 
 #### 4.3 Перезапустить очередь (если используется)
+
 ```bash
 php artisan queue:restart
 ```
@@ -149,6 +160,7 @@ php artisan queue:restart
 ### Шаг 5: Тестирование
 
 #### 5.1 Проверить здоровье системы
+
 ```php
 // Локально или в Tinker
 $health = app(\App\Domains\Finances\Services\FiscalService::class)->healthCheck();
@@ -156,6 +168,7 @@ $health = app(\App\Domains\Finances\Services\FiscalService::class)->healthCheck(
 ```
 
 #### 5.2 Отправить тестовый чек
+
 ```php
 $result = app(\App\Domains\Finances\Services\FiscalService::class)->sendReceipt(
     [
@@ -183,6 +196,7 @@ $result = app(\App\Domains\Finances\Services\FiscalService::class)->sendReceipt(
 ```
 
 #### 5.3 Проверить логирование
+
 ```bash
 tail -f storage/logs/laravel-*.log | grep -i fiscal
 # Должны быть записи о тестовом чеке
@@ -191,12 +205,14 @@ tail -f storage/logs/laravel-*.log | grep -i fiscal
 ### Шаг 6: Мониторинг
 
 #### 6.1 Настроить алерты
+
 ```bash
 # Мониторить логи на ошибки фискализации
 grep -r "CloudKassir.*failed\|Atol.*failed" storage/logs/
 ```
 
 #### 6.2 Проверить метрики
+
 ```bash
 # Убедитесь, что:
 # - Процент успешных чеков > 95%
@@ -208,9 +224,10 @@ grep -r "CloudKassir.*failed\|Atol.*failed" storage/logs/
 
 ## 🔄 ОТКАТ ИЗМЕНЕНИЙ (если нужно)
 
-### Если возникли проблемы:
+### Если возникли проблемы
 
 #### 1. Быстрый откат
+
 ```bash
 # Восстановить из резервной копии
 git checkout HEAD -- app/Domains/Finances/
@@ -224,12 +241,14 @@ php artisan config:clear
 ```
 
 #### 2. Откат в Doppler
+
 ```bash
 # Восстановить старые значения переменных окружения
 # в интерфейсе Doppler
 ```
 
 #### 3. Проверить после отката
+
 ```bash
 php artisan health:check
 php artisan tinker
@@ -241,26 +260,31 @@ php artisan tinker
 ## 📊 ПРОВЕРОЧНЫЙ ЛИСТ ДЛЯ QA
 
 ### Тестирование НДС 20% (ОСН)
+
 - [ ] Отправить чек с `tax_system: OSN` и `tax: vat_20`
 - [ ] Проверить, что CloudKassir получил правильный код (`Vat20`)
 - [ ] Убедиться, что чек зарегистрирован
 
 ### Тестирование БЕЗ НДС (УСН)
+
 - [ ] Отправить чек с `tax_system: USN_INCOME` и `tax: no_vat`
 - [ ] Проверить, что CloudKassir получил код `NoVat`
 - [ ] Убедиться, что чек зарегистрирован
 
 ### Тестирование возвратов
+
 - [ ] Отправить возврат с `tax_system: OSN` и `tax: vat_20`
 - [ ] Проверить, что чек возврата создан
 - [ ] Убедиться в логе correlation_id
 
 ### Тестирование fallback
+
 - [ ] Остановить CloudKassir API (или забрать ключи)
 - [ ] Отправить чек - должен перейти на Atol
 - [ ] Проверить, что чек зарегистрирован через Atol
 
 ### Тестирование Tinkoff
+
 - [ ] Отправить платеж через Tinkoff с `tax_system: OSN`
 - [ ] Проверить, что Tinkoff получил правильный налоговый код (`vat20`)
 - [ ] Убедиться в логе о успешной отправке
@@ -272,6 +296,7 @@ php artisan tinker
 ### Проблема: "No syntax errors detected" но ошибка в runtime
 
 **Решение**:
+
 ```bash
 # Проверить, что файлы скопированы полностью
 wc -l app/Domains/Finances/Services/Fiscal/CloudKassirFiscalDriver.php
@@ -284,6 +309,7 @@ grep "class CloudKassirFiscalDriver" app/Domains/Finances/Services/Fiscal/CloudK
 ### Проблема: "Class not found"
 
 **Решение**:
+
 ```bash
 # Очистить автозагрузчик Composer
 composer dump-autoload -o
@@ -296,6 +322,7 @@ php artisan tinker
 ### Проблема: "CloudKassir API error: Invalid credentials"
 
 **Решение**:
+
 ```bash
 # Проверить переменные окружения
 php artisan tinker
@@ -309,6 +336,7 @@ php artisan config:clear
 ### Проблема: "Atol API timeout"
 
 **Решение**:
+
 ```bash
 # Проверить сетевое соединение до Atol
 curl -I https://online.atol.ru/possystem/v4/
@@ -325,16 +353,19 @@ curl -I https://online.atol.ru/possystem/v4/
 ### Контакты для помощи
 
 **CloudKassir Support**:
-- Email: support@cloudkassir.ru
-- Docs: https://cloudkassir.ru/api
+
+- Email: <support@cloudkassir.ru>
+- Docs: <https://cloudkassir.ru/api>
 
 **Atol Support**:
-- Email: support@atol.ru
-- Docs: https://online.atol.ru/
+
+- Email: <support@atol.ru>
+- Docs: <https://online.atol.ru/>
 
 **Tinkoff Support**:
-- Email: merchant@tinkoff.ru
-- Docs: https://www.tinkoff.ru/business/acquiring/
+
+- Email: <merchant@tinkoff.ru>
+- Docs: <https://www.tinkoff.ru/business/acquiring/>
 
 ---
 

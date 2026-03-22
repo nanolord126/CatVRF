@@ -15,13 +15,17 @@ use Illuminate\Support\Str;
  */
 final class CarWashBookingController
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
         try {
             $correlationId = Str::uuid()->toString();
 
             $bookings = CarWashBooking::query()
-                ->where('tenant_id', tenant('id') ?? 1)
+                ->where('tenant_id', tenant('id'))
                 ->paginate(15);
 
             return response()->json([
@@ -39,8 +43,26 @@ final class CarWashBookingController
 
     public function store(Request $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
+        $fraudResult = $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            'operation',
+            0,
+            request()->ip(),
+            request()->header('X-Device-Fingerprint'),
+            $correlationId,
+        );
+
+        if ($fraudResult['decision'] === 'block') {
+            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                'correlation_id' => $correlationId,
+                'user_id'        => auth()->id(),
+                'score'          => $fraudResult['score'],
+            ]);
+            return response()->json([
+                'success'        => false,
+                'error'          => 'Операция заблокирована.',
+                'correlation_id' => $correlationId,
+            ], 403);
         }
 
         try {
@@ -52,12 +74,13 @@ final class CarWashBookingController
                 'scheduled_at' => 'required|date_format:Y-m-d H:i:s',
             ]);
 
-            $booking = DB::transaction(function () use ($request, $correlationId) {
+            $validated = $request->all();
+            $booking = DB::transaction(function () use ($validated, $correlationId) {
                 $booking = CarWashBooking::create([
-                    'tenant_id' => tenant('id') ?? 1,
-                    'client_id' => $request->get('client_id'),
-                    'wash_type' => $request->get('wash_type'),
-                    'scheduled_at' => $request->get('scheduled_at'),
+                    'tenant_id' => tenant('id'),
+                    'client_id' => ($validated['client_id'] ?? null),
+                    'wash_type' => ($validated['wash_type'] ?? null),
+                    'scheduled_at' => ($validated['scheduled_at'] ?? null),
                     'status' => 'pending',
                     'price' => 50000, 
                     'correlation_id' => $correlationId,

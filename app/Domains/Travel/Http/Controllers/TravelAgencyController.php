@@ -6,15 +6,20 @@ use App\Domains\Travel\Models\TravelAgency;
 use App\Domains\Travel\Models\TravelAccommodation;
 use App\Domains\Travel\Models\TravelGuide;
 use App\Domains\Travel\Models\TravelReview;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
 
-final class TravelAgencyController
+final class TravelAgencyController extends Controller
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
     public function index(Request $request): JsonResponse
     {
         try {
@@ -83,11 +88,8 @@ final class TravelAgencyController
 
     public function store(Request $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
-
         $correlationId = $request->get('correlation_id', Str::uuid()->toString());
+        $this->fraudControlService->check(auth()->id() ?? 0, 'agency_store', 0, $request->ip(), null, $correlationId);
 
         try {
             $request->validate([
@@ -99,16 +101,17 @@ final class TravelAgencyController
                 'website' => 'nullable|url',
             ]);
 
-            $agency = DB::transaction(function () use ($request, $correlationId) {
+            $validated = $request->all();
+            $agency = DB::transaction(function () use ($validated, $correlationId) {
                 return TravelAgency::create([
                     'tenant_id' => tenant()->id,
                     'owner_id' => auth()->id(),
-                    'name' => $request->get('name'),
-                    'address' => $request->get('address'),
-                    'phone' => $request->get('phone'),
-                    'email' => $request->get('email'),
-                    'specializations' => $request->get('specializations', []),
-                    'website' => $request->get('website'),
+                    'name' => ($validated['name'] ?? null),
+                    'address' => ($validated['address'] ?? null),
+                    'phone' => ($validated['phone'] ?? null),
+                    'email' => ($validated['email'] ?? null),
+                    'specializations' => ($validated['specializations'] ?? []),
+                    'website' => ($validated['website'] ?? null),
                     'correlation_id' => $correlationId,
                     'uuid' => Str::uuid(),
                 ]);
@@ -143,25 +146,23 @@ final class TravelAgencyController
 
     public function update(Request $request, int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
-
         $correlationId = $request->get('correlation_id', Str::uuid()->toString());
+        $this->fraudControlService->check(auth()->id() ?? 0, 'agency_update', 0, $request->ip(), null, $correlationId);
 
         try {
             $agency = TravelAgency::where('tenant_id', tenant()->id)->findOrFail($id);
 
             $this->authorize('update', $agency);
 
-            $agency = DB::transaction(function () use ($request, $agency, $correlationId) {
+            $validated = $request->all();
+            $agency = DB::transaction(function () use ($validated, $agency, $correlationId) {
                 $agency->update([
-                    'name' => $request->get('name', $agency->name),
-                    'address' => $request->get('address', $agency->address),
-                    'phone' => $request->get('phone', $agency->phone),
-                    'email' => $request->get('email', $agency->email),
-                    'specializations' => $request->get('specializations', $agency->specializations),
-                    'website' => $request->get('website', $agency->website),
+                    'name' => ($validated['name'] ?? $agency->name),
+                    'address' => ($validated['address'] ?? $agency->address),
+                    'phone' => ($validated['phone'] ?? $agency->phone),
+                    'email' => ($validated['email'] ?? $agency->email),
+                    'specializations' => ($validated['specializations'] ?? $agency->specializations),
+                    'website' => ($validated['website'] ?? $agency->website),
                     'correlation_id' => $correlationId,
                 ]);
 
@@ -195,11 +196,8 @@ final class TravelAgencyController
 
     public function destroy(int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
-
         $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'agency_destroy', 0, request()->ip(), null, $correlationId);
 
         try {
             $agency = TravelAgency::where('tenant_id', tenant()->id)->findOrFail($id);

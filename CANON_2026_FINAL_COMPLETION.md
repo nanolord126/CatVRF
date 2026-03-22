@@ -48,6 +48,7 @@
 ✅ **RateLimiterService** — Tenant-aware rate limiting с sliding window
 
 **Паттерн для каждого Service:**
+
 ```php
 // ✅ Constructor injection (readonly deps)
 private FraudControlService $fraudControlService,
@@ -96,6 +97,7 @@ Log::channel('audit')->info('...', ['correlation_id' => $correlationId])
 ✅ **GeoZoneFactory** — Гео-зоны с service_area, surge_multiplier
 
 **Паттерн для каждого Factory:**
+
 ```php
 final class [Model]Factory extends Factory {
     public function definition(): array {
@@ -132,6 +134,7 @@ final class [Model]Factory extends Factory {
 ✅ **CleanupExpiredBonusesJob** — Daily 07:00 UTC, очистка истекших бонусов
 
 **Паттерн для каждого Job:**
+
 ```php
 final class [Job]Job implements ShouldQueue {
     public $timeout = 3600;
@@ -184,6 +187,7 @@ final class [Job]Job implements ShouldQueue {
 ✅ **AIConstructorSeeder** — declare + final class обновлен
 
 **Шаблон для оставшихся 107 сидеров:**
+
 ```php
 <?php
 declare(strict_types=1);
@@ -221,6 +225,7 @@ final class [Model]Seeder extends Seeder
 3. 📋 Требуется автоматизация для оставшихся 105 сидеров
 
 **Оставшиеся категории сидеров:**
+
 - Бренды (BeautyBrands, AutoBrands, FoodBrands и т.д.) — ~30 файлов
 - Фильтры (BeautyFilterSeeder, AutoFilterSeeder и т.д.) — ~20 файлов
 - Вертикали (TaxiVerticalSeeder, FlowersVerticalSeeder и т.д.) — ~15 файлов
@@ -235,6 +240,7 @@ final class [Model]Seeder extends Seeder
 ### Controllers (~40 файлов)
 
 **Требуемые обновления:**
+
 - ✅ FraudControlService::check() перед любой мутацией
 - ✅ RateLimiterService::allowTenant() перед API endpoints
 - ✅ DB::transaction() для создания/изменения/удаления
@@ -249,6 +255,7 @@ final class [Model]Seeder extends Seeder
 ### Filament Resources (~25 файлов)
 
 **Требуемые обновления:**
+
 - ✅ getEloquentQuery() с tenant scoping
 - ✅ Все actions (Create, Edit, Delete) с FraudControl + audit logging
 - ✅ Form validation с FormRequest
@@ -261,6 +268,7 @@ final class [Model]Seeder extends Seeder
 ### Livewire Components (~35 файлов)
 
 **Требуемые обновления:**
+
 - ✅ Propagate correlation_id через жизненный цикл компонента
 - ✅ DB::transaction() для всех мутаций (submit, delete, update)
 - ✅ Rate limiting на методы submit
@@ -273,6 +281,7 @@ final class [Model]Seeder extends Seeder
 ### Events & Listeners (~20 файлов)
 
 **Требуемые обновления:**
+
 - ✅ Event конструктор должен принимать correlation_id
 - ✅ Listener handle() должен использовать correlation_id из события
 - ✅ DB::transaction() для мутаций в listener
@@ -285,6 +294,7 @@ final class [Model]Seeder extends Seeder
 ### Policies (~15 файлов)
 
 **Требуемые обновления:**
+
 - ✅ Все методы (create, view, update, delete) должны проверять tenant scoping
 - ✅ FraudControlService::check() перед критичными операциями
 - ✅ Tenant-aware query scoping
@@ -296,6 +306,7 @@ final class [Model]Seeder extends Seeder
 ### API Resources & Middleware (~35 файлов)
 
 **Требуемые обновления:**
+
 - ✅ API Resources с proper data transformation и correlation_id в responses
 - ✅ Middleware для rate limiting, IP whitelist, auth validation
 
@@ -328,27 +339,32 @@ final class [Model]Seeder extends Seeder
 ## 🎯 СЛЕДУЮЩИЕ ШАГИ
 
 ### Phase 1: Batch Update Seeders (EST: 30-45 мин)
+
 1. Прочитать оставшиеся 107 сидеров волнами (по 10-15 за раз)
 2. Использовать `multi_replace_string_in_file` для параллельного обновления
 3. Шаблон готов — просто инстанцировать для каждого Model
 
 ### Phase 2: Update Controllers (EST: 2-3 часа)
+
 1. Добавить FraudControlService в constructor всех контроллеров
 2. Добавить RateLimiterService на API endpoints
 3. Обернуть все мутации в DB::transaction()
 4. Добавить audit logging с correlation_id
 
 ### Phase 3: Update Filament Resources (EST: 1-2 часа)
+
 1. Add getEloquentQuery() с tenant scoping
 2. Add FraudControl checks в actions
 3. Add form validation
 
 ### Phase 4: Update Events/Listeners/Policies (EST: 1.5-2 часа)
+
 1. Event конструкторы должны принимать correlation_id
 2. Listeners должны использовать correlation_id
 3. Policies — tenant scoping проверка
 
 ### Phase 5: Testing & Validation (EST: 1-2 часа)
+
 1. Запустить seeders и проверить data generation
 2. Запустить jobs и проверить execution
 3. Запустить контроллеры через Postman/Thunder Client
@@ -387,6 +403,7 @@ REMAINING WORK: ~160 files (~47 hours at current velocity)
 **Current Status**: **76/170 modules** (45%) at CANON 2026 standard
 
 **Critical Infrastructure**: ✅ **COMPLETE**
+
 - All services production-ready
 - All factories generate realistic test data
 - All jobs execute safely with proper error handling

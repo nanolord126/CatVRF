@@ -26,12 +26,14 @@
 ### **STAGE 1: Preparation (30 минут)**
 
 #### 1.1 Backup Production Database
+
 ```bash
 mysqldump -u root -p catvrf_prod > catvrf_backup_2026_03_17.sql
 # Output: 500MB backup file
 ```
 
 #### 1.2 Clone Repository
+
 ```bash
 git clone git@github.com:your-org/catvrf.git deployment
 cd deployment
@@ -39,6 +41,7 @@ git checkout production
 ```
 
 #### 1.3 Install Dependencies
+
 ```bash
 composer install --no-dev --optimize-autoloader
 npm install --production
@@ -52,11 +55,13 @@ npm run build
 ### **STAGE 2: Configuration (45 минут)**
 
 #### 2.1 Copy Environment File
+
 ```bash
 cp .env.example .env.production
 ```
 
 #### 2.2 Update Security Variables
+
 ```bash
 # Add to .env.production:
 APP_DEBUG=false
@@ -102,6 +107,7 @@ FEATURE_RATE_LIMITING_STRICT=true
 ```
 
 #### 2.3 Verify Database Connection
+
 ```bash
 php artisan tinker
 > DB::connection('mysql')->getPdo()
@@ -113,6 +119,7 @@ php artisan tinker
 ### **STAGE 3: Database Migrations (20 минут)**
 
 #### 3.1 Run Security Migrations
+
 ```bash
 # Create backup before migration
 php artisan migrate --backup
@@ -127,6 +134,7 @@ php artisan tinker
 ```
 
 #### 3.2 Seed Initial Data (Optional)
+
 ```bash
 # Create test API key for admin
 php artisan db:seed --class=AdminApiKeySeeder
@@ -141,6 +149,7 @@ php artisan db:seed --class=AdminApiKeySeeder
 ### **STAGE 4: Configuration Publishing (15 минут)**
 
 #### 4.1 Publish Vendor Configuration
+
 ```bash
 # Sanctum
 php artisan vendor:publish --provider="Laravel\Sanctum\SanctumServiceProvider"
@@ -156,6 +165,7 @@ php artisan vendor:publish --provider="L5\Swagger\SwaggerServiceProvider"
 ```
 
 #### 4.2 Generate OpenAPI Documentation
+
 ```bash
 php artisan l5-swagger:generate
 
@@ -165,6 +175,7 @@ php artisan l5-swagger:generate
 ```
 
 #### 4.3 Clear All Caches
+
 ```bash
 php artisan cache:clear
 php artisan route:clear
@@ -178,6 +189,7 @@ php artisan optimize
 ### **STAGE 5: Security Verification (30 минут)**
 
 #### 5.1 Run Security Audit
+
 ```bash
 php artisan security:audit
 
@@ -194,6 +206,7 @@ php artisan security:audit
 ```
 
 #### 5.2 Run Security Tests
+
 ```bash
 php artisan test --filter=Security --env=production
 
@@ -204,6 +217,7 @@ php artisan test --filter=Security --env=production
 ```
 
 #### 5.3 Generate Certificates
+
 ```bash
 # If using API key signing
 openssl genrsa -out storage/keys/private.key 2048
@@ -218,6 +232,7 @@ chmod 644 storage/keys/public.key
 ### **STAGE 6: Application Startup (20 минут)**
 
 #### 6.1 Start Queue Worker
+
 ```bash
 # Background: Long-running queue processor
 php artisan queue:work redis --queue=default,audit,fraud_alert --sleep=3 --tries=3 --timeout=1800 &
@@ -227,6 +242,7 @@ supervisorctl start catvrf-queue-worker
 ```
 
 #### 6.2 Start Schedule Cron
+
 ```bash
 # Add to crontab
 * * * * * cd /var/www/catvrf && php artisan schedule:run >> /dev/null 2>&1
@@ -240,6 +256,7 @@ supervisorctl start catvrf-queue-worker
 ```
 
 #### 6.3 Start Application Server
+
 ```bash
 # Option 1: FPM + Nginx (recommended)
 systemctl start php8.2-fpm
@@ -257,6 +274,7 @@ docker-compose -f docker-compose.prod.yml up -d
 ### **STAGE 7: Health Checks (15 минут)**
 
 #### 7.1 API Health Check
+
 ```bash
 # Test unauthenticated endpoint
 curl -X GET https://api.example.com/api/v1/health
@@ -266,6 +284,7 @@ curl -X GET https://api.example.com/api/v1/health
 ```
 
 #### 7.2 Authentication Test
+
 ```bash
 # Create test token
 curl -X POST https://api.example.com/api/v1/auth/tokens \
@@ -286,6 +305,7 @@ curl -X POST https://api.example.com/api/v1/auth/tokens \
 ```
 
 #### 7.3 Rate Limiting Test
+
 ```bash
 # Hammer endpoint 35 times (limit is 30/min)
 for i in {1..35}; do
@@ -300,6 +320,7 @@ done
 ```
 
 #### 7.4 Fraud Detection Test
+
 ```bash
 # Trigger fraud detection (would-be rapid-fire)
 for i in {1..10}; do
@@ -317,6 +338,7 @@ done
 ### **STAGE 8: Monitoring Setup (30 минут)**
 
 #### 8.1 Configure Logging
+
 ```bash
 # Create log directories
 mkdir -p storage/logs/{audit,fraud_alert,webhook_errors,queries}
@@ -341,6 +363,7 @@ EOF
 ```
 
 #### 8.2 Setup Monitoring Dashboard
+
 ```bash
 # Install monitoring tools
 # - Datadog
@@ -359,6 +382,7 @@ EOF
 ```
 
 #### 8.3 Configure Alerts
+
 ```bash
 # Sentry alerts: Error rate > 1%
 # CloudWatch alerts: CPU > 80%
@@ -375,6 +399,7 @@ EOF
 ## ✅ VERIFICATION CHECKLIST
 
 ### Before Going Live
+
 - [ ] All migrations completed successfully
 - [ ] Security audit: 15/15 ✅
 - [ ] Tests passing: 25/25 ✅
@@ -387,6 +412,7 @@ EOF
 - [ ] Documentation updated
 
 ### Post-Deployment Monitoring
+
 - [ ] Monitor error rate (target: < 0.5%)
 - [ ] Monitor rate limiting (check for false positives)
 - [ ] Monitor fraud detection (manual review sample)
@@ -402,6 +428,7 @@ EOF
 ### If Issues Occur
 
 #### Option 1: Immediate Rollback (< 5 minutes)
+
 ```bash
 # Stop application
 systemctl stop nginx
@@ -423,6 +450,7 @@ systemctl start nginx
 ```
 
 #### Option 2: Feature Flag Rollback
+
 ```bash
 # Disable new features (no code revert needed)
 php artisan tinker
@@ -432,6 +460,7 @@ php artisan tinker
 ```
 
 #### Option 3: Staged Rollback
+
 ```bash
 # Enable only for specific user group
 # Disable for everyone else temporarily
@@ -445,6 +474,7 @@ php artisan tinker
 ## 🎯 SUCCESS METRICS (Target: 7-Day Monitoring)
 
 **Week 1 Targets**:
+
 - ✅ API uptime: > 99.99%
 - ✅ Error rate: < 0.5%
 - ✅ Rate limiting: Zero false positives
@@ -454,6 +484,7 @@ php artisan tinker
 - ✅ Zero security incidents
 
 **Signs Everything Is Working**:
+
 1. ✅ OpenAPI docs available
 2. ✅ Authentication tokens issued
 3. ✅ Rate limits enforced
@@ -466,10 +497,10 @@ php artisan tinker
 
 ## 📞 EMERGENCY CONTACTS
 
-- **Security Team**: security@example.com
+- **Security Team**: <security@example.com>
 - **DevOps On-Call**: +1-XXX-XXX-XXXX
-- **Database Team**: db-team@example.com
-- **Incident Commander**: ic@example.com
+- **Database Team**: <db-team@example.com>
+- **Incident Commander**: <ic@example.com>
 
 ---
 

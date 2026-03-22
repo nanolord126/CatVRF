@@ -2,8 +2,8 @@
 
 namespace App\Domains\Travel\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use App\Domains\Travel\Events\TransportationBooked;
 use App\Domains\Travel\Models\TravelTransportation;
@@ -13,22 +13,28 @@ use Throwable;
 
 final readonly class TransportationService
 {
-    public function __construct() {}
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,) {}
 
     public function bookTransportation(
         TravelTransportation $transportation,
         int $seatsRequired = 1,
         string $correlationId = null,
     ): TravelTransportation {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'bookTransportation'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL bookTransportation', ['domain' => __CLASS__]);
+
 
         $correlationId ??= Str::uuid()->toString();
 
         try {
-            return DB::transaction(function () use (
+            $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
+DB::transaction(function () use (
                 $transportation,
                 $seatsRequired,
                 $correlationId,
@@ -73,15 +79,20 @@ final readonly class TransportationService
         int $seatsToRelease = 1,
         string $correlationId = null,
     ): TravelTransportation {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'releaseTransportation'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL releaseTransportation', ['domain' => __CLASS__]);
+
 
         $correlationId ??= $transportation->correlation_id ?? Str::uuid()->toString();
 
         try {
-            return DB::transaction(function () use (
+            $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
+DB::transaction(function () use (
                 $transportation,
                 $seatsToRelease,
                 $correlationId,

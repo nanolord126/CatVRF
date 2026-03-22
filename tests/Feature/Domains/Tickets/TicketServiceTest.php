@@ -7,6 +7,7 @@ use App\Domains\Tickets\Models\Ticket;
 use App\Domains\Tickets\Services\TicketService;
 use App\Models\Wallet;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Services\FraudControlService;
 use Illuminate\Support\Str;
 use Tests\BaseTestCase;
 
@@ -23,6 +24,10 @@ final class TicketServiceTest extends BaseTestCase
     {
         parent::setUp();
         $this->service = app(TicketService::class);
+        $this->app->instance(
+            FraudControlService::class,
+            \Mockery::mock(FraudControlService::class)->shouldReceive('check')->andReturn(true)->getMock()
+        );
     }
 
     public function test_ticket_purchased_with_qr_code(): void

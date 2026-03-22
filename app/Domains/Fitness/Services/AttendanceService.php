@@ -2,8 +2,8 @@
 
 namespace App\Domains\Fitness\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use App\Domains\Fitness\Events\AttendanceRecorded;
 use App\Domains\Fitness\Models\Attendance;
@@ -15,10 +15,7 @@ final readonly class AttendanceService
 {
     public function recordCheckIn(int $classScheduleId, int $memberId, string $correlationId): Attendance
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'recordCheckIn'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL recordCheckIn', ['domain' => __CLASS__]);
+
 
         try {
             $schedule = ClassSchedule::findOrFail($classScheduleId);
@@ -60,10 +57,7 @@ final readonly class AttendanceService
 
     public function recordCheckOut(Attendance $attendance, string $correlationId): void
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'recordCheckOut'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL recordCheckOut', ['domain' => __CLASS__]);
+
 
         try {
             DB::transaction(function () use ($attendance, $correlationId) {

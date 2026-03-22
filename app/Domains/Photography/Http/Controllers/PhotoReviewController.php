@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domains\Photography\Http\Controllers;
 
 use App\Domains\Photography\Models\PhotoReview;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -13,6 +14,10 @@ use Illuminate\Support\Str;
 
 final class PhotoReviewController
 {
+	public function __construct(
+		private readonly FraudControlService $fraudControlService,
+	) {}
+
 	public function index(): JsonResponse
 	{
 		try {
@@ -55,9 +60,8 @@ final class PhotoReviewController
 
 	public function store(int $sessionId, Request $request): JsonResponse
 	{
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
 		try {
 			$this->authorize('create', PhotoReview::class);
@@ -66,8 +70,6 @@ final class PhotoReviewController
 				'rating' => 'required|integer|min:1|max:5',
 				'comment' => 'nullable|string|max:1000',
 			]);
-
-			$correlationId = Str::uuid()->toString();
 
 			DB::transaction(function () use ($sessionId, $validated, $correlationId) {
 				$session = \App\Domains\Photography\Models\PhotoSession::findOrFail($sessionId);
@@ -112,9 +114,8 @@ final class PhotoReviewController
 
 	public function update(int $id, Request $request): JsonResponse
 	{
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
 		try {
 			$review = PhotoReview::findOrFail($id);
@@ -148,9 +149,8 @@ final class PhotoReviewController
 
 	public function destroy(int $id): JsonResponse
 	{
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
 		try {
 			$review = PhotoReview::findOrFail($id);

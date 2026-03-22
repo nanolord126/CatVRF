@@ -32,6 +32,7 @@ declare(strict_types=1);
 ## 🎯 PHASE-BY-PHASE IMPLEMENTATION
 
 ### Phase 1: Security Planning & Architecture (COMPLETED)
+
 - ✅ Анализ 12 уязвимостей
 - ✅ Документирование SECURITY_AUDIT_REMEDIATION_PLAN.md (800+ lines)
 - ✅ Выбор архитектуры: Service-based + Middleware pipeline
@@ -40,6 +41,7 @@ declare(strict_types=1);
 ### Phase 2: Core Security Services (COMPLETED)
 
 #### IdempotencyService (280 lines)
+
 ```php
 Purpose: Предотвращение replay attacks через проверку уникальности payload
 Mechanism: SHA-256 hash + Redis/DB storage
@@ -54,6 +56,7 @@ Features:
 ```
 
 #### WebhookSignatureService (250 lines)
+
 ```php
 Purpose: Верификация подлинности вебхуков от Tinkoff, Sber, СБП
 Mechanism: HMAC-SHA256 + OpenSSL certificates + IP whitelist
@@ -72,6 +75,7 @@ Features:
 ```
 
 #### RateLimiterService (350 lines - ENHANCED)
+
 ```php
 Purpose: Распределённое rate limiting со sliding window
 Algorithm: Redis LPUSH/LLEN/LREM (не fixed window)
@@ -124,6 +128,7 @@ Features:
 ### Phase 6: Configuration & Routes (COMPLETED)
 
 **config/security.php** (120 lines)
+
 - IP whitelists for webhooks (Tinkoff, Sber, СБП, Yandex, local)
 - Webhook secrets (TINKOFF_WEBHOOK_SECRET, SBER_WEBHOOK_SECRET, etc.)
 - Rate limiting parameters (sliding window TTL, burst threshold)
@@ -131,6 +136,7 @@ Features:
 - API key settings (prefix 'sk_', TTL 365 days)
 
 **config/cors.php** (40 lines)
+
 - CORS allowed origins from .env
 - Allowed methods (GET, POST, PUT, DELETE, PATCH, OPTIONS)
 - Allowed headers (Content-Type, Authorization, X-Correlation-ID, X-Idempotency-Key)
@@ -138,6 +144,7 @@ Features:
 - Exposed headers (X-RateLimit-*, Retry-After, Correlation-ID)
 
 **routes/api.php** (UPDATED)
+
 ```php
 // Payment endpoints (with RateLimitPaymentMiddleware)
 POST   /api/payments              → PaymentController@store
@@ -177,6 +184,7 @@ GET    /api/health                → Health check
 ### Phase 8: OpenAPI Documentation (COMPLETED)
 
 **OpenApiController.php** (300 lines)
+
 - OpenAPI 3.0 specification
 - Payment endpoint documentation
 - Promo endpoint documentation
@@ -184,6 +192,7 @@ GET    /api/health                → Health check
 - Security schemes (bearerAuth, apiKey)
 
 Routes:
+
 - `GET /api/docs/openapi.json` → Full OpenAPI spec
 - `GET /api/docs/swagger` → Swagger UI
 - `GET /api/health` → Health check
@@ -191,6 +200,7 @@ Routes:
 ### Phase 9: Middleware Registration (COMPLETED)
 
 Updated **app/Http/Kernel.php**:
+
 ```php
 'cors-secure' => CorsSecureMiddleware::class,
 'csrf-protection' => CsrfProtectionMiddleware::class,
@@ -204,6 +214,7 @@ Updated **app/Http/Kernel.php**:
 ### Phase 10: Service Layer Integration (COMPLETED)
 
 **PaymentService.php** (Updated)
+
 ```php
 Constructor: Added IdempotencyService, RateLimiterService
 
@@ -220,6 +231,7 @@ initializeOrderPayment():
 ### Phase 11: API Controllers (COMPLETED)
 
 **PaymentController.php** (120 lines)
+
 ```php
 store(PaymentInitRequest $request):
   - Uses PaymentInitRequest validation
@@ -238,6 +250,7 @@ refund(PaymentTransaction $payment):
 ```
 
 **WebhookController.php** (200 lines)
+
 ```php
 handle(Request $request, string $provider):
   1. WebhookSignatureService::verify() → HMAC/certificate/IP check
@@ -258,12 +271,14 @@ Supported Providers:
 ### Phase 12: Database & Jobs (COMPLETED)
 
 **Migration**: create_api_keys_table
+
 - Stores hashed API keys (key_hash unique)
 - Tracks abilities (JSON), expiration, revocation
 - Tenant & user associations
 - last_used_at for monitoring
 
 **Job**: CleanupExpiredIdempotencyRecordsJob
+
 - Scheduled daily at 2:00 AM
 - Deletes records older than 8 days
 - Logs count and errors
@@ -357,17 +372,20 @@ HIGH Vulnerabilities Fixed: 6/6 (100%)
 ### Production Deployment (Stage: STAGING → PROD)
 
 1. **Code Deployment**
+
    ```bash
    git pull origin main
    composer install --no-dev
    ```
 
 2. **Database Migration**
+
    ```bash
    php artisan migrate --force
    ```
 
 3. **Cache Warmup**
+
    ```bash
    php artisan config:cache
    php artisan route:cache
@@ -379,6 +397,7 @@ HIGH Vulnerabilities Fixed: 6/6 (100%)
    - Register policies in AuthServiceProvider
 
 5. **Queue Setup**
+
    ```bash
    php artisan queue:work --tries=3 --timeout=300 &
    ```
@@ -428,6 +447,7 @@ Webhook Retry      100/hour        3600 sec    N/A
 ### Audit Logging
 
 All operations logged to `storage/logs/audit.log` with:
+
 ```json
 {
   "timestamp": "2026-03-17T14:30:00Z",
@@ -445,6 +465,7 @@ All operations logged to `storage/logs/audit.log` with:
 ## ⚠️ KNOWN LIMITATIONS & NEXT STEPS
 
 ### Current Limitations (Week 1)
+
 - [ ] API versioning not implemented (/api/v1/ refactor needed)
 - [ ] Advanced fraud ML scoring integration pending
 - [ ] Batch webhook processing not optimized
@@ -452,6 +473,7 @@ All operations logged to `storage/logs/audit.log` with:
 - [ ] Webhook retry mechanism basic (needs backoff)
 
 ### Week 2 Priorities
+
 1. **API Versioning** — Restructure to /api/v1/, /api/v2/
 2. **Advanced Testing** — Unit + integration + E2E
 3. **Monitoring** — Sentry + DataDog integration

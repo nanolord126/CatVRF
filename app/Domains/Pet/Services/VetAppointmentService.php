@@ -2,14 +2,15 @@
 
 namespace App\Domains\Pet\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use Illuminate\Support\Facades\DB;
 
 final class VetAppointmentService
 {
-    public function __construct()
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,)
     {
     }
 
@@ -23,12 +24,17 @@ final class VetAppointmentService
         string $petType,
         string $correlationId,
     ): int {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'bookVetAppointment'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL bookVetAppointment', ['domain' => __CLASS__]);
+
 
         try {
+                        $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
             $appointmentId = DB::transaction(function () use ($vetId, $clinicId, $petName, $petType, $correlationId) {
                 $appointmentId = DB::table('pet_appointments')->insertGetId([
                     'vet_id' => $vetId,
@@ -66,12 +72,17 @@ final class VetAppointmentService
      */
     public function completeVetVisit(int $appointmentId, array $supplies, string $correlationId): bool
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'completeVetVisit'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL completeVetVisit', ['domain' => __CLASS__]);
+
 
         try {
+                        $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
             DB::transaction(function () use ($appointmentId, $supplies, $correlationId) {
                 // Обновить статус приема
                 DB::table('pet_appointments')

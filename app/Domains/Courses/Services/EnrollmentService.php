@@ -2,8 +2,8 @@
 
 namespace App\Domains\Courses\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use App\Domains\Courses\Models\Enrollment;
 use App\Domains\Courses\Models\Course;
@@ -13,15 +13,16 @@ use Throwable;
 
 final class EnrollmentService
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function enrollStudent(
         int $courseId,
         string $studentId,
         string $correlationId = '',
     ): Enrollment {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'enrollStudent'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL enrollStudent', ['domain' => __CLASS__]);
+
 
         try {
             Log::channel('audit')->info('Enrolling student in course', [
@@ -29,6 +30,15 @@ final class EnrollmentService
                 'student_id' => $studentId,
                 'correlation_id' => $correlationId,
             ]);
+
+            $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
 
             $enrollment = DB::transaction(function () use ($courseId, $studentId, $correlationId) {
                 $course = Course::findOrFail($courseId);
@@ -71,10 +81,7 @@ final class EnrollmentService
 
     public function completeEnrollment(Enrollment $enrollment, string $correlationId = ''): Enrollment
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'completeEnrollment'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL completeEnrollment', ['domain' => __CLASS__]);
+
 
         try {
             Log::channel('audit')->info('Completing enrollment', [
@@ -105,10 +112,7 @@ final class EnrollmentService
 
     public function dropEnrollment(Enrollment $enrollment, string $reason = '', string $correlationId = ''): bool
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'dropEnrollment'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL dropEnrollment', ['domain' => __CLASS__]);
+
 
         try {
             Log::channel('audit')->info('Dropping enrollment', [

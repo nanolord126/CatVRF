@@ -101,7 +101,7 @@ final class CertificateController
     public function verify(string $code): JsonResponse
     {
         try {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             $certificate = $this->certificateService->verifyCertificate($code, $correlationId);
 
             if (!$certificate) {

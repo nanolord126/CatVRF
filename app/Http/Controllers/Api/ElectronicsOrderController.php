@@ -8,6 +8,7 @@ use App\Domains\Electronics\Models\ElectronicOrder;
 use App\Domains\Electronics\Services\WarrantyService;
 use App\Http\Requests\Electronics\StoreOrderRequest;
 use App\Http\Requests\Electronics\StoreWarrantyClaimRequest;
+use App\Services\FraudControlService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
@@ -16,7 +17,8 @@ use Illuminate\Support\Str;
 final class ElectronicsOrderController extends BaseApiController
 {
     public function __construct(
-        private WarrantyService $service,
+        private readonly WarrantyService $service,
+        private readonly FraudControlService $fraudControlService,
     ) {}
 
     public function index(): JsonResponse
@@ -38,12 +40,10 @@ final class ElectronicsOrderController extends BaseApiController
 
     public function store(StoreOrderRequest $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'electronics_order_store', 0, $request->ip(), null, $correlationId);
 
         try {
-            $correlationId = Str::uuid()->toString();
             $tenantId = auth()->user()?->tenant_id ?? tenant()->id;
 
             $order = new ElectronicOrder([
@@ -78,7 +78,7 @@ final class ElectronicsOrderController extends BaseApiController
             $claim = $this->service->createWarrantyClaim(
                 productId: $request->integer('product_id'),
                 clientId: $request->integer('client_id'),
-                issueDescription: $request->string('issue_description'),
+                issueDescription: (string) $request->string('issue_description'),
                 tenantId: $tenantId,
                 correlationId: $correlationId,
             );

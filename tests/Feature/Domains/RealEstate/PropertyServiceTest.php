@@ -8,6 +8,7 @@ use App\Domains\RealEstate\Models\RentalListing;
 use App\Domains\RealEstate\Services\PropertyService;
 use App\Models\Wallet;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Services\FraudControlService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\BaseTestCase;
@@ -25,6 +26,10 @@ final class PropertyServiceTest extends BaseTestCase
     {
         parent::setUp();
         $this->service = app(PropertyService::class);
+        $this->app->instance(
+            FraudControlService::class,
+            \Mockery::mock(FraudControlService::class)->shouldReceive('check')->andReturn(true)->getMock()
+        );
     }
 
     public function test_property_created_with_required_fields(): void

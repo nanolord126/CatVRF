@@ -2,36 +2,29 @@
 
 namespace App\Domains\MedicalSupplies\Services;
 
-use App\Services\Security\FraudControlService;
+use App\Services\FraudControlService;
 use Illuminate\Support\Facades\Log;
 
 use Illuminate\Support\Facades\DB;
 
 final class PrescriptionService
 {
-    public function __construct()
-    {
-    }
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
 
     public function validatePrescription(string $prescriptionCode, int $medicineId, string $correlationId): bool
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'validatePrescription'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL validatePrescription', ['domain' => __CLASS__]);
-
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'validatePrescription'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL validatePrescription', ['domain' => __CLASS__]);
-
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'validatePrescription'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL validatePrescription', ['domain' => __CLASS__]);
-
         try {
-            return DB::transaction(function () use ($prescriptionCode, $medicineId, $correlationId) {
+            $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
+DB::transaction(function () use ($prescriptionCode, $medicineId, $correlationId) {
                 $prescription = DB::table('prescriptions')
                     ->where('code', $prescriptionCode)
                     ->where('medicine_id', $medicineId)

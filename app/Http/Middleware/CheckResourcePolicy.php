@@ -78,9 +78,13 @@ final class CheckResourcePolicy
         $modelClass = str_replace('Policy', '', str_replace('Policies\Domains\\', 'Domains\\', $policyClass));
 
         if (class_exists($modelClass)) {
-            return $modelClass::find($resourceId);
+            $resource = $modelClass::find($resourceId);
+            if (!$resource) {
+                throw new \Illuminate\Database\Eloquent\ModelNotFoundException("Resource [{$modelClass}] #{$resourceId} not found.");
+            }
+            return $resource;
         }
 
-        return null;
+        throw new \RuntimeException("Policy model class [{$modelClass}] does not exist. Check policy naming convention.");
     }
 }

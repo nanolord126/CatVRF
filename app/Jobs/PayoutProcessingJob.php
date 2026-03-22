@@ -38,7 +38,7 @@ final class PayoutProcessingJob implements ShouldQueue
     {
         $this->gateway = app(PaymentGatewayInterface::class);
         $this->fraudMLService = app(FraudMLService::class);
-        $this->correlationId = (string) Str::uuid();
+        $this->correlationId = (string) Str::uuid()->toString();
     }
 
     public function handle(): void

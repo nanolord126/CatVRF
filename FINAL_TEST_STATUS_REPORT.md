@@ -31,6 +31,7 @@
 ## 🔥 СПЕЦИАЛИЗИРОВАННЫЕ ТЕСТЫ (Новые 9 файлов)
 
 ### 1️⃣ Heatmap Analytics (🔥 Тепловые карты)
+
 ```
 📁 cypress/e2e/heatmap-analytics.cy.ts (400 LOC, 30+ тестов)
 ✅ Визуализация географических данных
@@ -43,6 +44,7 @@
 ```
 
 ### 2️⃣ Test Transactions (💳 Тестовые платежи)
+
 ```
 📁 cypress/e2e/test-transactions.cy.ts (350 LOC, 25+ тестов)
 ✅ Создание тестовых платежей
@@ -55,6 +57,7 @@
 ```
 
 ### 3️⃣ Cashback & Rewards (💰 Кешбек)
+
 ```
 📁 cypress/e2e/cashback-rewards.cy.ts (450 LOC, 35+ тестов)
 ✅ Многоуровневые программы кешбека
@@ -67,6 +70,7 @@
 ```
 
 ### 4️⃣ Chargebacks & Disputes (🔄 Чарджбеки)
+
 ```
 📁 cypress/e2e/chargebacks-disputes.cy.ts (400 LOC, 28+ тестов)
 ✅ Получение уведомлений
@@ -79,6 +83,7 @@
 ```
 
 ### 5️⃣ OFD Fiscalization (📄 ОФД)
+
 ```
 📁 cypress/e2e/ofd-fiscalization.cy.ts (500 LOC, 40+ тестов)
 ✅ Регистрация в ОФД
@@ -91,6 +96,7 @@
 ```
 
 ### 6️⃣ ML & AI Services (🤖 Машинное обучение)
+
 ```
 📁 cypress/e2e/ml-ai-services.cy.ts (500 LOC, 45+ тестов)
 ✅ RecommendationService
@@ -103,6 +109,7 @@
 ```
 
 ### 7️⃣ Analytics & BigData (📊 Аналитика)
+
 ```
 📁 cypress/e2e/analytics-bigdata.cy.ts (600 LOC, 55+ тестов)
 ✅ Real-time дашборды
@@ -115,6 +122,7 @@
 ```
 
 ### 8️⃣ Fraud Attacks (🔓 Фрауд-атаки)
+
 ```
 📁 cypress/e2e/fraud-attacks.cy.ts (550 LOC, 50+ тестов)
 ✅ Velocity fraud
@@ -127,6 +135,7 @@
 ```
 
 ### 9️⃣ Security Threats (🔐 Угрозы безопасности)
+
 ```
 📁 cypress/e2e/security-threats.cy.ts (550 LOC, 50+ тестов)
 ✅ Malware & Virus detection
@@ -142,13 +151,15 @@
 
 ## 📈 ИНФРАСТРУКТУРА ТЕСТИРОВАНИЯ
 
-### Фреймворки:
+### Фреймворки
+
 - ✅ **Cypress** (E2E тесты) - 43 файла, 1,423+ тестов
 - ✅ **k6** (Load testing) - 6 файлов, ~150 тестов
 - ✅ **TypeScript** - Строгая типизация
 - ✅ **Jest/Vitest** - Unit тесты (готовы)
 
-### Покрытие:
+### Покрытие
+
 - ✅ **Все 23 вертикали** (Beauty, Auto, Food, RealEstate и т.д.)
 - ✅ **RBAC система** (7 ролей)
 - ✅ **Платёжные системы** (Tinkoff, Sber, Tochka)
@@ -160,12 +171,14 @@
 
 ## 🚀 ЗАПУСК ТЕСТОВ
 
-### Все специализированные тесты:
+### Все специализированные тесты
+
 ```powershell
 ./run-specialized-tests.ps1 -Category all
 ```
 
-### По категориям:
+### По категориям
+
 ```powershell
 # Платежи
 ./run-specialized-tests.ps1 -Category payments
@@ -182,7 +195,8 @@
 ./run-specialized-tests.ps1 -Category ofd
 ```
 
-### Все тесты проекта:
+### Все тесты проекта
+
 ```bash
 # E2E тесты
 npm run cypress:run
@@ -198,13 +212,15 @@ npm run test:quick
 
 ## 📋 ДОКУМЕНТАЦИЯ
 
-### Основные файлы:
+### Основные файлы
+
 1. **SPECIALIZED_TESTS_COMPLETE.md** - Полное описание всех 9 категорий
 2. **run-specialized-tests.ps1** - PowerShell скрипт для запуска
 3. **cypress/e2e/** - Все E2E тесты
 4. **k6/** - Load тесты
 
-### Команды:
+### Команды
+
 ```bash
 # Запустить все тесты
 npm run test:all
@@ -223,7 +239,8 @@ npm run cypress:run -- --reporter json --reporterOptions reportDir=cypress/repor
 
 ## ✅ ПОЛНЫЙ CHECKLIST ТЕСТИРОВАНИЯ
 
-### Платёжные системы:
+### Платёжные системы
+
 - ✅ Payment flow (создание, холд, capture, refund)
 - ✅ Тестовые платежи (все карты, все сценарии)
 - ✅ 3DS/3DS2 проверка
@@ -232,7 +249,8 @@ npm run cypress:run -- --reporter json --reporterOptions reportDir=cypress/repor
 - ✅ Fraud scoring
 - ✅ Чарджбеки и sporates
 
-### Финансовые функции:
+### Финансовые функции
+
 - ✅ Wallet & Balance
 - ✅ Кешбек (расчёт, применение, вывод)
 - ✅ Бонусы и награды
@@ -240,7 +258,8 @@ npm run cypress:run -- --reporter json --reporterOptions reportDir=cypress/repor
 - ✅ Выплаты (payout system)
 - ✅ Split payments
 
-### Бизнес-функции:
+### Бизнес-функции
+
 - ✅ 23 вертикали с полным E2E
 - ✅ ОФД интеграция (чеки, передача)
 - ✅ Учёт запасов (inventory)
@@ -248,14 +267,16 @@ npm run cypress:run -- --reporter json --reporterOptions reportDir=cypress/repor
 - ✅ Промо-кампании
 - ✅ Реферальная система
 
-### AI/ML:
+### AI/ML
+
 - ✅ Рекомендации (персонализированные, кросс-вертикальные)
 - ✅ Fraud scoring (ML модель)
 - ✅ Прогноз спроса (30 дней)
 - ✅ Оптимизация цен
 - ✅ Обнаружение аномалий
 
-### Аналитика:
+### Аналитика
+
 - ✅ Real-time дашборды
 - ✅ Исторические отчёты
 - ✅ Cohort анализ
@@ -263,7 +284,8 @@ npm run cypress:run -- --reporter json --reporterOptions reportDir=cypress/repor
 - ✅ Attribution анализ
 - ✅ BigData экспорт (BigQuery, ClickHouse)
 
-### Безопасность:
+### Безопасность
+
 - ✅ Фрауд-атаки (velocity, card testing, synthetic)
 - ✅ Malware/Virus detection
 - ✅ Phishing detection
@@ -272,14 +294,16 @@ npm run cypress:run -- --reporter json --reporterOptions reportDir=cypress/repor
 - ✅ MITM protection
 - ✅ 2FA/MFA
 
-### RBAC & Authorization:
+### RBAC & Authorization
+
 - ✅ 7 ролей (SuperAdmin, Admin, Manager, Employee, Accountant, Business, Customer)
 - ✅ Permission cascading
 - ✅ Tenant isolation
 - ✅ Business group scoping
 - ✅ Многоуровневый access control
 
-### Load Testing:
+### Load Testing
+
 - ✅ Core (0→100 VUs, p95 < 500ms)
 - ✅ Beauty (масштабирование)
 - ✅ Taxi (real-time)
@@ -308,7 +332,8 @@ npm run cypress:run -- --reporter json --reporterOptions reportDir=cypress/repor
 
 ## 📝 ПОСЛЕДНИЕ ДОБАВЛЕНИЯ (Текущая сессия)
 
-### Новые файлы:
+### Новые файлы
+
 1. ✅ heatmap-analytics.cy.ts (400 LOC, 30+ тестов)
 2. ✅ test-transactions.cy.ts (350 LOC, 25+ тестов)
 3. ✅ cashback-rewards.cy.ts (450 LOC, 35+ тестов)
@@ -321,7 +346,8 @@ npm run cypress:run -- --reporter json --reporterOptions reportDir=cypress/repor
 10. ✅ SPECIALIZED_TESTS_COMPLETE.md (документация)
 11. ✅ run-specialized-tests.ps1 (скрипт запуска)
 
-### Итого за сессию:
+### Итого за сессию
+
 - **9 новых тестовых файлов** (4,300 LOC)
 - **358+ новых тестов**
 - **2 документационных файла**

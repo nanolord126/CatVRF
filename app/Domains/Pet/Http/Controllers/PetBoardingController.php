@@ -5,14 +5,17 @@ namespace App\Domains\Pet\Http\Controllers;
 use App\Domains\Pet\Models\PetBoardingReservation;
 use App\Domains\Pet\Services\BoardingService;
 use App\Http\Controllers\Controller;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 final class PetBoardingController extends Controller
 {
     public function __construct(
         private readonly BoardingService $boardingService,
+        private readonly FraudControlService $fraudControlService,
     ) {}
 
     public function index(): JsonResponse
@@ -29,7 +32,7 @@ final class PetBoardingController extends Controller
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Throwable $e) {
-            \Log::error('Failed to get reservations', ['error' => $e->getMessage()]);
+            Log::error('Failed to get reservations', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve reservations',
@@ -62,16 +65,21 @@ final class PetBoardingController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
-            $correlationId = Str::uuid()->toString();
             $reservation = $this->boardingService->createReservation(
                 $request->validated(),
                 $correlationId
             );
+
+            Log::channel('audit')->info('Pet boarding reservation created', [
+                'correlation_id' => $correlationId,
+                'reservation_id' => $reservation->id ?? null,
+                'tenant_id'      => $reservation->tenant_id ?? null,
+                'user_id'        => auth()->id(),
+            ]);
 
             return response()->json([
                 'success' => true,
@@ -79,7 +87,7 @@ final class PetBoardingController extends Controller
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Throwable $e) {
-            \Log::error('Failed to create reservation', ['error' => $e->getMessage()]);
+            Log::error('Failed to create reservation', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create reservation',
@@ -90,18 +98,26 @@ final class PetBoardingController extends Controller
 
     public function update(Request $request, $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $reservation = PetBoardingReservation::findOrFail($id);
             $this->authorize('update', $reservation);
-            $correlationId = Str::uuid()->toString();
+
+            $before = $reservation->getAttributes();
 
             $reservation->update([
                 ...$request->validated(),
                 'correlation_id' => $correlationId,
+            ]);
+
+            Log::channel('audit')->info('Pet boarding reservation updated', [
+                'correlation_id' => $correlationId,
+                'reservation_id' => $reservation->id,
+                'tenant_id'      => $reservation->tenant_id,
+                'user_id'        => auth()->id(),
+                'before'         => $before,
             ]);
 
             return response()->json([
@@ -120,16 +136,21 @@ final class PetBoardingController extends Controller
 
     public function destroy($id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $reservation = PetBoardingReservation::findOrFail($id);
             $this->authorize('cancel', $reservation);
-            $correlationId = Str::uuid()->toString();
 
             $reservation->delete();
+
+            Log::channel('audit')->info('Pet boarding reservation deleted', [
+                'correlation_id' => $correlationId,
+                'reservation_id' => $reservation->id,
+                'tenant_id'      => $reservation->tenant_id,
+                'user_id'        => auth()->id(),
+            ]);
 
             return response()->json([
                 'success' => true,
@@ -152,7 +173,15 @@ final class PetBoardingController extends Controller
             $this->authorize('cancel', $reservation);
             $correlationId = Str::uuid()->toString();
 
+            $this->fraudControlService->check(auth()->id() ?? 0, 'boarding_cancel', 0, request()->ip(), null, $correlationId);
+
             $reservation = $this->boardingService->cancelReservation($reservation, $correlationId);
+
+            Log::channel('audit')->info('Pet boarding reservation cancelled', [
+                'correlation_id' => $correlationId,
+                'reservation_id' => $reservation->id,
+                'user_id'        => auth()->id(),
+            ]);
 
             return response()->json([
                 'success' => true,

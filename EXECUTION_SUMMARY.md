@@ -36,6 +36,7 @@
 ### 1. HARD CLEANUP (ЗАВЕРШЕНО)
 
 **Удалено:**
+
 ```
 app/Domains/                    (28 поддиректорий, устаревший код)
 modules/Advertising/
@@ -68,6 +69,7 @@ modules/Tourism/
 ```
 
 **Результат:**
+
 - Code reduced from 45K to 8K lines (-82%)
 - 0 stub implementations
 - 0 TODO comments
@@ -78,12 +80,14 @@ modules/Tourism/
 #### Models Created/Enhanced
 
 **[modules/Beauty/Models/Service.php](modules/Beauty/Models/Service.php)**
+
 - Связь с Salon (BelongsTo)
 - Связь с Bookings (HasMany)
 - Scopes: active(), forTenant()
 - Поля: name, description, price, duration_minutes, is_active
 
 **[modules/Beauty/Models/Booking.php](modules/Beauty/Models/Booking.php)**
+
 - Status enum (BookingStatus)
 - Методы: markAsConfirmed(), markAsCompleted(), markAsCancelled()
 - Validation: canBePaid(), даты в будущем
@@ -91,6 +95,7 @@ modules/Tourism/
 - Correlation ID для audit trail
 
 **[modules/Beauty/Models/Payment.php](modules/Beauty/Models/Payment.php)**
+
 - Status enum (PaymentStatus)
 - Wallet fields: salon_payout_amount, platform_commission_amount
 - Методы: markAsConfirmed(), markAsFailed(), markAsRefunded()
@@ -98,6 +103,7 @@ modules/Tourism/
 - Commission calculation (20% default)
 
 **[modules/Beauty/Models/BeautySalon.php](modules/Beauty/Models/BeautySalon.php)**
+
 - Существующий, расширенный
 - Wallet integration через bavix/laravel-wallet
 - Observer для auto wallet creation
@@ -105,6 +111,7 @@ modules/Tourism/
 #### Services Created
 
 **[modules/Beauty/Services/BookingService.php](modules/Beauty/Services/BookingService.php)**
+
 - `createBooking()` - создание с валидацией даты
 - `confirmBooking()` - переход в CONFIRMED
 - `completeBooking()` - переход в COMPLETED
@@ -113,6 +120,7 @@ modules/Tourism/
 - Logging с correlation_id
 
 **[modules/Beauty/Services/PaymentService.php](modules/Beauty/Services/PaymentService.php)**
+
 - `initiatePayment()` - создание Payment, Tinkoff gateway call
 - `confirmPayment()` - wallet deposit (80% salon, 20% platform)
 - `failPayment()` - логирование причины ошибки
@@ -122,6 +130,7 @@ modules/Tourism/
 #### Gateways Updated
 
 **[modules/Payments/Gateways/TinkoffGateway.php](modules/Payments/Gateways/TinkoffGateway.php)**
+
 - `createPayment()` - инициация с Receipt для ОСН
 - `getPaymentStatus()` - опрос статуса платежа
 - `refund()` - полный возврат
@@ -131,11 +140,13 @@ modules/Tourism/
 #### Enums Created
 
 **[modules/Beauty/Enums/BookingStatus.php](modules/Beauty/Enums/BookingStatus.php)**
+
 ```php
 PENDING, CONFIRMED, UNPAID, COMPLETED, CANCELLED, NO_SHOW
 ```
 
 **[modules/Beauty/Enums/PaymentStatus.php](modules/Beauty/Enums/PaymentStatus.php)**
+
 ```php
 PENDING, CONFIRMED, FAILED, REFUNDED, CANCELLED
 ```
@@ -143,15 +154,18 @@ PENDING, CONFIRMED, FAILED, REFUNDED, CANCELLED
 #### Migrations Created
 
 **[database/migrations/2026_03_11_120000_create_beauty_services_table.php](database/migrations/2026_03_11_120000_create_beauty_services_table.php)**
+
 - Indices: salon_id, tenant_id, is_active
 - Foreign key: salon_id → beauty_salons
 
 **[database/migrations/2026_03_11_120100_create_beauty_bookings_table.php](database/migrations/2026_03_11_120100_create_beauty_bookings_table.php)**
+
 - Indices: salon_id, tenant_id, service_id, customer_id, status, scheduled_at
 - Foreign keys: service_id, salon_id, customer_id
 - correlation_id unique index
 
 **[database/migrations/2026_03_11_120200_create_beauty_payments_table.php](database/migrations/2026_03_11_120200_create_beauty_payments_table.php)**
+
 - Indices: salon_id, tenant_id, booking_id, status, correlation_id
 - Foreign keys: booking_id, salon_id
 - tinkoff_payment_id unique index
@@ -161,6 +175,7 @@ PENDING, CONFIRMED, FAILED, REFUNDED, CANCELLED
 **Before:** ~30% методов были пустыми или возвращали null
 
 **After:**
+
 - ✅ `BookingService.createBooking()` - реальная логика с DB transaction
 - ✅ `PaymentService.confirmPayment()` - реальный wallet deposit
 - ✅ `TinkoffGateway.createPayment()` - реальный HTTP запрос
@@ -194,6 +209,7 @@ PENDING, CONFIRMED, FAILED, REFUNDED, CANCELLED
 ### 5. PRODUCTION CONFIGURATION
 
 **[config/payments.php](config/payments.php)**
+
 ```php
 'tinkoff' => [
     'api_key' => env('TINKOFF_API_KEY', '...sandbox...'),
@@ -202,19 +218,23 @@ PENDING, CONFIRMED, FAILED, REFUNDED, CANCELLED
 ```
 
 **[config/octane.php](config/octane.php)**
+
 - Already configured for Swoole
 - Memory management optimized
 - Worker recycling enabled
 
 **[config/horizon.php](config/horizon.php)**
+
 - Queue processing enabled
 - Retry policies configured
 
 **Rate Limiting Middleware:**
+
 - 50 req/min on payment callback
 - 200 req/min on API endpoints
 
 **Logging:**
+
 - JSON structured logging
 - Correlation ID on all operations
 - Separate channel for payments
@@ -222,6 +242,7 @@ PENDING, CONFIRMED, FAILED, REFUNDED, CANCELLED
 ### 6. DOCUMENTATION
 
 **[BEAUTY_WORKFLOW.md](BEAUTY_WORKFLOW.md)** (12 KB)
+
 - Complete lifecycle diagram
 - Database schema
 - Service documentation
@@ -230,6 +251,7 @@ PENDING, CONFIRMED, FAILED, REFUNDED, CANCELLED
 - Production checklist
 
 **[PRODUCTION_CHECKLIST.md](PRODUCTION_CHECKLIST.md)** (8 KB)
+
 - Database & Migrations checklist
 - Models & Validation checklist
 - Business Logic checklist
@@ -240,6 +262,7 @@ PENDING, CONFIRMED, FAILED, REFUNDED, CANCELLED
 - Logging & Monitoring checklist
 
 **[MIGRATION_GUIDE.md](MIGRATION_GUIDE.md)** (10 KB)
+
 - Step-by-step setup instructions
 - Architecture overview
 - Database tables description
@@ -250,12 +273,14 @@ PENDING, CONFIRMED, FAILED, REFUNDED, CANCELLED
 - Troubleshooting
 
 **[CLEANUP_REPORT.md](CLEANUP_REPORT.md)** (6 KB)
+
 - List of deleted items
 - Before & after metrics
 - Key principles applied
 - Final status
 
 **[FINAL_STATUS.md](FINAL_STATUS.md)** (12 KB)
+
 - Executive summary
 - Complete implementation details
 - Metrics & performance
@@ -263,6 +288,7 @@ PENDING, CONFIRMED, FAILED, REFUNDED, CANCELLED
 - Next steps (future work)
 
 **[QUICKSTART.md](QUICKSTART.md)** (5 KB)
+
 - 5-minute quick start
 - Database setup
 - Environment setup

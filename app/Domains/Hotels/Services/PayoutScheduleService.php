@@ -2,8 +2,8 @@
 
 namespace App\Domains\Hotels\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use App\Domains\Hotels\Models\Hotel;
 use Illuminate\Support\Facades\DB;
@@ -11,7 +11,8 @@ use Carbon\Carbon;
 
 final class PayoutScheduleService
 {
-    public function __construct()
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,)
     {
     }
 
@@ -20,12 +21,17 @@ final class PayoutScheduleService
      */
     public function scheduleHotelPayout(int $bookingId, int $amount, string $correlationId): bool
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'scheduleHotelPayout'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL scheduleHotelPayout', ['domain' => __CLASS__]);
+
 
         try {
+                        $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
             DB::transaction(function () use ($bookingId, $amount, $correlationId) {
                 $payoutDate = Carbon::now()->addDays(4);
 
@@ -64,14 +70,19 @@ final class PayoutScheduleService
      */
     public function processScheduledPayouts(string $correlationId): int
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'processScheduledPayouts'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL processScheduledPayouts', ['domain' => __CLASS__]);
+
 
         $processed = 0;
 
         try {
+                        $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
             DB::transaction(function () use (&$processed, $correlationId) {
                 $payouts = DB::table('hotel_payouts')
                     ->where('status', 'scheduled')

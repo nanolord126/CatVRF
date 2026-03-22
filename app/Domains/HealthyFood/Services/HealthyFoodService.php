@@ -38,10 +38,7 @@ final class HealthyFoodService
         int    $tenantId,
         ?array $schedule = null,
     ): DietPlan {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'createDietPlan'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createDietPlan', ['domain' => __CLASS__]);
+
 
         $correlationId = Str::uuid()->toString();
 
@@ -95,10 +92,7 @@ final class HealthyFoodService
         string $frequency = 'weekly',
         ?int   $dietPlanId = null,
     ): MealSubscription {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'subscribe'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL subscribe', ['domain' => __CLASS__]);
+
 
         $correlationId = Str::uuid()->toString();
         $key           = "meal_sub:{$tenantId}:{$clientId}";
@@ -145,10 +139,7 @@ final class HealthyFoodService
      */
     public function markDelivered(int $subscriptionId): MealSubscription
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'markDelivered'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL markDelivered', ['domain' => __CLASS__]);
+
 
         $correlationId = Str::uuid()->toString();
 
@@ -182,10 +173,7 @@ final class HealthyFoodService
      */
     public function getMealsByDiet(string $dietType, int $tenantId): \Illuminate\Database\Eloquent\Collection
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'getMealsByDiet'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getMealsByDiet', ['domain' => __CLASS__]);
+
 
         $correlationId = Str::uuid()->toString();
 

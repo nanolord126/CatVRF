@@ -6,6 +6,7 @@ namespace App\Http\Controllers\API;
 use App\Domains\Furniture\Models\FurnitureOrder;
 use App\Domains\Furniture\Services\DeliveryAssemblyService;
 use App\Http\Requests\Furniture\StoreOrderRequest;
+use App\Services\FraudControlService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
@@ -14,7 +15,8 @@ use Illuminate\Support\Str;
 final class FurnitureOrderController extends BaseApiController
 {
     public function __construct(
-        private DeliveryAssemblyService $service,
+        private readonly DeliveryAssemblyService $service,
+        private readonly FraudControlService $fraudControlService,
     ) {}
 
     public function index(): JsonResponse
@@ -36,12 +38,10 @@ final class FurnitureOrderController extends BaseApiController
 
     public function store(StoreOrderRequest $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'furniture_order_store', 0, $request->ip(), null, $correlationId);
 
         try {
-            $correlationId = Str::uuid()->toString();
             $tenantId = auth()->user()?->tenant_id ?? tenant()->id;
 
             $order = new FurnitureOrder([

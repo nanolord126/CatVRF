@@ -3,19 +3,19 @@
 namespace App\Domains\Photography\Services;
 
 use Illuminate\Support\Facades\Log;
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Str;
+use App\Services\FraudControlService;
 
 
 use Illuminate\Support\Facades\DB;
 
 final class PhotoSessionService
 {
-    public function __construct()
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,)
     {
         $correlationId = Str::uuid()->toString();
         Log::channel('audit')->info('Service method called in Photography', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
 
     }
 
@@ -31,9 +31,16 @@ final class PhotoSessionService
     ): int {
         $correlationId = Str::uuid()->toString();
         Log::channel('audit')->info('Service method called in Photography', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
 
         try {
+                        $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
             $sessionId = DB::transaction(function () use ($photographerId, $eventType, $sessionDate, $durationMinutes, $correlationId) {
                 $sessionId = DB::table('photo_sessions')->insertGetId([
                     'photographer_id' => $photographerId,
@@ -73,9 +80,16 @@ final class PhotoSessionService
     {
         $correlationId = Str::uuid()->toString();
         Log::channel('audit')->info('Service method called in Photography', ['correlation_id' => $correlationId]);
-        FraudControlService::check('service_operation', ['correlation_id' => $correlationId]);
 
         try {
+                        $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
             DB::transaction(function () use ($sessionId, $photosCount, $correlationId) {
                 DB::table('photo_sessions')
                     ->where('id', $sessionId)

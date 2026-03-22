@@ -9,6 +9,7 @@ use App\Domains\Hotels\Services\BookingService;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Services\FraudControlService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -56,6 +57,11 @@ final class BookingServiceTest extends TestCase
 
         $this->actingAs($this->user);
         app()->bind('tenant', fn () => $this->tenant);
+
+        $this->app->instance(
+            FraudControlService::class,
+            \Mockery::mock(FraudControlService::class)->shouldReceive('check')->andReturn(true)->getMock()
+        );
     }
 
     // ─── CREATE BOOKING ───────────────────────────────────────────────────────

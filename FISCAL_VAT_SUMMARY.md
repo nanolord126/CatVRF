@@ -3,6 +3,7 @@
 ## 📋 Обновленные файлы
 
 ### Fiscal Drivers (основная логика НДС)
+
 1. **`AtolFiscalDriver.php`** ✅
    - ✨ Добавлены методы `getTaxRate()` и `processItemsWithTax()`
    - 🔄 Обновлен `sendReceipt()` для обработки налогов по системе
@@ -19,39 +20,43 @@
    - 🔄 Обновлен `refundReceipt()` для поддержки налоговых данных
 
 ### Interfaces (контракты)
+
 4. **`FiscalServiceInterface.php`** ✅
    - 🔄 Обновлена сигнатура `sendReceipt(array, array)`
    - 🔄 Обновлена сигнатура `refundReceipt(string, float, array)`
    - 📚 Добавлена документация по НДС
 
-5. **`FiscalDriverInterface.php`** ✅
+2. **`FiscalDriverInterface.php`** ✅
    - ✅ Уже содержит правильные сигнатуры
 
 ### Business Logic
+
 6. **`PaymentService.php`** ✅
    - 📚 Обновлена документация
    - 🔄 Обновлена отправка чеков через fiscal service
 
 ### Bank Payment Drivers (НОВОЕ!)
+
 7. **`TinkoffDriver.php`** ✅
    - ✨ Добавлен метод `getTaxCode()` для расчета НДС
    - 🔄 Обновлен `buildReceipt()` с поддержкой товаров и налогов
    - 📚 Документация обновлена с поддержкой НДС
 
-8. **`SberDriver.php`** ✅
+2. **`SberDriver.php`** ✅
    - 📚 Документация дополнена поддержкой НДС
    - 💡 Готовность к передаче tax_system в платежи
 
-9. **`TochkaDriver.php`** ✅
+3. **`TochkaDriver.php`** ✅
    - 📚 Документация дополнена поддержкой НДС
    - 💡 Поддержка для корпоративных платежей с налогами
 
 ### Documentation
+
 10. **`FISCAL_VAT_SUPPORT.md`** ✅
     - 📖 Полная документация по фискальным драйверам
     - 📚 Примеры использования
 
-11. **`BANKING_VAT_UPDATE.md`** ✅
+2. **`BANKING_VAT_UPDATE.md`** ✅
     - 📖 Документация по поддержке НДС в банковских драйверах
     - 📚 Примеры использования платежей с налогами
 
@@ -72,9 +77,11 @@
 ### Налоговые коды
 
 **Atol API:**
+
 - `VAT_0`, `VAT_10`, `VAT_18`, `VAT_20`, `NO_VAT`
 
 **CloudKassir API:**
+
 - `Vat0`, `Vat10`, `Vat18`, `NoVat`, `VatMixedStandard`
 
 ---
@@ -82,21 +89,27 @@
 ## 🔧 Основные методы
 
 ### getTaxRate()
+
 Расчет налоговой ставки по системе налогообложения:
+
 ```php
 $taxRate = $driver->getTaxRate('OSN', 'vat_18');
 // Результат: ['rate' => 18, 'type' => 'vat_18']
 ```
 
 ### processItemsWithTax()
+
 Обработка товаров с добавлением налогов:
+
 ```php
 $items = $driver->processItemsWithTax($items, 'OSN');
 // Товары дополняются правильными налоговыми кодами
 ```
 
 ### validateItems()
+
 Валидация товаров перед отправкой:
+
 ```php
 $validation = $driver->validateItems($items);
 // Результат: ['valid' => true/false, 'errors' => [...]]

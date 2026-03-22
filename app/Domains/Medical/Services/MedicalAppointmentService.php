@@ -2,7 +2,7 @@
 
 namespace App\Domains\Medical\Services;
 
-use App\Services\Security\FraudControlService;
+use App\Services\FraudControlService;
 use Illuminate\Support\Facades\Log;
 
 use App\Domains\Medical\Models\Appointment;
@@ -11,9 +11,9 @@ use Carbon\Carbon;
 
 final class MedicalAppointmentService
 {
-    public function __construct()
-    {
-    }
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
 
     /**
      * Создать запись на прием
@@ -25,12 +25,15 @@ final class MedicalAppointmentService
         string $reason,
         string $correlationId,
     ): Appointment {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'bookAppointment'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL bookAppointment', ['domain' => __CLASS__]);
-
         try {
+                        $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
             $appointment = DB::transaction(function () use ($doctorId, $clinicId, $dateTime, $reason, $correlationId) {
                 $appointment = Appointment::create([
                     'doctor_id' => $doctorId,
@@ -68,12 +71,15 @@ final class MedicalAppointmentService
      */
     public function confirmAppointment(int $appointmentId, string $correlationId): bool
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'confirmAppointment'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL confirmAppointment', ['domain' => __CLASS__]);
-
         try {
+                        $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
             DB::transaction(function () use ($appointmentId, $correlationId) {
                 $appointment = Appointment::findOrFail($appointmentId);
                 $appointment->update(['status' => 'confirmed']);
@@ -101,12 +107,15 @@ final class MedicalAppointmentService
      */
     public function completeAppointment(int $appointmentId, string $notes, string $correlationId): bool
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'completeAppointment'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL completeAppointment', ['domain' => __CLASS__]);
-
         try {
+                        $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
             DB::transaction(function () use ($appointmentId, $notes, $correlationId) {
                 $appointment = Appointment::findOrFail($appointmentId);
                 $appointment->update([

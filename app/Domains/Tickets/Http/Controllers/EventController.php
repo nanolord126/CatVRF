@@ -3,11 +3,17 @@
 namespace App\Domains\Tickets\Http\Controllers;
 
 use App\Domains\Tickets\Models\{Event, EventCategory};
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 final class EventController
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function index(): JsonResponse
     {
         try {
@@ -21,7 +27,7 @@ final class EventController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to list events', [
+            Log::channel('audit')->error('Failed to list events', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -43,7 +49,7 @@ final class EventController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to show event', [
+            Log::channel('audit')->error('Failed to show event', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -55,9 +61,8 @@ final class EventController
 
     public function store(): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $this->authorize('create', \App\Domains\Tickets\Models\Event::class);
@@ -74,7 +79,7 @@ final class EventController
                 'banner_url' => 'nullable|url',
             ]);
 
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             $event = \App\Domains\Tickets\Models\Event::create([
                 'tenant_id' => tenant('id'),
@@ -92,7 +97,7 @@ final class EventController
                 'correlation_id' => $correlationId,
             ]);
 
-            \Log::channel('audit')->info('Event created', [
+            Log::channel('audit')->info('Event created', [
                 'event_id' => $event->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -103,7 +108,7 @@ final class EventController
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to create event', [
+            Log::channel('audit')->error('Failed to create event', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -115,9 +120,8 @@ final class EventController
 
     public function update(int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $event = \App\Domains\Tickets\Models\Event::findOrFail($id);
@@ -129,10 +133,9 @@ final class EventController
                 'status' => 'sometimes|in:draft,published,ongoing,completed,cancelled',
             ]);
 
-            $correlationId = Str::uuid();
             $event->update($validated + ['correlation_id' => $correlationId]);
 
-            \Log::channel('audit')->info('Event updated', [
+            Log::channel('audit')->info('Event updated', [
                 'event_id' => $event->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -143,7 +146,7 @@ final class EventController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to update event', [
+            Log::channel('audit')->error('Failed to update event', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -159,10 +162,10 @@ final class EventController
             $event = \App\Domains\Tickets\Models\Event::findOrFail($id);
             $this->authorize('delete', $event);
 
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             $event->delete();
 
-            \Log::channel('audit')->info('Event deleted', [
+            Log::channel('audit')->info('Event deleted', [
                 'event_id' => $id,
                 'correlation_id' => $correlationId,
             ]);
@@ -173,7 +176,7 @@ final class EventController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to delete event', [
+            Log::channel('audit')->error('Failed to delete event', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -194,7 +197,7 @@ final class EventController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to fetch categories', [
+            Log::channel('audit')->error('Failed to fetch categories', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -227,7 +230,7 @@ final class EventController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to fetch analytics', [
+            Log::channel('audit')->error('Failed to fetch analytics', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([

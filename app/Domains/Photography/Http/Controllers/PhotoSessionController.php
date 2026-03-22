@@ -6,6 +6,7 @@ namespace App\Domains\Photography\Http\Controllers;
 
 use App\Domains\Photography\Models\PhotoSession;
 use App\Domains\Photography\Services\SessionService;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,14 +16,14 @@ use Illuminate\Support\Str;
 final class PhotoSessionController
 {
 	public function __construct(
-		private readonly SessionService $sessionService
+		private readonly SessionService $sessionService,
+		private readonly FraudControlService $fraudControlService,
 	) {}
 
 	public function store(Request $request): JsonResponse
 	{
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
 		try {
 			$this->authorize('create', PhotoSession::class);
@@ -35,8 +36,6 @@ final class PhotoSessionController
 				'datetime_end' => 'required|date|after:datetime_start',
 				'total_amount' => 'required|numeric|min:1',
 			]);
-
-			$correlationId = Str::uuid()->toString();
 
 			$session = $this->sessionService->createSession(
 				array_merge($validated, [

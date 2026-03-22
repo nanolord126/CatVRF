@@ -2,8 +2,8 @@
 
 namespace App\Domains\Courses\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use App\Domains\Courses\Models\Certificate;
 use App\Domains\Courses\Models\Enrollment;
@@ -14,15 +14,16 @@ use Throwable;
 
 final class CertificateService
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function issueCertificate(
         Enrollment $enrollment,
         string $studentName,
         string $correlationId = '',
     ): Certificate {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'issueCertificate'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL issueCertificate', ['domain' => __CLASS__]);
+
 
         try {
             Log::channel('audit')->info('Issuing certificate', [
@@ -34,6 +35,15 @@ final class CertificateService
             if ($enrollment->progress_percent < 100) {
                 throw new \Exception('Student must complete 100% of course to receive certificate');
             }
+
+            $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
 
             $certificate = DB::transaction(function () use ($enrollment, $studentName, $correlationId) {
                 $verificationCode = strtoupper(Str::random(12));

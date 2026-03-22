@@ -2,15 +2,16 @@
 
 namespace App\Domains\HomeServices\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use App\Domains\HomeServices\Models\ServiceReview;
 use App\Domains\HomeServices\Events\ReviewSubmitted;
 
 final class ReviewService
 {
-    public function __construct() {}
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,) {}
 
     public function createReview(
         int $contractorId,
@@ -21,13 +22,18 @@ final class ReviewService
         ?int $jobId = null,
         string $correlationId = ''
     ): ServiceReview {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'createReview'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createReview', ['domain' => __CLASS__]);
+
 
         try {
-            return \DB::transaction(function () use ($contractorId, $reviewerId, $rating, $title, $content, $jobId, $correlationId) {
+                        $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
+            DB::transaction(function () use ($contractorId, $reviewerId, $rating, $title, $content, $jobId, $correlationId) {
                 if ($rating < 1 || $rating > 5) {
                     throw new \InvalidArgumentException('Rating must be between 1 and 5');
                 }
@@ -75,13 +81,18 @@ final class ReviewService
         string $content,
         string $correlationId = ''
     ): ServiceReview {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'updateReview'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL updateReview', ['domain' => __CLASS__]);
+
 
         try {
-            return \DB::transaction(function () use ($review, $rating, $title, $content, $correlationId) {
+                        $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
+            DB::transaction(function () use ($review, $rating, $title, $content, $correlationId) {
                 $review->update([
                     'rating' => $rating,
                     'title' => $title,

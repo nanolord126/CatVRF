@@ -21,6 +21,7 @@ Phase 5d completes the advanced features implementation, adding GraphQL API and 
 **File**: `app/GraphQL/Types/ConcertType.php` (50 lines)
 
 Defines the GraphQL Concert type with all fields:
+
 - `id`, `name`, `description`, `venue`, `price`
 - `concert_date`, `status`
 - `created_at`, `updated_at`
@@ -65,6 +66,7 @@ query {
 ```
 
 Features:
+
 - Full-text search on name & description
 - Venue filtering
 - Price range filtering
@@ -142,10 +144,12 @@ mutation {
 **File**: `app/Http/Controllers/API/GraphQLController.php` (50 lines)
 
 API endpoints:
+
 - `POST /api/graphql/query` - Execute queries/mutations
 - `GET /api/graphql/schema` - Get introspection schema
 
 Handles:
+
 - Query parsing and execution
 - Variable binding
 - Error formatting
@@ -180,6 +184,7 @@ $realtimeService->broadcastPresence('concerts', $userId, [
 ```
 
 Methods:
+
 - `broadcastConcertUpdate($concertId, $data)` - Send update to concert channel
 - `broadcastConcertDeleted($concertId)` - Announce deletion
 - `notifyUser($userId, $event, $data)` - Send to user's private channel
@@ -201,6 +206,7 @@ public function join(User $user, int $concertId): bool {
 ```
 
 Authorization:
+
 - Only users with `view` permission can subscribe
 - Multi-tenant isolation enforced
 
@@ -215,6 +221,7 @@ public function join(User $user, int $userId): bool {
 ```
 
 Authorization:
+
 - Only user can access their own channel
 - Complete privacy isolation
 
@@ -254,6 +261,7 @@ Channel: `user.{$userId}`
 Event Name: `notification.{$type}`
 
 Supports notification types:
+
 - `concert_update` - New concert or update
 - `order_status` - Order status changed
 - `payment_received` - Payment confirmation
@@ -273,6 +281,7 @@ GET    /api/realtime/channels/{channel}/stats
 ```
 
 Endpoints:
+
 - **Status**: Get connection info and available channels
 - **Broadcast**: Admin endpoint to broadcast concert updates
 - **Notify**: Send notification to user
@@ -307,6 +316,7 @@ client.disconnect();
 ```
 
 Features:
+
 - Auto-reconnect with exponential backoff
 - Multiple message handlers per event
 - Subscription management
@@ -314,6 +324,7 @@ Features:
 - Error handling and recovery
 
 Methods:
+
 - `connect()` - Establish WebSocket connection
 - `subscribe(channel, isPrivate?)` - Subscribe to channel
 - `unsubscribe(channel)` - Leave channel
@@ -356,6 +367,7 @@ const { concert, isConnected, error, disconnect } = useConcertUpdates({
 ```
 
 Features:
+
 - Reactive concert data
 - Connection status
 - Error handling
@@ -385,6 +397,7 @@ const { notifications, isConnected, clearNotifications } = useUserNotifications(
 ```
 
 Features:
+
 - Real-time notification list
 - Multiple notification types supported
 - Clear all functionality
@@ -504,6 +517,7 @@ WEBSOCKET_SCHEME=ws
 ### 6.1 Scaling
 
 **For multi-server deployments:**
+
 ```php
 // Use Redis adapter for broadcasting
 'default' => 'redis',
@@ -515,6 +529,7 @@ WEBSOCKET_SCHEME=ws
 ```
 
 **For WebSocket scaling:**
+
 - Use Laravel Horizon for job queue
 - Use Redis for inter-process communication
 - Load balance WebSocket connections
@@ -522,17 +537,20 @@ WEBSOCKET_SCHEME=ws
 ### 6.2 Security
 
 **CORS Settings**:
+
 ```php
 // config/cors.php
 'allowed_origins' => explode(',', env('CORS_ALLOWED_ORIGINS', '*')),
 ```
 
 **Authentication**:
+
 - All WebSocket connections require valid JWT token
 - Channels enforced through authorization methods
 - Rate limiting on API endpoints
 
 **Message Validation**:
+
 ```php
 // In Event classes
 public function broadcastWith(): array
@@ -548,6 +566,7 @@ public function broadcastWith(): array
 ### 6.3 Monitoring
 
 **Track WebSocket usage:**
+
 ```php
 // In RealtimeService
 $this->recordWebsocketEvent('concert_update', $concertId);
@@ -555,6 +574,7 @@ $this->recordMetric('realtime.broadcast_latency', $duration);
 ```
 
 **Integration with existing monitoring:**
+
 - Sentry: Error tracking for WebSocket issues
 - New Relic: Connection metrics
 - DataDog: Real-time dashboard
@@ -573,6 +593,7 @@ curl -X POST http://catvrf.local/api/graphql/query \
 ```
 
 Response:
+
 ```json
 {
   "data": {
@@ -698,6 +719,7 @@ describe('RealtimeClient', () => {
 **Phase 5d is COMPLETE** ✅
 
 Delivered:
+
 - ✅ GraphQL API (Type, Queries, Mutations)
 - ✅ WebSocket Real-time (Service, Events, Channels)
 - ✅ TypeScript Client (Connection, Subscriptions, Handlers)

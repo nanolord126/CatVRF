@@ -20,10 +20,7 @@ final class OfficeCateringService
 
     public function placeOrder(int $clientId, int $menuId, int $portions, Carbon $deliveryDate, int $tenantId, string $correlationId): CorporateOrder
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'placeOrder'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL placeOrder', ['domain' => __CLASS__]);
+
 
         return DB::transaction(function () use ($clientId, $menuId, $portions, $deliveryDate, $tenantId, $correlationId) {
             $this->fraudControlService->check(
@@ -63,11 +60,6 @@ final class OfficeCateringService
 
     public function setupRecurring(int $orderId, string $frequency, int $tenantId, string $correlationId): CorporateOrder
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'setupRecurring'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL setupRecurring', ['domain' => __CLASS__]);
-
         $order = CorporateOrder::lockForUpdate()
             ->where('id', $orderId)
             ->where('tenant_id', $tenantId)
@@ -89,11 +81,6 @@ final class OfficeCateringService
 
     public function markDelivered(int $orderId, int $tenantId, string $correlationId): CorporateOrder
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'markDelivered'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL markDelivered', ['domain' => __CLASS__]);
-
         $order = CorporateOrder::lockForUpdate()
             ->where('id', $orderId)
             ->where('tenant_id', $tenantId)

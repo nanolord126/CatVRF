@@ -5,7 +5,7 @@ namespace App\Domains\Finances\Services;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Services\Security\FraudControlService;
+use App\Services\FraudControlService;
 use App\Domains\Finances\Models\FinanceTransaction;
 
 final readonly class PaymentService
@@ -16,11 +16,18 @@ final readonly class PaymentService
 
     public function processPayment(array $data, string $correlationId): FinanceTransaction
     {
-        return DB::transaction(function () use ($data, $correlationId) {
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(function () use ($data, $correlationId) {
             Log::channel('audit')->info("ОБРАБОТКА ПЛАТЕЖА ЗАПУЩЕНА", ["correlation_id" => $correlationId, "data" => $data]);
             
             // Проверка на фрод ОБЯЗАТЕЛЬНА
-            FraudControlService::check($data, $correlationId);
 
             $transaction = FinanceTransaction::create([
                 "tenant_id" => tenant("id") ?? 1,

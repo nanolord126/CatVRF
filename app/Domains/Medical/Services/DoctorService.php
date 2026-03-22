@@ -2,7 +2,7 @@
 
 namespace App\Domains\Medical\Services;
 
-use App\Services\Security\FraudControlService;
+use App\Services\FraudControlService;
 use Illuminate\Support\Facades\Log;
 
 use App\Domains\Medical\Models\MedicalDoctor;
@@ -12,6 +12,10 @@ use Throwable;
 
 final class DoctorService
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function createDoctor(
         int $tenantId,
         int $clinicId,
@@ -23,15 +27,18 @@ final class DoctorService
         ?string $licenseNumber,
         ?string $correlationId = null,
     ): MedicalDoctor {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'createDoctor'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createDoctor', ['domain' => __CLASS__]);
-
         $correlationId ??= Str::uuid()->toString();
 
         try {
-            return DB::transaction(function () use (
+            $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
+DB::transaction(function () use (
                 $tenantId,
                 $clinicId,
                 $userId,
@@ -78,15 +85,18 @@ final class DoctorService
         array $data,
         ?string $correlationId = null,
     ): MedicalDoctor {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'updateDoctor'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL updateDoctor', ['domain' => __CLASS__]);
-
         $correlationId ??= Str::uuid()->toString();
 
         try {
-            return DB::transaction(function () use ($doctor, $data, $correlationId) {
+            $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
+DB::transaction(function () use ($doctor, $data, $correlationId) {
                 $doctor->update([...$data, 'correlation_id' => $correlationId]);
 
                 Log::channel('audit')->info('Medical doctor updated', [

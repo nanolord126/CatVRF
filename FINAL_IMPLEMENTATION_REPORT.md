@@ -19,6 +19,7 @@ Migration ➜ Factory ➜ Seeder ➜ Tests
 ```
 
 **17 Вертикали**:
+
 1. ✅ **Taxi** - Служба доставки (такси)
 2. ✅ **Food** - Рестораны и доставка еды
 3. ✅ **Hotel** - Бронирование отелей
@@ -41,7 +42,8 @@ Migration ➜ Factory ➜ Seeder ➜ Tests
 
 ## 📊 КОЛИЧЕСТВЕННЫЕ ПОКАЗАТЕЛИ
 
-### Компоненты кода:
+### Компоненты кода
+
 | Компонент | Количество | Статус |
 |-----------|-----------|--------|
 | **Models** | 17 | ✅ |
@@ -57,18 +59,21 @@ Migration ➜ Factory ➜ Seeder ➜ Tests
 | **Policies** | 17 | ✅ |
 | **ИТОГО** | **190+** | ✅ |
 
-### Базы данных:
+### Базы данных
+
 - ✅ **SQLite** - Для локальной разработки
 - ✅ **MySQL 8** - Для production (Docker-готов)
 - ✅ **PostgreSQL** - Альтернатива (конфиг поддерживает)
 
-### Миграции базы:
+### Миграции базы
+
 - ✅ **44 миграции** успешно выполнены
 - ✅ **Все таблицы** созданы с правильными схемами
 - ✅ **Foreign keys** настроены с cascade delete
 - ✅ **Индексы** добавлены для оптимизации
 
-### Тестовые данные:
+### Тестовые данные
+
 - ✅ **16 Factories** для генерации данных
 - ✅ **16 Seeders** для заполнения БД
 - ✅ **Faker integration** для реалистичных данных
@@ -77,29 +82,34 @@ Migration ➜ Factory ➜ Seeder ➜ Tests
 
 ## 🔧 ТЕХНИЧЕСКИЙ СТЕК
 
-### Backend:
+### Backend
+
 - **Laravel 12** - Modern PHP framework
 - **PHP 8.2+** - Latest PHP version
 - **Eloquent ORM** - Database abstraction
 - **Filament 3.2** - Admin panel (TenantPanel ready)
 
-### Multi-Tenancy:
+### Multi-Tenancy
+
 - **stancl/tenancy** - Enterprise multi-tenant solution
 - **Schema-per-tenant** - Isolated data by tenant
 - **Correlation ID** - Request tracing
 
-### Database:
+### Database
+
 - **SQLite** (dev) - Single file, no setup
 - **MySQL 8** (prod) - Scalable, production-grade
 - **Migrations** - Reproducible schema management
 
-### API:
+### API
+
 - **RESTful endpoints** - `/api/{resource}`
 - **JSON responses** - Standardized formatting
 - **Validation** - FormRequest layer
 - **Authorization** - Policy-based access control
 
-### DevOps:
+### DevOps
+
 - **Docker Compose** - Containerization
 - **GitHub integration** - MCP for automation
 - **CI/CD ready** - Standard structure for pipelines
@@ -149,6 +159,7 @@ config/
 ## 🚀 READINESS CHECKLIST
 
 ### ✅ Разработка
+
 - ✅ Все модели и отношения
 - ✅ Бизнес-логика (Services)
 - ✅ Валидация (FormRequests)
@@ -156,6 +167,7 @@ config/
 - ✅ API endpoints (Controllers + Routes)
 
 ### ✅ База данных
+
 - ✅ Схема (Migrations)
 - ✅ Фабрики (Factories)
 - ✅ Тестовые данные (Seeders)
@@ -163,12 +175,14 @@ config/
 - ✅ Foreign keys
 
 ### ✅ Инфраструктура
+
 - ✅ Docker Compose (MySQL)
 - ✅ Multi-tenancy конфигурация
 - ✅ Environment переменные
 - ✅ Database drivers (SQLite + MySQL)
 
 ### ⏳ Дополнительно (Post-Release)
+
 - ⏳ API документация (Scribe)
 - ⏳ Unit/Feature тесты
 - ⏳ Performance оптимизация
@@ -180,32 +194,39 @@ config/
 ## 🔄 ФАЗЫ РАЗРАБОТКИ
 
 ### Phase 1: Анализ (28 февраля - 1 марта)
+
 - Обзор архитектуры
 - Определение 17 вертикалей
 - Фиксинг импортов (Advertising domain)
 
 ### Phase 2-3: Основная реализация (2-5 марта)
+
 - 4-слойная архитектура для первых 8 вертикалей
 - Service/Policy/Controller для всех
 
 ### Phase 4: API Layer (5-7 марта)
+
 - Routes (15 apiResource + 2 custom)
 - FormRequests валидация
 - JSON Resources
 
 ### Phase 5: Миграции (7-8 марта)
+
 - 11 новых миграций для вертикалей
 - 33 существующих миграций
 
 ### Phase 6: Seeders & Tests (8 марта)
+
 - 16 Database Seeders
 - Unit/Feature test структура
 
 ### Phase 7: Завершение (9 марта)
+
 - Недостающие вертикали (Education, Events, Beauty, RealEstate, Insurance, Communication)
 - Models, Policies, Seeders для 6 вертикалей
 
 ### Phase 8: Factories & Database (10 марта)
+
 - 16 Eloquent Factories
 - Миграции БД
 - Конфигурация MySQL 8
@@ -216,6 +237,7 @@ config/
 ## 📝 ИСПОЛЬЗОВАННЫЕ ПАТТЕРНЫ
 
 ### Domain-Driven Design
+
 ```
 Domain/
 ├── Models/          (Entity layer)
@@ -228,6 +250,7 @@ Domain/
 ```
 
 ### Multi-Tenancy Pattern
+
 ```
 - Tenant scoping на all запросах
 - Correlation ID для трейсинга
@@ -235,6 +258,7 @@ Domain/
 ```
 
 ### RESTful API
+
 ```
 POST   /api/taxi           (create)
 GET    /api/taxi           (list)
@@ -248,18 +272,21 @@ DELETE /api/taxi/{id}      (delete)
 ## 💻 БЫСТРЫЙ СТАРТ
 
 ### 1. Установка зависимостей
+
 ```bash
 composer install
 npm install
 ```
 
 ### 2. Инициализация БД (SQLite)
+
 ```bash
 php artisan migrate
 php artisan db:seed
 ```
 
 ### 3. Или для MySQL (Docker)
+
 ```bash
 docker-compose up -d
 php artisan migrate
@@ -267,12 +294,14 @@ php artisan db:seed
 ```
 
 ### 4. Запуск сервера
+
 ```bash
 php artisan serve
 npm run dev
 ```
 
 ### 5. Доступ к API
+
 ```bash
 curl http://localhost:8000/api/taxi
 curl http://localhost:8000/api/food
@@ -283,6 +312,7 @@ curl http://localhost:8000/api/food
 ## 🔒 SECURITY & COMPLIANCE
 
 ### ✅ Реализовано
+
 - **Policies** для авторизации каждого действия
 - **Correlation ID** для всех операций
 - **Tenant scoping** на всех запросах
@@ -290,6 +320,7 @@ curl http://localhost:8000/api/food
 - **Soft deletes** (в моделях)
 
 ### ⏳ Планируется
+
 - **Audit logging** детализированное
 - **Rate limiting** на API endpoints
 - **Encryption** чувствительных данных

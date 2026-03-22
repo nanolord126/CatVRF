@@ -2,8 +2,8 @@
 
 namespace App\Domains\Pet\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use App\Domains\Pet\Models\PetClinic;
 use App\Domains\Pet\Models\PetProduct;
@@ -12,17 +12,26 @@ use Illuminate\Support\Str;
 
 final class ProductService
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function createProduct(PetClinic $clinic, array $data, string $correlationId = null): PetProduct
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'createProduct'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createProduct', ['domain' => __CLASS__]);
+
 
         $correlationId ??= Str::uuid()->toString();
 
         try {
-            return DB::transaction(function () use ($clinic, $data, $correlationId) {
+            $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
+DB::transaction(function () use ($clinic, $data, $correlationId) {
                 $product = PetProduct::create([
                     ...$data,
                     'tenant_id' => tenant()->id,
@@ -54,15 +63,20 @@ final class ProductService
 
     public function updateProduct(PetProduct $product, array $data, string $correlationId = null): PetProduct
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'updateProduct'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL updateProduct', ['domain' => __CLASS__]);
+
 
         $correlationId ??= Str::uuid()->toString();
 
         try {
-            return DB::transaction(function () use ($product, $data, $correlationId) {
+            $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
+DB::transaction(function () use ($product, $data, $correlationId) {
                 $product->update([
                     ...$data,
                     'correlation_id' => $correlationId,
@@ -89,15 +103,20 @@ final class ProductService
 
     public function updateStock(PetProduct $product, int $quantity, string $correlationId = null): PetProduct
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'updateStock'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL updateStock', ['domain' => __CLASS__]);
+
 
         $correlationId ??= Str::uuid()->toString();
 
         try {
-            return DB::transaction(function () use ($product, $quantity, $correlationId) {
+            $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
+DB::transaction(function () use ($product, $quantity, $correlationId) {
                 $newStock = $product->current_stock + $quantity;
                 if ($newStock < 0) {
                     throw new \RuntimeException('Insufficient stock');

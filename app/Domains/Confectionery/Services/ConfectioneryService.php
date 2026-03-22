@@ -21,10 +21,7 @@ final class ConfectioneryService
 
     public function createOrder(int $cakeId, int $clientId, Carbon $deliveryDate, int $tenantId, string $correlationId): BakeryOrder
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'createOrder'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createOrder', ['domain' => __CLASS__]);
+
 
         return DB::transaction(function () use ($cakeId, $clientId, $deliveryDate, $tenantId, $correlationId) {
             $this->fraudControlService->check(
@@ -61,10 +58,7 @@ final class ConfectioneryService
 
     public function markReady(int $orderId, int $tenantId, string $correlationId): BakeryOrder
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'markReady'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL markReady', ['domain' => __CLASS__]);
+
 
         $order = BakeryOrder::lockForUpdate()
             ->where('id', $orderId)
@@ -88,10 +82,7 @@ final class ConfectioneryService
 
     public function markDelivered(int $orderId, int $tenantId, string $correlationId): BakeryOrder
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'markDelivered'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL markDelivered', ['domain' => __CLASS__]);
+
 
         $order = BakeryOrder::lockForUpdate()
             ->where('id', $orderId)

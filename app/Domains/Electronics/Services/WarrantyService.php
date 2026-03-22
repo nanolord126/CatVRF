@@ -17,10 +17,7 @@ final class WarrantyService
 
     public function createWarrantyClaim(int $productId, int $clientId, string $issueDescription, int $tenantId, string $correlationId): WarrantyClaim
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'createWarrantyClaim'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createWarrantyClaim', ['domain' => __CLASS__]);
+
 
         return DB::transaction(function () use ($productId, $clientId, $issueDescription, $tenantId, $correlationId) {
             $this->fraudControlService->check(
@@ -54,10 +51,7 @@ final class WarrantyService
 
     public function resolveWarrantyClaim(int $claimId, int $tenantId, string $resolutionNotes, string $correlationId): WarrantyClaim
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'resolveWarrantyClaim'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL resolveWarrantyClaim', ['domain' => __CLASS__]);
+
 
         return DB::transaction(function () use ($claimId, $tenantId, $resolutionNotes, $correlationId) {
             $claim = WarrantyClaim::lockForUpdate()

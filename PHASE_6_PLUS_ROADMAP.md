@@ -9,12 +9,14 @@
 ## 🎯 PHASE 6 - REAL-TIME & NOTIFICATIONS (WEEKS 1-2)
 
 ### Objectives
+
 - WebSocket support for live updates
 - Real-time notifications (in-app + email)
 - Presence detection & user activity
 - Live order tracking
 
 ### Components to Add
+
 ```
 app/Events/
 ├── OrderCreated.php              (NEW)
@@ -42,6 +44,7 @@ tests/
 ```
 
 ### Token Budget: ~8-10K
+
 ### Estimated Time: 2 weeks
 
 ---
@@ -49,12 +52,14 @@ tests/
 ## 🎨 PHASE 7 - ADVANCED ANALYTICS DASHBOARD (WEEKS 3-4)
 
 ### Objectives
+
 - Business intelligence dashboard
 - Real-time metrics & KPIs
 - Custom report builder
 - Data export (CSV/Excel/PDF)
 
 ### Components to Add
+
 ```
 app/Services/
 ├── AnalyticsService.php          (UPGRADE)
@@ -75,6 +80,7 @@ tests/
 ```
 
 ### Token Budget: ~12-15K
+
 ### Estimated Time: 2-3 weeks
 
 ---
@@ -82,12 +88,14 @@ tests/
 ## 🔗 PHASE 8 - THIRD-PARTY INTEGRATIONS (WEEKS 5-6)
 
 ### Objectives
+
 - Payment gateway expansion (Stripe, Square)
 - Marketplace integrations (Avito, Ozon)
 - CRM connectors (HubSpot, Pipedrive)
 - Shipping providers (FedEx, UPS)
 
 ### Components to Add
+
 ```
 app/Services/Payment/
 ├── StripeGateway.php             (NEW)
@@ -114,6 +122,7 @@ tests/
 ```
 
 ### Token Budget: ~15-18K
+
 ### Estimated Time: 3-4 weeks
 
 ---
@@ -121,12 +130,14 @@ tests/
 ## 📱 PHASE 9 - MOBILE APP INTEGRATION (WEEKS 7-9)
 
 ### Objectives
+
 - Native iOS/Android app
 - Offline support & sync
 - Push notifications
 - Mobile-optimized API
 
 ### Components to Add
+
 ```
 app/Http/Controllers/Mobile/
 ├── AuthController.php            (NEW)
@@ -153,6 +164,7 @@ tests/
 ```
 
 ### Token Budget: ~20-25K
+
 ### Estimated Time: 4-5 weeks
 
 ---
@@ -160,12 +172,14 @@ tests/
 ## 🌍 PHASE 10 - GLOBAL EXPANSION (WEEKS 10-12)
 
 ### Objectives
+
 - Multi-language support (20+ languages)
 - Multi-currency payments
 - Regional compliance (GDPR, CCPA, etc.)
 - Localized marketing
 
 ### Components to Add
+
 ```
 app/Services/Localization/
 ├── TranslationService.php        (NEW)
@@ -197,6 +211,7 @@ tests/
 ```
 
 ### Token Budget: ~18-22K
+
 ### Estimated Time: 4-6 weeks
 
 ---
@@ -220,29 +235,37 @@ tests/
 ## 📋 PHASE 6 DETAILED PLAN
 
 ### WEEK 1: Events & Listeners
+
 **Day 1-2**: Create event classes
+
 - OrderCreated, OrderStatusChanged, PaymentProcessed, UserOnline
 - Tests: EventPublishingTest
 
 **Day 3-4**: Create listeners
+
 - SendOrderNotification, NotifyUserOnline, UpdateOrderTracking
 - Tests: ListenerDispatchingTest
 
 **Day 5**: Integration
+
 - Wire events to models
 - Tests: EventListenerIntegrationTest
 
 ### WEEK 2: Notifications & WebSocket
+
 **Day 1-2**: Notification channels
+
 - Email, SMS, In-App notifications
 - Tests: NotificationChannelTest
 
 **Day 3-4**: WebSocket setup
+
 - Laravel Echo + Pusher/Ably integration
 - Real-time message delivery
 - Tests: WebSocketConnectionTest
 
 **Day 5**: Verification
+
 - End-to-end testing
 - Performance optimization
 - Documentation
@@ -252,6 +275,7 @@ tests/
 ## 🔧 QUICK START COMMANDS
 
 ### Phase 6 Initialization
+
 ```bash
 # Create event scaffolding
 php artisan make:event OrderCreated
@@ -268,6 +292,7 @@ php artisan test Feature/RealtimeTest.php
 ```
 
 ### Monitoring Phase 6
+
 ```bash
 # Watch real-time events
 php artisan tinker
@@ -312,6 +337,7 @@ redis-cli SUBSCRIBE notifications
 ## 🎓 DEVELOPMENT STANDARDS (Phase 6-10)
 
 All new code must follow:
+
 - ✅ `declare(strict_types=1)` + `final` classes
 - ✅ 100% CANON 2026 compliance
 - ✅ Unit + Feature tests (min 80% coverage)

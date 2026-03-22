@@ -1,4 +1,5 @@
 # 📋 ПОЛНЫЙ РЕЕСТР ОБНОВЛЕННЫХ ФАЙЛОВ
+
 ## CANON 2026 Production-Ready Models | 18 марта 2026
 
 ---
@@ -340,29 +341,34 @@ modules/GeoLogistics/Models/
 ## 🔍 ТРЕБОВАНИЯ CANON 2026 - ПРОВЕРКА
 
 ### Core Requirements
+
 - [x] `declare(strict_types=1);` на всех 19 файлах
 - [x] `final class` на всех 19 файлах
 - [x] UTF-8 без BOM на всех файлах
 - [x] CRLF окончания на всех файлах
 
 ### Database & Relationships
+
 - [x] `SoftDeletes` trait на всех моделях
 - [x] `protected $table` явное имя таблицы
 - [x] Global scope для tenant_id на всех моделях
 - [x] Explicit relationships с типами (BelongsTo, HasMany, etc.)
 
 ### Data Integrity
+
 - [x] Все цены в копейках (целые числа, никогда float)
 - [x] correlation_id на всех важных операциях
 - [x] Status & Type constants вместо строк
 - [x] Proper type casting (integer, float, boolean, datetime, json)
 
 ### Documentation
+
 - [x] Полный @property docblock на каждой модели (20+ properties)
 - [x] Комментарии на всех методах
 - [x] Примечания о CANON 2026 соответствии
 
 ### Helper Methods & Scopes
+
 - [x] Helper методы для типовых операций (45+ методов)
 - [x] Scope методы для фильтрации (active, forTenant, etc.)
 - [x] Методы для смены статуса (markAsCompleted, cancel, etc.)
@@ -416,22 +422,26 @@ c:\opt\kotvrf\CatVRF\
 ## 🎯 NEXT STEPS (не требуются сейчас)
 
 ### Phase 2: API Resources & Endpoints
+
 - [ ] Создать API resource классы
 - [ ] Реализовать CRUD endpoints
 - [ ] Добавить rate limiting и validation
 
 ### Phase 3: Filament Admin Resources
+
 - [ ] HotelResource, RoomResource
 - [ ] ProductResource, StockMovementResource
 - [ ] TaxiDriverResource, TaxiRideResource
 - [ ] StaffScheduleResource, StaffTaskResource
 
 ### Phase 4: Event & Job System
+
 - [ ] Domain events для critical operations
 - [ ] Queue jobs для async work
 - [ ] Listeners for event handling
 
 ### Phase 5: Tests & Documentation
+
 - [ ] Unit tests for models
 - [ ] Feature tests for controllers
 - [ ] API documentation

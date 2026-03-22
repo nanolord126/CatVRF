@@ -3,18 +3,22 @@
 ## 🚀 Quick Start
 
 ### 1. Install Dependencies
+
 ```bash
 npm install
 npm install --save-dev cypress @types/cypress @types/chai @types/mocha
 ```
 
 ### 2. Verify Installation
+
 ```bash
 npx cypress --version
 ```
 
 ### 3. Configure Environment
+
 Create `.env.test`:
+
 ```env
 # API Configuration
 API_BASE_URL=http://localhost:8000
@@ -37,6 +41,7 @@ APP_KEY=base64:YourTestAppKey==
 ```
 
 ### 4. Setup Test Database
+
 ```bash
 # Create test database
 php artisan migrate --env=testing
@@ -46,6 +51,7 @@ php artisan db:seed --class=TestSeeder --env=testing
 ```
 
 ### 5. Start Application
+
 ```bash
 # In one terminal
 php artisan serve --port=8000
@@ -59,6 +65,7 @@ npm run cypress:run
 ## 📋 Available NPM Scripts
 
 ### Development Mode
+
 ```bash
 # Open interactive Cypress
 npm run cypress:open
@@ -68,6 +75,7 @@ npm run cypress:e2e
 ```
 
 ### CI/CD Mode
+
 ```bash
 # Run all tests headless
 npm run cypress:run
@@ -80,6 +88,7 @@ npm run cypress:run -- --parallel --record
 ```
 
 ### Reporting
+
 ```bash
 # Generate coverage report
 npm run cypress:coverage
@@ -92,6 +101,7 @@ npm run cypress:video
 ```
 
 ### Add to package.json
+
 ```json
 {
   "scripts": {
@@ -366,6 +376,7 @@ class TestSeeder extends Seeder
 ## 📊 Test Execution Examples
 
 ### Run All Tests
+
 ```bash
 npm run cypress:run
 
@@ -385,6 +396,7 @@ npm run cypress:run
 ```
 
 ### Run Specific Module
+
 ```bash
 npm run test:inventory
 
@@ -398,6 +410,7 @@ npm run test:inventory
 ```
 
 ### Run with Debugging
+
 ```bash
 npx cypress run --spec "cypress/e2e/inventory.cy.ts" --headed --browser chrome
 ```
@@ -407,6 +420,7 @@ npx cypress run --spec "cypress/e2e/inventory.cy.ts" --headed --browser chrome
 ## 🐛 Debugging Tips
 
 ### Enable Debugging
+
 ```typescript
 // In test file
 before(() => {
@@ -422,12 +436,14 @@ cy.get('[data-testid="item"]').then((el) => {
 ```
 
 ### Browser DevTools
+
 ```bash
 # Open Cypress with DevTools
 npx cypress open --dev-tools
 ```
 
 ### Slow Down Execution
+
 ```javascript
 // cypress.config.ts
 export default defineConfig({
@@ -468,6 +484,7 @@ npm run test:performance
 ## 📈 Test Metrics
 
 Track these KPIs:
+
 - **Pass Rate**: Target 95%+
 - **Test Duration**: Target average < 30 seconds per test
 - **Coverage**: Target 90%+ code coverage
@@ -481,4 +498,3 @@ Track these KPIs:
 - [Testing Library](https://testing-library.com)
 - [Chai Assertions](https://www.chaijs.com/api/)
 - [BDD Best Practices](https://cucumber.io/docs/bdd/)
-

@@ -3,26 +3,33 @@
 ## Issues Found & Fixed
 
 ### 1. Missing Support Files ❌ → ✅
+
 **Problem**: cypress.config.ts referenced `cypress/support/e2e.ts` which didn't exist
 **Fixed**: Created proper support files
 
 ### 2. PHP Syntax in TypeScript ❌ → ✅
+
 **File**: cypress/support/commands.ts
 **Problem**: Had `declare(strict_types=1);` at start (PHP syntax in TS file)
-**Fixed**: 
+**Fixed**:
+
 - Removed PHP directive
 - Added proper TypeScript declarations with `declare global namespace Cypress`
 - Implemented command type definitions for Cypress chainable
 - Added proper exports
 
 ### 3. Support Files Structure ✅
+
 **Created**:
+
 - **cypress/support/e2e.ts**: Main entry point that imports commands, handles uncaught exceptions, and sets up beforeEach/afterEach hooks
 - **cypress/support/commands.ts**: Custom command definitions with proper TypeScript types
 
 ### 4. Domain References ✅
+
 **Updated**: All catvrf.local → kotvrf.ru
 Files:
+
 - cypress/e2e/auth.cy.ts (6 replacements)
 - cypress/e2e/security.cy.ts (14 replacements)
 - cypress/e2e/performance.cy.ts (1 replacement)
@@ -30,8 +37,10 @@ Files:
 - cypress.config.ts (3 env variables)
 
 ### 5. Cypress Configuration ✅
+
 **cypress.config.ts**:
-- ✅ baseUrl: http://localhost:8000
+
+- ✅ baseUrl: <http://localhost:8000>
 - ✅ viewportWidth: 1280, viewportHeight: 720
 - ✅ Timeouts: 10000ms (command, request, response)
 - ✅ Video & Screenshot on failure
@@ -105,14 +114,16 @@ Cypress.env('viewerUser')    // viewer@kotvrf.ru
 ## Potential Runtime Issues
 
 ⚠️ **API Endpoints**: Tests assume:
+
 - `POST /api/test/reset-database` exists
 - `POST /api/test/seed-database` exists
 - These are test-only endpoints, typically disabled in production
 
 ⚠️ **Test Data**: Tests use:
-- admin@kotvrf.ru / password123
-- manager@kotvrf.ru / password123  
-- viewer@kotvrf.ru / password123
+
+- <admin@kotvrf.ru> / password123
+- <manager@kotvrf.ru> / password123  
+- <viewer@kotvrf.ru> / password123
 - Ensure these users exist in test database
 
 ## Summary

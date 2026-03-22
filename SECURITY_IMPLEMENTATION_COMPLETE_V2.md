@@ -11,18 +11,21 @@
 ### ✅ PHASE 1: Authentication & Authorization (Completed)
 
 #### Sanctum + Personal Access Tokens
+
 - ✅ `personal_access_tokens` table (with token hashing)
 - ✅ Token expiration support
 - ✅ Ability-based permissions
 - ✅ Sanctum middleware in routes
 
 **Setup**:
+
 ```bash
 php artisan migrate --path=database/migrations/2026_03_17_create_sanctum_and_api_tables.php
 php artisan sanctum:install
 ```
 
 #### API Key Management
+
 - ✅ `ApiKeyManagementService` - Generate, validate, revoke, rotate keys
 - ✅ SHA-256 key hashing (never store raw keys)
 - ✅ Key preview (first 10 chars only)
@@ -32,6 +35,7 @@ php artisan sanctum:install
 - ✅ Audit logging (api_key_audit_logs table)
 
 **Usage**:
+
 ```php
 $apiKeyService->generateKey(
     tenantId: 1,
@@ -43,6 +47,7 @@ $apiKeyService->generateKey(
 ```
 
 #### RBAC (Role-Based Access Control)
+
 - ✅ 5 Roles: admin, business_owner, manager, accountant, employee
 - ✅ Ability-based permissions (view_dashboard, manage_employees, etc.)
 - ✅ Model Policies (EmployeePolicy, PayrollPolicy, PayoutPolicy, WalletPolicy)
@@ -53,6 +58,7 @@ $apiKeyService->generateKey(
 ### ✅ PHASE 2: Rate Limiting (Advanced)
 
 #### ApiRateLimiter Middleware
+
 - ✅ **Tenant-aware** rate limiting (separate limits per tenant)
 - ✅ **Sliding window algorithm** (Redis-based, not fixed)
 - ✅ Per-endpoint limits configurable
@@ -60,6 +66,7 @@ $apiKeyService->generateKey(
 - ✅ 429 status with `Retry-After` header
 
 **Usage**:
+
 ```php
 // routes/api.php
 Route::post('/payments', PaymentController::class)
@@ -67,6 +74,7 @@ Route::post('/payments', PaymentController::class)
 ```
 
 #### Operation-Specific Rate Limits
+
 - ✅ Payments: 10 req/min
 - ✅ Promos: 50 req/min
 - ✅ Search: 1000 light / 100 heavy per hour
@@ -77,6 +85,7 @@ Route::post('/payments', PaymentController::class)
 ### ✅ PHASE 3: Idempotency & Replay Protection
 
 #### IdempotencyService
+
 - ✅ SHA-256 payload hash verification
 - ✅ `Idempotency-Key` header support
 - ✅ Duplicate detection (409 Conflict response)
@@ -86,6 +95,7 @@ Route::post('/payments', PaymentController::class)
 **Database**: `payment_idempotency_records` table
 
 **Usage**:
+
 ```bash
 curl -X POST /api/v1/payments/init \
   -H "Idempotency-Key: unique-123" \
@@ -99,6 +109,7 @@ curl -X POST /api/v1/payments/init \
 ### ✅ PHASE 4: Webhook Security
 
 #### WebhookSignatureService
+
 - ✅ **Tinkoff**: HMAC-SHA256
 - ✅ **Sber**: HMAC-SHA256 + OpenSSL certificate verification
 - ✅ **СБП**: IP whitelist + HMAC verification
@@ -106,6 +117,7 @@ curl -X POST /api/v1/payments/init \
 - ✅ Timing-safe hash comparison (prevents timing attacks)
 
 **Usage**:
+
 ```php
 $result = $webhookService->verify(
     provider: 'tinkoff',
@@ -119,12 +131,14 @@ $result = $webhookService->verify(
 ### ✅ PHASE 5: Business CRM Isolation
 
 #### BusinessCRMMiddleware
+
 - ✅ Role-based access check (only owner/manager/accountant)
 - ✅ Tenant isolation verification
 - ✅ Comprehensive audit logging
 - ✅ 403 Forbidden for unauthorized access
 
 **Routes using middleware**:
+
 ```php
 Route::middleware(['auth:sanctum', 'business-crm'])->group(function () {
     Route::resource('employees', EmployeeController::class);
@@ -138,6 +152,7 @@ Route::middleware(['auth:sanctum', 'business-crm'])->group(function () {
 ### ✅ PHASE 6: Fraud Detection
 
 #### FraudCheckMiddleware
+
 - ✅ ML-based fraud scoring (0-1)
 - ✅ Rapid-fire request detection (>5 in 60s)
 - ✅ Amount spike detection (5x average)
@@ -146,6 +161,7 @@ Route::middleware(['auth:sanctum', 'business-crm'])->group(function () {
 - ✅ Blocks at score ≥ 0.8 (403 Forbidden)
 
 **Routes using middleware**:
+
 ```php
 Route::middleware(['auth:sanctum', 'fraud-check'])->group(function () {
     Route::post('/payments/init', PaymentController::class);
@@ -155,6 +171,7 @@ Route::middleware(['auth:sanctum', 'fraud-check'])->group(function () {
 ```
 
 #### WishlistAntiFraudService
+
 - ✅ Unusual time pattern detection
 - ✅ Rapid add & pay detection
 - ✅ Price manipulation detection
@@ -162,6 +179,7 @@ Route::middleware(['auth:sanctum', 'fraud-check'])->group(function () {
 - ✅ Bulk payment prevention (>50 items)
 
 **Usage**:
+
 ```php
 $isSafe = $wishlistService->checkWishlistPayment(
     userId: auth()->id(),
@@ -178,6 +196,7 @@ if (!$isSafe) {
 ### ✅ PHASE 7: API Security
 
 #### API Versioning
+
 - ✅ Path-based: `/api/v1/*`, `/api/v2/*`
 - ✅ Header-based: `Accept-Version: v1`
 - ✅ EnsureApiVersion middleware
@@ -185,6 +204,7 @@ if (!$isSafe) {
 - ✅ Response includes `API-Version` header
 
 #### OpenAPI/Swagger Documentation
+
 - ✅ L5-Swagger integration
 - ✅ config/swagger.php configuration
 - ✅ OpenApiSpec base annotations
@@ -192,6 +212,7 @@ if (!$isSafe) {
 - ✅ Security schemes: Bearer Token, API Key
 
 **Setup**:
+
 ```bash
 php artisan vendor:publish --provider "L5Swagger\L5SwaggerServiceProvider"
 php artisan l5-swagger:generate
@@ -199,6 +220,7 @@ php artisan l5-swagger:generate
 ```
 
 #### API Key Authentication Middleware
+
 - ✅ Bearer token support
 - ✅ X-API-Key header support
 - ✅ Query parameter support (fallback)
@@ -206,6 +228,7 @@ php artisan l5-swagger:generate
 - ✅ Audit logging
 
 **Usage**:
+
 ```php
 Route::middleware(['api-key-auth'])->group(function () {
     Route::get('/public-data', PublicDataController::class);
@@ -217,12 +240,14 @@ Route::middleware(['api-key-auth'])->group(function () {
 ### ✅ PHASE 8: Input Validation & XSS/CSRF Protection
 
 #### Laravel Protection
+
 - ✅ **Eloquent ORM** prevents SQL injection (parameterized queries)
 - ✅ **FormRequest** automatic CSRF token validation
 - ✅ **Blade** automatic HTML escaping (XSS prevention)
 - ✅ **Mass assignment protection** via $fillable/$guarded
 
 #### FormRequest Validation Classes
+
 - ✅ BaseApiRequest (base class for all API validation)
 - ✅ PaymentInitRequest
 - ✅ PromoApplyRequest
@@ -230,6 +255,7 @@ Route::middleware(['api-key-auth'])->group(function () {
 - ✅ All return 422 with detailed error messages
 
 **Example**:
+
 ```php
 class PaymentInitRequest extends FormRequest
 {
@@ -254,6 +280,7 @@ class PaymentInitRequest extends FormRequest
 ### ✅ PHASE 9: Network Security
 
 #### CORS (Strict Configuration)
+
 - ✅ Allowlist-based (only explicit domains in env)
 - ✅ Credentials support (cookies + auth headers)
 - ✅ Preflight caching (24 hours)
@@ -261,23 +288,27 @@ class PaymentInitRequest extends FormRequest
 - ✅ No wildcard (`*`) allowed with credentials
 
 **config/cors.php**:
+
 ```php
 'allowed_origins' => explode(',', env('CORS_ALLOWED_ORIGINS', 'http://localhost:3000')),
 'supports_credentials' => true,
 ```
 
 **env**:
+
 ```
 CORS_ALLOWED_ORIGINS=https://app.catvrf.com,https://admin.catvrf.com,http://localhost:3000
 ```
 
 #### IP Whitelisting
+
 - ✅ IpWhitelistMiddleware with CIDR support
 - ✅ Per-endpoint whitelisting
 - ✅ Proxy header detection (Cloudflare, nginx)
 - ✅ Internal webhook routes only
 
 **Routes**:
+
 ```php
 Route::middleware(['ip-whitelist'])->group(function () {
     Route::post('/internal/webhooks/tinkoff', WebhookController::class);
@@ -289,12 +320,14 @@ Route::middleware(['ip-whitelist'])->group(function () {
 ### ✅ PHASE 10: DDoS & Rate Limiting
 
 #### Protection Layers
+
 1. **Cloudflare/WAF**: Rate limit at edge (if enabled)
 2. **Laravel Rate Limiter**: Sliding window (Redis-backed)
 3. **Middleware**: Per-endpoint limits
 4. **Temporary Bans**: Block after 10 rejections (1 hour)
 
 #### Sliding Window Algorithm
+
 ```
 Window: 60 seconds
 Limit: 10 requests per window
@@ -307,6 +340,7 @@ Cost: O(log n) per request
 ### ✅ PHASE 11: Logging & Audit Trail
 
 #### Audit Logging
+
 - ✅ Log::channel('audit') for all critical operations
 - ✅ correlation_id in every log entry
 - ✅ Timestamps (microsecond precision)
@@ -314,12 +348,14 @@ Cost: O(log n) per request
 - ✅ 3-year retention (for compliance)
 
 **Channels**:
+
 - `audit` - All business operations
 - `fraud_alert` - Fraud detection events
 - `webhook_errors` - Webhook failures
 - `security` - Authentication/authorization events
 
 **Example**:
+
 ```php
 Log::channel('audit')->info('Payment initiated', [
     'user_id' => auth()->id(),
@@ -356,6 +392,7 @@ Log::channel('audit')->info('Payment initiated', [
 ## 🚀 DEPLOYMENT CHECKLIST
 
 ### Pre-Deployment
+
 - [ ] Run all migrations: `php artisan migrate`
 - [ ] Generate API docs: `php artisan l5-swagger:generate`
 - [ ] Clear caches: `php artisan cache:clear && php artisan config:clear`
@@ -363,6 +400,7 @@ Log::channel('audit')->info('Payment initiated', [
 - [ ] Verify environment variables are set
 
 ### Environment Variables (.env)
+
 ```
 # Authentication
 SANCTUM_STATEFUL_DOMAINS=localhost,127.0.0.1
@@ -383,6 +421,7 @@ RATE_LIMIT_SEARCH=1000,3600
 ```
 
 ### Post-Deployment
+
 - [ ] Test authentication flows
 - [ ] Verify rate limiting (use load test)
 - [ ] Test webhook signatures
@@ -396,6 +435,7 @@ RATE_LIMIT_SEARCH=1000,3600
 ## 🧪 TESTING COMMANDS
 
 ### Test Idempotency
+
 ```bash
 IDEMPOTENCY_KEY="test-123"
 curl -X POST http://localhost:8000/api/v1/payments/init \
@@ -414,6 +454,7 @@ curl -X POST http://localhost:8000/api/v1/payments/init \
 ```
 
 ### Test Rate Limiting
+
 ```bash
 for i in {1..15}; do
   echo "Request $i"
@@ -425,6 +466,7 @@ done
 ```
 
 ### Test API Key Authentication
+
 ```bash
 # Generate key
 php artisan tinker
@@ -438,6 +480,7 @@ curl -X GET http://localhost:8000/api/v1/public-data \
 ```
 
 ### Test CORS
+
 ```bash
 curl -X OPTIONS http://localhost:8000/api/v1/payments \
   -H "Origin: https://app.catvrf.com" \
@@ -451,6 +494,7 @@ curl -X OPTIONS http://localhost:8000/api/v1/payments \
 ## 📈 MONITORING & METRICS
 
 ### Key Metrics to Track
+
 1. **Rate Limit Hits**: % of requests hitting limits (target: <5%)
 2. **Fraud Scores**: Avg/max score, % blocked (target: <0.5% blocked)
 3. **API Error Rate**: 4xx/5xx % (target: <1%)
@@ -458,6 +502,7 @@ curl -X OPTIONS http://localhost:8000/api/v1/payments \
 5. **Auth Failures**: Login attempts, failed API keys (alert on spike)
 
 ### Sentry Alerts
+
 ```
 - Rate limit violations > 100/hour
 - Fraud score > 0.8
@@ -471,22 +516,26 @@ curl -X OPTIONS http://localhost:8000/api/v1/payments \
 ## 🔄 MAINTENANCE TASKS
 
 ### Daily
+
 - [ ] Monitor audit logs for anomalies
 - [ ] Check fraud detection metrics
 - [ ] Verify webhook delivery
 
 ### Weekly
+
 - [ ] Review rate limit violations
 - [ ] Audit new API keys
 - [ ] Check for expired tokens/keys
 
 ### Monthly
+
 - [ ] Rotate API keys (prod)
 - [ ] Review security metrics
 - [ ] Update IP whitelists
 - [ ] Penetration test APIs
 
 ### Quarterly
+
 - [ ] Security audit
 - [ ] Dependency updates
 - [ ] OWASP compliance check
@@ -509,6 +558,7 @@ curl -X OPTIONS http://localhost:8000/api/v1/payments \
 ## ✨ WHAT'S NEXT
 
 ### Week 3+
+
 1. **PCI-DSS Compliance** - Card data handling audit
 2. **Advanced ML Fraud** - Integration with FraudMLService
 3. **Penetration Testing** - Professional security audit

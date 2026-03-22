@@ -3,11 +3,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\API;
 
-use App\Domains\AutoParts\Models\AutoPartOrder;
-use App\Domains\AutoParts\Services\VINCompatibilityService;
+use App\Domains\Auto\Models\AutoPartOrder;
+use App\Domains\Auto\Services\VINCompatibilityService;
 use App\Http\Requests\AutoParts\StoreOrderRequest;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
+use App\Services\FraudControlService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -15,6 +16,7 @@ final class AutoPartsOrderController extends BaseApiController
 {
     public function __construct(
         private VINCompatibilityService $service,
+        private readonly FraudControlService $fraudControlService,
     ) {}
 
     public function index(): JsonResponse
@@ -36,12 +38,10 @@ final class AutoPartsOrderController extends BaseApiController
 
     public function store(StoreOrderRequest $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
-            $correlationId = Str::uuid()->toString();
             $tenantId = auth()->user()?->tenant_id ?? tenant()->id;
 
             $order = $this->service->createOrder(

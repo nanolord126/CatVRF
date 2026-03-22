@@ -3,22 +3,25 @@
 namespace App\Domains\Travel\Http\Controllers;
 
 use App\Domains\Travel\Models\TravelReview;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Throwable;
 
-final class TravelReviewController
+final class TravelReviewController extends Controller
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function store(Request $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
-
         $correlationId = $request->get('correlation_id', Str::uuid()->toString());
+        $this->fraudControlService->check(auth()->id() ?? 0, 'review_store', 0, $request->ip(), null, $correlationId);
 
         try {
             $request->validate([
@@ -30,20 +33,21 @@ final class TravelReviewController
                 'review_aspects' => 'nullable|array',
             ]);
 
-            $review = DB::transaction(function () use ($request, $correlationId) {
+            $validated = $request->all();
+            $review = DB::transaction(function () use ($validated, $correlationId) {
                 return TravelReview::create([
                     'tenant_id' => tenant()->id,
-                    'agency_id' => $request->get('agency_id'),
-                    'tour_id' => $request->get('tour_id'),
+                    'agency_id' => ($validated['agency_id'] ?? null),
+                    'tour_id' => ($validated['tour_id'] ?? null),
                     'reviewer_id' => auth()->id(),
-                    'booking_id' => $request->get('booking_id'),
-                    'rating' => $request->get('rating'),
-                    'comment' => $request->get('comment'),
-                    'review_aspects' => $request->get('review_aspects', []),
-                    'verified_booking' => $request->get('booking_id') ? true : false,
+                    'booking_id' => ($validated['booking_id'] ?? null),
+                    'rating' => ($validated['rating'] ?? null),
+                    'comment' => ($validated['comment'] ?? null),
+                    'review_aspects' => ($validated['review_aspects'] ?? []),
+                    'verified_booking' => ($validated['booking_id'] ?? null) ? true : false,
                     'status' => 'pending',
                     'correlation_id' => $correlationId,
-                    'uuid' => Str::uuid(),
+                    'uuid' => Str::uuid()->toString(),
                 ]);
             });
 
@@ -69,22 +73,20 @@ final class TravelReviewController
 
     public function update(Request $request, int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
-
         $correlationId = $request->get('correlation_id', Str::uuid()->toString());
+        $this->fraudControlService->check(auth()->id() ?? 0, 'review_update', 0, $request->ip(), null, $correlationId);
 
         try {
             $review = TravelReview::where('tenant_id', tenant()->id)
                 ->where('reviewer_id', auth()->id())
                 ->findOrFail($id);
 
-            $review = DB::transaction(function () use ($request, $review, $correlationId) {
+            $validated = $request->all();
+            $review = DB::transaction(function () use ($validated, $review, $correlationId) {
                 $review->update([
-                    'rating' => $request->get('rating', $review->rating),
-                    'comment' => $request->get('comment', $review->comment),
-                    'review_aspects' => $request->get('review_aspects', $review->review_aspects),
+                    'rating' => ($validated['rating'] ?? $review->rating),
+                    'comment' => ($validated['comment'] ?? $review->comment),
+                    'review_aspects' => ($validated['review_aspects'] ?? $review->review_aspects),
                     'correlation_id' => $correlationId,
                 ]);
 
@@ -112,11 +114,8 @@ final class TravelReviewController
 
     public function destroy(int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
-
-        $correlationId = Str::uuid()->toString();
+        $correlationId = (string) Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'review_destroy', 0, request()->ip(), null, $correlationId);
 
         try {
             $review = TravelReview::where('tenant_id', tenant()->id)
@@ -155,13 +154,13 @@ final class TravelReviewController
             return response()->json([
                 'success' => true,
                 'data' => $reviews->items(),
-                'correlation_id' => Str::uuid(),
+                'correlation_id' => Str::uuid()->toString(),
             ]);
         } catch (Throwable $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to get reviews',
-                'correlation_id' => Str::uuid(),
+                'correlation_id' => Str::uuid()->toString(),
             ], 500);
         }
     }

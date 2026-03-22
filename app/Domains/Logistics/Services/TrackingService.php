@@ -2,8 +2,8 @@
 
 namespace App\Domains\Logistics\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use App\Domains\Logistics\Models\Shipment;
 use App\Domains\Logistics\Models\ShipmentTracking;
@@ -11,6 +11,10 @@ use Illuminate\Support\Facades\DB;
 
 final class TrackingService
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function addTrackingEvent(
         Shipment $shipment,
         string $eventType,
@@ -18,12 +22,17 @@ final class TrackingService
         ?string $notes,
         string $correlationId,
     ): ShipmentTracking {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'addTrackingEvent'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL addTrackingEvent', ['domain' => __CLASS__]);
 
-        return DB::transaction(function () use (
+
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(function () use (
             $shipment,
             $eventType,
             $location,
@@ -52,10 +61,7 @@ final class TrackingService
 
     public function getShipmentHistory(Shipment $shipment): \Illuminate\Database\Eloquent\Collection
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'getShipmentHistory'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getShipmentHistory', ['domain' => __CLASS__]);
+
 
         return $shipment->tracking()->orderBy('event_time', 'desc')->get();
     }

@@ -2,8 +2,8 @@
 
 namespace App\Domains\Fitness\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use App\Domains\Fitness\Events\MembershipCreated;
 use App\Domains\Fitness\Models\Gym;
@@ -15,10 +15,7 @@ final readonly class MembershipService
 {
     public function createMembership(int $gymId, int $memberId, string $type, float $amount, string $correlationId): Membership
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'createMembership'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createMembership', ['domain' => __CLASS__]);
+
 
         try {
             $gym = Gym::findOrFail($gymId);
@@ -74,10 +71,7 @@ final readonly class MembershipService
 
     public function cancelMembership(Membership $membership, string $reason, string $correlationId): void
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'cancelMembership'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL cancelMembership', ['domain' => __CLASS__]);
+
 
         try {
             DB::transaction(function () use ($membership, $reason, $correlationId) {

@@ -4,6 +4,7 @@ namespace App\Domains\Flowers\Http\Controllers;
 
 use App\Domains\Flowers\Models\FlowerDelivery;
 use App\Domains\Flowers\Services\FlowerDeliveryService;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -14,11 +15,12 @@ final class FlowerDeliveryController
 {
     public function __construct(
         private readonly FlowerDeliveryService $deliveryService,
+        private readonly FraudControlService $fraudControlService,
     ) {}
 
     public function track(int $id): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $delivery = $this->deliveryService->trackDelivery($id);
@@ -46,7 +48,7 @@ final class FlowerDeliveryController
 
     public function orderDelivery(int $orderId): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $delivery = FlowerDelivery::query()
@@ -72,7 +74,7 @@ final class FlowerDeliveryController
 
     public function shopDeliveries(): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $shop = auth()->user()->flowerShop;
@@ -105,7 +107,7 @@ final class FlowerDeliveryController
 
     public function assign(int $id, Request $request): JsonResponse
     {
-        $correlationId = (string)Str::uuid();
+        $correlationId = (string)Str::uuid()->toString();
 
         try {
             $validated = $request->validate([
@@ -141,11 +143,8 @@ final class FlowerDeliveryController
 
     public function update(int $id, Request $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
-
-        $correlationId = (string)Str::uuid();
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $validated = $request->validate([

@@ -34,7 +34,7 @@ final class ReportingController extends Controller
      * Запланировать отчёт
      */
     public function scheduleReport(Request $request): JsonResponse {
-        $correlationId = Str::uuid();
+        $correlationId = Str::uuid()->toString();
 
         try {
             $validated = $request->validate([
@@ -70,7 +70,7 @@ final class ReportingController extends Controller
      * Получить запланированные отчёты
      */
     public function getScheduledReports(Request $request): JsonResponse {
-        $correlationId = Str::uuid();
+        $correlationId = Str::uuid()->toString();
 
         try {
             $schedules = $this->reportingService->getScheduledReports(
@@ -96,7 +96,7 @@ final class ReportingController extends Controller
      * Обновить расписание отчёта
      */
     public function updateSchedule(Request $request, string $reportId): JsonResponse {
-        $correlationId = Str::uuid();
+        $correlationId = Str::uuid()->toString();
 
         try {
             $validated = $request->validate([
@@ -130,7 +130,7 @@ final class ReportingController extends Controller
      * Удалить расписание отчёта
      */
     public function deleteSchedule(string $reportId): JsonResponse {
-        $correlationId = Str::uuid();
+        $correlationId = Str::uuid()->toString();
 
         try {
             $this->reportingService->deleteReportSchedule(
@@ -157,7 +157,7 @@ final class ReportingController extends Controller
      * Сгенерировать отчёт
      */
     public function generateReport(Request $request): JsonResponse {
-        $correlationId = Str::uuid();
+        $correlationId = Str::uuid()->toString();
 
         try {
             $validated = $request->validate([

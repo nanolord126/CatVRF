@@ -14,7 +14,8 @@
 
 ### 1. **AtolFiscalDriver** (`app/Domains/Finances/Services/Fiscal/AtolFiscalDriver.php`)
 
-#### Новые методы:
+#### Новые методы
+
 - **`getTaxRate(string $taxSystem, ?string $taxCode = null): array`**
   - Расчет налоговой ставки по системе налогообложения
   - Возвращает `['rate' => float, 'type' => string]`
@@ -24,7 +25,8 @@
   - Обработка товаров с добавлением налоговых данных
   - Преобразует товары в формат для Atol API
 
-#### Обновленные методы:
+#### Обновленные методы
+
 - **`sendReceipt()`**
   - Теперь получает `tax_system` из данных транзакции
   - Обрабатывает товары через `processItemsWithTax()` перед отправкой
@@ -42,7 +44,8 @@
 
 ### 2. **CloudKassirFiscalDriver** (`app/Domains/Finances/Services/Fiscal/CloudKassirFiscalDriver.php`)
 
-#### Новые методы:
+#### Новые методы
+
 - **`getTaxRate(string $taxSystem, ?string $taxCode = null): string`**
   - Расчет налоговой ставки для CloudKassir API
   - Возвращает строку с кодом налога (Vat0, Vat10, Vat18, NoVat, и т.д.)
@@ -51,7 +54,8 @@
   - Обработка товаров с добавлением правильного налогового кода
   - Поддерживает варианты названия полей (qty/quantity)
 
-#### Обновленные методы:
+#### Обновленные методы
+
 - **`sendReceipt()`**
   - Добавлена обработка `tax_system` из данных транзакции
   - Вызывает `processItemsWithTax()` для преобразования товаров
@@ -65,7 +69,8 @@
   - Проверяет валидность всех полей товаров
   - Проверяет наличие и валидность налоговых кодов
 
-#### Улучшенная поддержка:
+#### Улучшенная поддержка
+
 - CloudKassir коды налогов: Vat0, Vat10, Vat18, NoVat, VatMixedStandard
 - CloudKassir системы налогообложения: OMS, UsnIncome, UsnIncomeMinusExpense, Envd, Esn, Patent
 
@@ -73,11 +78,13 @@
 
 ### 3. **FiscalService** (`app/Domains/Finances/Services/Fiscal/FiscalService.php`)
 
-#### Обновленная документация:
+#### Обновленная документация
+
 - Добавлено описание поддержки НДС по различным системам налогообложения
 - Указаны методы каждого драйвера для работы с налогами
 
-#### Обновленные методы:
+#### Обновленные методы
+
 - **`refundReceipt(string $fiscalId, float $amount, array $data = []): array`**
   - Добавлена поддержка параметра `$data` для передачи налоговых данных
   - Поддерживает `tax_system`, `tax`, `reason`, `correlation_id` в данных возврата
@@ -86,7 +93,8 @@
 
 ### 4. **FiscalServiceInterface** (`app/Domains/Finances/Interfaces/FiscalServiceInterface.php`)
 
-#### Обновления:
+#### Обновления
+
 - Добавлена документация по поддержке НДС
 - **`sendReceipt()`** - теперь принимает отдельно `$transactionData` и `$items`
 - **`refundReceipt()`** - сигнатура изменена на `refundReceipt(string $fiscalId, float $amount, array $data = [])`
@@ -96,9 +104,11 @@
 
 ### 5. **PaymentService** (`app/Domains/Finances/Services/PaymentService.php`)
 
-#### Обновления:
+#### Обновления
+
 - Добавлена документация с указанием поддержки фискализации с учетом системы налогообложения
 - **`handleWebhook()`** - при отправке чека теперь передается `tax_system`:
+
   ```php
   $this->fiscal->sendReceipt([
       'payment_id' => $tx->payment_id,
@@ -117,6 +127,7 @@
 ### 6. **FiscalDriverInterface** (`app/Domains/Finances/Interfaces/FiscalDriverInterface.php`)
 
 ✅ **Интерфейс уже содержит нужные методы и параметры:**
+
 - `sendReceipt(array $tx, array $items): array`
 - `refundReceipt(string $fiscalId, float $amount, array $data = []): array`
 - `validateItems(array $items): array`
@@ -199,14 +210,16 @@ if (!$validation['valid']) {
 
 ## Поддерживаемые налоговые коды
 
-### Для Atol API:
+### Для Atol API
+
 - `VAT_0` - НДС 0%
 - `VAT_10` - НДС 10%
 - `VAT_18` - НДС 18%
 - `VAT_20` - НДС 20%
 - `NO_VAT` - Без НДС
 
-### Для CloudKassir API:
+### Для CloudKassir API
+
 - `Vat0` - НДС 0%
 - `Vat10` - НДС 10%
 - `Vat18` - НДС 18%
@@ -218,11 +231,13 @@ if (!$validation['valid']) {
 ## Примеры по системам налогообложения
 
 ### ОСН (Общая система)
+
 - Полная поддержка налоговых ставок: 0%, 10%, 18%, 20%
 - Обязательно указывать конкретную ставку в товарах
 - По умолчанию: 20%
 
 ### УСН/ЕСХН/ЕНВД/ПСН
+
 - Автоматически устанавливается `no_vat`
 - Указанные в товарах налоговые коды игнорируются и переопределяются на `no_vat`
 - Поддержка для compliance с российским законодательством
@@ -250,12 +265,14 @@ if ($validation['valid']) {
 
 Если у вас есть вызовы старого API:
 
-### Было:
+### Было
+
 ```php
 $fiscal->sendReceipt(['order_id' => 123, 'total' => 100]);
 ```
 
-### Стало:
+### Стало
+
 ```php
 $fiscal->sendReceipt([
     'payment_id' => 'pay_123',

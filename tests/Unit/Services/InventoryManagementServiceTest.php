@@ -7,6 +7,7 @@ use App\Models\StockMovement;
 use App\Models\Tenant;
 use App\Services\Inventory\InventoryManagementService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Services\FraudControlService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -44,6 +45,10 @@ final class InventoryManagementServiceTest extends TestCase
             'hold_stock'    => 0,
             'min_stock_threshold' => 10,
         ]);
+        $this->app->instance(
+            FraudControlService::class,
+            \Mockery::mock(FraudControlService::class)->shouldReceive('check')->andReturn(true)->getMock()
+        );
     }
 
     // ─── getCurrentStock ─────────────────────────────────────────────────────

@@ -15,6 +15,7 @@ php artisan db:seed --class=BeautySeeder
 ```
 
 **Создаст:**
+
 - 1 тестовый салон (Test Beauty Salon)
 - 3 услуги (Маникюр 500р, Педикюр 700р, Массаж 2000р)
 - 5 тестовых бронирований
@@ -32,18 +33,20 @@ CACHE_DRIVER=redis
 ### 3. Start Services (2 мин)
 
 **Terminal 1 - Octane**
+
 ```bash
 php artisan octane:start --watch
 ```
 
 **Terminal 2 - Horizon**
+
 ```bash
 php artisan horizon
 ```
 
-### ✅ Done! You can now:
+### ✅ Done! You can now
 
-- 🌐 Visit http://localhost:8000
+- 🌐 Visit <http://localhost:8000>
 - 📱 Create bookings
 - 💳 Process Tinkoff payments
 - 📊 Check wallet balance
@@ -81,6 +84,7 @@ curl -X POST http://localhost:8000/api/beauty/bookings \
 ```
 
 **Response:**
+
 ```json
 {
   "id": 1,
@@ -101,6 +105,7 @@ curl -X POST http://localhost:8000/beauty/payment/initiate \
 ```
 
 **Response:**
+
 ```json
 {
   "payment_id": 1,
@@ -168,6 +173,7 @@ php artisan octane:reload        # Reload workers
 ### Issue: "Tinkoff API credentials not configured"
 
 **Solution:** Check .env file has:
+
 ```env
 TINKOFF_API_KEY=1716383938760904
 TINKOFF_API_SECRET=j1Jk3mK9qL2p8nQ4
@@ -176,6 +182,7 @@ TINKOFF_API_SECRET=j1Jk3mK9qL2p8nQ4
 ### Issue: "SQLSTATE[42S02]: Table not found"
 
 **Solution:** Run migrations:
+
 ```bash
 php artisan migrate
 ```
@@ -183,6 +190,7 @@ php artisan migrate
 ### Issue: "Connection refused" on redis
 
 **Solution:** Make sure Redis is running:
+
 ```bash
 # Windows
 redis-server
@@ -194,6 +202,7 @@ QUEUE_CONNECTION=database php artisan queue:work
 ### Issue: Tests fail with "Factory missing"
 
 **Solution:** Create factories for test models:
+
 ```bash
 php artisan make:factory ServiceFactory --model=Service
 ```

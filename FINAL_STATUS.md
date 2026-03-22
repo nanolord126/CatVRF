@@ -23,10 +23,12 @@
 ### 1️⃣ ЖЁСТКАЯ ОЧИСТКА (Завершена)
 
 ✅ **Удалено 29 объектов:**
+
 - `app/Domains/` полностью (28 старых вертикалей)
 - 28 модулей из `modules/`: Taxi, Food, Hotel, Sports, Clinic, Education, Insurance, RealEstate, BeautyMasters, BeautyShop, Bonuses, Commissions, Communication, Construction, Delivery, Electronics, Events, Furniture, Geo, Hotels, Inventory, Analytics, Advertising, Apparel, Auto, Tourism, Staff
 
 ✅ **Результат:**
+
 - Clean codebase
 - Zero stub implementations
 - Zero TODO comments
@@ -35,20 +37,24 @@
 ### 2️⃣ BEAUTY ВЕРТИКАЛЬ (Завершена)
 
 ✅ **Models (4):**
+
 - `Service.php` - услуга салона (новая)
 - `Booking.php` - бронирование (новая)
 - `Payment.php` - платёж (новая)
 - `BeautySalon.php` - существующий, расширенный
 
 ✅ **Business Logic Services (2):**
+
 - `BookingService.php` - создание, подтверждение, завершение, отмена
 - `PaymentService.php` - инициация, подтверждение, возврат
 
 ✅ **Enums (2):**
+
 - `BookingStatus` - pending, confirmed, completed, cancelled, no_show
 - `PaymentStatus` - pending, confirmed, failed, refunded, cancelled
 
 ✅ **Database Migrations (3):**
+
 - `2026_03_11_120000_create_beauty_services_table`
 - `2026_03_11_120100_create_beauty_bookings_table`
 - `2026_03_11_120200_create_beauty_payments_table`
@@ -56,23 +62,27 @@
 ### 3️⃣ ПЛАТЁЖИ TINKOFF (Завершено)
 
 ✅ **TinkoffGateway:**
+
 - `createPayment()` - инициация платежа с Receipt
 - `getPaymentStatus()` - опрос статуса
 - `refund()` - полный возврат
 - `verifyCallback()` - webhook signature verification
 
 ✅ **Wallet Integration (80/20):**
+
 - Салон получает 80% на wallet
 - Платформа получает 20%
 - All logged with correlation_id
 
 ✅ **Config:**
+
 - Sandbox credentials в `config/payments.php`
 - Готово для production переключения
 
 ### 4️⃣ ТЕСТИРОВАНИЕ (Завершено)
 
 ✅ **BookingTest.php (8 тест-кейсов):**
+
 - `test_customer_can_create_booking()` - создание бронирования
 - `test_booking_cannot_be_created_for_inactive_service()` - валидация
 - `test_booking_cannot_be_created_for_past_date()` - валидация даты
@@ -83,6 +93,7 @@
 - (+1 дополнительный)
 
 ✅ **PaymentTest.php (6 тест-кейсов):**
+
 - `test_payment_can_be_initiated_for_booking()` - инициация
 - `test_payment_cannot_be_initiated_for_completed_booking()` - валидация
 - `test_payment_is_confirmed_and_wallet_is_credited()` - 80/20 распределение
@@ -95,22 +106,26 @@
 ### 5️⃣ PRODUCTION CONFIG (Завершено)
 
 ✅ **Octane/Swoole:**
+
 - Конфиг в `config/octane.php`
 - Memory management optimized
 - Worker recycling enabled
 - Task workers configured
 
 ✅ **Horizon:**
+
 - Queue processing для background jobs
 - Retry policies для платежных операций
 - Timeout handling
 
 ✅ **Rate Limiting:**
+
 - 50 req/min на payment callback
 - 200 req/min на API endpoints
 - Per-IP based
 
 ✅ **Logging:**
+
 - Структурированный JSON logging
 - Correlation ID на все операции
 - Отдельный channel для payments
@@ -281,23 +296,27 @@ curl http://localhost:8000/health
 ## 🔐 Security Features
 
 ✅ **Authentication & Authorization**
+
 - Tenant isolation (all queries scoped)
 - SalonPolicy for resource access
 - BookingPolicy for permissions
 
 ✅ **Payment Security**
+
 - Tinkoff webhook signature verification
 - Rate limiting (50 req/min on callback)
 - HTTPS only in production
 - Secure cookies flag
 
 ✅ **Data Integrity**
+
 - Soft deletes for audit trail
 - Correlation IDs on all mutations
 - Structured logging
 - No stub implementations
 
 ✅ **SQL Injection Prevention**
+
 - Eloquent ORM (no raw SQL)
 - Parameterized queries
 - Input validation

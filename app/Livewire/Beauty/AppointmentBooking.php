@@ -148,7 +148,7 @@ final class AppointmentBooking extends Component
         FraudControlService $fraudControlService,
     ): void {
         $this->errorMessage = null;
-        $correlationId = (string) Str::uuid();
+        $correlationId = (string) Str::uuid()->toString();
 
         // Rate limiting — не более 5 бронирований в час с одного пользователя
         $rateLimitKey = 'beauty:booking:' . Auth::id() . ':' . tenant('id');

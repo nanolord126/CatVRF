@@ -4,13 +4,17 @@ namespace App\Domains\Hotels\Http\Controllers;
 
 use App\Domains\Hotels\Models\Booking;
 use App\Domains\Hotels\Services\BookingService;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 final class BookingController extends Controller
 {
     public function __construct(
         private readonly BookingService $bookingService,
+        private readonly FraudControlService $fraudControlService,
     ) {}
 
     public function index(): JsonResponse
@@ -53,9 +57,8 @@ final class BookingController extends Controller
 
     public function store(): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $this->authorize('create', Booking::class);
@@ -69,8 +72,6 @@ final class BookingController extends Controller
                 'special_requests' => 'nullable|string',
             ]);
 
-            $correlationId = \Illuminate\Support\Str::uuid();
-
             $booking = $this->bookingService->createBooking(
                 hotelId: (int) $data['hotel_id'],
                 roomTypeId: (int) $data['room_type_id'],
@@ -80,6 +81,15 @@ final class BookingController extends Controller
                 specialRequests: $data['special_requests'] ?? null,
                 correlationId: $correlationId,
             );
+
+            Log::channel('audit')->info('Hotel booking created', [
+                'correlation_id' => $correlationId,
+                'booking_id' => $booking->id ?? null,
+                'hotel_id' => $data['hotel_id'],
+                'user_id' => auth()->id(),
+                'check_in' => $data['check_in_date'],
+                'check_out' => $data['check_out_date'],
+            ]);
 
             return response()->json([
                 'success' => true,
@@ -96,9 +106,8 @@ final class BookingController extends Controller
 
     public function update(string $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $booking = Booking::findOrFail($id);
@@ -109,7 +118,16 @@ final class BookingController extends Controller
                 'special_requests' => 'nullable|string',
             ]);
 
+            $before = $booking->booking_status;
             $booking->update($data);
+
+            Log::channel('audit')->info('Hotel booking updated', [
+                'correlation_id' => $correlationId,
+                'booking_id' => $booking->id,
+                'user_id' => auth()->id(),
+                'before' => $before,
+                'after' => $data,
+            ]);
 
             return response()->json([
                 'success' => true,
@@ -129,13 +147,22 @@ final class BookingController extends Controller
             $booking = Booking::findOrFail($id);
             $this->authorize('cancel', $booking);
 
-            $correlationId = \Illuminate\Support\Str::uuid();
+            $correlationId = Str::uuid()->toString();
+
+            $this->fraudControlService->check(auth()->id() ?? 0, 'booking_cancel', 0, request()->ip(), null, $correlationId);
 
             $this->bookingService->cancelBooking(
                 booking: $booking,
                 reason: request()->input('reason', 'Guest cancelled'),
                 correlationId: $correlationId,
             );
+
+            Log::channel('audit')->info('Hotel booking cancelled', [
+                'correlation_id' => $correlationId,
+                'booking_id' => $booking->id,
+                'user_id' => auth()->id(),
+                'reason' => request()->input('reason', 'Guest cancelled'),
+            ]);
 
             return response()->json([
                 'success' => true,

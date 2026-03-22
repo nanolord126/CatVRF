@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Auth;
 
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
@@ -17,16 +18,16 @@ use Illuminate\Support\Facades\Log;
  */
 final class TokenController extends Controller
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
     /**
      * Создать новый token
      */
     public function create(Request $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
-
-        $correlationId = (string) Str::uuid();
+        $correlationId = (string) Str::uuid()->toString();
+        $this->fraudControlService->check(0, 'token_create', 0, $request->ip(), null, $correlationId);
 
         try {
             $validated = $request->validate([
@@ -86,7 +87,7 @@ final class TokenController extends Controller
      */
     public function refresh(Request $request): JsonResponse
     {
-        $correlationId = (string) Str::uuid();
+        $correlationId = (string) Str::uuid()->toString();
 
         try {
             $user = $request->user();

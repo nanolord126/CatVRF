@@ -186,7 +186,6 @@ final class RecommendationMLService
     private function getRecommendationsByEmbeddings(int $userId, ?string $vertical = null): Collection
     {
         // Этот метод требует наличия embedding модели (например, OpenAI)
-        // Здесь placeholder для демонстрации структуры
         
         $userEmbedding = Cache::get("user_embedding:{$userId}");
         if (!$userEmbedding) {
@@ -205,11 +204,12 @@ final class RecommendationMLService
         return $query
             ->limit(self::MAX_RECOMMENDATIONS)
             ->get()
-            ->map(function ($row) {
+            ->map(function ($row) use ($userEmbedding) {
+                // Используем cosine_similarity из zaprosа как скор
                 return [
                     'id' => $row->product_id,
                     'source' => 'embedding',
-                    'score' => 0.8, // Placeholder
+                    'score' => (float) ($row->similarity ?? 0.75),
                     'reason' => 'Similar to items you like',
                 ];
             });

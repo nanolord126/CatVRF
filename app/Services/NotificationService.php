@@ -29,7 +29,7 @@ final readonly class NotificationService
         array $data,
         string $correlationId = '',
     ): bool {
-        $correlationId = $correlationId ?: (string) Str::uuid();
+        $correlationId = $correlationId ?: (string) Str::uuid()->toString();
 
         try {
             Log::channel('audit')->info('Notification send initiated', [
@@ -121,7 +121,7 @@ final readonly class NotificationService
      */
     public function sendDailyReport(int $tenantId, string $correlationId = ''): bool
     {
-        $correlationId = $correlationId ?: (string) Str::uuid();
+        $correlationId = $correlationId ?: (string) Str::uuid()->toString();
 
         try {
             Log::channel('audit')->info('Daily report sending', [
@@ -163,7 +163,7 @@ final readonly class NotificationService
      */
     public function sendWeeklyReport(int $tenantId, string $correlationId = ''): bool
     {
-        $correlationId = $correlationId ?: (string) Str::uuid();
+        $correlationId = $correlationId ?: (string) Str::uuid()->toString();
 
         try {
             Log::channel('audit')->info('Weekly report sending', [

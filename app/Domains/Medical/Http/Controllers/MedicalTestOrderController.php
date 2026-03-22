@@ -4,16 +4,19 @@ namespace App\Domains\Medical\Http\Controllers;
 
 use App\Domains\Medical\Models\MedicalTestOrder;
 use App\Domains\Medical\Services\TestOrderService;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Throwable;
 
 final class MedicalTestOrderController
 {
     public function __construct(
         private readonly TestOrderService $testOrderService,
+        private readonly FraudControlService $fraudControlService,
     ) {}
 
     public function myTestOrders(): JsonResponse
@@ -35,21 +38,20 @@ final class MedicalTestOrderController
 
     public function store(Request $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
-            $correlationId = $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid();
 
-            $testOrder = DB::transaction(function () use ($request, $correlationId) {
+            $validated = $request->all();
+            $testOrder = DB::transaction(function () use ($validated, $correlationId) {
                 return $this->testOrderService->createTestOrder(
                     tenantId: auth()->user()->tenant_id,
-                    appointmentId: $request->input('appointment_id'),
+                    appointmentId: ($validated['appointment_id'] ?? null),
                     patientId: auth()->user()->id,
-                    clinicId: $request->input('clinic_id'),
-                    tests: $request->input('tests', []),
-                    totalAmount: $request->input('total_amount'),
+                    clinicId: ($validated['clinic_id'] ?? null),
+                    tests: ($validated['tests'] ?? []),
+                    totalAmount: ($validated['total_amount'] ?? null),
                     correlationId: $correlationId,
                 );
             });

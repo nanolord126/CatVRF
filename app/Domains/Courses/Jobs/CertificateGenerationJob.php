@@ -24,7 +24,11 @@ final class CertificateGenerationJob implements ShouldQueue
         $this->certificateId = $certificateId;
         $this->correlationId = $correlationId;
         $this->onQueue('certificates');
-        $this->tags(['courses', 'certificates', 'generation']);
+    }
+
+    public function tags(): array
+    {
+        return ['courses', 'certificates', 'generation'];
     }
 
     public function handle(): void
@@ -37,19 +41,7 @@ final class CertificateGenerationJob implements ShouldQueue
 
             $certificate = Certificate::findOrFail($this->certificateId);
 
-            // Generate PDF (placeholder for actual implementation)
-            $pdfPath = "certificates/{$certificate->certificate_number}.pdf";
-            $certificate->update(['certificate_url' => $pdfPath]);
-
-            // Send notification
-            $certificate->student->notify(
-                new CertificateIssuedNotification($certificate)
-            );
-
-            Log::channel('audit')->info('Certificate PDF generated and notification sent', [
-                'certificate_id' => $this->certificateId,
-                'correlation_id' => $this->correlationId,
-            ]);
+            throw new \RuntimeException('PDF generation not yet configured. Install barryvdh/laravel-dompdf and implement certificate rendering.');
         } catch (Throwable $e) {
             Log::channel('audit')->error('Failed to generate certificate', [
                 'certificate_id' => $this->certificateId,
@@ -62,6 +54,6 @@ final class CertificateGenerationJob implements ShouldQueue
 
     public function retryUntil(): \DateTime
     {
-        return now()->addHours(24);
+        return now()->addHours(24)->toDateTime();
     }
 }

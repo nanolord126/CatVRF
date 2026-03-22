@@ -21,11 +21,6 @@ final class PharmacyService
 
     public function createOrder(array $medicines, int $prescriptionId, Carbon $deliveryDate, int $clientId, int $tenantId, string $correlationId): PharmacyOrder
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'createOrder'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createOrder', ['domain' => __CLASS__]);
-
         return DB::transaction(function () use ($medicines, $prescriptionId, $deliveryDate, $clientId, $tenantId, $correlationId) {
             $this->fraudControlService->check(
                 userId: $clientId,
@@ -92,11 +87,6 @@ final class PharmacyService
 
     public function verifyPrescription(int $prescriptionId, int $verifiedBy, int $tenantId, string $correlationId): Prescription
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'verifyPrescription'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL verifyPrescription', ['domain' => __CLASS__]);
-
         return DB::transaction(function () use ($prescriptionId, $verifiedBy, $tenantId, $correlationId) {
             $prescription = Prescription::lockForUpdate()
                 ->where('id', $prescriptionId)
@@ -126,11 +116,6 @@ final class PharmacyService
 
     public function markDelivered(int $orderId, int $tenantId, string $correlationId): PharmacyOrder
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'markDelivered'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL markDelivered', ['domain' => __CLASS__]);
-
         $order = PharmacyOrder::lockForUpdate()
             ->where('id', $orderId)
             ->where('tenant_id', $tenantId)

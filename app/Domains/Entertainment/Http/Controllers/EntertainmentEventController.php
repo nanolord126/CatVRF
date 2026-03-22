@@ -14,7 +14,7 @@ final class EntertainmentEventController
 {
     public function __construct(
         private readonly EventService $eventService,
-    ) {}
+        private readonly FraudControlService $fraudControlService,) {}
 
     public function index(): JsonResponse
     {
@@ -42,12 +42,30 @@ final class EntertainmentEventController
 
     public function store(): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
+        $fraudResult = $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            'operation',
+            0,
+            request()->ip(),
+            request()->header('X-Device-Fingerprint'),
+            $correlationId,
+        );
+
+        if ($fraudResult['decision'] === 'block') {
+            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                'correlation_id' => $correlationId,
+                'user_id'        => auth()->id(),
+                'score'          => $fraudResult['score'],
+            ]);
+            return response()->json([
+                'success'        => false,
+                'error'          => 'Операция заблокирована.',
+                'correlation_id' => $correlationId,
+            ], 403);
         }
 
         try {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             $event = $this->eventService->createEvent(
                 request('venue_id'),
                 request('entertainer_id'),
@@ -71,13 +89,31 @@ final class EntertainmentEventController
 
     public function update(int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
+        $fraudResult = $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            'operation',
+            0,
+            request()->ip(),
+            request()->header('X-Device-Fingerprint'),
+            $correlationId,
+        );
+
+        if ($fraudResult['decision'] === 'block') {
+            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+                'correlation_id' => $correlationId,
+                'user_id'        => auth()->id(),
+                'score'          => $fraudResult['score'],
+            ]);
+            return response()->json([
+                'success'        => false,
+                'error'          => 'Операция заблокирована.',
+                'correlation_id' => $correlationId,
+            ], 403);
         }
 
         try {
             $event = EntertainmentEvent::findOrFail($id);
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             DB::transaction(function () use ($event, $correlationId) {
                 $event->update([
@@ -99,7 +135,7 @@ final class EntertainmentEventController
     {
         try {
             $event = EntertainmentEvent::findOrFail($id);
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             $this->eventService->cancelEvent($event, $correlationId);
 
             return response()->json(['success' => true, 'data' => null, 'correlation_id' => $correlationId]);
@@ -125,7 +161,7 @@ final class EntertainmentEventController
     public function addSchedule(int $eventId): JsonResponse
     {
         try {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             DB::transaction(function () use ($eventId, $correlationId) {
                 $schedule = EventSchedule::create([
@@ -153,7 +189,7 @@ final class EntertainmentEventController
     {
         try {
             $schedule = EventSchedule::findOrFail($scheduleId);
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             DB::transaction(function () use ($schedule, $correlationId) {
                 $schedule->update(['correlation_id' => $correlationId]);
@@ -170,7 +206,7 @@ final class EntertainmentEventController
     {
         try {
             $schedule = EventSchedule::findOrFail($scheduleId);
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             DB::transaction(function () use ($schedule, $correlationId) {
                 $schedule->update(['is_cancelled' => true, 'correlation_id' => $correlationId]);
@@ -199,7 +235,7 @@ final class EntertainmentEventController
     public function addReview(int $id): JsonResponse
     {
         try {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             DB::transaction(function () use ($id, $correlationId) {
                 \App\Domains\Entertainment\Models\EventReview::create([

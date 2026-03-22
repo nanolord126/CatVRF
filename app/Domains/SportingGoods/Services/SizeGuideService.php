@@ -5,7 +5,7 @@ namespace App\Domains\SportingGoods\Services;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Services\Security\FraudControlService;
+use App\Services\FraudControlService;
 use InvalidArgumentException;
 
 final readonly class SizeGuideService
@@ -16,9 +16,16 @@ final readonly class SizeGuideService
 
     public function calculateSize(array $data, string $correlationId): array
     {
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
         Log::channel('audit')->info("РАСЧЕТ РАЗМЕРА", ["correlation_id" => $correlationId]);
         
-        FraudControlService::check($data, $correlationId);
         
         if (empty($data["height"])) {
             Log::channel('audit')->error("Ошибка расчета размера", ["correlation_id" => $correlationId]);

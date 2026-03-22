@@ -9,6 +9,7 @@ use App\Services\Payment\Gateways\TinkoffGateway;
 use App\Services\Payment\Gateways\TochkaGateway;
 use App\Services\Payment\PaymentGatewayService;
 use Illuminate\Support\ServiceProvider;
+use Livewire\Livewire;
 
 final class AppServiceProvider extends ServiceProvider
 {
@@ -26,6 +27,13 @@ final class AppServiceProvider extends ServiceProvider
 
         // ML & Recommendation Services
         $this->app->singleton(\App\Services\SearchRankingService::class);
+
+        // Channels Domain Services (singleton)
+        $this->app->singleton(\App\Domains\Channels\Services\ChannelService::class);
+        $this->app->singleton(\App\Domains\Channels\Services\PostService::class);
+        $this->app->singleton(\App\Domains\Channels\Services\ReactionService::class);
+        $this->app->singleton(\App\Domains\Channels\Services\ChannelTariffService::class);
+        $this->app->singleton(\App\Domains\Channels\Services\ChannelSubscriptionService::class);
 
         // Fraud Detection
         $this->app->singleton(\App\Services\FraudControlService::class);
@@ -58,7 +66,11 @@ final class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        //
+        // Livewire — Channels
+        Livewire::component('channels.business-news-feed', \App\Livewire\Channels\BusinessNewsFeed::class);
+        Livewire::component('channels.post-card',          \App\Livewire\Channels\PostCard::class);
+        Livewire::component('channels.reaction-picker',    \App\Livewire\Channels\ReactionPicker::class);
+        Livewire::component('channels.follow-button',      \App\Livewire\Channels\FollowButton::class);
     }
 }
 

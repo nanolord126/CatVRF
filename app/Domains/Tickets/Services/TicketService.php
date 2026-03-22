@@ -2,8 +2,8 @@
 
 namespace App\Domains\Tickets\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use Illuminate\Support\Facades\DB;
 
@@ -13,26 +13,31 @@ use Illuminate\Support\Str;
 final class TicketService
 {
     public function __construct(
+        private readonly FraudControlService $fraudControlService,
         private readonly string $correlationId = '',
     ) {
         $this->correlationId = $correlationId ?: Str::uuid()->toString();
     }
 
-    public function buyTicket(int $eventId, int $quantity): array
+    public function buyTicket(int $eventId, int $quantity, int $userId, int $tenantId): array
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'buyTicket'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL buyTicket', ['domain' => __CLASS__]);
-
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(function () use ($eventId, $quantity, $userId, $tenantId) {
         $tickets = [];
         for ($i = 0; $i < $quantity; $i++) {
             $tickets[] = Ticket::create([
-                'tenant_id' => auth()->user()->tenant_id,
+                'tenant_id' => $tenantId,
                 'uuid' => Str::uuid(),
                 'correlation_id' => $this->correlationId,
                 'event_id' => $eventId,
-                'user_id' => auth()->id(),
+                'user_id' => $userId,
                 'ticket_number' => Str::random(10),
                 'status' => 'active',
                 'qr_code' => Str::uuid(),
@@ -45,6 +50,7 @@ final class TicketService
         ]);
 
         return $tickets;
+        });
     }
 
     /**
@@ -52,12 +58,17 @@ final class TicketService
      */
     public function executeInTransaction(callable $callback)
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'executeInTransaction'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL executeInTransaction', ['domain' => __CLASS__]);
 
-        return DB::transaction(function () use ($callback) {
+
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(function () use ($callback) {
             return $callback();
         });
     }

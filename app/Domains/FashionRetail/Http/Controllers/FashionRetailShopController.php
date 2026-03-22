@@ -4,6 +4,7 @@ namespace App\Domains\FashionRetail\Http\Controllers;
 
 use App\Domains\FashionRetail\Models\FashionRetailShop;
 use App\Domains\FashionRetail\Services\ShopService;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -13,6 +14,7 @@ final class FashionRetailShopController
 {
     public function __construct(
         private readonly ShopService $shopService,
+        private readonly FraudControlService $fraudControlService,
     ) {}
 
     public function index(): JsonResponse
@@ -21,7 +23,7 @@ final class FashionRetailShopController
             $shops = FashionRetailShop::where('is_active', true)
                 ->paginate(20);
 
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             Log::channel('audit')->info('FashionRetail shops listed', [
                 'count' => $shops->count(),
                 'correlation_id' => $correlationId,
@@ -33,7 +35,7 @@ final class FashionRetailShopController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             Log::error('FashionRetail shop listing failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -68,13 +70,10 @@ final class FashionRetailShopController
 
     public function store(): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
-            $correlationId = Str::uuid();
-
             $shop = DB::transaction(function () use ($correlationId) {
                 return FashionRetailShop::create([
                     'uuid' => Str::uuid(),
@@ -107,7 +106,7 @@ final class FashionRetailShopController
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Throwable $e) {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             Log::error('FashionRetail shop creation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -123,12 +122,10 @@ final class FashionRetailShopController
 
     public function update(int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
-            $correlationId = Str::uuid();
             $shop = FashionRetailShop::findOrFail($id);
 
             if ($shop->owner_id !== auth()->id()) {
@@ -161,7 +158,7 @@ final class FashionRetailShopController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             Log::error('FashionRetail shop update failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

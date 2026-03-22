@@ -202,11 +202,13 @@ open storage/coverage/index.html
 ### Для новых тестов
 
 1. **Скопируй template из существующего теста**
+
    ```bash
    cp tests/Feature/Payment/PaymentInitTest.php tests/Feature/Inventory/InventoryTest.php
    ```
 
 2. **Используй правильный base class**
+
    ```php
    // Для API/Feature tests
    use Tests\BaseTestCase;
@@ -216,6 +218,7 @@ open storage/coverage/index.html
    ```
 
 3. **Пиши Pest-синтаксис**
+
    ```php
    it('can create resource', function () {
        $response = $this->authenticatedPost('/api/resource', [
@@ -229,6 +232,7 @@ open storage/coverage/index.html
    ```
 
 4. **Запусти тест**
+
    ```bash
    ./vendor/bin/pest tests/Feature/Inventory/InventoryTest.php
    ```
@@ -236,12 +240,14 @@ open storage/coverage/index.html
 ### Для интеграции в CI/CD
 
 1. **GitHub Actions** (already configured in `.github/workflows/tests.yml`)
+
    ```yaml
    - run: ./vendor/bin/pest tests/Unit tests/Feature
    - run: ./vendor/bin/pest --coverage
    ```
 
 2. **GitLab CI** (example)
+
    ```yaml
    test:
      script:
@@ -249,6 +255,7 @@ open storage/coverage/index.html
    ```
 
 3. **Jenkins** (example)
+
    ```groovy
    stage('Test') {
        steps {
@@ -402,11 +409,13 @@ php -m | grep -i xdebug
 ### Вариант C: Начать PHASE 2 сейчас
 
 **PHASE 2 требует:**
+
 - 150+ тестов для всех 40 вертикалей
 - ~10 часов разработки
 - Следует после валидации PHASE 1
 
 **Команда для запуска PHASE 2:**
+
 ```bash
 # Это будет готово в следующей сессии
 ./vendor/bin/pest tests/Unit/Models --parallel
@@ -455,6 +464,7 @@ Before you run these tests in your environment:
 **Status**: ✅ READY FOR PHASE 1 EXECUTION
 
 **Start here:**
+
 ```bash
 ./vendor/bin/pest tests/Unit --parallel
 ```

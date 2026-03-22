@@ -7,6 +7,7 @@ use App\Domains\HealthyFood\Models\DietPlan;
 use App\Domains\HealthyFood\Models\MealSubscription;
 use App\Domains\HealthyFood\Services\HealthyFoodService;
 use App\Http\Requests\HealthyFood\StoreDietPlanRequest;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -14,7 +15,8 @@ use Illuminate\Support\Str;
 final class HealthyFoodDietController extends BaseApiController
 {
     public function __construct(
-        private HealthyFoodService $service,
+        private readonly HealthyFoodService $service,
+        private readonly FraudControlService $fraudControlService,
     ) {}
 
     public function index(): JsonResponse
@@ -35,12 +37,10 @@ final class HealthyFoodDietController extends BaseApiController
 
     public function store(StoreDietPlanRequest $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'healthyfood_diet_store', 0, $request->ip(), null, $correlationId);
 
         try {
-            $correlationId = Str::uuid()->toString();
             $tenantId = auth()->user()?->tenant_id ?? tenant()->id;
             $clientId = auth()->id() ?? 0;
 

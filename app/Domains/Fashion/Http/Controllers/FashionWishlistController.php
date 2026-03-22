@@ -26,7 +26,7 @@ final class FashionWishlistController
     public function add(int $id): JsonResponse
     {
         try {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             DB::transaction(function () use ($id, $correlationId) {
                 FashionWishlist::create([
@@ -58,7 +58,7 @@ final class FashionWishlistController
             $wishlist = FashionWishlist::where('product_id', $id)
                 ->where('user_id', auth()->id())
                 ->firstOrFail();
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             DB::transaction(function () use ($wishlist, $correlationId) {
                 $wishlist->delete();

@@ -36,7 +36,7 @@ final class BonusAccrualJob implements ShouldQueue
     public function __construct()
     {
         $this->bonusService = app(BonusService::class);
-        $this->correlationId = (string) Str::uuid();
+        $this->correlationId = (string) Str::uuid()->toString();
     }
 
     public function handle(): void

@@ -30,10 +30,10 @@ final class APIVersioningService
      * @param string $version
      * @return array|null
      */
-    public static function getVersionInfo(string $version): ?array
+    public static function getVersionInfo(string $version): array
     {
         if (!isset(self::VERSIONS[$version])) {
-            return null;
+            throw new \InvalidArgumentException("Unknown API version: '{$version}'");
         }
 
         return array_merge(

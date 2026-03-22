@@ -4,20 +4,24 @@ namespace App\Domains\Pet\Http\Controllers;
 
 use App\Domains\Pet\Models\PetReview;
 use App\Http\Controllers\Controller;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 final class PetReviewController extends Controller
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function store(Request $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
-            $correlationId = Str::uuid()->toString();
 
             $review = PetReview::create([
                 ...$request->validated(),
@@ -34,7 +38,7 @@ final class PetReviewController extends Controller
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Throwable $e) {
-            \Log::error('Failed to create review', ['error' => $e->getMessage()]);
+            Log::error('Failed to create review', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create review',
@@ -45,14 +49,12 @@ final class PetReviewController extends Controller
 
     public function update(Request $request, $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $review = PetReview::findOrFail($id);
             $this->authorize('update', $review);
-            $correlationId = Str::uuid()->toString();
 
             $review->update([
                 ...$request->validated(),
@@ -75,9 +77,8 @@ final class PetReviewController extends Controller
 
     public function destroy($id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $review = PetReview::findOrFail($id);

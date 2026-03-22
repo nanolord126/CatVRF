@@ -3,6 +3,7 @@
 ### 📊 Summary
 
 **Total items deleted: 29**
+
 - 1 directory: `app/Domains/`
 - 28 modules from `modules/`
 
@@ -47,6 +48,7 @@
 ### 📁 Deleted Directory: app/Domains/
 
 The entire `app/Domains/` structure was deleted:
+
 ```
 app/Domains/
 ├── Advertising/        (compliance, models, services)
@@ -64,7 +66,8 @@ app/Domains/
 └── Taxi/              (rides, drivers, models)
 ```
 
-**Why?** 
+**Why?**
+
 - All functionality should be in `modules/` using modular architecture
 - Duplicate structure with modules/
 - Unused endpoints and stub implementations
@@ -89,28 +92,34 @@ modules/
 ### 🎯 What's New in Beauty Module
 
 **Models:**
+
 - `Service.php` - новая (услуга салона)
 - `Booking.php` - новая (бронирование)
 - `Payment.php` - новая (платёж)
 
 **Services:**
+
 - `BookingService.php` - новая (создание, статусы)
 - `PaymentService.php` - новая (инициация, подтверждение)
 
 **Enums:**
+
 - `BookingStatus.php` - статусы бронирования
 - `PaymentStatus.php` - статусы платежа
 
 **Migrations:**
+
 - `2026_03_11_120000_create_beauty_services_table.php`
 - `2026_03_11_120100_create_beauty_bookings_table.php`
 - `2026_03_11_120200_create_beauty_payments_table.php`
 
 **Tests:**
+
 - `tests/Feature/Beauty/BookingTest.php` - 8 тест-кейсов
 - `tests/Feature/Beauty/PaymentTest.php` - 6 тест-кейсов
 
 **Documentation:**
+
 - `BEAUTY_WORKFLOW.md` - полный цикл от регистрации до выплаты
 - `PRODUCTION_CHECKLIST.md` - готовность к production
 - `MIGRATION_GUIDE.md` - шаги запуска
@@ -153,6 +162,7 @@ modules/
 ### 📈 Before & After
 
 #### BEFORE (Cleanup)
+
 ```
 Размер кода: ~45,000 строк
 Модулей: 34 (большинство пустых)
@@ -163,6 +173,7 @@ Status: ❌ Не готов к production
 ```
 
 #### AFTER (After Cleanup)
+
 ```
 Размер кода: ~8,000 строк (исключая тесты)
 Модулей: 6 (все рабочие)
@@ -177,21 +188,25 @@ Status: ✅ Готов к production (Beauty)
 ### 🚀 Next Steps
 
 1. **Run Migrations**
+
    ```bash
    php artisan migrate
    ```
 
 2. **Run Tests**
+
    ```bash
    php artisan test tests/Feature/Beauty/
    ```
 
 3. **Seed Test Data**
+
    ```bash
    php artisan db:seed --class=BeautySeeder
    ```
 
 4. **Start Development Server**
+
    ```bash
    php artisan octane:start --watch
    ```
@@ -237,6 +252,7 @@ Status: ✅ Готов к production (Beauty)
 ### ✨ Final Status
 
 **CatVRF Project is now:**
+
 - ✅ Clean (only Beauty module with full implementation)
 - ✅ Small (8K LOC vs 45K before)
 - ✅ Fast (Octane/Swoole ready)
@@ -250,6 +266,7 @@ Status: ✅ Готов к production (Beauty)
 ### 📞 Support
 
 For issues or questions:
+
 1. Check BEAUTY_WORKFLOW.md for architecture
 2. Check MIGRATION_GUIDE.md for setup steps
 3. Check PRODUCTION_CHECKLIST.md for deployment

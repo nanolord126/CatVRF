@@ -3,9 +3,15 @@
 namespace App\Domains\Fitness\Filament\Resources\MembershipResource\Pages;
 
 use App\Domains\Fitness\Filament\Resources\MembershipResource;
+use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 
 final class ListMemberships extends ListRecords
 {
     protected static string $resource = MembershipResource::class;
+
+    protected function getHeaderActions(): array
+    {
+        return [Actions\CreateAction::make()];
+    }
 }

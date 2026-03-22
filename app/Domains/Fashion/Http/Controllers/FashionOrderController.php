@@ -4,6 +4,7 @@ namespace App\Domains\Fashion\Http\Controllers;
 
 use App\Domains\Fashion\Models\FashionOrder;
 use App\Domains\Fashion\Services\OrderService;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -13,6 +14,7 @@ final class FashionOrderController
 {
     public function __construct(
         private readonly OrderService $orderService,
+        private readonly FraudControlService $fraudControlService,
     ) {}
 
     public function myOrders(): JsonResponse
@@ -30,13 +32,10 @@ final class FashionOrderController
 
     public function store(): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
-            $correlationId = Str::uuid();
-
             $order = $this->orderService->createOrder(
                 tenant('id'),
                 request('store_id'),
@@ -66,13 +65,11 @@ final class FashionOrderController
 
     public function update(int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $order = FashionOrder::findOrFail($id);
-            $correlationId = Str::uuid();
 
             DB::transaction(function () use ($order, $correlationId) {
                 $order->update([...request()->except(['id', 'tenant_id', 'business_group_id', 'correlation_id']), 'correlation_id' => $correlationId]);
@@ -87,9 +84,10 @@ final class FashionOrderController
 
     public function cancel(int $id): JsonResponse
     {
+        $correlationId = Str::uuid()->toString();
+
         try {
             $order = FashionOrder::findOrFail($id);
-            $correlationId = Str::uuid();
 
             $this->orderService->cancelOrder($order, request('reason'), $correlationId);
 
@@ -121,9 +119,10 @@ final class FashionOrderController
 
     public function updateStatus(int $id): JsonResponse
     {
+        $correlationId = Str::uuid()->toString();
+
         try {
             $order = FashionOrder::findOrFail($id);
-            $correlationId = Str::uuid();
 
             $this->orderService->updateOrderStatus($order, request('status'), $correlationId);
 

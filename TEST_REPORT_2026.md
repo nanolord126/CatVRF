@@ -3,6 +3,7 @@
 **Дата генерации:** 2026-01-01  
 **Стандарт:** КАНОН 2026 (`.github/copilot-instructions.md`)  
 **Команда запуска:**
+
 ```bash
 php artisan test --parallel --coverage
 # или
@@ -31,6 +32,7 @@ artillery run artillery.yml
 ## 2. UNIT ТЕСТЫ (app/Services)
 
 ### tests/Unit/Services/WalletServiceCompleteTest.php
+
 - ✅ credit — зачисление на баланс
 - ✅ debit — списание с баланса
 - ✅ hold — создание холда
@@ -43,6 +45,7 @@ artillery run artillery.yml
 - ✅ DB::transaction откат при ошибке
 
 ### tests/Unit/Services/FraudMLServiceTest.php
+
 - ✅ scoreOperation возвращает float 0..1
 - ✅ decision: block при score > threshold
 - ✅ decision: allow при score < threshold
@@ -53,6 +56,7 @@ artillery run artillery.yml
 - ✅ correlation_id в ответе
 
 ### tests/Unit/Services/InventoryManagementServiceTest.php
+
 - ✅ getCurrentStock из БД
 - ✅ reserveStock — hold создаётся
 - ✅ releaseStock — hold снимается
@@ -63,6 +67,7 @@ artillery run artillery.yml
 - ✅ checkLowStock — список позиций ниже порога
 
 ### tests/Unit/Services/WishlistServiceTest.php
+
 - ✅ addItem — создаётся запись
 - ✅ removeItem — запись удаляется
 - ✅ getWishlist — возвращает список
@@ -72,6 +77,7 @@ artillery run artillery.yml
 - ✅ tenant isolation
 
 ### tests/Unit/Services/PaymentGatewayServiceTest.php
+
 - ✅ initPayment с провайдером tinkoff
 - ✅ initPayment с провайдером tochka
 - ✅ initPayment с провайдером sber
@@ -82,6 +88,7 @@ artillery run artillery.yml
 - ✅ tenant_id в каждой транзакции
 
 ### tests/Unit/Services/RecommendationServiceTest.php
+
 - ✅ getForUser — cache hit
 - ✅ getForUser — cache miss запускает логику
 - ✅ TTL = 300 сек для динамических рекомендаций
@@ -96,6 +103,7 @@ artillery run artillery.yml
 - ✅ userId = 0 → InvalidArgumentException
 
 ### tests/Unit/Services/SearchRankingServiceTest.php
+
 - ✅ search возвращает Collection
 - ✅ пустой запрос → throws или empty
 - ✅ tenant scoping
@@ -108,6 +116,7 @@ artillery run artillery.yml
 ## 3. FEATURE ТЕСТЫ (Domains)
 
 ### tests/Feature/Domains/Beauty/AppointmentServiceTest.php
+
 - ✅ bookAppointment happy path
 - ✅ hold расходников при записи
 - ✅ release расходников при отмене
@@ -117,6 +126,7 @@ artillery run artillery.yml
 - ✅ комиссия 14% (10% с Dikidi первые 4 мес)
 
 ### tests/Feature/Domains/Hotels/BookingServiceTest.php
+
 - ✅ createBooking — все поля заполнены
 - ✅ комиссия 14% на subtotal
 - ✅ cleaning_fee = 50 000 коп (500 руб)
@@ -126,6 +136,7 @@ artillery run artillery.yml
 - ✅ DB::transaction откат при ошибке
 
 ### tests/Feature/Domains/Food/RestaurantOrderServiceTest.php
+
 - ✅ createOrder — базовый happy path
 - ✅ автоматическое списание ингредиентов
 - ✅ release при отмене до приготовления
@@ -133,6 +144,7 @@ artillery run artillery.yml
 - ✅ surge pricing для доставки
 
 ### tests/Feature/Domains/Auto/TaxiServiceTest.php
+
 - ✅ createRide — базовый happy path
 - ✅ surge multiplier из активной зоны
 - ✅ cancel — кошелёк не списывается
@@ -145,6 +157,7 @@ artillery run artillery.yml
 - ✅ DB rollback при ошибке
 
 ### tests/Feature/Domains/RealEstate/PropertyServiceTest.php
+
 - ✅ createProperty — обязательные поля
 - ✅ rental listing — проверка rent_price
 - ✅ sale commission 14%
@@ -153,12 +166,14 @@ artillery run artillery.yml
 - ✅ bookViewing — запись создаётся
 
 ### tests/Feature/Domains/Travel/TourServiceTest.php
+
 - ✅ bookTour happy path
 - ✅ комиссия 14%
 - ✅ отмена до отъезда → возврат в кошелёк
 - ✅ overbooking → RuntimeException
 
 ### tests/Feature/Domains/Tickets/TicketServiceTest.php
+
 - ✅ purchaseTicket — QR-код генерируется
 - ✅ комиссия 8..17%
 - ✅ refund с комиссией 2%
@@ -166,6 +181,7 @@ artillery run artillery.yml
 - ✅ checkIn → status = 'used'
 
 ### tests/Feature/Domains/Courses/CourseServiceTest.php
+
 - ✅ enrollStudent
 - ✅ комиссия 14%
 - ✅ 100% прогресс → сертификат
@@ -173,12 +189,14 @@ artillery run artillery.yml
 - ✅ выплата инструктору после курса
 
 ### tests/Feature/Domains/Medical/MedicalAppointmentTest.php
+
 - ✅ bookAppointment
 - ✅ напоминание за 24 ч
 - ✅ комиссия 14%
 - ✅ отмена → возврат в кошелёк
 
 ### tests/Feature/Payment/PaymentFlowIntegrationTest.php
+
 - ✅ полный цикл Hold → Capture → Credit
 - ✅ idempotency: двойной init → одна транзакция
 - ✅ tenant isolation
@@ -192,6 +210,7 @@ artillery run artillery.yml
 ## 4. SECURITY / FRAUD ТЕСТЫ
 
 ### tests/Feature/Security/RaceConditionTest.php
+
 - ✅ wallet overdraft race — lockForUpdate защита
 - ✅ inventory race — lockForUpdate защита
 - ✅ payment idempotency
@@ -199,6 +218,7 @@ artillery run artillery.yml
 - ✅ referral double-claim
 
 ### tests/Feature/Security/FraudAttackTest.php
+
 - ✅ Replay-атака — повторный idempotency_key
 - ✅ Idempotency bypass — изменение payload с тем же ключом
 - ✅ Rate limit bypass — >10 платежей/мин
@@ -217,6 +237,7 @@ artillery run artillery.yml
 - ✅ Mass account creation → 429
 
 ### tests/Feature/Security/SecurityIntegrationTest.php
+
 - ✅ IdempotencyService check
 - ✅ WebhookSignatureService HMAC verify
 - ✅ RateLimiterService sliding window
@@ -226,11 +247,13 @@ artillery run artillery.yml
 ## 5. CHAOS ТЕСТЫ
 
 ### tests/Chaos/ChaosEngineeringTest.php (существующий)
+
 - ✅ Redis DOWN — wallet fallback
 - ✅ DB slow query — timeout
 - ✅ ML service unavailable — strict rules fallback
 
 ### tests/Chaos/ChaosEngineeringAdvancedTest.php (новый)
+
 - ✅ Redis DOWN — wallet DB-fallback
 - ✅ Redis DOWN — recommendations → fallback
 - ✅ Slow DB — не зависает > 6 сек
@@ -247,6 +270,7 @@ artillery run artillery.yml
 ## 6. НАГРУЗОЧНЫЕ ТЕСТЫ
 
 ### loadtest.js (k6)
+
 ```
 Сценарии:
   ramp_up_spike:
@@ -271,6 +295,7 @@ artillery run artillery.yml
 ```
 
 ### artillery.yml
+
 ```
 Сценарии:
   - Browse Recommendations (40% трафика)

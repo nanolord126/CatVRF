@@ -2,8 +2,8 @@
 
 namespace App\Domains\Hotels\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use App\Domains\Hotels\Models\Booking;
 use App\Domains\Hotels\Models\RoomInventory;
@@ -13,19 +13,21 @@ use Throwable;
 
 final class BookingService
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function createBooking(
         int $hotelId,
         int $roomTypeId,
         string $checkInDate,
         string $checkOutDate,
         int $numberOfGuests,
+        int $guestId,
         ?string $specialRequests = null,
         string $correlationId = '',
     ): Booking {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'createBooking'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createBooking', ['domain' => __CLASS__]);
+
 
         try {
             Log::channel('audit')->info('Creating booking', [
@@ -35,12 +37,22 @@ final class BookingService
                 'correlation_id' => $correlationId,
             ]);
 
+            $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
+
             $booking = DB::transaction(function () use (
                 $hotelId,
                 $roomTypeId,
                 $checkInDate,
                 $checkOutDate,
                 $numberOfGuests,
+                $guestId,
                 $specialRequests,
                 $correlationId,
             ) {
@@ -65,7 +77,7 @@ final class BookingService
                     'tenant_id' => tenant('id'),
                     'hotel_id' => $hotelId,
                     'room_type_id' => $roomTypeId,
-                    'guest_id' => auth()->id(),
+                    'guest_id' => $guestId,
                     'confirmation_code' => strtoupper(\Illuminate\Support\Str::random(8)),
                     'check_in_date' => $checkInDate,
                     'check_out_date' => $checkOutDate,
@@ -99,10 +111,7 @@ final class BookingService
 
     public function confirmBooking(Booking $booking, string $correlationId = ''): Booking
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'confirmBooking'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL confirmBooking', ['domain' => __CLASS__]);
+
 
         try {
             Log::channel('audit')->info('Confirming booking', [
@@ -133,10 +142,7 @@ final class BookingService
 
     public function cancelBooking(Booking $booking, string $reason = '', string $correlationId = ''): bool
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'cancelBooking'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL cancelBooking', ['domain' => __CLASS__]);
+
 
         try {
             Log::channel('audit')->info('Cancelling booking', [

@@ -61,6 +61,7 @@ declare(strict_types=1);
 ### Fraud Attack Patterns (20 ТЕСТОВ)
 
 ✅ **Защиты:**
+
 - ✅ Replay attack protection (idempotency_key + payload_hash)
 - ✅ Idempotency bypass detection (409 Conflict on mismatch)
 - ✅ Rate limit bypass (10 req/min → 429 after limit)
@@ -87,6 +88,7 @@ declare(strict_types=1);
 ### Authorization & Tenant Isolation (12 ТЕСТОВ)
 
 ✅ **Проверки:**
+
 - ✅ RBAC enforcement (user cannot edit other user's resources)
 - ✅ Tenant isolation (user from tenant A cannot see tenant B data)
 - ✅ Business group scoping (subsidiaries are isolated)
@@ -102,6 +104,7 @@ declare(strict_types=1);
 ### Сценарий: Payment Flow Load Test
 
 **Конфигурация:**
+
 ```
 Stages:
 1. Ramp-up:   0 → 1,000 VUs за 2 мин
@@ -115,6 +118,7 @@ Stages:
 ```
 
 **Операции:**
+
 - Initialize payment (POST /api/payments/init)
 - Get payment status (GET /api/payments/{id})
 - Capture payment (POST /api/payments/{id}/capture)
@@ -124,6 +128,7 @@ Stages:
 - Get transaction history (GET /api/wallets/transactions)
 
 **Ожидаемые результаты (TARGET):**
+
 ```
 ✅ P50 response time:        < 100ms
 ✅ P95 response time:        < 500ms ⬅️ THRESHOLD
@@ -135,6 +140,7 @@ Stages:
 ```
 
 **Запуск:**
+
 ```bash
 k6 run k6/payment-flow-loadtest.js \
   --vus 5000 \
@@ -149,6 +155,7 @@ k6 run k6/payment-flow-loadtest.js \
 ### 7+ Сценариев Отказоустойчивости
 
 ✅ **Сценарии:**
+
 1. ✅ Redis down → Fallback to DB cache
 2. ✅ Database slow queries → Timeout + retry
 3. ✅ Service unavailable → Circuit breaker + 503
@@ -163,7 +170,7 @@ k6 run k6/payment-flow-loadtest.js \
 
 ## 📈 Код Покрытия
 
-### Что тестируется в ФАЗЕ 1:
+### Что тестируется в ФАЗЕ 1
 
 ```
 app/Services/Wallet/
@@ -183,7 +190,7 @@ app/Services/Fraud/
 ИТОГО: ~90% Core Services
 ```
 
-### Что НЕ тестируется в ФАЗЕ 1 (ФАЗА 2+):
+### Что НЕ тестируется в ФАЗЕ 1 (ФАЗА 2+)
 
 - ❌ Inventory Management Service (20+ операций)
 - ❌ Recommendation Service (embeddings, ranking)
@@ -203,7 +210,7 @@ app/Services/Fraud/
 
 ## 🎯 Ключевые Баги/Проблемы
 
-### Найдено при тестировании ФАЗЫ 1:
+### Найдено при тестировании ФАЗЫ 1
 
 1. **Race condition в Wallet (FIXED)**
    - Проблема: Две параллельные операции debit могут привести к отрицательному балансу
@@ -348,7 +355,7 @@ jobs:
 
 ## 🎊 Итоговая сводка
 
-### ФАЗА 1 — PRODUCTION READY? 
+### ФАЗА 1 — PRODUCTION READY?
 
 ```
 ✅ Core Services:          90% тестовое покрытие

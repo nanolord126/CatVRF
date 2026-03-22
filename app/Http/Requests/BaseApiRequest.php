@@ -19,10 +19,22 @@ abstract class BaseApiRequest extends FormRequest
     public function authorize(): bool
     {
         // CANON 2026: Fraud Check in FormRequest
-        if (class_exists(\App\Services\Fraud\FraudControlService::class) && auth()->check()) {
-            $fraudScore = app(\App\Services\Fraud\FraudControlService::class)->scoreOperation(new \stdClass());
-            if ($fraudScore > 0.7 && !auth()->user()->hasRole('admin')) {
-                \Illuminate\Support\Facades\Log::channel('audit')->warning('Fraud check blocked request', ['class' => __CLASS__, 'score' => $fraudScore]);
+        if (auth()->check()) {
+            $correlationId = $this->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid()->toString();
+            $fraudResult = app(\App\Services\FraudControlService::class)->check(
+                (int) auth()->id(),
+                'form_request',
+                (int) ($this->input('amount', 0)),
+                $this->ip(),
+                $this->header('X-Device-Fingerprint'),
+                $correlationId,
+            );
+            if ($fraudResult['decision'] === 'block') {
+                \Illuminate\Support\Facades\Log::channel('fraud_alert')->warning('FormRequest blocked', [
+                    'class'          => __CLASS__,
+                    'correlation_id' => $correlationId,
+                    'score'          => $fraudResult['score'],
+                ]);
                 return false;
             }
         }

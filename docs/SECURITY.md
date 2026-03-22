@@ -1,6 +1,7 @@
 # Security & API Documentation — CatVRF 2026
 
 ## Table of Contents
+
 1. [API Authentication](#api-authentication)
 2. [Rate Limiting](#rate-limiting)
 3. [Webhook Protection](#webhook-protection)
@@ -19,6 +20,7 @@
 CatVRF поддерживает два метода аутентификации:
 
 #### 1. Sanctum Tokens (для фронтенда)
+
 ```bash
 # Получить токен после логина
 POST /api/v1/auth/login
@@ -40,6 +42,7 @@ Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 ```
 
 #### 2. API Keys (для B2B интеграций)
+
 ```bash
 # Генерировать API ключ в личном кабинете
 POST /api/v1/api-keys
@@ -76,6 +79,7 @@ Authorization: Bearer {token} ИЛИ X-API-Key: {key}
 ```
 
 ### Token Security
+
 - Токены автоматически истекают через 24 часа
 - API ключи требуют явного обновления или ревокации
 - Никогда не сохраняйте токены в локальном хранилище браузера без шифрования
@@ -120,11 +124,13 @@ Retry-After: 60
 ### Burst Protection
 
 Если превышено >3 отказа подряд за 60 секунд:
+
 - Пользователь/тенант временно блокируется на **5 минут**
 - Все запросы отклоняются с HTTP 429
 - Событие логируется в канал `fraud_alert`
 
 ### Best Practices
+
 - Кэшируйте результаты, когда возможно
 - Используйте exponential backoff при retry
 - Уважайте заголовки `X-RateLimit-*`
@@ -139,6 +145,7 @@ Retry-After: 60
 Все webhooks защищены криптографической подписью:
 
 #### Tinkoff
+
 ```php
 // Проверка выполняется автоматически
 $signature = $request->header('X-Signature');
@@ -146,6 +153,7 @@ $signature = $request->header('X-Signature');
 ```
 
 #### Sber
+
 ```php
 // Либо HMAC-SHA256, либо сертификат
 $signature = $request->header('X-Signature');
@@ -153,6 +161,7 @@ $signature = $request->header('X-Signature');
 ```
 
 #### СБП
+
 ```php
 // IP whitelist + HMAC-SHA256
 $clientIp = $request->ip();  // Должен быть в 195.68.0.0/14
@@ -226,6 +235,7 @@ HTTP/1.1 422 Unprocessable Entity
 ```
 
 ### Common Validations
+
 - **Email**: Must be valid email format
 - **URL**: Must be HTTPS (in production)
 - **Integer**: Must be positive, within range
@@ -251,12 +261,14 @@ HTTP/1.1 422 Unprocessable Entity
 ### Business Resources Access
 
 **Только для `business_owner` и выше:**
+
 - HR (сотрудники)
 - Зарплата
 - Выплаты
 - Финансовые отчёты
 
 **Заблокировано для обычных пользователей:**
+
 ```
 GET /api/v1/tenants/{id}/employees
 GET /api/v1/tenants/{id}/payroll
@@ -331,6 +343,7 @@ Deprecation Timeline:
 ```
 
 Example header:
+
 ```
 X-API-Deprecated: true
 X-API-Sunset: Sun, 15 Sep 2026 12:00:00 GMT
@@ -388,6 +401,7 @@ X-API-Replacement: /api/v2/payments
 ### For API Clients
 
 ✅ **DO:**
+
 - Use `X-Correlation-ID` for debugging
 - Implement exponential backoff for retries
 - Cache responses when possible
@@ -396,6 +410,7 @@ X-API-Replacement: /api/v2/payments
 - Rotate API keys regularly
 
 ❌ **DON'T:**
+
 - Expose tokens/keys in client-side code
 - Retry immediately on rate limit
 - Store sensitive data in logs
@@ -405,6 +420,7 @@ X-API-Replacement: /api/v2/payments
 ### For Developers
 
 ✅ **DO:**
+
 - Check correlation_id in all logs
 - Use FormRequest for validation
 - Implement RateLimiter checks
@@ -413,6 +429,7 @@ X-API-Replacement: /api/v2/payments
 - Test security with OWASP tools
 
 ❌ **DON'T:**
+
 - Skip input validation
 - Log sensitive data (passwords, PII)
 - Ignore rate limit requirements
@@ -423,6 +440,7 @@ X-API-Replacement: /api/v2/payments
 ### For Webhooks
 
 ✅ **DO:**
+
 - Verify signatures on ALL webhooks
 - Check IP whitelist
 - Implement idempotency handling
@@ -431,6 +449,7 @@ X-API-Replacement: /api/v2/payments
 - Monitor delivery latency
 
 ❌ **DON'T:**
+
 - Trust webhook data without verification
 - Process duplicates twice
 - Fail on missing optional fields
@@ -441,15 +460,16 @@ X-API-Replacement: /api/v2/payments
 
 ## Security Contacts
 
-- **Security Team**: security@catvrf.ru
-- **Report Vulnerabilities**: https://catvrf.ru/.well-known/security.txt
-- **Bug Bounty Program**: https://catvrf.ru/bounty
+- **Security Team**: <security@catvrf.ru>
+- **Report Vulnerabilities**: <https://catvrf.ru/.well-known/security.txt>
+- **Bug Bounty Program**: <https://catvrf.ru/bounty>
 
 ---
 
 ## Change Log
 
 ### v1.0 (2026-03-17)
+
 - ✅ API Authentication (Sanctum + API Keys)
 - ✅ Rate Limiting (Sliding Window + Burst Protection)
 - ✅ Webhook Signature Verification

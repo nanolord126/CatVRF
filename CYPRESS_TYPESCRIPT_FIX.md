@@ -3,30 +3,38 @@
 ## Issues Resolved
 
 ### 1. Missing Type References ❌ → ✅
+
 **Problem**: TypeScript couldn't find `describe`, `cy`, `it` types
 **Solution**: Added `/// <reference types="cypress" />` to all test files
 
 Files updated:
+
 - cypress/e2e/auth.cy.ts ✅
 - cypress/e2e/security.cy.ts ✅
 - cypress/e2e/marketplace.cy.ts ✅
 - cypress/e2e/performance.cy.ts ✅
 
 ### 2. PHP Syntax in TypeScript ❌ → ✅
+
 **Problem**: All test files had `declare(strict_types=1);` (PHP directive in TS)
 **Solution**: Replaced with proper Cypress TypeScript reference
 
 ### 3. Missing tsconfig.json ❌ → ✅
+
 **Solution**: Created tsconfig.json with:
+
 - Cypress type support
 - Vue and React JSX support
 - Proper module resolution
 
 ### 4. Missing Component Support ❌ → ✅
+
 **Solution**: Created cypress/support/component.ts with Vue mount support
 
 ### 5. Package.json Scripts ❌ → ✅
+
 **Added npm scripts**:
+
 ```json
 "cypress:open": "cypress open"
 "cypress:e2e": "cypress run --e2e"
@@ -58,6 +66,7 @@ Root:
 ## TypeScript Configuration
 
 ### Root tsconfig.json
+
 ```json
 {
   "compilerOptions": {
@@ -76,6 +85,7 @@ Root:
 ```
 
 ### cypress/tsconfig.json (extends root)
+
 ```json
 {
   "extends": "./tsconfig.json",
@@ -89,26 +99,31 @@ Root:
 ## How to Run Tests
 
 ### Open Cypress UI (interactive)
+
 ```bash
 npm run cypress:open
 ```
 
 ### Run all E2E tests
+
 ```bash
 npm run cypress:e2e
 ```
 
 ### Run component tests
+
 ```bash
 npm run cypress:component
 ```
 
 ### Run all tests headless
+
 ```bash
 npm run cypress:run
 ```
 
 ### Run specific test file
+
 ```bash
 npm run cypress:e2e -- --spec "cypress/e2e/auth.cy.ts"
 ```
@@ -116,6 +131,7 @@ npm run cypress:e2e -- --spec "cypress/e2e/auth.cy.ts"
 ## Environment Setup
 
 Ensure Node.js >= 16 is installed and run:
+
 ```bash
 npm install   # Install dependencies
 npm run dev   # Start Laravel dev server on localhost:8000
@@ -139,6 +155,7 @@ cy.measurePerformance(label)          // Performance metrics
 ## Test Structure
 
 Each test file starts with:
+
 ```typescript
 /// <reference types="cypress" />
 
@@ -150,13 +167,15 @@ describe('Feature Name', () => {
 ## Configuration
 
 ### cypress.config.ts
-- baseUrl: http://localhost:8000
+
+- baseUrl: <http://localhost:8000>
 - viewportWidth: 1280px, viewportHeight: 720px
 - Timeout: 10 seconds
 - Video & Screenshot on failure
 - Support file: cypress/support/e2e.ts
 
 ### Test Environment Variables
+
 ```javascript
 Cypress.env('apiUrl')        // http://localhost:8000/api
 Cypress.env('adminUser')     // admin@kotvrf.ru

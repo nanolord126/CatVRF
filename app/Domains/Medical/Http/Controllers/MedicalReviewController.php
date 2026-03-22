@@ -3,14 +3,20 @@
 namespace App\Domains\Medical\Http\Controllers;
 
 use App\Domains\Medical\Models\MedicalReview;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Throwable;
 
 final class MedicalReviewController
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function doctorReviews(int $doctorId): JsonResponse
     {
         try {
@@ -30,21 +36,21 @@ final class MedicalReviewController
 
     public function store(Request $request, int $doctorId): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
-            $review = DB::transaction(function () use ($request, $doctorId) {
+            $validated = $request->all();
+            $review = DB::transaction(function () use ($validated, $doctorId) {
                 return MedicalReview::create([
                     'tenant_id' => auth()->user()->tenant_id,
                     'doctor_id' => $doctorId,
                     'reviewer_id' => auth()->user()->id,
-                    'appointment_id' => $request->input('appointment_id'),
-                    'rating' => $request->input('rating'),
-                    'comment' => $request->input('comment'),
-                    'review_aspects' => $request->input('review_aspects'),
-                    'verified_appointment' => !!$request->input('appointment_id'),
+                    'appointment_id' => ($validated['appointment_id'] ?? null),
+                    'rating' => ($validated['rating'] ?? null),
+                    'comment' => ($validated['comment'] ?? null),
+                    'review_aspects' => ($validated['review_aspects'] ?? null),
+                    'verified_appointment' => !!($validated['appointment_id'] ?? null),
                     'status' => 'pending',
                     'correlation_id' => $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
                 ]);
@@ -64,9 +70,8 @@ final class MedicalReviewController
 
     public function update(Request $request, int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $review = MedicalReview::findOrFail($id);

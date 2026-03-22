@@ -38,7 +38,7 @@ final class PresenceController extends BaseApiV2Controller
      */
     public function track(Request $request): JsonResponse
     {
-        $correlationId = (string) Str::uuid();
+        $correlationId = (string) Str::uuid()->toString();
         $tenantId = filament()->getTenant()?->id ?? auth()->user()?->tenant_id;
 
         try {
@@ -93,7 +93,7 @@ final class PresenceController extends BaseApiV2Controller
      */
     public function getOnline(): JsonResponse
     {
-        $correlationId = (string) Str::uuid();
+        $correlationId = (string) Str::uuid()->toString();
         $tenantId = filament()->getTenant()?->id ?? auth()->user()?->tenant_id;
 
         try {
@@ -135,7 +135,7 @@ final class PresenceController extends BaseApiV2Controller
      */
     public function stopTracking(): JsonResponse
     {
-        $correlationId = (string) Str::uuid();
+        $correlationId = (string) Str::uuid()->toString();
 
         try {
             cache()->forget("presence:user." . auth()->id());

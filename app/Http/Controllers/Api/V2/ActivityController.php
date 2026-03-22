@@ -36,7 +36,7 @@ final class ActivityController extends BaseApiV2Controller
      */
     public function getActivities(): JsonResponse
     {
-        $correlationId = (string) Str::uuid();
+        $correlationId = (string) Str::uuid()->toString();
         $tenantId = filament()->getTenant()?->id ?? auth()->user()?->tenant_id;
 
         try {
@@ -69,7 +69,7 @@ final class ActivityController extends BaseApiV2Controller
      */
     public function track(): JsonResponse
     {
-        $correlationId = (string) Str::uuid();
+        $correlationId = (string) Str::uuid()->toString();
 
         try {
             $this->activityService->recordActivity(

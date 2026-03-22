@@ -19,7 +19,7 @@ final class RestaurantController
             $correlationId = Str::uuid()->toString();
 
             $restaurants = Restaurant::query()
-                ->where('tenant_id', tenant('id') ?? 1)
+                ->where('tenant_id', tenant('id'))
                 ->select(['id', 'name', 'address', 'geo_point', 'rating', 'cuisine_type', 'is_verified'])
                 ->paginate(20);
 

@@ -3,6 +3,7 @@
 namespace App\Domains\Fitness\Http\Controllers;
 
 use App\Domains\Fitness\Models\Gym;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
@@ -10,6 +11,10 @@ use Throwable;
 
 final class GymController
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function index(): JsonResponse
     {
         try {
@@ -47,11 +52,8 @@ final class GymController
 
     public function store(): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
-
-        $correlationId = Str::uuid();
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
         try {
             request()->validate([
                 'name' => 'required|string',
@@ -81,11 +83,8 @@ final class GymController
 
     public function update(int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
-
-        $correlationId = Str::uuid();
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
         try {
             $gym = Gym::findOrFail($id);
             $this->authorize('update', $gym);
@@ -103,7 +102,7 @@ final class GymController
 
     public function delete(int $id): JsonResponse
     {
-        $correlationId = Str::uuid();
+        $correlationId = Str::uuid()->toString();
         try {
             $gym = Gym::findOrFail($id);
             $this->authorize('delete', $gym);

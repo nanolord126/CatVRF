@@ -10,7 +10,7 @@
 
 Вертикаль Jewelry расширена полнофункциональной 3D-визуализацией украшений с поддержкой AR/VR.
 
-### Что было добавлено:
+### Что было добавлено
 
 | Компонент | Файл | Статус |
 |-----------|------|--------|
@@ -78,6 +78,7 @@ $table->enum('status');                  // uploaded/processing/active/archived
   - Reset View
 
 **Design:**
+
 - Glassmorphism UI (compat CANON 2026)
 - Dark theme с amber accents для драгоценностей
 - Mobile-first responsive layout
@@ -179,6 +180,7 @@ InventoryManagementService::reserveStock(
 - ✅ Tags support for search/analytics
 
 **Routes:**
+
 - `GET /admin/jewelry-3d-models` - List all models
 - `GET /admin/jewelry-3d-models/create` - Create form
 - `POST /admin/jewelry-3d-models` - Store model
@@ -201,7 +203,7 @@ Jewelry3DModelFactory::new()
     ]);
 ```
 
-### Test Cases (to implement):
+### Test Cases (to implement)
 
 1. ✅ Upload 3D model
 2. ✅ Generate AR/VR links

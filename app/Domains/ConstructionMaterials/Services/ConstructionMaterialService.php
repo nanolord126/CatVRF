@@ -24,22 +24,13 @@ final class ConstructionMaterialService
         int $materialId,
         int $quantity,
         string $deliveryAddress,
+        int $userId,
+        int $tenantId,
         ?string $correlationIdOverride = null
     ): MaterialOrder {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'orderMaterial'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL orderMaterial', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'orderMaterial'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL orderMaterial', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'orderMaterial'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL orderMaterial', ['domain' => __CLASS__]);
+
 
         $correlationId = $correlationIdOverride ?: Str::uuid()->toString();
 
@@ -47,12 +38,12 @@ final class ConstructionMaterialService
             // Fraud check
             $this->fraudControlService->check([
                 'type' => 'material_order',
-                'user_id' => auth()->id(),
+                'user_id' => $userId,
                 'amount' => 0, // Will be calculated
                 'correlation_id' => $correlationId,
             ]);
 
-            return DB::transaction(function () use ($materialId, $quantity, $deliveryAddress, $correlationId) {
+            return DB::transaction(function () use ($materialId, $quantity, $deliveryAddress, $correlationId, $userId, $tenantId) {
                 // Lock material for update
                 $material = ConstructionMaterial::lockForUpdate()->find($materialId);
 
@@ -70,11 +61,11 @@ final class ConstructionMaterialService
 
                 // Create order
                 $order = MaterialOrder::create([
-                    'tenant_id' => auth()->user()->tenant_id,
+                    'tenant_id' => $tenantId,
                     'uuid' => Str::uuid(),
                     'correlation_id' => $correlationId,
                     'material_id' => $materialId,
-                    'user_id' => auth()->id(),
+                    'user_id' => $userId,
                     'quantity' => $quantity,
                     'unit_price' => $unitPrice,
                     'total_price' => $totalPrice,
@@ -94,7 +85,7 @@ final class ConstructionMaterialService
                     'material_id' => $materialId,
                     'quantity' => $quantity,
                     'total_price' => $totalPrice,
-                    'user_id' => auth()->id(),
+                    'user_id' => $userId,
                 ]);
 
                 // Invalidate cache
@@ -115,20 +106,9 @@ final class ConstructionMaterialService
 
     public function deliverOrder(MaterialOrder $order, string $trackingNumber = null): void
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'deliverOrder'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL deliverOrder', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'deliverOrder'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL deliverOrder', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'deliverOrder'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL deliverOrder', ['domain' => __CLASS__]);
+
 
         $correlationId = $order->correlation_id ?? Str::uuid()->toString();
 
@@ -156,20 +136,9 @@ final class ConstructionMaterialService
 
     public function cancelOrder(MaterialOrder $order): void
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'cancelOrder'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL cancelOrder', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'cancelOrder'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL cancelOrder', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'cancelOrder'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL cancelOrder', ['domain' => __CLASS__]);
+
 
         $correlationId = $order->correlation_id ?? Str::uuid()->toString();
 
@@ -205,20 +174,9 @@ final class ConstructionMaterialService
 
     public function getMaterialsLowStock(): iterable
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'getMaterialsLowStock'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getMaterialsLowStock', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'getMaterialsLowStock'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getMaterialsLowStock', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'getMaterialsLowStock'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getMaterialsLowStock', ['domain' => __CLASS__]);
+
 
         return ConstructionMaterial::where('current_stock', '<=', DB::raw('min_stock_threshold'))
             ->get();
@@ -226,20 +184,9 @@ final class ConstructionMaterialService
 
     public function checkMaterialAvailability(int $materialId, int $quantity): bool
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'checkMaterialAvailability'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL checkMaterialAvailability', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'checkMaterialAvailability'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL checkMaterialAvailability', ['domain' => __CLASS__]);
 
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'checkMaterialAvailability'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL checkMaterialAvailability', ['domain' => __CLASS__]);
+
 
         $material = ConstructionMaterial::find($materialId);
 

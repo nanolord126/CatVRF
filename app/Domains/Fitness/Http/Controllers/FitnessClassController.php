@@ -5,6 +5,7 @@ namespace App\Domains\Fitness\Http\Controllers;
 use App\Domains\Fitness\Models\FitnessClass;
 use App\Domains\Fitness\Models\ClassSchedule;
 use App\Domains\Fitness\Services\ClassService;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
@@ -12,7 +13,10 @@ use Throwable;
 
 final class FitnessClassController
 {
-    public function __construct(private readonly ClassService $classService) {}
+    public function __construct(
+        private readonly ClassService $classService,
+        private readonly FraudControlService $fraudControlService,
+    ) {}
 
     public function index(): JsonResponse
     {
@@ -67,11 +71,8 @@ final class FitnessClassController
 
     public function store(): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
-
-        $correlationId = Str::uuid();
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
         try {
             request()->validate([
                 'gym_id' => 'required|exists:gyms,id',
@@ -104,11 +105,8 @@ final class FitnessClassController
 
     public function update(int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
-
-        $correlationId = Str::uuid();
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
         try {
             $class = FitnessClass::findOrFail($id);
             $this->authorize('update', $class);
@@ -123,7 +121,7 @@ final class FitnessClassController
 
     public function delete(int $id): JsonResponse
     {
-        $correlationId = Str::uuid();
+        $correlationId = Str::uuid()->toString();
         try {
             $class = FitnessClass::findOrFail($id);
             $this->authorize('delete', $class);
@@ -140,7 +138,7 @@ final class FitnessClassController
 
     public function addSchedule(int $classId): JsonResponse
     {
-        $correlationId = Str::uuid();
+        $correlationId = Str::uuid()->toString();
         try {
             request()->validate([
                 'scheduled_at' => 'required|datetime',
@@ -166,7 +164,7 @@ final class FitnessClassController
 
     public function updateSchedule(int $scheduleId): JsonResponse
     {
-        $correlationId = Str::uuid();
+        $correlationId = Str::uuid()->toString();
         try {
             $schedule = ClassSchedule::findOrFail($scheduleId);
             $schedule->update(array_merge(request()->except(['id', 'tenant_id', 'business_group_id', 'correlation_id']), ['correlation_id' => $correlationId]));
@@ -179,7 +177,7 @@ final class FitnessClassController
 
     public function cancelSchedule(int $scheduleId): JsonResponse
     {
-        $correlationId = Str::uuid();
+        $correlationId = Str::uuid()->toString();
         try {
             $schedule = ClassSchedule::findOrFail($scheduleId);
             $schedule->update(['is_cancelled' => true, 'correlation_id' => $correlationId]);

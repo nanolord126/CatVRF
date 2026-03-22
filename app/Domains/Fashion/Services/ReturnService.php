@@ -2,8 +2,8 @@
 
 namespace App\Domains\Fashion\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use App\Domains\Fashion\Models\FashionReturn;
 use Illuminate\Support\Facades\DB;
@@ -12,6 +12,10 @@ use Throwable;
 
 final class ReturnService
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function requestReturn(
         int $tenantId,
         int $orderId,
@@ -20,13 +24,19 @@ final class ReturnService
         string $reason,
         ?string $correlationId = null,
     ): FashionReturn {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'requestReturn'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL requestReturn', ['domain' => __CLASS__]);
+
 
         try {
-            $correlationId ??= Str::uuid();
+            $correlationId ??= Str::uuid()->toString();
+
+            $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
 
             $return = DB::transaction(function () use (
                 $tenantId,
@@ -37,7 +47,7 @@ final class ReturnService
                 $correlationId,
             ) {
                 $return = FashionReturn::create([
-                    'uuid' => Str::uuid(),
+                    'uuid' => Str::uuid()->toString(),
                     'tenant_id' => $tenantId,
                     'order_id' => $orderId,
                     'customer_id' => $customerId,
@@ -74,15 +84,20 @@ final class ReturnService
 
     public function approveReturn(FashionReturn $return, float $refundAmount, ?string $correlationId = null): void
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'approveReturn'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL approveReturn', ['domain' => __CLASS__]);
+
 
         try {
-            $correlationId ??= Str::uuid();
+            $correlationId ??= Str::uuid()->toString();
 
-            DB::transaction(function () use ($return, $refundAmount, $correlationId) {
+                        $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
+DB::transaction(function () use ($return, $refundAmount, $correlationId) {
                 $return->update([
                     'status' => 'approved',
                     'refund_amount' => $refundAmount,
@@ -109,15 +124,20 @@ final class ReturnService
 
     public function processRefund(FashionReturn $return, ?string $correlationId = null): void
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'processRefund'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL processRefund', ['domain' => __CLASS__]);
+
 
         try {
-            $correlationId ??= Str::uuid();
+            $correlationId ??= Str::uuid()->toString();
 
-            DB::transaction(function () use ($return, $correlationId) {
+                        $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
+DB::transaction(function () use ($return, $correlationId) {
                 $return->update([
                     'status' => 'refunded',
                     'refunded_at' => now(),

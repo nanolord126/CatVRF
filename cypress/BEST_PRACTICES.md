@@ -3,6 +3,7 @@
 ## 📌 Структура Теста
 
 ### Правильная Структура
+
 ```typescript
 describe('Feature Name', () => {
   let testData: any
@@ -39,28 +40,34 @@ describe('Feature Name', () => {
 ## 🎯 Селекторы
 
 ### Приоритет Использования
+
 1. **data-testid** ✅ (ЛУЧШИЙ ВЫБОР)
+
    ```typescript
    cy.get('[data-testid="submit-button"]')
    ```
 
 2. **Cypress Query Selectors** ✅
+
    ```typescript
    cy.contains('Submit').click()
    cy.get('button').contains('Submit')
    ```
 
 3. **CSS Селекторы** ⚠️ (Хрупкие)
+
    ```typescript
    cy.get('.btn.btn-primary') // Избегать
    ```
 
 4. **XPath** ❌ (Не использовать)
+
    ```typescript
    cy.xpath('//button[@class="submit"]') // НЕ ИСПОЛЬЗОВАТЬ
    ```
 
 ### Правила для HTML
+
 ```html
 <!-- HTML должен иметь data-testid -->
 <form data-testid="inventory-form">
@@ -73,6 +80,7 @@ describe('Feature Name', () => {
 ## ⏱️ Управление Временем
 
 ### Явные Ожидания
+
 ```typescript
 // ✅ ПРАВИЛЬНО - Явное ожидание
 cy.get('[data-testid="alert-message"]', { timeout: 5000 })
@@ -84,6 +92,7 @@ cy.get('[data-testid="alert-message"]')
 ```
 
 ### Ожидание API Запросов
+
 ```typescript
 // ✅ ПРАВИЛЬНО - Ожидание конкретного запроса
 cy.intercept('GET', '/api/inventory').as('getInventory')
@@ -100,6 +109,7 @@ cy.wait(2000)
 ## 🔐 Аутентификация
 
 ### Правильная Логин Процедура
+
 ```typescript
 beforeEach(() => {
   // Вариант 1: Использование Custom Command
@@ -122,6 +132,7 @@ beforeEach(() => {
 ## 📊 Обработка Данных
 
 ### Работа с Fixtures
+
 ```typescript
 // Load fixture data
 cy.fixture('inventory-valid.csv').then((csvData) => {
@@ -137,6 +148,7 @@ const testData = {
 ```
 
 ### Создание Тестовых Данных
+
 ```typescript
 // API-based setup (рекомендуется)
 beforeEach(() => {
@@ -153,6 +165,7 @@ beforeEach(() => {
 ## ✅ Assertions (Утверждения)
 
 ### Хорошие Assertions
+
 ```typescript
 // ✅ Специфичные утверждения
 cy.get('[data-testid="item-name"]')
@@ -176,6 +189,7 @@ cy.get('[data-testid="error-alert"]')
 ```
 
 ### Плохие Assertions
+
 ```typescript
 // ❌ Слишком общие
 cy.get('[data-testid="form"]').should('exist')
@@ -193,6 +207,7 @@ cy.window().then((win) => {
 ## 🔄 Обработка Ошибок
 
 ### Правильная Обработка Ошибок
+
 ```typescript
 // ✅ Проверка ошибок валидации
 cy.get('[data-testid="btn-submit"]').click()
@@ -220,6 +235,7 @@ cy.get('[data-testid="toast-error"]')
 ## 🔒 Security Testing
 
 ### Проверка RBAC
+
 ```typescript
 it('should prevent unauthorized access', () => {
   cy.loginAs('viewer@test.local', 'password123')
@@ -240,6 +256,7 @@ it('should require confirmation for sensitive operations', () => {
 ## 📱 Тестирование Таблиц и Списков
 
 ### Проверка Содержимого
+
 ```typescript
 it('should display inventory items with correct data', () => {
   cy.get('[data-testid="inventory-table"]')
@@ -255,6 +272,7 @@ it('should display inventory items with correct data', () => {
 ```
 
 ### Фильтрация и Сортировка
+
 ```typescript
 it('should filter items correctly', () => {
   cy.get('[data-testid="input-filter"]').type('electronics')
@@ -282,6 +300,7 @@ it('should sort items by name', () => {
 ## 📑 Пагинация
 
 ### Проверка Страниц
+
 ```typescript
 it('should paginate correctly', () => {
   // Page 1
@@ -302,6 +321,7 @@ it('should paginate correctly', () => {
 ## 💾 Экспорт и Импорт
 
 ### CSV Импорт
+
 ```typescript
 it('should import CSV file', () => {
   cy.get('[data-testid="btn-import"]').click()
@@ -314,6 +334,7 @@ it('should import CSV file', () => {
 ```
 
 ### CSV Экспорт
+
 ```typescript
 it('should export as CSV', () => {
   cy.get('[data-testid="btn-export"]').click()
@@ -326,6 +347,7 @@ it('should export as CSV', () => {
 ## 🗓️ Работа с Датами
 
 ### Тестирование Date Picker
+
 ```typescript
 it('should select date range', () => {
   cy.get('[data-testid="input-start-date"]').click()
@@ -346,6 +368,7 @@ it('should select date range', () => {
 ## 📧 Email и Уведомления
 
 ### Проверка Уведомлений
+
 ```typescript
 it('should show toast notification', () => {
   cy.get('[data-testid="btn-save"]').click()
@@ -362,6 +385,7 @@ it('should show toast notification', () => {
 ## 🔀 Обработка Модалей
 
 ### Работа с Modal Windows
+
 ```typescript
 it('should handle modal dialogs', () => {
   cy.get('[data-testid="btn-delete"]').click()
@@ -382,6 +406,7 @@ it('should handle modal dialogs', () => {
 ## 🌐 Multi-Browser Testing
 
 ### Browser-specific Code
+
 ```typescript
 it('should work in different browsers', () => {
   // Chrome/Edge specific
@@ -397,6 +422,7 @@ it('should work in different browsers', () => {
 ## 📊 Performance Testing
 
 ### Проверка Времени Отклика
+
 ```typescript
 it('should load inventory within 2 seconds', () => {
   const start = Date.now()
@@ -419,6 +445,7 @@ it('should fetch inventory in reasonable time', () => {
 ## 🔍 Debugging
 
 ### Debug Commands
+
 ```typescript
 // Log to console
 cy.log('Current value:', value)
@@ -451,4 +478,3 @@ cy.step('Starting inventory test')
 | **Логирование** | `cy.log()` | `console.log()` |
 | **Cleanup** | `afterEach` hooks | Оставить данные |
 | **Скорость** | Параллелизм | Sequential runs |
-

@@ -15,7 +15,7 @@ final class WishlistService
      */
     public function addItem(int $userId, string $itemType, int $itemId, array $metadata = []): array
     {
-        $correlationId = Str::uuid();
+        $correlationId = Str::uuid()->toString();
 
         try {
             return DB::transaction(function () use ($userId, $itemType, $itemId, $metadata, $correlationId) {
@@ -77,7 +77,7 @@ final class WishlistService
      */
     public function removeItem(int $userId, string $itemType, int $itemId): bool
     {
-        $correlationId = Str::uuid();
+        $correlationId = Str::uuid()->toString();
 
         try {
             return DB::transaction(function () use ($userId, $itemType, $itemId, $correlationId) {
@@ -185,7 +185,7 @@ final class WishlistService
     public function shareWishlist(int $userId, ?string $itemType = null): string
     {
         $shareToken = Str::random(32);
-        $correlationId = Str::uuid();
+        $correlationId = Str::uuid()->toString();
 
         DB::table('wishlist_shares')->insert([
             'user_id' => $userId,
@@ -209,14 +209,16 @@ final class WishlistService
     /**
      * Get shared wishlist
      */
-    public function getSharedWishlist(string $shareToken): ?Collection
+    public function getSharedWishlist(string $shareToken): Collection
     {
         $share = DB::table('wishlist_shares')
             ->where('share_token', $shareToken)
             ->first();
 
         if (!$share) {
-            return null;
+            throw new \Illuminate\Database\Eloquent\ModelNotFoundException(
+                'Shared wishlist not found for token: ' . $shareToken
+            );
         }
 
         $query = DB::table('wishlist_items')

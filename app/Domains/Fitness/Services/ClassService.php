@@ -2,8 +2,8 @@
 
 namespace App\Domains\Fitness\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use App\Domains\Fitness\Models\Gym;
 use App\Domains\Fitness\Models\FitnessClass;
@@ -14,10 +14,7 @@ final readonly class ClassService
 {
     public function createClass(int $gymId, int $trainerId, string $name, string $description, string $classType, int $durationMinutes, int $maxParticipants, float $pricePerClass, string $correlationId): FitnessClass
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'createClass'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createClass', ['domain' => __CLASS__]);
+
 
         try {
             $gym = Gym::findOrFail($gymId);
@@ -59,10 +56,7 @@ final readonly class ClassService
 
     public function updateClass(FitnessClass $class, array $data, string $correlationId): void
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'updateClass'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL updateClass', ['domain' => __CLASS__]);
+
 
         try {
             DB::transaction(function () use ($class, $data, $correlationId) {

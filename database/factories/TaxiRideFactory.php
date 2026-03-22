@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
-use App\Domains\Auto\Models\TaxiRide;
+use App\Domains\Taxi\Models\TaxiRide;
 use App\Models\User;
 use App\Models\Tenant;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Domains\Auto\Models\TaxiRide>
+ * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Domains\Taxi\Models\TaxiRide>
  */
 final class TaxiRideFactory extends Factory
 {

@@ -1,4 +1,5 @@
 # Monitoring & Analytics Setup
+
 ## Error Tracking, Performance Monitoring, Business Metrics
 
 ---
@@ -6,6 +7,7 @@
 ## 🎯 Overview
 
 Complete monitoring infrastructure with:
+
 - **Error Tracking** (Sentry) - Real-time exception monitoring
 - **Performance Monitoring** (New Relic, DataDog) - API, database, cache metrics
 - **Business Metrics** - Transaction tracking and KPI monitoring
@@ -35,28 +37,33 @@ SENTRY_TRACES_SAMPLE_RATE=0.1
 ### Features
 
 ✅ **Real-time Exception Monitoring**
+
 - Captures all unhandled exceptions
 - Groups similar errors
 - Tracks error frequency and impact
 
 ✅ **User Context**
+
 - Associates errors with user accounts
 - Tracks user actions leading to errors
 - Identifies affected users
 
 ✅ **Breadcrumbs**
+
 - Records user actions and events
 - Tracks database queries
 - Monitors HTTP requests
 - Logs cache operations
 
 ✅ **Performance Monitoring**
+
 - Transaction tracing
 - Slow span detection
 - Database query performance
 - API endpoint monitoring
 
 ✅ **Release Tracking**
+
 - Tracks which release caused issues
 - Compares error rates across releases
 - Rollback detection
@@ -163,6 +170,7 @@ DATADOG_APM_ENABLED=true
 ### Metrics Collected
 
 ✅ **API Performance**
+
 ```php
 $this->performance->recordApiCall(
     method: 'GET',
@@ -174,6 +182,7 @@ $this->performance->recordApiCall(
 ```
 
 Tracks:
+
 - Response times
 - Status codes
 - Memory usage
@@ -181,6 +190,7 @@ Tracks:
 - Error rates by endpoint
 
 ✅ **Database Performance**
+
 ```php
 $this->performance->recordDatabaseQuery(
     query: 'SELECT * FROM concerts WHERE ...',
@@ -190,12 +200,14 @@ $this->performance->recordDatabaseQuery(
 ```
 
 Tracks:
+
 - Query execution time
 - Query frequency
 - Slow query detection
 - Index effectiveness
 
 ✅ **Cache Performance**
+
 ```php
 $this->performance->recordCacheOperation(
     operation: 'get',
@@ -206,12 +218,14 @@ $this->performance->recordCacheOperation(
 ```
 
 Tracks:
+
 - Hit rate percentage
 - Operation latency
 - Cold cache keys
 - Cache efficiency
 
 ✅ **Business Metrics**
+
 ```php
 $this->performance->recordTransaction(
     type: 'concert_booking',
@@ -222,12 +236,14 @@ $this->performance->recordTransaction(
 ```
 
 Tracks:
+
 - Transaction volume
 - Success/failure rates
 - Revenue metrics
 - Transaction types
 
 ✅ **Page Load Metrics (Web Vitals)**
+
 ```php
 $this->performance->recordPageLoadMetrics([
     'first_contentful_paint' => 1200,
@@ -239,6 +255,7 @@ $this->performance->recordPageLoadMetrics([
 ```
 
 Tracks:
+
 - FCP (First Contentful Paint)
 - LCP (Largest Contentful Paint)
 - CLS (Cumulative Layout Shift)
@@ -260,6 +277,7 @@ protected $middleware = [
 ```
 
 **Automatically tracks:**
+
 - All API requests
 - Response times and status codes
 - User context and correlation ID
@@ -286,6 +304,7 @@ php artisan metrics:analyze --period=1m
 ```
 
 **Output includes:**
+
 - API performance statistics
 - Database query analysis
 - Cache effectiveness
@@ -297,6 +316,7 @@ php artisan metrics:analyze --period=1m
 ## 🔧 Configuration Files
 
 ### config/sentry.php
+
 - DSN and environment
 - Tracing sample rate (10% recommended)
 - Profile sample rate
@@ -304,6 +324,7 @@ php artisan metrics:analyze --period=1m
 - Ignored exceptions list
 
 ### config/datadog.php
+
 - API credentials
 - StatsD configuration
 - APM settings
@@ -311,6 +332,7 @@ php artisan metrics:analyze --period=1m
 - Global tags
 
 ### config/services.php
+
 - Service provider credentials
 - API endpoints
 - Timeout settings
@@ -349,6 +371,7 @@ Indexes:
 ```
 
 Create table:
+
 ```bash
 php artisan migrate
 ```
@@ -390,12 +413,14 @@ All endpoints automatically tracked with:
 ### Sentry Alerts
 
 **Conditions:**
+
 - Error spike (20% increase in errors)
 - New issues (first occurrence)
 - Regression (error reappears after fix)
 - Critical errors (selected exception types)
 
 **Channels:**
+
 - Email notifications
 - Slack integration
 - PagerDuty integration
@@ -404,12 +429,14 @@ All endpoints automatically tracked with:
 ### DataDog Alerts
 
 **Conditions:**
+
 - Metric threshold exceeded
 - Anomaly detection
 - Forecast alert (predicted threshold breach)
 - Change alert (significant deviation)
 
 **Channels:**
+
 - Email
 - Slack
 - Opsgenie
@@ -453,6 +480,7 @@ Create custom dashboard with:
 ### Sentry Dashboard
 
 **Key Metrics Displayed:**
+
 - Error frequency over time
 - Most affected users
 - Top error types
@@ -506,31 +534,37 @@ $hitRate = $cache->where('hit', true)->count() / $cache->count() * 100;
 ## 🎯 Best Practices
 
 ✅ **Use Correlation IDs**
+
 - Track requests across services
 - Easier debugging and tracing
 - Link errors to user sessions
 
 ✅ **Set User Context**
+
 - Identify affected users
 - Track user-specific metrics
 - Prioritize high-impact issues
 
 ✅ **Add Meaningful Breadcrumbs**
+
 - Record important business events
 - Track state changes
 - Document user journey
 
 ✅ **Sample Appropriately**
+
 - Traces: 5-20% (depends on volume)
 - Profiles: 5-10%
 - Logs: 100% for errors, 10% for info
 
 ✅ **Set Meaningful Tags**
+
 - Vertical (concert, restaurant, taxi, etc.)
 - Feature (marketplace, inventory, payroll)
 - Environment (production, staging)
 
 ✅ **Monitor Business Metrics**
+
 - Transaction success rate
 - Revenue tracking
 - User engagement metrics
@@ -541,16 +575,19 @@ $hitRate = $cache->where('hit', true)->count() / $cache->count() * 100;
 ## 📞 Support
 
 ### Sentry Support
-- Documentation: https://docs.sentry.io/
-- Discord Community: https://discord.gg/Ww9hbqr
+
+- Documentation: <https://docs.sentry.io/>
+- Discord Community: <https://discord.gg/Ww9hbqr>
 
 ### DataDog Support
-- Documentation: https://docs.datadoghq.com/
-- Support Portal: https://support.datadoghq.com/
+
+- Documentation: <https://docs.datadoghq.com/>
+- Support Portal: <https://support.datadoghq.com/>
 
 ### New Relic Support
-- Documentation: https://docs.newrelic.com/
-- Support: https://support.newrelic.com/
+
+- Documentation: <https://docs.newrelic.com/>
+- Support: <https://support.newrelic.com/>
 
 ---
 

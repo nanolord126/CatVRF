@@ -16,7 +16,7 @@ final class AttendanceController
 
     public function checkIn(int $scheduleId): JsonResponse
     {
-        $correlationId = Str::uuid();
+        $correlationId = Str::uuid()->toString();
         try {
             $attendance = $this->attendanceService->recordCheckIn($scheduleId, auth()->id(), $correlationId);
 
@@ -29,7 +29,7 @@ final class AttendanceController
 
     public function checkOut(int $id): JsonResponse
     {
-        $correlationId = Str::uuid();
+        $correlationId = Str::uuid()->toString();
         try {
             $attendance = Attendance::findOrFail($id);
 
@@ -69,7 +69,7 @@ final class AttendanceController
 
     public function recordMetric(): JsonResponse
     {
-        $correlationId = Str::uuid();
+        $correlationId = Str::uuid()->toString();
         try {
             request()->validate([
                 'metric_date' => 'required|date',

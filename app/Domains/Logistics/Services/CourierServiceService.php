@@ -2,14 +2,18 @@
 
 namespace App\Domains\Logistics\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use App\Domains\Logistics\Models\CourierService;
 use Illuminate\Support\Facades\DB;
 
 final class CourierServiceService
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     public function createCourierService(
         int $tenantId,
         int $userId,
@@ -21,12 +25,17 @@ final class CourierServiceService
         float $perKmRate,
         string $correlationId,
     ): CourierService {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'createCourierService'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createCourierService', ['domain' => __CLASS__]);
 
-        return DB::transaction(function () use (
+
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(function () use (
             $tenantId,
             $userId,
             $companyName,
@@ -63,12 +72,17 @@ final class CourierServiceService
 
     public function updateCourierService(CourierService $courier, array $data, string $correlationId): CourierService
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'updateCourierService'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL updateCourierService', ['domain' => __CLASS__]);
 
-        return DB::transaction(function () use ($courier, $data, $correlationId) {
+
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(function () use ($courier, $data, $correlationId) {
             $courier->update([...$data, 'correlation_id' => $correlationId]);
 
             Log::channel('audit')->info('Courier service updated', [

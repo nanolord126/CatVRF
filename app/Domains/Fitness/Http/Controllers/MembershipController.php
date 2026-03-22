@@ -4,6 +4,7 @@ namespace App\Domains\Fitness\Http\Controllers;
 
 use App\Domains\Fitness\Models\Membership;
 use App\Domains\Fitness\Services\MembershipService;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
@@ -11,15 +12,15 @@ use Throwable;
 
 final class MembershipController
 {
-    public function __construct(private readonly MembershipService $membershipService) {}
+    public function __construct(
+        private readonly MembershipService $membershipService,
+        private readonly FraudControlService $fraudControlService,
+    ) {}
 
     public function store(): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
-
-        $correlationId = Str::uuid();
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
         try {
             request()->validate([
                 'gym_id' => 'required|exists:gyms,id',
@@ -69,11 +70,8 @@ final class MembershipController
 
     public function update(int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
-
-        $correlationId = Str::uuid();
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
         try {
             $membership = Membership::findOrFail($id);
             $this->authorize('view', $membership);
@@ -90,7 +88,7 @@ final class MembershipController
 
     public function cancel(int $id): JsonResponse
     {
-        $correlationId = Str::uuid();
+        $correlationId = Str::uuid()->toString();
         try {
             $membership = Membership::findOrFail($id);
             $this->authorize('cancel', $membership);
@@ -107,7 +105,7 @@ final class MembershipController
 
     public function expire(int $id): JsonResponse
     {
-        $correlationId = Str::uuid();
+        $correlationId = Str::uuid()->toString();
         try {
             $membership = Membership::findOrFail($id);
             $membership->update(['status' => 'expired', 'correlation_id' => $correlationId]);

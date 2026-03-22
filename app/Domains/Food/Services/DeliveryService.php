@@ -2,8 +2,8 @@
 
 namespace App\Domains\Food\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use App\Domains\Food\Models\DeliveryOrder;
 use App\Domains\Food\Models\DeliveryZone;
@@ -16,6 +16,10 @@ use Illuminate\Support\Facades\DB;
  */
 final class DeliveryService
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
+
     /**
      * Рассчитать стоимость доставки с учётом surge.
      */
@@ -24,10 +28,7 @@ final class DeliveryService
         array $deliveryPoint,
         string $correlationId = ''
     ): int {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'calculateDeliveryPrice'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL calculateDeliveryPrice', ['domain' => __CLASS__]);
+
 
         try {
             $zone = DeliveryZone::query()
@@ -72,13 +73,18 @@ final class DeliveryService
         array $deliveryPoint,
         string $correlationId = ''
     ): DeliveryOrder {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'createDeliveryOrder'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createDeliveryOrder', ['domain' => __CLASS__]);
+
 
         try {
-            return DB::transaction(function () use ($order, $customerAddress, $deliveryPoint, $correlationId) {
+            $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
+DB::transaction(function () use ($order, $customerAddress, $deliveryPoint, $correlationId) {
                 $deliveryPrice = $this->calculateDeliveryPrice($order, $deliveryPoint, $correlationId);
 
                 $delivery = DeliveryOrder::create([
@@ -116,13 +122,18 @@ final class DeliveryService
      */
     public function startDelivery(DeliveryOrder $delivery, string $correlationId = ''): bool
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'startDelivery'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL startDelivery', ['domain' => __CLASS__]);
+
 
         try {
-            return DB::transaction(function () use ($delivery, $correlationId) {
+            $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
+DB::transaction(function () use ($delivery, $correlationId) {
                 $delivery->update([
                     'status' => 'on_way',
                     'picked_up_at' => now(),

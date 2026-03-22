@@ -9,6 +9,7 @@ use Modules\Food\Models\Restaurant;
 use Modules\Food\Models\RestaurantOrder;
 use Modules\Inventory\Services\InventoryManagementService;
 use Illuminate\Support\Str;
+use App\Services\FraudControlService;
 
 /**
  * Restaurant Management Service
@@ -17,17 +18,23 @@ use Illuminate\Support\Str;
 final class RestaurantService
 {
     public function __construct(
+        private readonly FraudControlService $fraudControlService,
         private readonly InventoryManagementService $inventoryService,
     ) {}
 
     public function createRestaurant(array $data, int $tenantId, string $correlationId): Restaurant
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'createRestaurant'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createRestaurant', ['domain' => __CLASS__]);
 
-        return DB::transaction(function () use ($data, $tenantId, $correlationId) {
+
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(function () use ($data, $tenantId, $correlationId) {
             Log::channel('audit')->info('Creating restaurant', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
@@ -49,12 +56,17 @@ final class RestaurantService
 
     public function createOrder(array $data, int $restaurantId, int $userId, string $correlationId): RestaurantOrder
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'createOrder'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createOrder', ['domain' => __CLASS__]);
 
-        return DB::transaction(function () use ($data, $restaurantId, $userId, $correlationId) {
+
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(function () use ($data, $restaurantId, $userId, $correlationId) {
             Log::channel('audit')->info('Creating restaurant order', [
                 'correlation_id' => $correlationId,
                 'restaurant_id' => $restaurantId,
@@ -74,10 +86,7 @@ final class RestaurantService
 
     public function getRestaurantStats(Restaurant $restaurant): array
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'getRestaurantStats'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getRestaurantStats', ['domain' => __CLASS__]);
+
 
         $totalOrders = RestaurantOrder::query()
             ->where('restaurant_id', $restaurant->id)

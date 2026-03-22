@@ -2,15 +2,16 @@
 
 namespace App\Domains\Logistics\Services;
 
-use App\Services\Security\FraudControlService;
 use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
 
 use App\Domains\Logistics\Models\Courier;
 use Illuminate\Support\Facades\DB;
 
 final class CourierService
 {
-    public function __construct()
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,)
     {
     }
 
@@ -52,12 +53,17 @@ final class CourierService
      */
     public function assignCourier(int $courierId, int $deliveryId, string $correlationId): bool
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'assignCourier'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL assignCourier', ['domain' => __CLASS__]);
+
 
         try {
+                        $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
             DB::transaction(function () use ($courierId, $deliveryId, $correlationId) {
                 $courier = Courier::lockForUpdate()->findOrFail($courierId);
                 $courier->increment('current_load');
@@ -91,12 +97,17 @@ final class CourierService
      */
     public function completeDelivery(int $courierId, int $deliveryId, string $correlationId): bool
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'completeDelivery'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL completeDelivery', ['domain' => __CLASS__]);
+
 
         try {
+                        $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
             DB::transaction(function () use ($courierId, $deliveryId, $correlationId) {
                 $courier = Courier::lockForUpdate()->findOrFail($courierId);
                 $courier->decrement('current_load');

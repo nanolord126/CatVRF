@@ -5,7 +5,7 @@ namespace App\Domains\SportingGoods\Services;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Services\Security\FraudControlService;
+use App\Services\FraudControlService;
 use App\Domains\SportingGoods\Models\SportProduct;
 
 final readonly class SportingGoodsService
@@ -16,10 +16,17 @@ final readonly class SportingGoodsService
 
     public function createProduct(array $data, string $correlationId): SportProduct
     {
-        return DB::transaction(function () use ($data, $correlationId) {
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(function () use ($data, $correlationId) {
             Log::channel('audit')->info("СОЗДАНИЕ СПОРТТОВАРА", ["correlation_id" => $correlationId]);
             
-            FraudControlService::check($data, $correlationId);
 
             $product = SportProduct::create([
                 "tenant_id" => tenant("id") ?? 1,

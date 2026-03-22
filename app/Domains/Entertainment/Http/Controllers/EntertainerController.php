@@ -52,7 +52,7 @@ final class EntertainerController
     public function register(): JsonResponse
     {
         try {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             DB::transaction(function () use ($correlationId) {
                 $entertainer = Entertainer::create([
@@ -99,7 +99,7 @@ final class EntertainerController
     {
         try {
             $entertainer = Entertainer::where('user_id', auth()->id())->firstOrFail();
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             DB::transaction(function () use ($entertainer, $correlationId) {
                 $entertainer->update([
@@ -136,7 +136,7 @@ final class EntertainerController
     {
         try {
             $entertainer = Entertainer::where('user_id', auth()->id())->firstOrFail();
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             DB::transaction(function () use ($entertainer, $correlationId) {
                 $entertainer->schedules()->delete();

@@ -5,14 +5,17 @@ namespace App\Domains\Pet\Http\Controllers;
 use App\Domains\Pet\Models\PetProduct;
 use App\Domains\Pet\Services\ProductService;
 use App\Http\Controllers\Controller;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 final class PetProductController extends Controller
 {
     public function __construct(
         private readonly ProductService $productService,
+        private readonly FraudControlService $fraudControlService,
     ) {}
 
     public function index(): JsonResponse
@@ -28,7 +31,7 @@ final class PetProductController extends Controller
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Throwable $e) {
-            \Log::error('Failed to get products', ['error' => $e->getMessage()]);
+            Log::error('Failed to get products', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve products',
@@ -58,15 +61,20 @@ final class PetProductController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $clinic = auth()->user()->clinics()->findOrFail($request->clinic_id);
-            $correlationId = Str::uuid()->toString();
 
             $product = $this->productService->createProduct($clinic, $request->validated(), $correlationId);
+
+            Log::channel('audit')->info('Pet product created', [
+                'correlation_id' => $correlationId,
+                'product_id'     => $product->id ?? null,
+                'tenant_id'      => $product->tenant_id ?? null,
+                'user_id'        => auth()->id(),
+            ]);
 
             return response()->json([
                 'success' => true,
@@ -74,7 +82,7 @@ final class PetProductController extends Controller
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Throwable $e) {
-            \Log::error('Failed to create product', ['error' => $e->getMessage()]);
+            Log::error('Failed to create product', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create product',
@@ -85,16 +93,21 @@ final class PetProductController extends Controller
 
     public function update(Request $request, $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $product = PetProduct::findOrFail($id);
             $this->authorize('update', $product);
-            $correlationId = Str::uuid()->toString();
 
             $product = $this->productService->updateProduct($product, $request->validated(), $correlationId);
+
+            Log::channel('audit')->info('Pet product updated', [
+                'correlation_id' => $correlationId,
+                'product_id'     => $product->id,
+                'tenant_id'      => $product->tenant_id ?? null,
+                'user_id'        => auth()->id(),
+            ]);
 
             return response()->json([
                 'success' => true,
@@ -112,16 +125,21 @@ final class PetProductController extends Controller
 
     public function destroy($id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $product = PetProduct::findOrFail($id);
             $this->authorize('delete', $product);
-            $correlationId = Str::uuid()->toString();
 
             $product->delete();
+
+            Log::channel('audit')->info('Pet product deleted', [
+                'correlation_id' => $correlationId,
+                'product_id'     => $product->id,
+                'tenant_id'      => $product->tenant_id ?? null,
+                'user_id'        => auth()->id(),
+            ]);
 
             return response()->json([
                 'success' => true,

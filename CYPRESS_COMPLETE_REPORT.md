@@ -11,6 +11,7 @@
 ### 1. **Test File Creation & Fixes** (4 files)
 
 #### cypress/e2e/auth.cy.ts
+
 - **Status**: ✅ Fixed and ready
 - **Contains**: Authentication flow tests (login, logout, 2FA, password reset)
 - **Key Features**:
@@ -26,16 +27,19 @@
   - Updated all domain references: catvrf.local → kotvrf.ru
 
 #### cypress/e2e/security.cy.ts
+
 - **Status**: ✅ Fixed
 - **Contains**: Security vulnerability tests (XSS, CSRF, unauthorized access)
 - **Fixes**: TypeScript reference added, domains updated
 
 #### cypress/e2e/marketplace.cy.ts
+
 - **Status**: ✅ Fixed
 - **Contains**: Marketplace operations and workflows
 - **Fixes**: TypeScript reference added, domains updated
 
 #### cypress/e2e/performance.cy.ts
+
 - **Status**: ✅ Fixed
 - **Contains**: API response time and performance tests
 - **Fixes**: TypeScript reference added, domains updated
@@ -43,9 +47,11 @@
 ### 2. **Support Files Creation & Recreation** (3 files)
 
 #### cypress/support/commands.ts
+
 - **Original Issue**: Contained PHP `declare(strict_types=1);` in TypeScript file
 - **Status**: ✅ Recreated with proper TypeScript
 - **Contains**:
+
   ```typescript
   declare global namespace Cypress {
     interface Chainable {
@@ -59,6 +65,7 @@
     }
   }
   ```
+
 - **Custom Commands Implemented**:
   - `loginAs(email, password)` - Session-based authentication
   - `resetDatabase()` - API call to reset test database
@@ -69,6 +76,7 @@
   - `measurePerformance(label)` - Performance timing
 
 #### cypress/support/e2e.ts
+
 - **Status**: ✅ Created (was missing)
 - **Purpose**: E2E test entry point
 - **Contains**:
@@ -78,6 +86,7 @@
   - afterEach: Capture screenshot on failure
 
 #### cypress/support/component.ts
+
 - **Status**: ✅ Created (needed for Vue testing)
 - **Purpose**: Vue component testing support
 - **Contains**: Mount utility for Vue 3 components
@@ -85,8 +94,10 @@
 ### 3. **Configuration Files** (4 files)
 
 #### tsconfig.json (Root)
+
 - **Status**: ✅ Updated
 - **Key Settings**:
+
   ```json
   {
     "compilerOptions": {
@@ -100,11 +111,14 @@
     "include": ["cypress/**/*", "resources/**/*"]
   }
   ```
+
 - **Resolves**: All TypeScript and Cypress type definitions
 
 #### cypress/tsconfig.json
+
 - **Status**: ✅ Created & Updated
 - **Key Settings**:
+
   ```json
   {
     "extends": "../tsconfig.json",
@@ -117,8 +131,10 @@
   ```
 
 #### cypress.config.ts
+
 - **Status**: ✅ Updated
 - **Key Configuration**:
+
   ```typescript
   baseUrl: 'http://localhost:8000'
   viewportWidth: 1280
@@ -135,6 +151,7 @@
     viewerUser: 'viewer@kotvrf.ru'
   }
   ```
+
 - **Improvements**:
   - Added project ID for Cypress Cloud (optional)
   - Proper environment variables for test users
@@ -142,14 +159,17 @@
   - Screenshot capture on failures
 
 #### package.json
+
 - **Status**: ✅ Updated
 - **Added Scripts**:
+
   ```json
   "cypress:open": "cypress open",
   "cypress:e2e": "cypress run --e2e",
   "cypress:component": "cypress run --component",
   "cypress:run": "cypress run"
   ```
+
 - **Added Dependencies**:
   - `cypress`: ^15.12.0
   - `@types/cypress`: ^0.1.6
@@ -160,7 +180,8 @@
 
 ### 1. **Invalid Cypress API Usage**
 
-**Problem**: 
+**Problem**:
+
 ```typescript
 // WRONG - cy.$() is jQuery, not Cypress
 cy.$('button[aria-label="User menu"]').length > 0
@@ -170,6 +191,7 @@ cy.contains('sent').should('exist').or cy.url().should('...')
 ```
 
 **Solution**:
+
 ```typescript
 // CORRECT - Using Cypress chainable
 cy.get('button[aria-label="User menu"]', { timeout: 5000 })
@@ -190,6 +212,7 @@ cy.url().then((url) => {
 ### 2. **Wrong File Content**
 
 **Problem**: cypress/support/commands.ts started with:
+
 ```php
 <?php
 declare(strict_types=1);
@@ -207,6 +230,7 @@ declare(strict_types=1);
 ### 4. **Domain References** (20+ updates)
 
 Changed across all test files and config:
+
 - `catvrf.local` → `kotvrf.ru`
 - `catvrf.com` → `kotvrf.ru`
 - All test emails updated to @kotvrf.ru
@@ -216,6 +240,7 @@ Changed across all test files and config:
 ## Technical Architecture
 
 ### Test Structure
+
 ```
 cypress/
 ├── e2e/                          # E2E test suites
@@ -280,6 +305,7 @@ npm run cypress:run -- --spec "cypress/e2e/auth.cy.ts"
 ## Current Status
 
 ### ✅ Completed
+
 1. All 4 E2E test files fixed and validated
 2. All 3 support files created/recreated
 3. All 4 configuration files created/updated
@@ -290,17 +316,19 @@ npm run cypress:run -- --spec "cypress/e2e/auth.cy.ts"
 8. Package.json updated with cypress dependency
 
 ### ⏳ In Progress
+
 - Cypress binary installation (downloading from npm, ~500MB)
 
 ### ⚠️ Not Yet Done (Blocking Test Execution)
+
 1. **Laravel Test API Endpoints** - Need to create:
    - `POST /api/test/reset-database` - Clear test database
    - `POST /api/test/seed-database` - Seed test users
 
 2. **Test Database Users** - Must be created:
-   - admin@kotvrf.ru (password: password123)
-   - manager@kotvrf.ru (password: password123)
-   - viewer@kotvrf.ru (password: password123)
+   - <admin@kotvrf.ru> (password: password123)
+   - <manager@kotvrf.ru> (password: password123)
+   - <viewer@kotvrf.ru> (password: password123)
 
 3. **App Running** - Need to run:
    - `php artisan serve` (default localhost:8000)
@@ -310,6 +338,7 @@ npm run cypress:run -- --spec "cypress/e2e/auth.cy.ts"
 ## Type System Validation
 
 ### TypeScript Errors Resolved
+
 ```
 ❌ Before:
 - "Не удается найти файл определения типа для cypress"
@@ -330,6 +359,7 @@ npm run cypress:run -- --spec "cypress/e2e/auth.cy.ts"
 ## File-by-File Modifications
 
 ### Created Files (6)
+
 1. `cypress/support/e2e.ts` - Entry point
 2. `cypress/support/component.ts` - Vue testing
 3. `tsconfig.json` - Root TS config
@@ -338,6 +368,7 @@ npm run cypress:run -- --spec "cypress/e2e/auth.cy.ts"
 6. `CYPRESS_STATUS.md` - Current status
 
 ### Modified Files (8)
+
 1. `cypress/e2e/auth.cy.ts` - Fixed syntax, added types
 2. `cypress/e2e/security.cy.ts` - Added TypeScript ref
 3. `cypress/e2e/marketplace.cy.ts` - Added TypeScript ref
@@ -352,13 +383,17 @@ npm run cypress:run -- --spec "cypress/e2e/auth.cy.ts"
 ## Next Steps for User
 
 ### Step 1: Wait for Cypress Installation
+
 The binary is currently downloading. Once complete:
+
 ```bash
 npm ls cypress  # Should show cypress@15.12.0
 ```
 
 ### Step 2: Create Laravel Test Endpoints
+
 Create routes in `routes/api.php`:
+
 ```php
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/test/reset-database', function (Request $request) {
@@ -374,12 +409,15 @@ Route::middleware('auth:sanctum')->group(function () {
 ```
 
 ### Step 3: Create Test Database Users
+
 Add to database seeder or create manually:
-- admin@kotvrf.ru (Role: Admin, Password: password123)
-- manager@kotvrf.ru (Role: Manager, Password: password123)
-- viewer@kotvrf.ru (Role: Viewer, Password: password123)
+
+- <admin@kotvrf.ru> (Role: Admin, Password: password123)
+- <manager@kotvrf.ru> (Role: Manager, Password: password123)
+- <viewer@kotvrf.ru> (Role: Viewer, Password: password123)
 
 ### Step 4: Run Tests
+
 ```bash
 # Terminal 1: Start Laravel server
 php artisan serve
@@ -413,17 +451,20 @@ npm run cypress:e2e       # For CI/CD
 ## Quality Assurance
 
 ✅ **All Test Files**
+
 - Proper TypeScript syntax
 - Correct Cypress chainable methods
 - Proper async/await patterns
 - All type definitions in place
 
 ✅ **All Configuration Files**
+
 - Valid JSON/TypeScript syntax
 - Proper tsconfig hierarchy
 - Correct path extensions
 
 ✅ **Type Checking**
+
 - Cypress types properly referenced
 - Global namespace declarations
 - Proper callback typing
@@ -436,6 +477,7 @@ npm run cypress:e2e       # For CI/CD
 If tests don't run:
 
 1. **Cypress binary not found**:
+
    ```bash
    npm install --save-dev cypress
    ```
@@ -456,7 +498,7 @@ If tests don't run:
 5. **Authentication failures**:
    - Verify test users exist in database
    - Check passwords match test files (password123)
-   - Ensure emails are exactly: admin@kotvrf.ru, manager@kotvrf.ru, viewer@kotvrf.ru
+   - Ensure emails are exactly: <admin@kotvrf.ru>, <manager@kotvrf.ru>, <viewer@kotvrf.ru>
 
 ---
 

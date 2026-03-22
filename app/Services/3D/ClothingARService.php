@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-namespace App\Services\3D;
+namespace App\Services\ThreeD;
 
 use Illuminate\Support\Str;
 
@@ -9,7 +9,7 @@ final class ClothingARService
     public function generateClothingARModel(array $clothingData): array
     {
         return [
-            'id' => Str::uuid(),
+            'id' => Str::uuid()->toString(),
             'product_id' => $clothingData['product_id'],
             'type' => $clothingData['type'] ?? 'shirt', // shirt, pants, dress, shoes
             'size_variants' => $this->generateSizeVariants($clothingData),
@@ -44,3 +44,4 @@ final class ClothingARService
         return "/3d-models/clothing/{$clothingData['sku']}.gltf";
     }
 }
+

@@ -7,12 +7,14 @@ declare(strict_types=1);
 ### ✅ СОЗДАННЫЕ ТЕСТЫ (ФАЗА 1)
 
 #### Base Infrastructure
+
 - [x] `tests/BaseTestCase.php` — Base class для всех тестов с tenant scoping, correlation ID, fraud checks
 - [x] `tests/SecurityTestCase.php` — Security test case с fraud attack patterns, authorization checks, input validation
 - [x] `tests/LoadTestCase.php` — (планируется)
 - [x] `tests/ChaosTestCase.php` — (планируется)
 
 #### Unit Tests (Services)
+
 - [x] `tests/Unit/Services/Wallet/WalletServiceTest.php` (18 тестов)
   - credit/debit операции ✅
   - hold/release операции ✅
@@ -61,6 +63,7 @@ declare(strict_types=1);
 **ИТОГО Unit Tests (Services): 18/122 (15%)**
 
 #### Feature Tests (API Endpoints)
+
 - [x] `tests/Feature/Payment/PaymentInitTest.php` (12 тестов)
   - Init payment with validation ✅
   - Fraud scoring ✅
@@ -108,6 +111,7 @@ declare(strict_types=1);
 **ИТОГО Feature Tests (Endpoints): 32/100+ (32%)**
 
 #### Security Tests
+
 - [x] `tests/Security/FraudAttacksTest.php` (20 тестов)
   - Replay attacks ✅
   - Idempotency bypass ✅
@@ -135,6 +139,7 @@ declare(strict_types=1);
 **ИТОГО Security Tests: 32/37 (86%)**
 
 #### Integration Tests
+
 - [ ] `tests/Integration/Payment/BookingToPaymentFlowTest.php`
   - Booking → Hold → Capture → Credit to Wallet
 
@@ -147,6 +152,7 @@ declare(strict_types=1);
 **ИТОГО Integration Tests: 0/20 (0%)**
 
 ### Load Tests (k6)
+
 - [x] `k6/payment-flow-loadtest.js` ✅
   - Ramp-up: 0 → 1000 VUs
   - Spike: 1000 → 5000 VUs
@@ -173,6 +179,7 @@ declare(strict_types=1);
 **ИТОГО Load Tests: 1/4 (25%)**
 
 ### Chaos Tests
+
 - [x] `tests/Chaos/ChaosEngineeringTest.php` ✅
   - Redis down (fallback to DB) ✅
   - Database slow queries (timeout) ✅
@@ -203,6 +210,7 @@ declare(strict_types=1);
 ## 🔄 ФАЗА 2: ВЕРТИКАЛИ + МОДЕЛИ (НЕДЕЛЯ 2)
 
 ### Требуемые Unit Tests для Models
+
 ```
 tests/Unit/Models/
 ├── Auto/
@@ -233,6 +241,7 @@ tests/Unit/Models/
 ```
 
 ### Требуемые Feature Tests для Контроллеров
+
 ```
 tests/Feature/
 ├── Auto/
@@ -253,6 +262,7 @@ tests/Feature/
 ## 🔐 ФАЗА 3: LIVEWIRE + FILAMENT (НЕДЕЛЯ 3)
 
 ### Livewire Component Tests
+
 ```
 tests/Feature/Livewire/
 ├── WishlistComponentTest.php (add/remove/display wishlist)
@@ -263,6 +273,7 @@ tests/Feature/Livewire/
 ```
 
 ### Filament Resource Tests
+
 ```
 tests/Feature/Filament/
 ├── PaymentTransactionResourceTest.php (CRUD, filters, actions)
@@ -278,6 +289,7 @@ tests/Feature/Filament/
 ## ⚡ ФАЗА 4: JOBS + EVENTS + POLICIES (НЕДЕЛЯ 4)
 
 ### Job Tests
+
 ```
 tests/Unit/Jobs/
 ├── ProcessPaymentJobTest.php
@@ -289,6 +301,7 @@ tests/Unit/Jobs/
 ```
 
 ### Event/Listener Tests
+
 ```
 tests/Unit/Events/
 ├── PaymentCapturedTest.php
@@ -298,6 +311,7 @@ tests/Unit/Events/
 ```
 
 ### Policy Tests
+
 ```
 tests/Unit/Policies/
 ├── PaymentPolicyTest.php (view, create, update, delete)
@@ -313,6 +327,7 @@ tests/Unit/Policies/
 ## 🚀 ФАЗА 5: LOAD + PERFORMANCE (НЕДЕЛЯ 5)
 
 ### Load Test Scenarios
+
 - `payment-flow-loadtest.js` ✅ (50k RPS target)
 - `marketplace-loadtest.js` (search, browse, filter)
 - `vertical-operations-loadtest.js` (booking, order, ride)
@@ -320,6 +335,7 @@ tests/Unit/Policies/
 - `soak-test.js` (5k VUs × 1 час)
 
 ### Performance Baselines
+
 - P50 response time: < 100ms
 - P95 response time: < 500ms
 - P99 response time: < 1000ms

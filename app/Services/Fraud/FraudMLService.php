@@ -25,7 +25,7 @@ class FraudMLService
         ?string $deviceFingerprint = null,
         array $context = []
     ): array {
-        $correlationId = Str::uuid();
+        $correlationId = Str::uuid()->toString();
 
         try {
             // Get or create user fraud profile
@@ -277,7 +277,7 @@ class FraudMLService
      */
     public function reportFraud(int $userId, string $operationType, string $reason): void
     {
-        $correlationId = Str::uuid();
+        $correlationId = Str::uuid()->toString();
 
         DB::table('fraud_attempts')->insert([
             'user_id' => $userId,

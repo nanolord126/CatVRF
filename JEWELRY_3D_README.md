@@ -5,6 +5,7 @@
 ## ✨ Features
 
 ### 🎨 Interactive 3D Viewer
+
 - **Real-time 3D rotation** - Rotate on X, Y, Z axes
 - **Smooth zoom** - 0.1x to 10x magnification
 - **Material switching** - Gold, Silver, Platinum, Rose Gold
@@ -12,18 +13,21 @@
 - **Mobile-optimized** - Touch-friendly controls
 
 ### 📱 AR/VR Support
+
 - **Apple AR** - USDZ format for iOS Quick Look
 - **Android AR** - WebAR with camera integration
 - **VR Headsets** - WebXR compatible (Meta Quest, HTC Vive)
 - **360° Views** - Immersive product experience
 
 ### 📥 Multi-Format Support
+
 - **GLB** - Binary format (optimized, recommended)
 - **GLTF** - ASCII format (human-readable)
 - **USDZ** - Apple AR format
 - **OBJ** - 3D printing format
 
 ### 🔧 Admin Management
+
 - Upload 3D models via Filament Admin Panel
 - Manage textures and previews
 - Set material properties (weight, dimensions)
@@ -32,6 +36,7 @@
 - Bulk operations (delete, archive)
 
 ### 📊 Analytics & Tracking
+
 - Audit logging with correlation IDs
 - Tenant-aware access control
 - Usage statistics and performance metrics
@@ -42,6 +47,7 @@
 ## 🚀 Installation
 
 ### Prerequisites
+
 ```bash
 PHP 8.2+
 Laravel 11
@@ -51,11 +57,13 @@ Livewire 3
 ```
 
 ### Step 1: Run Migration
+
 ```bash
 php artisan migrate --path=database/migrations/2026_03_19_000000_create_3d_models_table.php
 ```
 
 ### Step 2: Seed Sample Data (Optional)
+
 ```bash
 php artisan db:seed --class=Jewelry3DModelSeeder
 # OR
@@ -64,11 +72,13 @@ php artisan tinker
 ```
 
 ### Step 3: Publish Assets
+
 ```bash
 php artisan vendor:publish --provider="Livewire\LivewireServiceProvider"
 ```
 
 ### Step 4: Configure Storage
+
 ```env
 # .env
 FILESYSTEM_DISK=s3  # or 'local'
@@ -85,6 +95,7 @@ AWS_SECRET_ACCESS_KEY=***
 ### 1. Upload 3D Model
 
 **Via Admin Panel:**
+
 1. Go to `/admin/jewelry-3d-models/create`
 2. Select jewelry item
 3. Upload `.glb`/`.gltf`/`.usdz` model file
@@ -93,6 +104,7 @@ AWS_SECRET_ACCESS_KEY=***
 6. Save
 
 **Via Code:**
+
 ```php
 use App\Domains\Jewelry\Services\Jewelry3DService;
 
@@ -113,11 +125,13 @@ $model = $service->uploadModel([
 ### 2. Display 3D Viewer
 
 **In Blade Template:**
+
 ```blade
 <livewire:jewelry.jewelry-3d-viewer :modelId="$jewelry->id" />
 ```
 
 **Full Example:**
+
 ```blade
 <div class="container mx-auto p-6">
     <h1 class="text-3xl font-bold">{{ $jewelry->name }}</h1>
@@ -247,6 +261,7 @@ class JewelryItem extends Model
 ## 🎨 Livewire Component
 
 ### Properties
+
 - `modelId` (int) - 3D model ID
 - `modelUrl` (string) - Model file URL
 - `rotationX/Y/Z` (float) - Rotation angles
@@ -256,6 +271,7 @@ class JewelryItem extends Model
 - `vrMode` (bool) - VR mode active
 
 ### Methods
+
 - `loadModel()` - Load model from database
 - `rotateX/Y/Z($angle)` - Set rotation
 - `setZoom($level)` - Set zoom level
@@ -266,6 +282,7 @@ class JewelryItem extends Model
 - `shareModel()` - Get share URL
 
 ### Events
+
 ```php
 // Listen to model updates
 wire:listen="model-updated"
@@ -280,6 +297,7 @@ $this->dispatch('model-shared', url: $shareUrl);
 ## 🔌 Integration Examples
 
 ### With Shopping Cart
+
 ```php
 // app/Livewire/Marketplace/Cart.php
 public function addItem($modelId)
@@ -299,6 +317,7 @@ public function addItem($modelId)
 ```
 
 ### With Wallet Service
+
 ```php
 // Payment for premium 3D viewer access
 WalletService::debit(
@@ -314,6 +333,7 @@ Log::channel('audit')->info('Jewelry 3D model premium purchased', [
 ```
 
 ### With Recommendations
+
 ```php
 // Recommend similar jewelry based on material & weight
 $recommendations = RecommendationService::getForUser(
@@ -331,6 +351,7 @@ $recommendations = RecommendationService::getForUser(
 ## 📊 Performance Optimization
 
 ### Model File Optimization
+
 ```bash
 # Install gltf-pipeline
 npm install -g gltf-pipeline
@@ -340,6 +361,7 @@ gltf-pipeline -i input.glb -o output.glb --draco
 ```
 
 ### Caching Strategy
+
 ```php
 // Cache model data for 1 hour
 $model = Cache::remember("jewelry_model_{$modelId}", 3600, function () use ($modelId) {
@@ -348,12 +370,14 @@ $model = Cache::remember("jewelry_model_{$modelId}", 3600, function () use ($mod
 ```
 
 ### CDN Integration
+
 ```env
 CDN_URL=https://cdn.catvrf.ru/jewelry/
 STORAGE_DISK=s3
 ```
 
 ### Lazy Loading
+
 ```blade
 <!-- Load 3D viewer only when visible -->
 <div x-intersect="$wire.loadModel()" class="3d-viewer-container">
@@ -366,6 +390,7 @@ STORAGE_DISK=s3
 ## 🧪 Testing
 
 ### Factory Usage
+
 ```php
 use Database\Factories\Jewelry3DModelFactory;
 
@@ -383,6 +408,7 @@ $model = Jewelry3DModelFactory::new()->create([
 ```
 
 ### Unit Tests
+
 ```php
 use Tests\TestCase;
 
@@ -412,6 +438,7 @@ class Jewelry3DServiceTest extends TestCase
 ## 🐛 Troubleshooting
 
 ### Model Not Loading
+
 ```php
 // Check if model URL is accessible
 $response = Http::get($model->model_url);
@@ -424,6 +451,7 @@ $model = Jewelry3DModel::findOrFail($modelId);
 ```
 
 ### AR Not Working
+
 ```php
 // Check AR compatibility flag
 if (!$model->ar_compatible) {
@@ -435,6 +463,7 @@ if (!$model->ar_compatible) {
 ```
 
 ### Performance Issues
+
 ```php
 // Check query count
 DB::enableQueryLog();
@@ -479,7 +508,7 @@ For issues or questions:
 1. Check logs: `storage/logs/laravel.log`
 2. Review audit: `Log::channel('audit')`
 3. Monitor Sentry for errors
-4. Contact: devops@catvrf.eu
+4. Contact: <devops@catvrf.eu>
 
 ---
 

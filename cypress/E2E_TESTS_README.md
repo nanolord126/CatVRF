@@ -5,6 +5,7 @@
 Comprehensive E2E (End-to-End) testing suite using **Cypress 14+** for testing critical user workflows across the platform.
 
 **Test Files:**
+
 - `payment-flow.cy.ts` — Payment initialization, webhooks, fraud scoring
 - `rbac-authorization.cy.ts` — Role-based access control, permissions, team management
 - `wishlist-service.cy.ts` — Wishlist operations, sharing, group purchases
@@ -51,6 +52,7 @@ npm run test:e2e:open
 ```
 
 Opens Cypress UI where you can:
+
 - View tests in real-time
 - Debug with browser DevTools
 - Inspect elements
@@ -90,6 +92,7 @@ Runs headless tests suitable for GitHub Actions, GitLab CI, etc.
 ### Payment Flow Tests (`payment-flow.cy.ts`)
 
 **Scenarios:**
+
 1. ✅ Display wallet balance
 2. ✅ Initialize payment form
 3. ✅ Prevent duplicate payments (idempotency)
@@ -101,6 +104,7 @@ Runs headless tests suitable for GitHub Actions, GitLab CI, etc.
 9. ✅ Webhook signature verification
 
 **Expected Results:**
+
 - Payments processed atomically
 - No duplicate charges (idempotency)
 - Fraud attempts blocked/logged
@@ -110,6 +114,7 @@ Runs headless tests suitable for GitHub Actions, GitLab CI, etc.
 ### RBAC Authorization Tests (`rbac-authorization.cy.ts`)
 
 **User Roles:**
+
 - **Owner** — Full control, withdraw money, manage team
 - **Manager** — View analytics, cannot withdraw
 - **Employee** — Basic dashboard, no analytics
@@ -118,6 +123,7 @@ Runs headless tests suitable for GitHub Actions, GitLab CI, etc.
 - **SuperAdmin** — Platform-wide admin access
 
 **Scenarios:**
+
 1. ✅ Owner can view/update tenant
 2. ✅ Owner can withdraw money
 3. ✅ Manager can view analytics (cannot withdraw)
@@ -130,6 +136,7 @@ Runs headless tests suitable for GitHub Actions, GitLab CI, etc.
 10. ✅ User invitation & acceptance flow
 
 **Expected Results:**
+
 - Proper permission enforcement
 - No privilege escalation
 - Consistent access control
@@ -138,6 +145,7 @@ Runs headless tests suitable for GitHub Actions, GitLab CI, etc.
 ### Wishlist Service Tests (`wishlist-service.cy.ts`)
 
 **Scenarios:**
+
 1. ✅ Add product/service to wishlist
 2. ✅ Prevent duplicate additions
 3. ✅ Remove items from wishlist
@@ -149,6 +157,7 @@ Runs headless tests suitable for GitHub Actions, GitLab CI, etc.
 9. ✅ Cross-device sync
 
 **Expected Results:**
+
 - Wishlist operations atomic
 - Share links public & secure
 - Group purchases tracked
@@ -174,25 +183,30 @@ cy.clearTestData();                // Clear all test data
 ## Debugging
 
 ### View Test Code
+
 ```bash
 npm run test:e2e:open
 # Then click on any test file to view its code
 ```
 
 ### Enable Debug Logs
+
 ```bash
 DEBUG=cypress:* npm run test:e2e:payment
 ```
 
 ### Screenshot on Failure
+
 Tests automatically capture screenshots on failure (in `cypress/screenshots/`)
 
 ### Video Recording
+
 Videos recorded to `cypress/videos/` (slow down playback if needed)
 
 ## Performance Benchmarks
 
 **Target Response Times:**
+
 - Page loads: < 2s
 - API responses: < 500ms
 - Payment processing: < 3s
@@ -200,6 +214,7 @@ Videos recorded to `cypress/videos/` (slow down playback if needed)
 - Fraud scoring: < 500ms
 
 **Success Criteria:**
+
 - ✅ All test suites pass
 - ✅ No false positives
 - ✅ Average runtime < 5 minutes
@@ -208,6 +223,7 @@ Videos recorded to `cypress/videos/` (slow down playback if needed)
 ## Troubleshooting
 
 ### Tests Timing Out
+
 ```bash
 # Increase timeout (default 10s)
 // In test file
@@ -215,6 +231,7 @@ describe('My Test', { timeout: 30000 }, () => { ... })
 ```
 
 ### Cannot Connect to API
+
 ```bash
 # Verify app is running
 php artisan serve
@@ -224,11 +241,13 @@ echo $CYPRESS_BASE_URL
 ```
 
 ### Flaky Tests
+
 - Add explicit waits: `cy.get('[data-cy=element]', { timeout: 10000 })`
 - Use `cy.intercept()` to mock API responses
 - Avoid hardcoded `cy.wait(1000)` delays
 
 ### Database State Issues
+
 - Tests auto-clear cookies/storage in `beforeEach()`
 - Use `cy.seedTestData()` to reset to known state
 - Check test database is separate from production
@@ -294,6 +313,7 @@ jobs:
 ## Support
 
 For E2E test issues:
+
 1. Check test logs: `cypress/logs/`
 2. Review video recording: `cypress/videos/`
 3. Check screenshots: `cypress/screenshots/`

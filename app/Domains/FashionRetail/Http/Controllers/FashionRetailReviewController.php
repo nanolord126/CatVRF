@@ -4,6 +4,7 @@ namespace App\Domains\FashionRetail\Http\Controllers;
 
 use App\Domains\FashionRetail\Models\FashionRetailReview;
 use App\Domains\FashionRetail\Services\ReviewService;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -13,6 +14,7 @@ final class FashionRetailReviewController
 {
     public function __construct(
         private readonly ReviewService $reviewService,
+        private readonly FraudControlService $fraudControlService,
     ) {}
 
     public function index(int $productId): JsonResponse
@@ -23,7 +25,7 @@ final class FashionRetailReviewController
                 ->with('user')
                 ->paginate(20);
 
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             Log::channel('audit')->info('FashionRetail reviews listed', [
                 'product_id' => $productId,
                 'count' => $reviews->count(),
@@ -36,7 +38,7 @@ final class FashionRetailReviewController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             Log::error('FashionRetail review listing failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -52,13 +54,10 @@ final class FashionRetailReviewController
 
     public function store(int $productId): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
-            $correlationId = Str::uuid();
-
             $review = DB::transaction(function () use ($productId, $correlationId) {
                 return FashionRetailReview::create([
                     'uuid' => Str::uuid(),
@@ -87,7 +86,7 @@ final class FashionRetailReviewController
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Throwable $e) {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             Log::error('FashionRetail review creation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -103,12 +102,10 @@ final class FashionRetailReviewController
 
     public function destroy(int $productId, int $reviewId): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
-            $correlationId = Str::uuid();
             $review = FashionRetailReview::findOrFail($reviewId);
 
             if ($review->user_id !== auth()->id()) {
@@ -135,7 +132,7 @@ final class FashionRetailReviewController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             Log::error('FashionRetail review deletion failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

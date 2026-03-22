@@ -51,7 +51,7 @@ final class ContractorController
                 'hourly_rate' => 'required|numeric|min:0',
             ]);
 
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             $contractor = Contractor::create([
                 'tenant_id' => tenant('id'),
@@ -99,7 +99,7 @@ final class ContractorController
                 'hourly_rate' => 'sometimes|numeric|min:0',
             ]);
 
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             $contractor->update($validated + ['correlation_id' => $correlationId]);
 
             return response()->json(['success' => true, 'data' => $contractor, 'correlation_id' => $correlationId]);

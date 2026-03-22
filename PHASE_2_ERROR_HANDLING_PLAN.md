@@ -8,7 +8,8 @@
 
 ## 📋 План работы
 
-### ✅ Уже завершено:
+### ✅ Уже завершено
+
 1. **ProductResource** - Полная обработка ошибок в Actions (Create, Edit, Delete)
    - ✅ Добавлены CreateAction, EditAction, DeleteAction с callbacks
    - ✅ Добавлено логирование для каждого действия
@@ -16,9 +17,10 @@
    - ✅ Добавлена валидация в form schema
    - ✅ Добавлены BulkActions (DeleteBulkAction)
 
-### 📝 Следующие батчи (по 8 ресурсов):
+### 📝 Следующие батчи (по 8 ресурсов)
 
-#### Батч 1 - Оставалось 7 ресурсов:
+#### Батч 1 - Оставалось 7 ресурсов
+
 - [ ] PayoutResource
 - [ ] StaffTaskResource
 - [ ] HotelBookingResource
@@ -27,7 +29,8 @@
 - [ ] CategoryResource
 - [ ] B2BOrderResource
 
-#### Батч 2 - 8 ресурсов:
+#### Батч 2 - 8 ресурсов
+
 - [ ] WishlistResource
 - [ ] VenueResource
 - [ ] StockMovementResource
@@ -41,9 +44,10 @@
 
 ---
 
-## 🔧 Что будет добавляться в каждый ресурс:
+## 🔧 Что будет добавляться в каждый ресурс
 
 ### 1. CreateAction
+
 ```php
 Tables\Actions\CreateAction::make()
     ->createAnother(false)
@@ -69,6 +73,7 @@ Tables\Actions\CreateAction::make()
 ```
 
 ### 2. EditAction
+
 ```php
 Tables\Actions\EditAction::make()
     ->before(function () { Log::debug(...); })
@@ -81,6 +86,7 @@ Tables\Actions\EditAction::make()
 ```
 
 ### 3. DeleteAction
+
 ```php
 Tables\Actions\DeleteAction::make()
     ->requiresConfirmation()
@@ -91,6 +97,7 @@ Tables\Actions\DeleteAction::make()
 ```
 
 ### 4. BulkActions
+
 ```php
 ->bulkActions([
     Tables\Actions\BulkActionGroup::make([
@@ -102,7 +109,9 @@ Tables\Actions\DeleteAction::make()
 ```
 
 ### 5. Form Validation
+
 Для каждого поля добавить:
+
 - `->required()` - если обязательное
 - `->min()` / `->max()` - для строк и чисел
 - `->regex()` - для формата (телефон, SKU, etc)
@@ -118,7 +127,8 @@ Tables\Actions\DeleteAction::make()
 2. **Параллельно**: Создать/обновить Page компоненты
 3. **Финал**: Проверка работоспособности и логирования
 
-### Примерное время:
+### Примерное время
+
 - 1 ресурс = ~3-5 минут с batch editing
 - 8 ресурсов = ~30-40 минут
 - 48 ресурсов = ~4-5 часов
@@ -128,6 +138,7 @@ Tables\Actions\DeleteAction::make()
 ## 📊 Критерии успеха
 
 ✅ Все 48 ресурсов имеют:
+
 - CreateAction с логированием
 - EditAction с логированием
 - DeleteAction с подтверждением
@@ -137,6 +148,7 @@ Tables\Actions\DeleteAction::make()
 - Log записи для аудита
 
 ✅ Каждый ресурс имеет:
+
 - `tenant_id` изоляцию в Actions
 - `created_by` и `updated_by` автоматические поля
 - Correlation ID в логах
@@ -154,13 +166,15 @@ Tables\Actions\DeleteAction::make()
 
 ---
 
-## 🎯 Следующая фаза (после этой):
+## 🎯 Следующая фаза (после этой)
 
 **ФАЗА 3: PAGE COMPONENTS**
+
 - Убедиться что все 48 ресурсов имеют ListPages, CreatePages, EditPages
 - Если нет - создать/обновить в directories
 
 **ФАЗА 4: FRONTEND POLISH**
+
 - Добавить filters и search capabilities
 - Улучшить table columns (badges, colors, icons)
 - Добавить custom form layouts и sections

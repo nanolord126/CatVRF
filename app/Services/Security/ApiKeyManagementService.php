@@ -23,7 +23,7 @@ final class ApiKeyManagementService
     ): array {
         $rawKey = Str::random(64);
         $keyHash = Hash::make($rawKey);
-        $keyId = (string) Str::uuid();
+        $keyId = (string) Str::uuid()->toString();
 
         DB::transaction(function () use ($tenantId, $keyId, $name, $keyHash, $permissions, $ipWhitelist, $expiresAt) {
             $this->createApiKey(

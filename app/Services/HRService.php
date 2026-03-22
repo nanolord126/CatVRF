@@ -33,7 +33,7 @@ final readonly class HRService
         array $data,
         string $correlationId = '',
     ): array {
-        $correlationId = $correlationId ?: (string) Str::uuid();
+        $correlationId = $correlationId ?: (string) Str::uuid()->toString();
 
         try {
             // Фрод-проверка
@@ -56,7 +56,7 @@ final readonly class HRService
             $result = DB::transaction(function () use ($tenantId, $data, $correlationId) {
                 $employee = Employee::create([
                     'tenant_id' => $tenantId,
-                    'uuid' => Str::uuid(),
+                    'uuid' => Str::uuid()->toString(),
                     'name' => $data['name'],
                     'email' => $data['email'],
                     'phone' => $data['phone'] ?? null,
@@ -109,7 +109,7 @@ final readonly class HRService
         int $month,
         string $correlationId = '',
     ): array {
-        $correlationId = $correlationId ?: (string) Str::uuid();
+        $correlationId = $correlationId ?: (string) Str::uuid()->toString();
 
         try {
             // Фрод-проверка

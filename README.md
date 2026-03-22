@@ -3,6 +3,7 @@
 ## ✅ ЗАВЕРШЕНО: 28 ВЕРТИКАЛЬНЫХ МОДУЛЕЙ
 
 ### Основные вертикали (17)
+
 1. **Advertising** - ERID-токены, аналитика кампаний
 2. **Taxi** - Real-time трекинг, AI-диспетчер, тепловые карты
 3. **Food** - QR-заказы, интеграция с кухней, доставка
@@ -22,19 +23,21 @@
 17. **Wallet** - Кошельки, переводы, депозиты
 
 ### Новые вертикали (11)
+
 18. **Auto** - Продажа/аренда авто, сервисные услуги
-19. **Electronics** - E-commerce электроники, гарантия
-20. **Apparel** - Мода, одежда, примерки, каталоги
-21. **Tourism** - Туры, пакеты, бронирование отелей
-22. **Furniture** - Мебель, дизайн, доставка
-23. **Construction** - Проекты, расходники, подряды
-24. **RealEstateRental** - Отдельная вертикаль аренды (жилая, коммерция, земля, enterprise)
-25. **RealEstateSales** - Отдельная вертикаль продаж
-26. **BeautyShop** - Косметика, парфюмерия, уход
-27. **BeautyMasters** - Заказ услуг мастеров красоты
-28. **Vet** - Ветеринарные клиники и услуги
+2. **Electronics** - E-commerce электроники, гарантия
+3. **Apparel** - Мода, одежда, примерки, каталоги
+4. **Tourism** - Туры, пакеты, бронирование отелей
+5. **Furniture** - Мебель, дизайн, доставка
+6. **Construction** - Проекты, расходники, подряды
+7. **RealEstateRental** - Отдельная вертикаль аренды (жилая, коммерция, земля, enterprise)
+8. **RealEstateSales** - Отдельная вертикаль продаж
+9. **BeautyShop** - Косметика, парфюмерия, уход
+10. **BeautyMasters** - Заказ услуг мастеров красоты
+11. **Vet** - Ветеринарные клиники и услуги
 
 ### Сервисные модули
+
 - **Analytics** - Аналитика, BigData (ClickHouse ready)
 - **Commissions** - Расчет комиссий
 - **Bonuses** - Программа бонусов
@@ -42,7 +45,9 @@
 - **GeoLogistics** - Доставка, маршруты, зоны (polygon-based)
 
 ## 4-СЛОЙНАЯ АРХИТЕКТУРА (ВСЕ 28 ВЕРТИКАЛЕЙ)
+
 Каждый модуль содержит:
+
 - **Models** - Eloquent с полным набором отношений
 - **Services** - Бизнес-логика (точка интеграции)
 - **Policies** - Multi-tenant авторизация с проверкой tenant_id
@@ -73,16 +78,19 @@ modules/
 ## 🚀 РЕАЛИЗОВАНО В СЕССИИ
 
 ### Фаза 1-2: Новые вертикали + Безопасность
+
 ✅ **3 новые вертикали**: RealEstateRental, RealEstateSales, BeautyShop (26 файлов)  
 ✅ **6 новых вертикалей**: Auto, Electronics, Apparel, Tourism, Furniture, Construction  
 ✅ **6 Missing Policies**: Clinic, Delivery, Food, Taxi, Finances, Common (9 файлов)
 
 ### Фаза 3: API Layer (33 файла)
+
 ✅ **22 FormRequests**: Store/Update с русскими сообщениями  
 ✅ **11 Resources**: JSON serialization для API  
 ✅ **40+ translations**: lang/ru/{validation.php, messages.php}
 
 ### Фаза 4: Критические сервисы (18 файлов)
+
 ✅ **Payments**: PaymentServiceProvider + DI контейнер  
 ✅ **GeoLogistics**: DeliveryZone, DeliveryRoute, DeliveryStatus models  
 ✅ **Loyalty**: Points, cashback, tier-based multipliers (8 methods)  
@@ -92,6 +100,7 @@ modules/
 ✅ **Marketplace UI**: 6 Vue 3 components (ProductCard, Cart, Filters, Search, Rating, Pagination)
 
 ### Полный статус компонентов
+
 - **Models**: 28/28 ✅
 - **Migrations**: 28/28 ✅  
 - **Seeders**: 28/28 ✅
@@ -104,6 +113,7 @@ modules/
 - **Routes**: 28/28 в tenant.php ✅
 
 ## ТЕХНИЧЕСКИЙ СТЕК
+
 - **Secrets**: Doppler CLI (Zero Trust 2026)
 - **Backend**: Laravel 12, Filament 3.2, PHP 8.2+
 - **Database**: MySQL 8, schema-per-tenant (stancl/tenancy v3)
@@ -119,6 +129,7 @@ modules/
 - **Auth**: Multi-factor (2FA/TOTP/SMS)
 
 ## ЗАПУСК И ДЕПЛОЙ (PRODUCTION)
+
 ```bash
 # 1. Инициализация Doppler
 doppler setup
@@ -152,6 +163,7 @@ doppler run -- php artisan serve
 ```
 
 ## ТЕСТИРОВАНИЕ
+
 ```bash
 # Полный прогон Pest-тестов
 doppler run -- php artisan test
@@ -164,11 +176,13 @@ doppler run -- php artisan test tests/Feature/Payments/
 ```
 
 ## API DOCUMENTATION
+
 - **Scribe OpenAPI**: `http://localhost:8000/api/documentation`
 - **Health Check**: `GET /health` (Spatie Health)
 - **Horizon Monitoring**: `http://localhost:8000/horizon`
 
 ## STRUKTURA ПРОЕКТА
+
 ```
 app/
 ├── Filament/
@@ -210,6 +224,7 @@ tests/
 ```
 
 ## ⚠️ ВАЖНО
+
 - **NO .env FILES**: Все секреты управляются через Doppler
 - **MULTI-TENANCY**: Strict schema isolation + tenant_id проверка на каждый ресурс
 - **AUDIT LOG**: Все мутации с correlation_id для отслеживания цепочек событий

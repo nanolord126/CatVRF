@@ -11,6 +11,7 @@ Comprehensive E2E test suite for CatVRF Laravel 12 + Filament 3.2 multi-tenant p
 ## 🗂️ Test Suite Structure
 
 ### 1. **Authentication & Security** (`auth.cy.ts`, `security.cy.ts`)
+
 - Login/logout workflows
 - 2FA authentication
 - Password reset flows
@@ -27,6 +28,7 @@ Comprehensive E2E test suite for CatVRF Laravel 12 + Filament 3.2 multi-tenant p
 **Location**: `/admin/b2b/inventory`
 
 **36 Test Cases Covering**:
+
 - ✅ Inventory listing with filtering and sorting
 - ✅ Item creation with validation
 - ✅ Stock adjustment and movement tracking
@@ -37,6 +39,7 @@ Comprehensive E2E test suite for CatVRF Laravel 12 + Filament 3.2 multi-tenant p
 - ✅ Inventory-order sync integration
 
 **Critical Features**:
+
 ```
 - Real-time stock tracking
 - Multi-warehouse support
@@ -54,6 +57,7 @@ Comprehensive E2E test suite for CatVRF Laravel 12 + Filament 3.2 multi-tenant p
 **Location**: `/admin/b2b/payroll`
 
 **42 Test Cases Covering**:
+
 - ✅ Payroll run creation and management
 - ✅ Salary calculations (gross, net, deductions)
 - ✅ Tax deduction automation
@@ -66,6 +70,7 @@ Comprehensive E2E test suite for CatVRF Laravel 12 + Filament 3.2 multi-tenant p
 - ✅ Payroll reports and exports
 
 **Critical Features**:
+
 ```
 - Automatic salary calculations
 - Multi-level deduction support
@@ -83,6 +88,7 @@ Comprehensive E2E test suite for CatVRF Laravel 12 + Filament 3.2 multi-tenant p
 **Location**: `/admin/b2b/hr`
 
 **48 Test Cases Covering**:
+
 - ✅ Employee CRUD operations
 - ✅ Leave request management
 - ✅ Leave balance tracking and approval
@@ -95,6 +101,7 @@ Comprehensive E2E test suite for CatVRF Laravel 12 + Filament 3.2 multi-tenant p
 - ✅ Audit logging for all changes
 
 **Critical Features**:
+
 ```
 - Complete employee records
 - Annual/sick leave management
@@ -113,6 +120,7 @@ Comprehensive E2E test suite for CatVRF Laravel 12 + Filament 3.2 multi-tenant p
 **Location**: `/admin/b2b/communications`
 
 **45 Test Cases Covering**:
+
 - ✅ Newsletter creation and scheduling
 - ✅ Template management
 - ✅ Recipient selection and exclusion
@@ -125,6 +133,7 @@ Comprehensive E2E test suite for CatVRF Laravel 12 + Filament 3.2 multi-tenant p
 - ✅ Audit logging
 
 **Critical Features**:
+
 ```
 - Scheduled and immediate sending
 - Dynamic recipient selection
@@ -143,6 +152,7 @@ Comprehensive E2E test suite for CatVRF Laravel 12 + Filament 3.2 multi-tenant p
 **Location**: `/admin/marketplace/beauty`
 
 **52 Test Cases Covering**:
+
 - ✅ Salon management (CRUD)
 - ✅ Service catalog creation
 - ✅ Service pricing and discounts
@@ -157,6 +167,7 @@ Comprehensive E2E test suite for CatVRF Laravel 12 + Filament 3.2 multi-tenant p
 - ✅ Calendar synchronization
 
 **Critical Features**:
+
 ```
 - Multi-salon support
 - Service scheduling
@@ -176,6 +187,7 @@ Comprehensive E2E test suite for CatVRF Laravel 12 + Filament 3.2 multi-tenant p
 **Location**: Multiple protected endpoints
 
 **38 Test Cases Covering**:
+
 - ✅ Role-based access control (Admin, Manager, Viewer)
 - ✅ Resource-level permissions
 - ✅ Permission inheritance
@@ -188,6 +200,7 @@ Comprehensive E2E test suite for CatVRF Laravel 12 + Filament 3.2 multi-tenant p
 - ✅ Additional authentication for sensitive ops
 
 **Critical Features**:
+
 ```
 - 3-tier RBAC system
 - Resource ownership checks
@@ -205,6 +218,7 @@ Comprehensive E2E test suite for CatVRF Laravel 12 + Filament 3.2 multi-tenant p
 **Location**: All form inputs across system
 
 **58 Test Cases Covering**:
+
 - ✅ Required field validation
 - ✅ Email format and uniqueness
 - ✅ Phone number validation
@@ -221,6 +235,7 @@ Comprehensive E2E test suite for CatVRF Laravel 12 + Filament 3.2 multi-tenant p
 - ✅ Duplicate prevention
 
 **Critical Features**:
+
 ```
 - Real-time validation feedback
 - Comprehensive error messages
@@ -239,6 +254,7 @@ Comprehensive E2E test suite for CatVRF Laravel 12 + Filament 3.2 multi-tenant p
 **Location**: `/api/*` endpoints
 
 **52 Test Cases Covering**:
+
 - ✅ Inventory CRUD via API
 - ✅ Payroll processing via API
 - ✅ HR operations via API
@@ -252,6 +268,7 @@ Comprehensive E2E test suite for CatVRF Laravel 12 + Filament 3.2 multi-tenant p
 - ✅ Header validation
 
 **Critical Features**:
+
 ```
 - RESTful API design
 - JWT authentication
@@ -268,17 +285,20 @@ Comprehensive E2E test suite for CatVRF Laravel 12 + Filament 3.2 multi-tenant p
 ## 🚀 Running the Tests
 
 ### Prerequisites
+
 ```bash
 npm install cypress --save-dev
 npm install --save-dev @types/cypress @types/chai @types/mocha
 ```
 
 ### Run All Tests
+
 ```bash
 npm run cypress:run
 ```
 
 ### Run Specific Test Suite
+
 ```bash
 npm run cypress:run -- --spec "cypress/e2e/inventory.cy.ts"
 npm run cypress:run -- --spec "cypress/e2e/payroll.cy.ts"
@@ -286,16 +306,19 @@ npm run cypress:run -- --spec "cypress/e2e/beauty.cy.ts"
 ```
 
 ### Run Tests in Interactive Mode
+
 ```bash
 npm run cypress:open
 ```
 
 ### Run Tests with Video Recording
+
 ```bash
 npm run cypress:run --record
 ```
 
 ### Run Tests with Coverage
+
 ```bash
 npm run cypress:run --coverage
 ```
@@ -322,6 +345,7 @@ npm run cypress:run --coverage
 ## 🔧 Configuration
 
 ### Environment Variables (`.env.test`)
+
 ```
 API_TOKEN=test_token_admin
 MANAGER_TOKEN=test_token_manager
@@ -331,6 +355,7 @@ DB_CONNECTION=testing
 ```
 
 ### Cypress Config (`cypress.config.ts`)
+
 ```typescript
 baseUrl: 'http://localhost:8000'
 viewportWidth: 1280
@@ -340,6 +365,7 @@ requestTimeout: 10000
 ```
 
 ### TypeScript Config (`cypress/tsconfig.json`)
+
 ```json
 {
   "extends": "../tsconfig.json",
@@ -355,6 +381,7 @@ requestTimeout: 10000
 ## 🎯 Test Naming Convention
 
 Tests follow BDD naming pattern:
+
 ```
 describe('Module/Feature Name', () => {
   describe('Specific Functionality', () => {
@@ -370,6 +397,7 @@ describe('Module/Feature Name', () => {
 ## 📝 Common Test Patterns
 
 ### Setup & Cleanup
+
 ```typescript
 beforeEach(() => {
   cy.resetDatabase()
@@ -379,6 +407,7 @@ beforeEach(() => {
 ```
 
 ### Custom Commands
+
 ```typescript
 // cypress/support/commands.ts
 cy.loginAs(email, password)
@@ -388,7 +417,9 @@ cy.checkAccessibility()
 ```
 
 ### Data Attributes
+
 All testable elements use `data-testid` for reliable element selection:
+
 ```html
 <button data-testid="submit-button">Submit</button>
 <input data-testid="input-email" type="email" />
@@ -399,6 +430,7 @@ All testable elements use `data-testid` for reliable element selection:
 ## 🔐 Security Testing
 
 Tests verify:
+
 - ✅ XSS prevention
 - ✅ CSRF token validation
 - ✅ SQL injection prevention
@@ -413,6 +445,7 @@ Tests verify:
 ## 📈 Performance Baselines
 
 Monitored metrics:
+
 - API response time < 500ms
 - Page load time < 2s
 - Search query response < 300ms
@@ -425,12 +458,14 @@ Monitored metrics:
 ### Common Issues
 
 1. **Test Timeout**
+
    ```bash
    # Increase timeout
    cy.visit('/page', { timeout: 10000 })
    ```
 
 2. **Database State Issues**
+
    ```bash
    # Reset and seed
    cy.resetDatabase()
@@ -438,6 +473,7 @@ Monitored metrics:
    ```
 
 3. **Authorization Errors**
+
    ```bash
    # Ensure proper login
    cy.loginAs('admin@kotvrf.ru', 'password123')
@@ -453,6 +489,7 @@ Monitored metrics:
 ## 📦 CI/CD Integration
 
 ### GitHub Actions
+
 ```yaml
 - name: Run E2E Tests
   run: npm run cypress:run
@@ -470,16 +507,19 @@ Monitored metrics:
 ## 📚 Test Maintenance
 
 ### Weekly Tasks
+
 - Review test execution logs
 - Update deprecated selectors
 - Add new feature tests
 
 ### Monthly Tasks
+
 - Analyze coverage reports
 - Refactor duplicated test code
 - Update test data
 
 ### Quarterly Tasks
+
 - Performance baseline review
 - API contract validation
 - Security audit refresh
@@ -499,9 +539,10 @@ Monitored metrics:
 ## 📞 Support
 
 For test-related questions or issues:
+
 1. Check test documentation
 2. Review similar passing tests
-3. Check Cypress documentation: https://docs.cypress.io
+3. Check Cypress documentation: <https://docs.cypress.io>
 4. Review application logs for API errors
 
 ---

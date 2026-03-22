@@ -7,6 +7,7 @@ use App\Domains\Travel\Models\TravelBooking;
 use App\Domains\Travel\Services\TourService;
 use App\Models\Wallet;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Services\FraudControlService;
 use Illuminate\Support\Str;
 use Tests\BaseTestCase;
 
@@ -23,6 +24,10 @@ final class TourServiceTest extends BaseTestCase
     {
         parent::setUp();
         $this->service = app(TourService::class);
+        $this->app->instance(
+            FraudControlService::class,
+            \Mockery::mock(FraudControlService::class)->shouldReceive('check')->andReturn(true)->getMock()
+        );
     }
 
     public function test_tour_booking_created_successfully(): void

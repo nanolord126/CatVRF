@@ -186,6 +186,7 @@ tail -f storage/logs/fraud_alert.log
 ## 📋 Implementation Checklist
 
 ### Phase 1: Core (4-6 hours)
+
 - [ ] Register services in AppServiceProvider
 - [ ] Run migrations (payment_idempotency_records, api_keys)
 - [ ] Update .env with secrets
@@ -193,6 +194,7 @@ tail -f storage/logs/fraud_alert.log
 - [ ] Verify Redis connection
 
 ### Phase 2: Payment Flow (4-6 hours)
+
 - [ ] Update PaymentService constructor
 - [ ] Add rate limit check
 - [ ] Add idempotency check
@@ -200,24 +202,28 @@ tail -f storage/logs/fraud_alert.log
 - [ ] Test payment flow
 
 ### Phase 3: Webhooks (2-3 hours)
+
 - [ ] Update WebhookController
 - [ ] Add signature verification
 - [ ] Add IP whitelist middleware
 - [ ] Test webhook with real provider
 
 ### Phase 4: API & Validation (3-4 hours)
+
 - [ ] Add middleware to routes
 - [ ] Update all controllers to use FormRequest
 - [ ] Create missing FormRequest classes
 - [ ] Test with invalid data
 
 ### Phase 5: Testing (4-6 hours)
+
 - [ ] Unit tests (services)
 - [ ] Integration tests (API)
 - [ ] Security tests (bypass attempts)
 - [ ] Load tests (rate limiting)
 
 ### Phase 6: Monitoring (2-3 hours)
+
 - [ ] Setup Sentry
 - [ ] Setup Datadog
 - [ ] Setup Slack alerts
@@ -230,12 +236,14 @@ tail -f storage/logs/fraud_alert.log
 ## 🔍 Key Files to Review
 
 ### Must Read
+
 1. **docs/SECURITY.md** — API security best practices & usage
 2. **docs/SECURITY_IMPLEMENTATION_GUIDE.md** — Step-by-step integration
 3. **app/Services/Security/IdempotencyService.php** — Replay attack protection
 4. **app/Services/Security/WebhookSignatureService.php** — Webhook verification
 
 ### Reference
+
 - app/Services/Security/RateLimiterService.php
 - app/Http/Middleware/IpWhitelistMiddleware.php
 - config/security.php
@@ -246,6 +254,7 @@ tail -f storage/logs/fraud_alert.log
 ## 🧪 Testing Examples
 
 ### Test Idempotency (curl)
+
 ```bash
 curl -X POST http://localhost:8000/api/v1/payments \
   -H "Content-Type: application/json" \
@@ -264,6 +273,7 @@ curl -X POST http://localhost:8000/api/v1/payments \
 ```
 
 ### Test Rate Limiting (loop)
+
 ```bash
 for i in {1..15}; do
   curl -X POST http://localhost:8000/api/v1/payments \
@@ -276,6 +286,7 @@ done
 ```
 
 ### Test Webhook Signature
+
 ```bash
 curl -X POST http://localhost:8000/internal/webhooks/tinkoff \
   -H "Content-Type: application/json" \
@@ -290,12 +301,14 @@ curl -X POST http://localhost:8000/internal/webhooks/tinkoff \
 ## 🚨 Troubleshooting
 
 ### "Redis connection refused"
+
 ```bash
 redis-cli ping  # Must return PONG
 # If not, start Redis: redis-server
 ```
 
 ### "Rate limiting not working"
+
 ```bash
 # Check config
 php artisan config:cache
@@ -306,6 +319,7 @@ CACHE_DRIVER=redis
 ```
 
 ### "Idempotency not found"
+
 ```bash
 # Check migration ran
 php artisan migrate:status | grep api_keys
@@ -315,6 +329,7 @@ php artisan migrate
 ```
 
 ### "Webhook signature verification fails"
+
 ```bash
 # Verify secrets in .env
 echo $TINKOFF_WEBHOOK_SECRET
@@ -330,6 +345,7 @@ php artisan tinker
 ## 📊 Metrics & KPIs
 
 ### Before Implementation
+
 - ❌ 0 replay attack protection
 - ❌ 0 webhook signature verification
 - ❌ Basic rate limiting (token bucket, not sliding window)
@@ -337,6 +353,7 @@ php artisan tinker
 - ❌ Weak RBAC separation
 
 ### After Implementation
+
 - ✅ 100% replay attack protection (IdempotencyService)
 - ✅ 100% webhook signature verification
 - ✅ Advanced rate limiting (sliding window + burst)
@@ -350,11 +367,13 @@ php artisan tinker
 ## 🔗 References
 
 ### External Documentation
+
 - [Laravel API Security Best Practices](https://laravel.com/docs/security)
 - [OWASP API Security Top 10](https://owasp.org/www-project-api-security/)
 - [PCI DSS Requirements](https://www.pcisecuritystandards.org/pci-dss)
 
 ### Internal Documentation
+
 - [docs/SECURITY.md](docs/SECURITY.md)
 - [docs/SECURITY_AUDIT_REMEDIATION_PLAN.md](docs/SECURITY_AUDIT_REMEDIATION_PLAN.md)
 - [docs/SECURITY_IMPLEMENTATION_GUIDE.md](docs/SECURITY_IMPLEMENTATION_GUIDE.md)
@@ -374,11 +393,12 @@ php artisan tinker
 ## 📞 Support
 
 **Questions?** Check:
+
 1. docs/SECURITY_IMPLEMENTATION_GUIDE.md (step-by-step)
 2. docs/SECURITY.md (API reference)
 3. Inline code comments (PHPDoc)
 
-**Security Issues?** Contact: security@catvrf.ru
+**Security Issues?** Contact: <security@catvrf.ru>
 
 ---
 

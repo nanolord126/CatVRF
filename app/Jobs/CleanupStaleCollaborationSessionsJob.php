@@ -13,7 +13,6 @@ final class CleanupStaleCollaborationSessionsJob implements ShouldQueue
 {
     use Queueable;
 
-    public string $queue = 'default';
     public int $timeout = 300;
     public int $tries = 3;
 

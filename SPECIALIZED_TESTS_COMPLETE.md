@@ -5,9 +5,11 @@
 ---
 
 ## 🔥 1. **Heatmap Analytics Tests** (400 LOC, 30+ тестов)
+
 📁 `cypress/e2e/heatmap-analytics.cy.ts`
 
-### Что тестируется:
+### Что тестируется
+
 - ✅ Визуализация географических тепловых карт
 - ✅ Фильтрация по датам, вертикалям
 - ✅ Масштабирование карты (зум)
@@ -19,7 +21,8 @@
 - ✅ Кэширование данных для производительности
 - ✅ Изоляция данных по tenant
 
-### Команда запуска:
+### Команда запуска
+
 ```bash
 npm run cypress:run -- --spec "cypress/e2e/heatmap-analytics.cy.ts"
 ```
@@ -27,9 +30,11 @@ npm run cypress:run -- --spec "cypress/e2e/heatmap-analytics.cy.ts"
 ---
 
 ## 💳 2. **Test Transactions** (350 LOC, 25+ тестов)
+
 📁 `cypress/e2e/test-transactions.cy.ts`
 
-### Что тестируется:
+### Что тестируется
+
 - ✅ Создание тестовых платежей без реальной транзакции
 - ✅ Различные статусы тестовых карт (Success, Decline, 3DS)
 - ✅ Payment hold и capture
@@ -41,7 +46,8 @@ npm run cypress:run -- --spec "cypress/e2e/heatmap-analytics.cy.ts"
 - ✅ Детали платежа и ответ от шлюза
 - ✅ Replay платежа
 
-### Команда запуска:
+### Команда запуска
+
 ```bash
 npm run cypress:run -- --spec "cypress/e2e/test-transactions.cy.ts"
 ```
@@ -49,9 +55,11 @@ npm run cypress:run -- --spec "cypress/e2e/test-transactions.cy.ts"
 ---
 
 ## 💰 3. **Cashback & Rewards** (450 LOC, 35+ тестов)
+
 📁 `cypress/e2e/cashback-rewards.cy.ts`
 
-### Что тестируется:
+### Что тестируется
+
 - ✅ Создание многоуровневой программы кешбека
 - ✅ Минимальный порог покупки для кешбека
 - ✅ Исключение товаров из кешбека
@@ -64,7 +72,8 @@ npm run cypress:run -- --spec "cypress/e2e/test-transactions.cy.ts"
 - ✅ Минимальная сумма вывода
 - ✅ Аналитика кешбека (распределение, ROI)
 
-### Команда запуска:
+### Команда запуска
+
 ```bash
 npm run cypress:run -- --spec "cypress/e2e/cashback-rewards.cy.ts"
 ```
@@ -72,9 +81,11 @@ npm run cypress:run -- --spec "cypress/e2e/cashback-rewards.cy.ts"
 ---
 
 ## 🔄 4. **Chargebacks & Disputes** (400 LOC, 28+ тестов)
+
 📁 `cypress/e2e/chargebacks-disputes.cy.ts`
 
-### Что тестируется:
+### Что тестируется
+
 - ✅ Получение уведомления о чарджбеке
 - ✅ Просмотр деталей чарджбека и кода причины
 - ✅ Загрузка доказательств (delivery-proof.pdf)
@@ -88,7 +99,8 @@ npm run cypress:run -- --spec "cypress/e2e/cashback-rewards.cy.ts"
 - ✅ Советы по предотвращению
 - ✅ Метрики и тренды чарджбеков
 
-### Команда запуска:
+### Команда запуска
+
 ```bash
 npm run cypress:run -- --spec "cypress/e2e/chargebacks-disputes.cy.ts"
 ```
@@ -96,9 +108,11 @@ npm run cypress:run -- --spec "cypress/e2e/chargebacks-disputes.cy.ts"
 ---
 
 ## 📄 5. **OFD Fiscalization** (500 LOC, 40+ тестов)
+
 📁 `cypress/e2e/ofd-fiscalization.cy.ts`
 
-### Что тестируется:
+### Что тестируется
+
 - ✅ Регистрация бизнеса в ОФД (Яндекс.Касса, Атол, 1С)
 - ✅ Конфигурация ОФД (реквизиты, налоговая система)
 - ✅ Проверка подключения к ОФД
@@ -120,7 +134,8 @@ npm run cypress:run -- --spec "cypress/e2e/chargebacks-disputes.cy.ts"
 - ✅ Статус подключения к ОФД
 - ✅ Очередь для offline-чеков
 
-### Команда запуска:
+### Команда запуска
+
 ```bash
 npm run cypress:run -- --spec "cypress/e2e/ofd-fiscalization.cy.ts"
 ```
@@ -128,9 +143,11 @@ npm run cypress:run -- --spec "cypress/e2e/ofd-fiscalization.cy.ts"
 ---
 
 ## 🤖 6. **ML & AI Services** (500 LOC, 45+ тестов)
+
 📁 `cypress/e2e/ml-ai-services.cy.ts`
 
-### Что тестируется:
+### Что тестируется
+
 - ✅ RecommendationService: персонализованные рекомендации
 - ✅ Confidence score рекомендаций (0-100%)
 - ✅ Геолокационные рекомендации (nearby)
@@ -154,7 +171,8 @@ npm run cypress:run -- --spec "cypress/e2e/ofd-fiscalization.cy.ts"
 - ✅ Метрики производительности моделей
 - ✅ Переключение между версиями моделей
 
-### Команда запуска:
+### Команда запуска
+
 ```bash
 npm run cypress:run -- --spec "cypress/e2e/ml-ai-services.cy.ts"
 ```
@@ -162,9 +180,11 @@ npm run cypress:run -- --spec "cypress/e2e/ml-ai-services.cy.ts"
 ---
 
 ## 📈 7. **Analytics & BigData** (600 LOC, 55+ тестов)
+
 📁 `cypress/e2e/analytics-bigdata.cy.ts`
 
-### Что тестируется:
+### Что тестируется
+
 - ✅ Real-time дашборд (сегодняшний доход)
 - ✅ Real-time конверсия
 - ✅ Real-time активные пользователи
@@ -191,7 +211,8 @@ npm run cypress:run -- --spec "cypress/e2e/ml-ai-services.cy.ts"
 - ✅ Кэширование аналитических данных
 - ✅ Обработка больших датасетов (< 5 секунд)
 
-### Команда запуска:
+### Команда запуска
+
 ```bash
 npm run cypress:run -- --spec "cypress/e2e/analytics-bigdata.cy.ts"
 ```
@@ -199,9 +220,11 @@ npm run cypress:run -- --spec "cypress/e2e/analytics-bigdata.cy.ts"
 ---
 
 ## 🔓 8. **Fraud Attack Simulations** (550 LOC, 50+ тестов)
+
 📁 `cypress/e2e/fraud-attacks.cy.ts`
 
-### Что тестируется:
+### Что тестируется
+
 - ✅ Velocity fraud (быстрые платежи за 1 минуту)
 - ✅ Card testing / structuring (тестирование карт)
 - ✅ Lost/stolen card patterns (невозможный путь)
@@ -221,7 +244,8 @@ npm run cypress:run -- --spec "cypress/e2e/analytics-bigdata.cy.ts"
 - ✅ Metrics: detection rate, false-positive rate
 - ✅ Loss prevention (предотвращённые убытки)
 
-### Команда запуска:
+### Команда запуска
+
 ```bash
 npm run cypress:run -- --spec "cypress/e2e/fraud-attacks.cy.ts"
 ```
@@ -229,11 +253,13 @@ npm run cypress:run -- --spec "cypress/e2e/fraud-attacks.cy.ts"
 ---
 
 ## 🔐 9. **Security Threats** (550 LOC, 50+ тестов)
+
 📁 `cypress/e2e/security-threats.cy.ts`
 
-### Что тестируется:
+### Что тестируется
 
-#### Malware & Virus Detection:
+#### Malware & Virus Detection
+
 - ✅ Сканирование файлов на вирусы
 - ✅ Обнаружение полиморф-вирусов
 - ✅ Карантин подозрительных файлов
@@ -241,7 +267,8 @@ npm run cypress:run -- --spec "cypress/e2e/fraud-attacks.cy.ts"
 - ✅ Обнаружение встроенного вредоноса в изображениях
 - ✅ Проверка целостности файла (hash)
 
-#### Phishing & Scam Detection:
+#### Phishing & Scam Detection
+
 - ✅ Флаг фишинг-писем
 - ✅ Обнаружение spoofed доменов (typosquat)
 - ✅ Блокировка известных фишинг-URL
@@ -249,7 +276,8 @@ npm run cypress:run -- --spec "cypress/e2e/fraud-attacks.cy.ts"
 - ✅ Предупреждение о HTTPS-проблемах
 - ✅ Обнаружение фейк-support скамов
 
-#### DDoS Protection:
+#### DDoS Protection
+
 - ✅ Rate limiting (429 Too Many Requests)
 - ✅ Выявление spike-паттернов трафика
 - ✅ Активация DDoS-режима
@@ -258,43 +286,50 @@ npm run cypress:run -- --spec "cypress/e2e/fraud-attacks.cy.ts"
 - ✅ Timeline атак DDoS
 - ✅ Статистика заблокированного трафика
 
-#### XSS & Injection Prevention:
+#### XSS & Injection Prevention
+
 - ✅ Блокировка XSS в комментариях
 - ✅ Предотвращение SQL injection
 - ✅ HTML escaping в user-content
 - ✅ Санитизация URL параметров
 
-#### MITM Protection:
+#### MITM Protection
+
 - ✅ Enforcement HTTPS everywhere
 - ✅ HSTS header проверка
 - ✅ Certificate pinning
 - ✅ Обнаружение downgrade атак
 
-#### Account Security:
+#### Account Security
+
 - ✅ 2FA (двухфакторная аутентификация)
 - ✅ Strong password requirements
 - ✅ Password reuse prevention
 - ✅ Device fingerprinting
 - ✅ Session management
 
-#### Monitoring & Alerts:
+#### Monitoring & Alerts
+
 - ✅ Алерты на suspicious activity
 - ✅ Security incident timeline
 - ✅ Audit log (полный журнал)
 - ✅ Vulnerability scanner results
 
-#### Data Protection:
+#### Data Protection
+
 - ✅ Encryption at rest
 - ✅ Encryption in transit
 - ✅ PCI DSS compliance
 - ✅ Data anonymization
 
-#### Compliance & Reports:
+#### Compliance & Reports
+
 - ✅ GDPR compliance report
 - ✅ Security score (/100)
 - ✅ Remediation recommendations
 
-### Команда запуска:
+### Команда запуска
+
 ```bash
 npm run cypress:run -- --spec "cypress/e2e/security-threats.cy.ts"
 ```
@@ -320,12 +355,14 @@ npm run cypress:run -- --spec "cypress/e2e/security-threats.cy.ts"
 
 ## 🚀 КОМАНДЫ ЗАПУСКА
 
-### Запустить все специализированные тесты:
+### Запустить все специализированные тесты
+
 ```bash
 npm run cypress:run -- --spec "cypress/e2e/heatmap-analytics.cy.ts,cypress/e2e/test-transactions.cy.ts,cypress/e2e/cashback-rewards.cy.ts,cypress/e2e/chargebacks-disputes.cy.ts,cypress/e2e/ofd-fiscalization.cy.ts,cypress/e2e/ml-ai-services.cy.ts,cypress/e2e/analytics-bigdata.cy.ts,cypress/e2e/fraud-attacks.cy.ts,cypress/e2e/security-threats.cy.ts"
 ```
 
-### Запустить по категориям:
+### Запустить по категориям
+
 ```bash
 # Платежи и финансы
 npm run cypress:run -- --spec "cypress/e2e/test-transactions.cy.ts,cypress/e2e/cashback-rewards.cy.ts,cypress/e2e/chargebacks-disputes.cy.ts"
@@ -347,7 +384,8 @@ npm run cypress:run -- --spec "cypress/e2e/fraud-attacks.cy.ts,cypress/e2e/secur
 
 ## ✅ ПОЛНОЕ ПЕРЕЧИСЛЕНИЕ ВСЕХ ТЕСТОВ
 
-### ИТОГО по проекту:
+### ИТОГО по проекту
+
 - ✅ **48 E2E файлов** (39 + 9 новых)
 - ✅ **1,573+ тестов** (1,215 + 358 новых)
 - ✅ **17,850 LOC кода** (13,550 + 4,300 новых)

@@ -35,10 +35,7 @@ final class FarmDirectService
         string $deliveryDate,
         int    $tenantId,
     ): FarmOrder {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'createOrder'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createOrder', ['domain' => __CLASS__]);
+
 
         $correlationId = Str::uuid()->toString();
         $key           = "farm_order:{$tenantId}:{$clientId}";
@@ -119,10 +116,7 @@ final class FarmDirectService
      */
     public function markShipped(int $orderId): FarmOrder
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'markShipped'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL markShipped', ['domain' => __CLASS__]);
+
 
         $correlationId = Str::uuid()->toString();
 
@@ -152,10 +146,7 @@ final class FarmDirectService
      */
     public function markDelivered(int $orderId): FarmOrder
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'markDelivered'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL markDelivered', ['domain' => __CLASS__]);
+
 
         $correlationId = Str::uuid()->toString();
 
@@ -179,10 +170,7 @@ final class FarmDirectService
      */
     public function getProductsBySeason(int $farmId, int $month): \Illuminate\Database\Eloquent\Collection
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'getProductsBySeason'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getProductsBySeason', ['domain' => __CLASS__]);
+
 
         return FarmProduct::where('farm_id', $farmId)
             ->where('status', 'active')
@@ -199,10 +187,7 @@ final class FarmDirectService
      */
     public function getVerifiedFarms(int $tenantId): \Illuminate\Database\Eloquent\Collection
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'getVerifiedFarms'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getVerifiedFarms', ['domain' => __CLASS__]);
+
 
         return Farm::where('tenant_id', $tenantId)
             ->where('is_verified', true)

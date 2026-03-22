@@ -6,13 +6,18 @@ use App\Domains\Sports\Models\Studio;
 use App\Domains\Sports\Models\Membership;
 use App\Domains\Sports\Models\Purchase;
 use App\Domains\Sports\Services\PurchaseService;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 
 final class StudioController
 {
-    public function __construct(private PurchaseService $purchaseService) {}
+    public function __construct(
+        private PurchaseService $purchaseService,
+        private readonly FraudControlService $fraudControlService,
+    ) {}
 
     public function index(): JsonResponse
     {
@@ -27,7 +32,7 @@ final class StudioController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to list studios', ['error' => $e->getMessage()]);
+            Log::channel('audit')->error('Failed to list studios', ['error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => 'Failed to list studios'], 500);
         }
     }
@@ -49,9 +54,8 @@ final class StudioController
 
     public function store(): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $this->authorize('create', Studio::class);
@@ -65,8 +69,6 @@ final class StudioController
                 'amenities' => 'nullable|array',
             ]);
 
-            $correlationId = Str::uuid();
-
             $studio = Studio::create([
                 'tenant_id' => tenant('id'),
                 'owner_id' => auth()->id(),
@@ -79,28 +81,25 @@ final class StudioController
                 'correlation_id' => $correlationId,
             ]);
 
-            \Log::channel('audit')->info('Studio created', ['studio_id' => $studio->id, 'correlation_id' => $correlationId]);
+            Log::channel('audit')->info('Studio created', ['studio_id' => $studio->id, 'correlation_id' => $correlationId]);
 
             return response()->json(['success' => true, 'data' => $studio, 'correlation_id' => $correlationId], 201);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to create studio', ['error' => $e->getMessage()]);
+            Log::channel('audit')->error('Failed to create studio', ['error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => 'Failed to create studio'], 500);
         }
     }
 
     public function update(int $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $studio = Studio::findOrFail($id);
             $this->authorize('update', $studio);
 
             $validated = request()->validate(['name' => 'sometimes|string|max:255', 'description' => 'sometimes|string']);
-
-            $correlationId = Str::uuid();
             $studio->update($validated + ['correlation_id' => $correlationId]);
 
             return response()->json(['success' => true, 'data' => $studio, 'correlation_id' => $correlationId]);
@@ -114,7 +113,7 @@ final class StudioController
         try {
             $studio = Studio::findOrFail($id);
             $this->authorize('delete', $studio);
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             $studio->delete();
 
             return response()->json(['success' => true, 'message' => 'Studio deleted', 'correlation_id' => $correlationId]);
@@ -191,7 +190,7 @@ final class StudioController
     {
         try {
             $membership = Membership::findOrFail($membershipId);
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             $purchase = DB::transaction(function () use ($membership, $correlationId) {
                 return $this->purchaseService->createPurchase(
@@ -227,7 +226,7 @@ final class StudioController
         try {
             $purchase = Purchase::findOrFail($id);
             $this->authorize('refund', $purchase);
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
 
             DB::transaction(fn() => $this->purchaseService->refundPurchase($purchase, 'User requested refund', $correlationId));
 

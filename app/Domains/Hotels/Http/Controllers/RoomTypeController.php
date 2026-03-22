@@ -4,13 +4,17 @@ namespace App\Domains\Hotels\Http\Controllers;
 
 use App\Domains\Hotels\Models\RoomType;
 use App\Domains\Hotels\Services\PricingService;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 final class RoomTypeController extends Controller
 {
     public function __construct(
         private readonly PricingService $pricingService,
+        private readonly FraudControlService $fraudControlService,
     ) {}
 
     public function index(string $hotelId): JsonResponse
@@ -32,9 +36,8 @@ final class RoomTypeController extends Controller
 
     public function store(string $hotelId): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $this->authorize('create', RoomType::class);
@@ -55,6 +58,13 @@ final class RoomTypeController extends Controller
                 'correlation_id' => \Illuminate\Support\Str::uuid(),
             ]);
 
+            Log::channel('audit')->info('RoomType created', [
+                'correlation_id' => $correlationId,
+                'room_type_id' => $room->id,
+                'hotel_id' => $hotelId,
+                'user_id' => auth()->id(),
+            ]);
+
             return response()->json([
                 'success' => true,
                 'data' => $room,
@@ -69,9 +79,8 @@ final class RoomTypeController extends Controller
 
     public function update(string $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $room = RoomType::findOrFail($id);
@@ -84,7 +93,16 @@ final class RoomTypeController extends Controller
                 'amenities' => 'nullable|array',
             ]);
 
+            $before = $room->getAttributes();
             $room->update($data);
+
+            Log::channel('audit')->info('RoomType updated', [
+                'correlation_id' => $correlationId,
+                'room_type_id' => $room->id,
+                'user_id' => auth()->id(),
+                'before' => $before,
+                'after' => $data,
+            ]);
 
             return response()->json([
                 'success' => true,
@@ -100,15 +118,20 @@ final class RoomTypeController extends Controller
 
     public function destroy(string $id): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
             $room = RoomType::findOrFail($id);
             $this->authorize('delete', $room);
 
             $room->delete();
+
+            Log::channel('audit')->info('RoomType deleted', [
+                'correlation_id' => $correlationId,
+                'room_type_id' => $room->id,
+                'user_id' => auth()->id(),
+            ]);
 
             return response()->json([
                 'success' => true,

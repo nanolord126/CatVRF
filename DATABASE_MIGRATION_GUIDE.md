@@ -84,12 +84,14 @@ DB_CONNECTION=sqlite
 
 ## 🚀 DEPLOYMENT НА PRODUCTION
 
-### С Docker:
+### С Docker
+
 ```bash
 docker-compose -f docker-compose.yml up -d
 ```
 
-### На выделенном сервере (Ubuntu/CentOS):
+### На выделенном сервере (Ubuntu/CentOS)
+
 ```bash
 # 1. Установить MySQL 8
 curl -sL https://dev.mysql.com/get/mysql-apt-config_0.8.17-1_all.deb -o mysql-apt-config.deb
@@ -107,6 +109,7 @@ ssh user@server "cd /var/www && php artisan db:seed"
 ## 🔍 ОТЛАДКА ПРОБЛЕМ
 
 ### MySQL не подключается
+
 ```bash
 # Проверить конфиг
 php artisan tinker
@@ -117,6 +120,7 @@ docker-compose exec db mysql -u root -p secret -e "SELECT VERSION();"
 ```
 
 ### Миграции падают
+
 ```bash
 # Проверить статус миграций
 php artisan migrate:status
@@ -136,6 +140,7 @@ php artisan migrate
 ## ✅ СТАТУС МИГРАЦИЙ ДЛЯ MYSQL
 
 Все 44 миграции совместимы с MySQL 8:
+
 - ✅ Используются стандартные Schema методы
 - ✅ Нет SQLite-специфичного синтаксиса
 - ✅ Поддерживаются foreign keys

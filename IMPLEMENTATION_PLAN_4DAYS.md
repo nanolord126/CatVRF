@@ -15,11 +15,13 @@
 ## 📋 ДЕНЬ 1: АВТОРИЗАЦИЯ И RBAC (4-5 часов)
 
 ### ✅ ЦЕЛЬ ДНЯ
+
 Завершить RBAC систему согласно CANON 2026
 
 ### ЗАДАЧИ
 
 #### Task 1.1: Создать AuthService (30 мин)
+
 ```
 Файл: app/Services/Auth/AuthService.php
 
@@ -41,6 +43,7 @@
 ```
 
 #### Task 1.2: Создать config/permission.php (20 мин)
+
 ```php
 // config/permission.php
 return [
@@ -115,6 +118,7 @@ return [
 ```
 
 #### Task 1.3: Создать Middleware (30 мин)
+
 ```
 Файл: app/Http/Middleware/CheckAbilityMiddleware.php
 
@@ -128,6 +132,7 @@ return [
 ```
 
 #### Task 1.4: Обновить Route middleware (20 мин)
+
 ```php
 // routes/api.php
 Route::middleware(['auth:sanctum', 'check-ability:manage_payments'])
@@ -139,6 +144,7 @@ Route::middleware(['auth', 'check-ability:manage_employees'])
 ```
 
 #### Task 1.5: UNIT TESTS (30 мин)
+
 ```
 tests/Unit/Services/Auth/
 ├── AuthServiceTest.php
@@ -154,6 +160,7 @@ tests/Unit/Services/Auth/
 ```
 
 #### Task 1.6: Обновить API Documentation (20 мин)
+
 ```
 docs/api/authentication.md:
 ✅ Authentication flow diagram
@@ -167,6 +174,7 @@ docs/api/authentication.md:
 ## 📋 ДЕНЬ 2: HR И PAYROLL (6-7 часов)
 
 ### ✅ ЦЕЛЬ ДНЕЙ
+
 Создать полные системы HR и Payroll
 
 ### ЗАДАЧИ
@@ -187,6 +195,7 @@ php artisan make:model "Domains/HR/Models/EmployeeReview" -m
 ##### 2.1.2 Models реализация
 
 Каждый Model должен иметь:
+
 ```php
 ✅ protected $table = 'table_name';
 ✅ protected $fillable = [all fields];
@@ -249,6 +258,7 @@ app/Domains/HR/Services/
 ```
 
 Каждый Service должен иметь:
+
 ```php
 ✅ Readonly constructor dependencies
 ✅ DB::transaction() для всех мутаций
@@ -269,6 +279,7 @@ app/Domains/HR/Filament/Resources/
 ```
 
 Каждый Resource должен иметь:
+
 ```php
 ✅ protected static ?string $model = Model::class;
 ✅ form() с полным набором fields
@@ -343,6 +354,7 @@ app/Domains/Payroll/Services/PayrollCalculationService.php
 ## 📋 ДЕНЬ 3: NOTIFICATIONS & MARKETING (6-7 часов)
 
 ### ✅ ЦЕЛЬ ДНЕЙ
+
 Создать Notification систему + доделать Marketing models
 
 ### ЗАДАЧИ
@@ -373,6 +385,7 @@ app/Notifications/
 ```
 
 Каждый Notification:
+
 ```php
 ✅ Implements ShouldQueue
 ✅ public function via($notifiable): array
@@ -394,6 +407,7 @@ app/Mail/
 ```
 
 Каждый Mailable:
+
 ```php
 ✅ Implements ShouldQueue
 ✅ public function build(): self
@@ -568,6 +582,7 @@ app/Listeners/
 ```
 
 Каждое Event:
+
 ```php
 ✅ Implements ShouldDispatchAfterCommit
 ✅ public $correlationId = 'value'
@@ -584,6 +599,7 @@ app/Listeners/
 ## 📋 ДЕНЬ 4: COMPLETION & TESTING (4-5 часов)
 
 ### ✅ ЦЕЛЬ ДНЕЙ
+
 Финализация, тестирование, production-ready
 
 ### ЗАДАЧИ
@@ -602,6 +618,7 @@ InvalidMigrationException extends Exception
 #### Task 4.2: Update Factories (30 мин)
 
 Каждая factory должна:
+
 ```php
 ✅ Добавить correlation_id
 ✅ Добавить tenant_id scoping
@@ -701,6 +718,7 @@ curl -X POST https://api.example.com/api/v1/auth/login \
 ## 📊 ИТОГОВЫЙ СПИСОК ФАЙЛОВ НА СОЗДАНИЕ
 
 ### День 1: Авторизация (4 файла)
+
 ```
 ✅ app/Services/Auth/AuthService.php
 ✅ config/permission.php
@@ -709,6 +727,7 @@ curl -X POST https://api.example.com/api/v1/auth/login \
 ```
 
 ### День 2: HR & Payroll (25+ файлов)
+
 ```
 HR:
 ✅ app/Domains/HR/Models/Employee.php
@@ -739,6 +758,7 @@ Payroll:
 ```
 
 ### День 3: Notifications & Marketing (30+ файлов)
+
 ```
 Notifications:
 ✅ app/Notifications/OrderConfirmationNotification.php
@@ -769,6 +789,7 @@ Plus migrations, seeders, tests...
 ```
 
 ### День 4: Finalization (10+ файлов)
+
 ```
 ✅ app/Exceptions/InsufficientStockException.php
 ✅ app/Exceptions/FraudDetectedException.php
@@ -808,4 +829,3 @@ Plus migrations, seeders, tests...
 - ✅ Deploy readiness VERIFIED
 
 **Status: 🚀 READY FOR PRODUCTION**
-

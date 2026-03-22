@@ -3,6 +3,7 @@
 namespace App\Domains\Pet\Services;
 
 use App\Domains\Pet\Events\BoardingReservationCreated;
+use App\Services\FraudControlService;
 use App\Domains\Pet\Models\PetBoardingReservation;
 use App\Models\BalanceTransaction;
 use Illuminate\Support\Facades\DB;
@@ -17,20 +18,11 @@ final class BoardingService
 
     public function createReservation(array $data, string $correlationId = null): PetBoardingReservation
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'createReservation'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createReservation', ['domain' => __CLASS__]);
-
         $correlationId ??= Str::uuid()->toString();
 
         try {
             return DB::transaction(function () use ($data, $correlationId) {
-                $this->fraudControl->check([
-                    'type' => 'pet_boarding',
-                    'amount' => $data['total_amount'] ?? 0,
-                    'tenant_id' => tenant()->id,
-                ]);
+                $this->fraudControl->check(0, 'create_boarding_reservation', 0, null, null, $correlationId);
 
                 $reservation = PetBoardingReservation::create([
                     ...$data,
@@ -67,11 +59,6 @@ final class BoardingService
 
     public function completeReservation(PetBoardingReservation $reservation, string $correlationId = null): PetBoardingReservation
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'completeReservation'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL completeReservation', ['domain' => __CLASS__]);
-
         $correlationId ??= Str::uuid()->toString();
 
         try {
@@ -103,11 +90,6 @@ final class BoardingService
 
     public function cancelReservation(PetBoardingReservation $reservation, string $correlationId = null): PetBoardingReservation
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'cancelReservation'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL cancelReservation', ['domain' => __CLASS__]);
-
         $correlationId ??= Str::uuid()->toString();
 
         try {

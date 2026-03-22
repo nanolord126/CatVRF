@@ -10,6 +10,7 @@
 ## 📋 PRE-DEPLOYMENT CHECKLIST
 
 ### 1. Environment Configuration
+
 - [ ] Copy `.env.example` to `.env`
 - [ ] Set `SANCTUM_STATEFUL_DOMAINS=yourdomain.com`
 - [ ] Set `SANCTUM_EXPIRATION=1440` (24 hours)
@@ -27,6 +28,7 @@
 - [ ] Set `LOG_CHANNEL=stack` with 'audit' channel enabled
 
 ### 2. Database & Migrations
+
 ```bash
 # Run all migrations (creates tables for Sanctum, API keys, idempotency, rate limiting)
 php artisan migrate
@@ -40,7 +42,9 @@ php artisan migrate
 ```
 
 ### 3. Middleware Registration (✅ Already done in Kernel.php)
+
 **Verify in `app/Http/Kernel.php`** - aliases registered:
+
 - ✅ `'rate-limit'` → RateLimitingMiddleware
 - ✅ `'validate-webhook'` → ValidateWebhookSignature
 - ✅ `'api-rate-limit'` → ApiRateLimiter
@@ -51,7 +55,9 @@ php artisan migrate
 - ✅ `'check-role'` → CheckRole
 
 ### 4. Service Registration (✅ Already done in AppServiceProvider)
+
 **Verify in `app/Providers/AppServiceProvider.php`** - singletons registered:
+
 - ✅ TenantAwareRateLimiter
 - ✅ PaymentIdempotencyService
 - ✅ WebhookSignatureValidator
@@ -60,7 +66,9 @@ php artisan migrate
 - ✅ WishlistAntiFraudService
 
 ### 5. Routes Configuration (✅ Already done in routes/api.php)
+
 **Verify middleware applied to endpoints:**
+
 ```php
 // Payment endpoints
 POST /api/v1/payments/init → middleware('auth:sanctum', 'rate-limit-payment', 'fraud-check')
@@ -81,6 +89,7 @@ POST /api/v1/auth/refresh → middleware('auth:sanctum', 'rate-limit-auth')
 ```
 
 ### 6. Redis Connection
+
 ```bash
 # Verify Redis is running
 redis-cli ping
@@ -91,7 +100,9 @@ redis-cli INFO stats | grep total_commands_processed
 ```
 
 ### 7. Logging Channels (✅ Already configured)
+
 **Verify in `config/logging.php`** - channels exist:
+
 - ✅ `audit` - all security-related events with correlation_id
 - ✅ `fraud_alert` - fraud detection events
 - ✅ `webhook_errors` - webhook validation failures
@@ -102,6 +113,7 @@ redis-cli INFO stats | grep total_commands_processed
 ## 🚀 DEPLOYMENT STEPS
 
 ### Step 1: Code Deployment
+
 ```bash
 # Clone repo / pull latest
 git pull origin main
@@ -118,6 +130,7 @@ php artisan route:cache
 ```
 
 ### Step 2: Database Preparation
+
 ```bash
 # Run migrations
 php artisan migrate --force
@@ -127,6 +140,7 @@ php artisan db:seed --class=SecuritySeeder
 ```
 
 ### Step 3: Cache & Optimization
+
 ```bash
 # Cache views for faster rendering
 php artisan view:cache
@@ -136,6 +150,7 @@ php artisan optimize
 ```
 
 ### Step 4: Background Jobs
+
 ```bash
 # Start queue worker for email notifications, async logging
 php artisan queue:work redis --queue=default,notifications
@@ -145,6 +160,7 @@ php artisan queue:work redis --queue=default,notifications
 ```
 
 ### Step 5: SSL/TLS Configuration
+
 ```bash
 # Ensure SSL certificate is installed (Let's Encrypt)
 # Set HTTPS_REDIRECT=true in .env
@@ -152,6 +168,7 @@ php artisan queue:work redis --queue=default,notifications
 ```
 
 ### Step 6: Smoke Tests
+
 ```bash
 # Run all tests to verify deployment
 php artisan test --parallel
@@ -167,6 +184,7 @@ php artisan test --filter=Webhook
 ```
 
 ### Step 7: Health Check
+
 ```bash
 # Verify API health
 curl -X GET https://yourdomain.com/api/health
@@ -180,6 +198,7 @@ curl -X GET https://yourdomain.com/api/health
 ## ✅ SECURITY VALIDATION CHECKLIST
 
 ### Authentication & Authorization
+
 - [ ] Sanctum Personal Access Tokens issued with 24-hour expiration
 - [ ] Token refresh endpoint returns new token (old token deleted)
 - [ ] Expired tokens rejected with 401 Unauthorized
@@ -188,6 +207,7 @@ curl -X GET https://yourdomain.com/api/health
 - [ ] API Key authentication working for B2B integrations
 
 ### Rate Limiting
+
 - [ ] Payment endpoint: max 30 requests/min (per tenant)
 - [ ] Promo endpoint: max 50 requests/min (per user)
 - [ ] Search endpoint: max 120 requests/min (per user)
@@ -196,12 +216,14 @@ curl -X GET https://yourdomain.com/api/health
 - [ ] Rate limit headers present: `X-RateLimit-Limit`, `X-RateLimit-Remaining`
 
 ### Idempotency & Duplicate Prevention
+
 - [ ] Payment endpoint accepts `Idempotency-Key` header
 - [ ] Duplicate payments rejected (SHA-256 payload hash verified)
 - [ ] Idempotency-Key stored with 7-day TTL
 - [ ] Duplicate detected returns 409 Conflict (not 500)
 
 ### Webhook Security
+
 - [ ] All webhook endpoints require `X-Signature` header
 - [ ] Signatures validated using HMAC-SHA256 (timing-safe)
 - [ ] Invalid signatures return 403 Forbidden
@@ -209,6 +231,7 @@ curl -X GET https://yourdomain.com/api/health
 - [ ] Failed validations logged to `webhook_errors` channel with correlation_id
 
 ### Fraud Detection
+
 - [ ] FraudControlService scores operations (0–1 range)
 - [ ] Operations with score ≥0.8 blocked (403 Forbidden)
 - [ ] ML features extracted: amount, frequency, IP, device, geo, time
@@ -216,6 +239,7 @@ curl -X GET https://yourdomain.com/api/health
 - [ ] WishlistAntiFraudService detects manipulation patterns
 
 ### Data Protection
+
 - [ ] All sensitive fields encrypted (passwords, tokens, secrets)
 - [ ] Database queries use parameterized (no SQL injection)
 - [ ] Blade templates auto-escape (no XSS)
@@ -224,12 +248,14 @@ curl -X GET https://yourdomain.com/api/health
 - [ ] Sensitive errors NOT returned to user (only internal logs)
 
 ### API Versioning
+
 - [ ] Requests to `/api/v1/*` routed to V1Controller
 - [ ] Requests to `/api/v2/*` routed to V2Controller
 - [ ] Header `X-API-Version: v1` fallback supported
 - [ ] Deprecated endpoints return 410 Gone with migration guide
 
 ### Logging & Audit
+
 - [ ] All critical operations logged: payments, refunds, access grants
 - [ ] Logs include: timestamp, user_id, tenant_id, action, correlation_id, result
 - [ ] Audit logs stored 3+ years (ФЗ-152 compliance)
@@ -241,6 +267,7 @@ curl -X GET https://yourdomain.com/api/health
 ## 🔍 MONITORING & ALERTING
 
 ### Sentry Integration
+
 ```bash
 # Set SENTRY_LARAVEL_DSN in .env
 # Verify alerts for:
@@ -254,6 +281,7 @@ export SENTRY_LARAVEL_DSN="https://key@sentry.io/project"
 ```
 
 ### Metrics to Monitor
+
 ```
 - API response time (p50, p95, p99)
 - Error rate (4xx, 5xx)
@@ -265,6 +293,7 @@ export SENTRY_LARAVEL_DSN="https://key@sentry.io/project"
 ```
 
 ### Daily Reports (8:00–9:00 UTC)
+
 - Security violations count
 - Rate limit violations by endpoint
 - Fraud score statistics
@@ -277,11 +306,13 @@ export SENTRY_LARAVEL_DSN="https://key@sentry.io/project"
 ## 🧪 TESTING COMMANDS
 
 ### Run All Tests
+
 ```bash
 php artisan test --parallel
 ```
 
 ### Run Security Tests Only
+
 ```bash
 php artisan test --filter=Security --parallel
 php artisan test --filter=Rate --parallel
@@ -291,6 +322,7 @@ php artisan test --filter=Fraud --parallel
 ```
 
 ### Manual Endpoint Testing
+
 ```bash
 # 1. Get token
 curl -X POST http://localhost:8000/api/v1/auth/token \
@@ -317,6 +349,7 @@ curl -X POST http://localhost:8000/api/v1/webhooks/tinkoff \
 ## 🆘 TROUBLESHOOTING
 
 ### Rate Limit False Positives
+
 ```bash
 # Check Redis rate limit state
 redis-cli KEYS "rate_limit:*"
@@ -329,6 +362,7 @@ php artisan config:show cors
 ```
 
 ### Webhook Signature Failures
+
 ```bash
 # Verify webhook secret in .env
 echo $WEBHOOK_SECRET_TINKOFF
@@ -341,6 +375,7 @@ php artisan config:show security.webhook_ip_whitelist
 ```
 
 ### Token Expiration Issues
+
 ```bash
 # Check Sanctum config
 php artisan config:show sanctum
@@ -352,6 +387,7 @@ WHERE id = ?;
 ```
 
 ### Database Connection Timeouts
+
 ```bash
 # Verify DB connection
 php artisan tinker
@@ -367,10 +403,10 @@ DB_POOL_MAX=10
 
 ## 📞 SUPPORT CONTACTS
 
-- **Security Team**: security@catvrf.dev
+- **Security Team**: <security@catvrf.dev>
 - **On-Call**: +7-999-XXX-XXXX (24/7)
-- **Escalation**: head-of-security@catvrf.dev
-- **Incident Report**: incidents@catvrf.dev
+- **Escalation**: <head-of-security@catvrf.dev>
+- **Incident Report**: <incidents@catvrf.dev>
 
 ---
 

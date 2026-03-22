@@ -25,39 +25,46 @@
 ### Файлы (6 файлов, 1,500+ LOC)
 
 **1. k6/load-test-core.js** (250 LOC)
+
 - Базовые нагрузочные сценарии
 - 0→100 VUs (Virtual Users) за 24 минуты
 - Метрики: payment_duration, fraud_scoring_duration, authorization_duration
 - Thresholds: p95 < 500ms, error_rate < 10%
 
 **2. k6/load-test-beauty.js** (180 LOC)
+
 - Load test для салонов красоты
 - Бронирование записей, управление мастерами
 - Параллельные операции записи
 
 **3. k6/load-test-taxi.js** (200 LOC)
+
 - Load test для такси
 - Surge pricing, concurrent ride requests
 - Real-time location updates
 
 **4. k6/load-test-food.js** (170 LOC)
+
 - Load test для ресторанов
 - Заказы, доставка, KDS интеграция
 - Concurrent checkout operations
 
 **5. k6/load-test-realestate.js** (200 LOC)
+
 - Load test для недвижимости
 - Бронирование, поиск, фильтры
 - Property view tracking
 
 **6. k6/load-test-cross-vertical.js** (300 LOC)
+
 - **КРИТИЧНЫЙ**: Cross-vertical stress test
 - Одновременно все вертикали
 - Payment holds, wallet operations, fraud checks
 - Concurrent inventory deductions
 - Multi-tenant isolation verification
 
-### Команды запуска нагрузочных тестов:
+### Команды запуска нагрузочных тестов
+
 ```bash
 # Все load тесты
 for test in k6/load-test-*.js; do k6 run "$test"; done
@@ -78,6 +85,7 @@ k6 run k6/load-test-cross-vertical.js --duration 30m --vus 200
 **1. cypress/e2e/rbac-authorization.cy.ts** (331 LOC, 35+ тестов)
 
 Покрытие ролей:
+
 ```
 ├── Owner
 │   ├── Full dashboard access
@@ -110,13 +118,15 @@ k6 run k6/load-test-cross-vertical.js --duration 30m --vus 200
 **2. cypress/e2e/rbac.cy.ts** (вторичный файл, дополнительные 35+ тестов)**
 
 Дополнительное покрытие:
+
 - Role hierarchy verification
 - Permission cascading
 - Cross-tenant isolation
 - Dynamic permission loading
 - Permission caching
 
-### Команды для тестирования ролей:
+### Команды для тестирования ролей
+
 ```bash
 npm run test:e2e:rbac
 npx cypress run --spec "cypress/e2e/rbac*.cy.ts"
@@ -129,6 +139,7 @@ npx cypress run --spec "cypress/e2e/rbac*.cy.ts"
 ### Файл: cypress/e2e/file-uploads.cy.ts (400 LOC, 25+ тестов)
 
 **CSV File Upload - Inventory Import**
+
 - ✅ Valid CSV upload
 - ✅ Invalid CSV rejection
 - ✅ CSV structure validation
@@ -136,27 +147,32 @@ npx cypress run --spec "cypress/e2e/rbac*.cy.ts"
 - ✅ Idempotency prevention (no duplicate imports)
 
 **Excel File Upload - Payroll Data**
+
 - ✅ Excel file upload
 - ✅ Column validation
 - ✅ Payroll total calculation
 
 **Image File Upload - Product Photos**
+
 - ✅ Product image upload
 - ✅ Image dimension validation (800x600px min)
 - ✅ Format validation (JPG/PNG only)
 - ✅ Automatic image compression
 
 **PDF Upload - Documentation**
+
 - ✅ PDF document upload
 - ✅ File size validation (10MB max)
 - ✅ Virus scanning before acceptance
 
 **Bulk File Upload - Drag & Drop**
+
 - ✅ Multiple file drag-drop upload
 - ✅ Upload progress display
 - ✅ Cancel in-progress uploads
 
 **File Upload Security**
+
 - ✅ Fraud check on file upload
 - ✅ Malware scanning
 - ✅ Tenant isolation enforcement
@@ -169,6 +185,7 @@ npx cypress run --spec "cypress/e2e/rbac*.cy.ts"
 ### Файл: cypress/e2e/profile-updates.cy.ts (500 LOC, 30+ тестов)
 
 **Personal Profile Updates**
+
 - ✅ Full name update
 - ✅ Phone number with validation
 - ✅ Email address with verification
@@ -178,26 +195,31 @@ npx cypress run --spec "cypress/e2e/rbac*.cy.ts"
 - ✅ Trusted devices management
 
 **Business Profile Updates**
+
 - ✅ Business name update
 - ✅ Business address update
 - ✅ Bank account details update
 - ✅ Bank account validation
 
 **Notifications & Preferences**
+
 - ✅ Email/SMS notification settings
 - ✅ Notification frequency (Daily/Weekly/Monthly)
 - ✅ Notification channel management
 
 **Privacy & Data Management**
+
 - ✅ User data export (GDPR)
 - ✅ Privacy settings update
 - ✅ Account deletion with confirmation
 
 **Profile Updates with Idempotency**
+
 - ✅ Duplicate update prevention
 - ✅ Correlation ID validation
 
 **Profile Audit & History**
+
 - ✅ Change history viewing
 - ✅ Timestamp and user info display
 - ✅ Revert to previous state
@@ -209,6 +231,7 @@ npx cypress run --spec "cypress/e2e/rbac*.cy.ts"
 ### Файл: cypress/e2e/avatar-photo-management.cy.ts (600 LOC, 40+ тестов)
 
 **Avatar Upload & Management**
+
 - ✅ User avatar upload
 - ✅ Dimension validation (min 200x200px)
 - ✅ Square image enforcement (1:1 ratio)
@@ -219,12 +242,14 @@ npx cypress run --spec "cypress/e2e/rbac*.cy.ts"
 - ✅ Crop tool with preview
 
 **Business Logo Upload**
+
 - ✅ Logo upload (PNG/SVG only)
 - ✅ Format validation
 - ✅ Automatic resizing for different contexts
 - ✅ Logo display on business pages
 
 **Product Gallery & Photos**
+
 - ✅ Multiple product photo upload
 - ✅ Set primary photo
 - ✅ Photo reordering via drag-drop
@@ -232,15 +257,18 @@ npx cypress run --spec "cypress/e2e/rbac*.cy.ts"
 - ✅ Photo description and tags
 
 **Portfolio & Before-After Photos (Beauty)**
+
 - ✅ Before-after photo upload
 - ✅ Comparison slider display
 
 **Photo Editing & Effects**
+
 - ✅ Filter application (sepia, etc)
 - ✅ Brightness/contrast adjustment
 - ✅ Crop and straighten tools
 
 **Photo Security**
+
 - ✅ NSFW content scanning
 - ✅ Watermark detection
 - ✅ Duplicate photo detection
@@ -253,6 +281,7 @@ npx cypress run --spec "cypress/e2e/rbac*.cy.ts"
 ### Файл: cypress/e2e/user-actions.cy.ts (700 LOC, 50+ тестов)
 
 **CRUD Actions - Create**
+
 - ✅ Create product with required fields
 - ✅ Required field validation
 - ✅ Invalid data type prevention
@@ -260,6 +289,7 @@ npx cypress run --spec "cypress/e2e/rbac*.cy.ts"
 - ✅ 50+ items bulk create
 
 **CRUD Actions - Read & Search**
+
 - ✅ List all products
 - ✅ Search by name
 - ✅ Filter by category
@@ -268,38 +298,45 @@ npx cypress run --spec "cypress/e2e/rbac*.cy.ts"
 - ✅ Pagination
 
 **CRUD Actions - Update**
+
 - ✅ Update name and description
 - ✅ Update price with validation
 - ✅ Bulk update (15+ products)
 - ✅ Invalid data prevention
 
 **CRUD Actions - Delete**
+
 - ✅ Single product delete
 - ✅ Bulk delete (3+ items)
 - ✅ Soft delete with undo
 - ✅ Permanent deletion
 
 **Role-Based Actions**
+
 - ✅ Owner sees all admin actions
 - ✅ Manager sees limited actions
 - ✅ Employee sees only own data
 - ✅ Permission enforcement
 
 **Complex Multi-Step Actions**
+
 - ✅ Product creation workflow (3 steps)
 - ✅ Checkout process
 - ✅ Payment processing
 
 **Actions with Fraud Detection**
+
 - ✅ Flag suspicious bulk actions
 - ✅ Require 2FA for sensitive actions
 
 **Actions Audit Trail**
+
 - ✅ Log all user actions
 - ✅ Show action details with timestamp
 - ✅ Filter audit log by action type
 
 **Idempotency & Concurrency**
+
 - ✅ Prevent duplicate action execution
 - ✅ Handle concurrent updates safely
 - ✅ Conflict detection

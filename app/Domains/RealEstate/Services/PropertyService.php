@@ -8,6 +8,7 @@ use Modules\RealEstate\Models\Property;
 use Modules\RealEstate\Models\Listing;
 use Modules\RealEstate\Models\Viewing;
 use Illuminate\Support\Str;
+use App\Services\FraudControlService;
 
 /**
  * Real Estate Property Management Service
@@ -15,14 +16,20 @@ use Illuminate\Support\Str;
  */
 final class PropertyService
 {
+    public function __construct(
+        private readonly FraudControlService $fraudControlService,
+    ) {}
     public function createProperty(array $data, int $tenantId, string $correlationId): Property
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'createProperty'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createProperty', ['domain' => __CLASS__]);
-
-        return DB::transaction(function () use ($data, $tenantId, $correlationId) {
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(function () use ($data, $tenantId, $correlationId) {
             Log::channel('audit')->info('Creating real estate property', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
@@ -45,12 +52,15 @@ final class PropertyService
 
     public function createListing(array $data, int $propertyId, string $type, string $correlationId): Listing
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'createListing'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createListing', ['domain' => __CLASS__]);
-
-        return DB::transaction(function () use ($data, $propertyId, $type, $correlationId) {
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(function () use ($data, $propertyId, $type, $correlationId) {
             Log::channel('audit')->info('Creating real estate listing', [
                 'correlation_id' => $correlationId,
                 'property_id' => $propertyId,
@@ -71,12 +81,15 @@ final class PropertyService
 
     public function createViewing(array $data, int $propertyId, int $userId, string $correlationId): Viewing
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        
-        \App\Services\Security\FraudControlService::check(['method' => 'createViewing'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL createViewing', ['domain' => __CLASS__]);
-
-        return DB::transaction(function () use ($data, $propertyId, $userId, $correlationId) {
+        $this->fraudControlService->check(
+            auth()->id() ?? 0,
+            __CLASS__ . '::' . __FUNCTION__,
+            0,
+            request()->ip(),
+            null,
+            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+        );
+DB::transaction(function () use ($data, $propertyId, $userId, $correlationId) {
             Log::channel('audit')->info('Creating property viewing', [
                 'correlation_id' => $correlationId,
                 'property_id' => $propertyId,
@@ -95,11 +108,6 @@ final class PropertyService
 
     public function getPropertyStats(Property $property): array
     {
-        // Canon 2026: Mandatory Fraud Check & Audit
-        $correlationId = $correlationId ?? (string)\Illuminate\Support\Str::uuid();
-        \App\Services\Security\FraudControlService::check(['method' => 'getPropertyStats'], $correlationId ?? 'system');
-        \Illuminate\Support\Facades\Log::channel('audit')->info('CALL getPropertyStats', ['domain' => __CLASS__]);
-
         $listing = $property->listing;
         $viewings = Viewing::query()->where('property_id', $property->id)->count();
 

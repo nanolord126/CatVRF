@@ -82,3 +82,6 @@ Route::prefix('docs')->group(function () {
     Route::get('swagger', [\App\Http\Controllers\Api\OpenApiController::class, 'ui'])
         ->name('api.swagger.ui');
 });
+
+// ─── Channels (посты, подписки, реакции) ─────────────────────────────────────
+require __DIR__ . '/channels.api.php';

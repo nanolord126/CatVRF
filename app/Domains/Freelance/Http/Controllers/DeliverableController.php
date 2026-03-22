@@ -2,6 +2,8 @@
 
 namespace App\Domains\Freelance\Http\Controllers;
 
+use Illuminate\Support\Facades\Auth;
+
 use App\Domains\Freelance\Models\FreelanceDeliverable;
 use App\Domains\Freelance\Services\DeliverableService;
 use Illuminate\Http\JsonResponse;
@@ -9,21 +11,23 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
+
+use App\Services\FraudControlService;
+
 final class DeliverableController
 {
     public function __construct(
         private readonly DeliverableService $deliverableService,
+        private readonly FraudControlService $fraudControlService,
     ) {}
+
 
     public function store(Request $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(Auth::user(), 'deliverable_create', crc32((string)$correlationId));
 
         try {
-            $correlationId = Str::uuid();
-
             $validated = $request->validate([
                 'title' => 'required|string|max:255',
                 'description' => 'nullable|string',
@@ -32,9 +36,9 @@ final class DeliverableController
 
             $deliverable = $this->deliverableService->submitDeliverable(
                 contractId: $request->input('contract_id'),
-                freelancerId: auth()->user()->freelancer->id ?? 0,
+                freelancerId: Auth::user()?->freelancer->id ?? 0,
                 data: $validated,
-                correlationId: $correlationId,
+                correlationId: (string)$correlationId,
             );
 
             return response()->json([
@@ -86,12 +90,12 @@ final class DeliverableController
     public function approve(int $id): JsonResponse
     {
         try {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             $deliverable = FreelanceDeliverable::findOrFail($id);
 
             $this->authorize('approve', $deliverable);
 
-            $this->deliverableService->approveDeliverable($id, $correlationId);
+            $this->deliverableService->approveDeliverable($id, (string)$correlationId);
 
             return response()->json([
                 'success' => true,
@@ -115,7 +119,7 @@ final class DeliverableController
     public function requestRevision(Request $request, int $id): JsonResponse
     {
         try {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             $deliverable = FreelanceDeliverable::findOrFail($id);
 
             $this->authorize('requestRevision', $deliverable);
@@ -123,7 +127,7 @@ final class DeliverableController
             $this->deliverableService->requestRevision(
                 $id,
                 $request->input('feedback', ''),
-                $correlationId
+                (string)$correlationId
             );
 
             return response()->json([
@@ -148,7 +152,7 @@ final class DeliverableController
     public function reject(Request $request, int $id): JsonResponse
     {
         try {
-            $correlationId = Str::uuid();
+            $correlationId = Str::uuid()->toString();
             $deliverable = FreelanceDeliverable::findOrFail($id);
 
             $this->authorize('reject', $deliverable);
@@ -156,7 +160,7 @@ final class DeliverableController
             $this->deliverableService->rejectDeliverable(
                 $id,
                 $request->input('reason', ''),
-                $correlationId
+                (string)$correlationId
             );
 
             return response()->json([
@@ -181,6 +185,7 @@ final class DeliverableController
     public function contractDeliverables(int $contractId): JsonResponse
     {
         try {
+
             $deliverables = FreelanceDeliverable::where('contract_id', $contractId)
                 ->paginate(20);
 
@@ -193,7 +198,6 @@ final class DeliverableController
             Log::channel('audit')->error('Error listing contract deliverables', [
                 'contract_id' => $contractId,
                 'error' => $e->getMessage(),
-                'correlation_id' => Str::uuid(),
             ]);
 
             return response()->json([

@@ -35,7 +35,7 @@ class DemandForecastJob implements ShouldQueue
      */
     public function __construct(string $correlationId = null)
     {
-        $this->correlationId = $correlationId ?? (string) Str::uuid();
+        $this->correlationId = $correlationId ?? (string) Str::uuid()->toString();
     }
 
     /**

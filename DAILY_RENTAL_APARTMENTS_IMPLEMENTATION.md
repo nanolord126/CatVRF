@@ -463,10 +463,12 @@ CREATE TABLE property_bookings (
 ## 🎯 Ключевые особенности реализации
 
 ### 1. **Multi-tenancy**
+
 - Каждая квартира привязана к `tenant_id`
 - Строгая изоляция данных между тенантами
 
 ### 2. **Гибкая модель цен**
+
 ```php
 // Для посуточной аренды:
 $property->price = 3500;  // рублей в сутки
@@ -478,12 +480,14 @@ $rental_type = 'monthly';
 ```
 
 ### 3. **Отслеживание через correlation_id**
+
 ```php
 // Все операции с одной квартирой отслеживаются:
 correlation_id: '550e8400-e29b-41d4-a716-446655440000'
 ```
 
 ### 4. **JSON Amenities**
+
 ```php
 $property->amenities = json_encode([
     'wifi',
@@ -496,6 +500,7 @@ $property->amenities = json_encode([
 ```
 
 ### 5. **Геолокация для поиска**
+
 ```php
 $property->geo_lat = 55.7595;  // Москва
 $property->geo_lng = 37.6194;
@@ -618,6 +623,7 @@ class PropertyPolicy extends Policy
 ## 📊 Статистика
 
 **Текущее состояние:**
+
 - ✅ Модель Property (готова)
 - ✅ Таблица migrations (готова)
 - ⚠️ PropertyResource (пуста, требует заполнения)

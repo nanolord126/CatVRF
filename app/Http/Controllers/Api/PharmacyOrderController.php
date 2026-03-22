@@ -8,6 +8,7 @@ use App\Domains\Pharmacy\Models\Prescription;
 use App\Domains\Pharmacy\Services\PharmacyService;
 use App\Http\Requests\Pharmacy\StoreOrderRequest;
 use App\Http\Requests\Pharmacy\VerifyPrescriptionRequest;
+use App\Services\FraudControlService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
@@ -16,7 +17,8 @@ use Illuminate\Support\Str;
 final class PharmacyOrderController extends BaseApiController
 {
     public function __construct(
-        private PharmacyService $service,
+        private readonly PharmacyService $service,
+        private readonly FraudControlService $fraudControlService,
     ) {}
 
     public function index(): JsonResponse
@@ -38,18 +40,16 @@ final class PharmacyOrderController extends BaseApiController
 
     public function store(StoreOrderRequest $request): JsonResponse
     {
-        if (class_exists('\App\Services\FraudControlService')) {
-            \App\Services\FraudControlService::check();
-        }
+        $correlationId = Str::uuid()->toString();
+        $this->fraudControlService->check(auth()->id() ?? 0, 'pharmacy_order_store', 0, $request->ip(), null, $correlationId);
 
         try {
-            $correlationId = Str::uuid()->toString();
             $tenantId = auth()->user()?->tenant_id ?? tenant()->id;
 
             $order = $this->service->createOrder(
                 prescriptionId: $request->integer('prescription_id'),
                 clientId: $request->integer('client_id'),
-                medicines: json_decode($request->string('medicines'), true),
+                medicines: json_decode((string) $request->string('medicines'), true),
                 deliveryDate: Carbon::parse($request->input('delivery_date')),
                 tenantId: $tenantId,
                 correlationId: $correlationId,

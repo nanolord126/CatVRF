@@ -9,6 +9,7 @@
 ## 📋 Pre-Deployment Checklist
 
 ### Environment & Infrastructure
+
 - [ ] **Server Specs:** 4+ CPU cores, 16GB+ RAM, 100GB+ SSD
 - [ ] **PHP Version:** 8.3+ with extensions: opcache, redis, pdo_sqlite, curl, json
 - [ ] **Database:** PostgreSQL 13+ or MySQL 8+ (primary), SQLite for tenant isolation
@@ -17,6 +18,7 @@
 - [ ] **Reverse Proxy:** Nginx 1.24+ or Apache 2.4+ with SSL/TLS termination
 
 ### Code Quality & Compliance
+
 - [ ] **All Tests Passing:** `php artisan test --env=testing`
 - [ ] **E2E Tests Passing:** `npm run test:e2e:run`
 - [ ] **Linting:** `./vendor/bin/pint --test` (PHP CS Fixer)
@@ -26,6 +28,7 @@
 - [ ] **Database Migrations:** All migrations tested locally
 
 ### Security & Compliance
+
 - [ ] **SSL/TLS Certificate:** Valid, auto-renewal configured
 - [ ] **CORS Configuration:** Restricted to trusted domains
 - [ ] **CSRF Protection:** Enabled on all forms
@@ -41,6 +44,7 @@
 ## 🚀 Deployment Steps
 
 ### 1. Pre-Deployment
+
 ```bash
 # Clone repository
 git clone https://github.com/yourorg/catvrf.git
@@ -61,6 +65,7 @@ php artisan key:generate --env=production
 ```
 
 ### 2. Database Setup
+
 ```bash
 # Create databases
 createdb catvrf_central
@@ -77,6 +82,7 @@ php artisan migrate:status
 ```
 
 ### 3. Cache Warming
+
 ```bash
 # Cache configuration
 php artisan config:cache
@@ -95,6 +101,7 @@ ls -lah bootstrap/cache/
 ```
 
 ### 4. Queue Configuration
+
 ```bash
 # Start supervisor for long-running queue worker
 sudo supervisorctl reread
@@ -109,6 +116,7 @@ php artisan queue:monitor
 ```
 
 ### 5. Octane Server Startup
+
 ```bash
 # Start Swoole HTTP server (Octane)
 php artisan octane:start \
@@ -126,6 +134,7 @@ curl -H "Accept: application/json" http://localhost:8000/up
 ```
 
 ### 6. Nginx Configuration
+
 ```nginx
 # /etc/nginx/sites-available/catvrf.conf
 
@@ -197,6 +206,7 @@ server {
 ```
 
 ### 7. Supervisor Configuration
+
 ```ini
 # /etc/supervisor/conf.d/catvrf.conf
 
@@ -224,6 +234,7 @@ priority=999
 ```
 
 ### 8. Verification & Health Checks
+
 ```bash
 # Health check endpoint
 curl -s http://localhost:8000/up | jq .
@@ -254,6 +265,7 @@ curl -X POST http://localhost:8000/api/internal/webhooks/payment/tinkoff \
 ## 📊 Performance Optimization
 
 ### Caching Strategy
+
 ```php
 // config/cache.php - Production settings
 'default' => env('CACHE_DRIVER', 'redis'),
@@ -277,6 +289,7 @@ curl -X POST http://localhost:8000/api/internal/webhooks/payment/tinkoff \
 ```
 
 ### Database Optimization
+
 ```sql
 -- Create indices for frequently queried fields
 CREATE INDEX idx_wallet_tenant_id ON wallets(tenant_id);
@@ -289,6 +302,7 @@ SET log_min_duration_statement = 1000; -- Log slow queries > 1s
 ```
 
 ### Octane Tuning
+
 ```bash
 # Test with different worker counts
 php artisan octane:start --workers=4 --max-requests=500
@@ -304,6 +318,7 @@ wrk -t12 -c400 -d30s http://localhost:8000/api/health
 ## 🔒 Security Hardening
 
 ### Firewall Rules
+
 ```bash
 # Allow only necessary ports
 sudo ufw enable
@@ -316,6 +331,7 @@ sudo ufw default allow outgoing
 ```
 
 ### SSL/TLS Setup
+
 ```bash
 # Install Let's Encrypt certificate
 sudo certbot certonly --nginx -d api.catvrf.com -d admin.catvrf.com
@@ -328,6 +344,7 @@ ssl-test https://api.catvrf.com
 ```
 
 ### Environment Variables
+
 ```env
 # .env.production (NEVER commit this)
 APP_DEBUG=false
@@ -372,6 +389,7 @@ MAIL_FROM_NAME="CatVRF Platform"
 ## 📈 Monitoring & Alerting
 
 ### Sentry Configuration
+
 ```php
 // config/sentry.php
 'dsn' => env('SENTRY_DSN'),
@@ -381,6 +399,7 @@ MAIL_FROM_NAME="CatVRF Platform"
 ```
 
 ### Datadog Integration
+
 ```php
 // Monitor key metrics
 Event::listen('payment.captured', function ($event) {
@@ -392,6 +411,7 @@ Event::listen('payment.captured', function ($event) {
 ```
 
 ### Log Aggregation
+
 ```bash
 # Forward logs to ELK Stack
 # /etc/rsyslog.d/33-catvrf.conf
@@ -403,6 +423,7 @@ Event::listen('payment.captured', function ($event) {
 ## 🔄 Rollback Procedures
 
 ### Database Rollback
+
 ```bash
 # Rollback last migration batch
 php artisan migrate:rollback --env=production
@@ -415,6 +436,7 @@ php artisan migrate:status
 ```
 
 ### Application Rollback
+
 ```bash
 # Git rollback
 git revert HEAD~3 -m 1
@@ -430,6 +452,7 @@ sudo supervisorctl restart catvrf:*
 ## 📝 Maintenance Windows
 
 ### Scheduled Downtime
+
 ```bash
 # Enable maintenance mode
 php artisan down --secret=abc123
@@ -444,6 +467,7 @@ php artisan up
 ```
 
 ### Zero-Downtime Deployment
+
 ```bash
 # Using rolling deployment with multiple Octane servers
 # 1. Start new server on port 8001

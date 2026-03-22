@@ -15,7 +15,7 @@ final class ConsumableController
     {
         try {
             $consumables = FoodConsumable::query()
-                ->where('tenant_id', tenant('id') ?? 1)
+                ->where('tenant_id', tenant('id'))
                 ->paginate(20);
 
             return response()->json([
@@ -40,7 +40,7 @@ final class ConsumableController
     public function lowStock(): JsonResponse
     {
         $consumables = FoodConsumable::query()
-            ->where('tenant_id', tenant('id') ?? 1)
+            ->where('tenant_id', tenant('id'))
             ->whereRaw('current_stock < min_stock_threshold')
             ->get();
 
