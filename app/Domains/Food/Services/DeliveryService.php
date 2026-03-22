@@ -73,8 +73,6 @@ final class DeliveryService
         array $deliveryPoint,
         string $correlationId = ''
     ): DeliveryOrder {
-
-
         try {
             $this->fraudControlService->check(
                 auth()->id() ?? 0,
@@ -84,7 +82,8 @@ final class DeliveryService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-DB::transaction(function () use ($order, $customerAddress, $deliveryPoint, $correlationId) {
+
+            return DB::transaction(function () use ($order, $customerAddress, $deliveryPoint, $correlationId) {
                 $deliveryPrice = $this->calculateDeliveryPrice($order, $deliveryPoint, $correlationId);
 
                 $delivery = DeliveryOrder::create([

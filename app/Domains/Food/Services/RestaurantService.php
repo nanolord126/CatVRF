@@ -24,8 +24,6 @@ final class RestaurantService
 
     public function createRestaurant(array $data, int $tenantId, string $correlationId): Restaurant
     {
-
-
         $this->fraudControlService->check(
             auth()->id() ?? 0,
             __CLASS__ . '::' . __FUNCTION__,
@@ -34,7 +32,8 @@ final class RestaurantService
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($data, $tenantId, $correlationId) {
+
+        return DB::transaction(function () use ($data, $tenantId, $correlationId) {
             Log::channel('audit')->info('Creating restaurant', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
@@ -56,8 +55,6 @@ DB::transaction(function () use ($data, $tenantId, $correlationId) {
 
     public function createOrder(array $data, int $restaurantId, int $userId, string $correlationId): RestaurantOrder
     {
-
-
         $this->fraudControlService->check(
             auth()->id() ?? 0,
             __CLASS__ . '::' . __FUNCTION__,
@@ -66,7 +63,8 @@ DB::transaction(function () use ($data, $tenantId, $correlationId) {
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($data, $restaurantId, $userId, $correlationId) {
+
+        return DB::transaction(function () use ($data, $restaurantId, $userId, $correlationId) {
             Log::channel('audit')->info('Creating restaurant order', [
                 'correlation_id' => $correlationId,
                 'restaurant_id' => $restaurantId,

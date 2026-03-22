@@ -5,6 +5,7 @@ namespace App\Domains\Beauty\Http\Controllers;
 use App\Domains\Beauty\Models\BeautySalon;
 use App\Domains\Beauty\Models\Master;
 use App\Domains\Beauty\Services\SalonService;
+use App\Services\FraudControlService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -14,7 +15,8 @@ final class BeautySalonController
 {
     public function __construct(
         private readonly SalonService $salonService,
-        private readonly FraudControlService $fraudControlService,) {}
+        private readonly FraudControlService $fraudControlService,
+    ) {}
 
     public function index(): JsonResponse
     {
@@ -70,6 +72,8 @@ final class BeautySalonController
 
     public function store(): JsonResponse
     {
+        $correlationId = Str::uuid()->toString();
+        
         $fraudResult = $this->fraudControlService->check(
             auth()->id() ?? 0,
             'operation',
@@ -93,8 +97,6 @@ final class BeautySalonController
         }
 
         try {
-            $correlationId = Str::uuid()->toString();
-
             $salon = DB::transaction(function () use ($correlationId) {
                 return BeautySalon::create([
                     'uuid' => Str::uuid(),
@@ -139,6 +141,8 @@ final class BeautySalonController
 
     public function update(int $id): JsonResponse
     {
+        $correlationId = Str::uuid()->toString();
+        
         $fraudResult = $this->fraudControlService->check(
             auth()->id() ?? 0,
             'operation',
@@ -162,7 +166,6 @@ final class BeautySalonController
         }
 
         try {
-            $correlationId = Str::uuid()->toString();
             $salon = BeautySalon::findOrFail($id);
 
             DB::transaction(function () use ($salon, $correlationId) {
