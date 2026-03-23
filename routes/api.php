@@ -75,6 +75,9 @@ Route::prefix('webhooks')
             ->name('webhooks.sbp');
     });
 
+// Analytics routes (heatmaps, comparisons, custom metrics)
+require __DIR__ . '/analytics.api.php';
+
 // Documentation (public)
 Route::prefix('docs')->group(function () {
     Route::get('openapi.json', [\App\Http\Controllers\Api\OpenApiController::class, 'specification'])

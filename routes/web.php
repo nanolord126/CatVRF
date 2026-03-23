@@ -36,6 +36,8 @@ Route::get('/login', function () {
         }
     }
 
+    $csrfToken = csrf_token();
+
     return response()->make(
         '<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">' .
         '<title>Вход — CatVRF</title>' .
@@ -57,13 +59,14 @@ Route::get('/login', function () {
         '<h1>Вход в CatVRF</h1><p class="sub">Введите email и пароль для продолжения</p>' .
         ($error ? '<div class="alert alert-danger">' . e($error) . '</div>' : '') .
         $validationHtml .
-        '<form method="POST" action="/login">' . csrf_field() .
+        '<form method="POST" action="/login">' .
+        '<input type="hidden" name="_token" value="' . e($csrfToken) . '">' .
         '<label for="email">Email</label><input id="email" name="email" type="email" required autocomplete="username">' .
         '<label for="password">Пароль</label><input id="password" name="password" type="password" required autocomplete="current-password">' .
         '<button type="submit">Войти</button>' .
         '</form><div class="footer">CatVRF © 2026</div></div></body></html>'
     );
-})->name('login');
+})->middleware('web')->name('login');
 
 Route::post('/login', function (Request $request) {
     $validated = $request->validate([
@@ -78,7 +81,7 @@ Route::post('/login', function (Request $request) {
     $request->session()->regenerate();
 
     return redirect('/dashboard');
-});
+})->middleware('web');
 
 Route::get('/dashboard', function () {
     if (!Auth::check()) {
@@ -101,6 +104,18 @@ Route::get('/logout', function (Request $request) {
 
     return redirect('/login');
 });
+
+/**
+ * Analytics Dashboard Route
+ * Displays real-time heatmaps and analytics
+ */
+Route::get('/analytics/heatmaps', function () {
+    if (!Auth::check()) {
+        return redirect('/login');
+    }
+
+    return view('analytics.heatmaps');
+})->name('analytics.heatmaps');
 
 Route::get('/forgot-password', function () {
     return redirect('/login');
