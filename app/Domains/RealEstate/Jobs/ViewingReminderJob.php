@@ -19,11 +19,11 @@ final class ViewingReminderJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public function __construct(
-        public readonly ViewingAppointment $appointment,
-        public readonly string $correlationId,
+        public readonly ?ViewingAppointment $appointment = null,
+        public readonly string $correlationId = '',
     ) {
         $this->onQueue('notifications');
-        $this->tags(['realestate', 'reminders']);
+
     }
 
     public function retryUntil()
@@ -48,3 +48,4 @@ final class ViewingReminderJob implements ShouldQueue
         }
     }
 }
+

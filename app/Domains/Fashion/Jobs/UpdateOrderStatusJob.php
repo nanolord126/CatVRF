@@ -16,12 +16,11 @@ final class UpdateOrderStatusJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public function __construct(
-        private readonly int $orderId,
-        private readonly string $status,
-        private readonly string $correlationId,
+        private readonly int $orderId = 0,
+        private readonly string $status = '',
+        private readonly string $correlationId = '',
     ) {
         $this->onQueue('default');
-        $this->withTags(['fashion', 'order', "order_{$orderId}"]);
     }
 
     public function handle(): void

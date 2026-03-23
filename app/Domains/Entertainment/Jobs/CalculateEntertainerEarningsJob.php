@@ -15,10 +15,10 @@ final class CalculateEntertainerEarningsJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public function __construct(
-        public string $correlationId,
+        public ?string $correlationId = null,
     ) {
         $this->onQueue('default');
-        $this->tags(['entertainment', 'earnings', 'daily']);
+
     }
 
     public function handle(): void
@@ -75,3 +75,4 @@ final class CalculateEntertainerEarningsJob implements ShouldQueue
         return now()->addHours(6);
     }
 }
+

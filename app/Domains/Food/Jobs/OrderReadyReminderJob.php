@@ -27,7 +27,7 @@ final class OrderReadyReminderJob implements ShouldQueue
         private string $correlationId = '',
     ) {
         $this->onQueue('notifications');
-        $this->tags(['food', 'reminders']);
+
     }
 
     public function handle(): void
@@ -71,3 +71,4 @@ final class OrderReadyReminderJob implements ShouldQueue
         return now()->addHours(2);
     }
 }
+

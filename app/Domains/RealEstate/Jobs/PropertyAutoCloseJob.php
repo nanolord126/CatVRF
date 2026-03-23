@@ -19,11 +19,11 @@ final class PropertyAutoCloseJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public function __construct(
-        public readonly RentalListing $listing,
-        public readonly string $correlationId,
+        public readonly ?RentalListing $listing = null,
+        public readonly string $correlationId = '',
     ) {
         $this->onQueue('default');
-        $this->tags(['realestate', 'listings']);
+
     }
 
     public function retryUntil()
@@ -53,3 +53,4 @@ final class PropertyAutoCloseJob implements ShouldQueue
         }
     }
 }
+

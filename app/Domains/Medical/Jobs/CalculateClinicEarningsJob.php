@@ -19,7 +19,7 @@ final class CalculateClinicEarningsJob implements ShouldQueue
     use SerializesModels;
 
     public function __construct(
-        private readonly string $correlationId,
+        private readonly string $correlationId = '',
     ) {
         $this->onQueue('default');
     }

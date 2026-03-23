@@ -15,11 +15,11 @@ final class UpdateDeliverableStatusJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public function __construct(
-        public readonly int $deliverableId,
-        public readonly string $correlationId,
+        public readonly int $deliverableId = 0,
+        public readonly string $correlationId = '',
     ) {
         $this->onQueue('default');
-        $this->tags(['freelance', 'deliverable']);
+
     }
 
     public function handle(): void
@@ -48,3 +48,4 @@ final class UpdateDeliverableStatusJob implements ShouldQueue
         return now()->addHours(24);
     }
 }
+

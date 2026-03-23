@@ -24,9 +24,9 @@ final class CalculateAgencyEarningsJob implements ShouldQueue
     public int $maxExceptions = 3;
 
     public function __construct(
-        public int $agencyId,
-        public string $period = 'monthly',
-        public string $queue = 'travel',
+        public ?int $agencyId = null,
+        public ?string $period = 'monthly',
+        
     ) {}
 
     public function handle(): void

@@ -29,7 +29,7 @@ final class RideReminderJob implements ShouldQueue
         private string $correlationId = '',
     ) {
         $this->onQueue('notifications');
-        $this->tags(['taxi', 'reminders']);
+
     }
 
     public function handle(): void
@@ -74,3 +74,4 @@ final class RideReminderJob implements ShouldQueue
         return now()->addHours(1);
     }
 }
+

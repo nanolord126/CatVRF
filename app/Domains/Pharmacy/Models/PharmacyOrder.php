@@ -2,52 +2,58 @@
 
 namespace App\Domains\Pharmacy\Models;
 
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Traits\TenantScoped;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 final class PharmacyOrder extends Model
 {
-    use HasFactory, HasUuids, SoftDeletes, TenantScoped;
-
     protected $table = 'pharmacy_orders';
+
     protected $fillable = [
-        'tenant_id', 'business_group_id', 'uuid', 'correlation_id',
-        'prescription_id', 'client_id', 'medicines', 'total_price',
-        'delivery_date', 'status', 'idempotency_key', 'tags',
+        'tenant_id',
+        'user_id',
+        'pharmacy_id',
+        'uuid',
+        'total_amount',
+        'status',
+        'idempotency_key',
+        'tags',
+        'correlation_id'
     ];
+
     protected $casts = [
-        'medicines'     => 'json',
-        'total_price'   => 'int',
-        'delivery_date' => 'datetime',
-        'tags'          => 'json',
+        'total_amount' => 'integer',
+        'tags' => 'json'
     ];
-
-    public function prescription(): BelongsTo
-    {
-        return $this->belongsTo(Prescription::class, 'prescription_id');
-    }
-
-    public function isPending(): bool
-    {
-        return $this->status === 'pending';
-    }
-
-    public function isDelivered(): bool
-    {
-        return $this->status === 'delivered';
-    }
 
     protected static function booted(): void
     {
-        parent::booted();
-        static::addGlobalScope('tenant_id', function ($query) {
-            if (function_exists('tenant') && tenant('id')) {
-                $query->where('tenant_id', tenant('id'));
-            }
+        static::addGlobalScope('tenant_id', function (Builder $builder) {
+            $builder->where('tenant_id', tenant()->id ?? 0);
         });
+
+        static::creating(function (Model $model) {
+            $model->uuid = $model->uuid ?? (string) Str::uuid();
+            $model->tenant_id = $model->tenant_id ?? (tenant()->id ?? 0);
+        });
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function pharmacy(): BelongsTo
+    {
+        return $this->belongsTo(Pharmacy::class);
+    }
+
+    public function items(): HasMany
+    {
+        return $this->hasMany(PharmacyOrderItem::class, 'order_id');
     }
 }

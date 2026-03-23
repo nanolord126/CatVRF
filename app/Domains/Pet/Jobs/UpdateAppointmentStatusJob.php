@@ -15,15 +15,13 @@ final class UpdateAppointmentStatusJob implements ShouldQueue
     use InteractsWithQueue;
     use Queueable;
 
-    public $queue = 'default';
-
-    public $tags = ['pet', 'appointment'];
-
     public function __construct(
-        private readonly int $appointmentId,
-        private readonly string $newStatus,
-        private readonly string $correlationId,
-    ) {}
+        private readonly int $appointmentId = 0,
+        private readonly string $newStatus = '',
+        private readonly string $correlationId = '',
+    ) {
+        $this->onQueue('default');
+    }
 
     public function handle(): void
     {

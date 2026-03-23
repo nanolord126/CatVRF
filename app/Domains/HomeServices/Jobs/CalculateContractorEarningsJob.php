@@ -6,15 +6,15 @@ use App\Domains\HomeServices\Models\Contractor;
 use App\Domains\HomeServices\Models\ContractorEarning;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Foundation\Events\SerializesModels;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
 
 final class CalculateContractorEarningsJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, SerializesModels;
 
     public function __construct(
-        public string $correlationId
+        public ?string $correlationId = 'system',
     ) {}
 
     public function handle(): void

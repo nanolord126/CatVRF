@@ -137,6 +137,16 @@ Route::prefix('admin/marketplace/beauty')->group(function (): void {
     Route::get('/bookings', static fn () => $renderBeautyPage('Записи', 'booking-table'));
     Route::get('/bookings/create', static fn () => $renderBeautyPage('Создание записи', 'booking-table'));
 
-    Route::get('/stylists', static fn () => $renderBeautyPage('Мастера', 'stylist-table'));
+    Route::get('/stylists', static fn () => $renderBeautyPage('Салоны красоты — Мастера', 'stylist-table'));
     Route::get('/stylists/create', static fn () => $renderBeautyPage('Создание мастера', 'stylist-table'));
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// REGULATORY COMPLIANCE INTEGRATIONS
+// ══════════════════════════════════════════════════════════════════════════════
+Route::middleware(['auth'])->prefix('account/integrations')->group(function () {
+    Route::get('/', [\App\Http\Controllers\Account\ComplianceController::class, 'index'])->name('account.integrations.index');
+    Route::post('/{type}/test', [\App\Http\Controllers\Account\ComplianceController::class, 'test'])->name('account.integrations.test');
+    Route::post('/{type}/connect', [\App\Http\Controllers\Account\ComplianceController::class, 'connect'])->name('account.integrations.connect');
+    Route::delete('/{type}', [\App\Http\Controllers\Account\ComplianceController::class, 'disconnect'])->name('account.integrations.disconnect');
 });

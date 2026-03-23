@@ -19,8 +19,8 @@ final class SendClassReminderJob implements ShouldQueue
     use SerializesModels;
 
     public function __construct(
-        public int $scheduleId,
-        public string $correlationId,
+        public ?int $scheduleId = null,
+        public ?string $correlationId = null,
     ) {
         $this->onQueue('notifications');
     }

@@ -27,7 +27,7 @@ final class AutoCloseOrderJob implements ShouldQueue
         private string $correlationId = '',
     ) {
         $this->onQueue('default');
-        $this->tags(['food', 'orders']);
+
     }
 
     public function handle(): void
@@ -68,3 +68,4 @@ final class AutoCloseOrderJob implements ShouldQueue
         return now()->addHours(3);
     }
 }
+

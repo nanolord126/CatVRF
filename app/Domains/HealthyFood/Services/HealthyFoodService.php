@@ -2,191 +2,127 @@
 
 namespace App\Domains\HealthyFood\Services;
 
-use App\Domains\HealthyFood\Models\HealthyMeal;
 use App\Domains\HealthyFood\Models\DietPlan;
-use App\Domains\HealthyFood\Models\MealSubscription;
-use App\Domains\HealthyFood\Events\MealOrderCreated;
-use App\Domains\HealthyFood\Events\MealDelivered;
+use App\Domains\HealthyFood\Models\HealthyMeal;
+use App\Domains\HealthyFood\Models\HealthProfile;
 use App\Services\FraudControlService;
-use Illuminate\Support\Carbon;
+use App\Services\InventoryManagementService;
+use App\Services\RecommendationService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
-use RuntimeException;
 
 /**
- * HealthyFoodService — управление планами питания, подписками и доставкой.
- * КАНОН 2026: DI, DB::transaction, fraud-check, audit-лог, rate-limit.
+ * Сервис управления здоровым питанием и диетами — КАНОН 2026.
+ * Полная интеграция с профилем здоровья и ML-рекомендациями.
  */
 final class HealthyFoodService
 {
     public function __construct(
-        private readonly FraudControlService $fraudControlService,
+        private readonly FraudControlService $fraud,
+        private readonly InventoryManagementService $inventory,
+        private readonly RecommendationService $recommendation,
     ) {}
 
     /**
-     * Создать диетический план для клиента.
+     * Создание персонального плана питания на основе целей.
      */
-    public function createDietPlan(
-        int    $clientId,
-        string $name,
-        string $dietType,
-        int    $durationDays,
-        int    $dailyCalories,
-        int    $pricePerDay,
-        int    $tenantId,
-        ?array $schedule = null,
-    ): DietPlan {
+    public function createDietPlan(int $userId, array $goals, string $correlationId = ""): DietPlan
+    {
+        $correlationId = $correlationId ?: (string) Str::uuid();
 
-
-        $correlationId = Str::uuid()->toString();
-
-        $fraudResult = $this->fraudControlService->check(
-            userId:        $clientId,
-            operationType: 'diet_plan_create',
-            amount:        $pricePerDay * $durationDays,
-            correlationId: $correlationId,
-        );
-        if ($fraudResult['decision'] === 'block') {
-            throw new RuntimeException('Операция заблокирована системой безопасности.');
+        // 1. Rate Limiting — защита от спама генерации планов
+        if (RateLimiter::tooManyAttempts("healthy:plan:{$userId}", 2)) {
+            throw new \RuntimeException("План уже генерируется. Попробуйте завтра.", 429);
         }
+        RateLimiter::hit("healthy:plan:{$userId}", 86400);
 
-        return DB::transaction(function () use (
-            $clientId, $name, $dietType, $durationDays, $dailyCalories,
-            $pricePerDay, $tenantId, $correlationId, $schedule
-        ) {
+        return DB::transaction(function () use ($userId, $goals, $correlationId) {
+            // 2. Получение профиля здоровья (если нет — создаем базовый)
+            $profile = HealthProfile::firstOrCreate(["user_id" => $userId]);
+
+            // 3. Fraud Check (защита от злоупотреблений квотами AI)
+            $fraud = $this->fraud->check([
+                "user_id" => $userId,
+                "operation_type" => "diet_plan_create",
+                "correlation_id" => $correlationId,
+                "meta" => ["goals" => $goals]
+            ]);
+
+            if ($fraud["decision"] === "block") {
+                 throw new \RuntimeException("Запрос отклонен безопасностью.", 403);
+            }
+
+            // 4. Генерация плана через RecommendationService (AI)
+            $meals = $this->recommendation->getForUser($userId, "healthy_food", [
+                "goals" => $goals,
+                "restrictions" => $profile->allergens_json ?? []
+            ]);
+
+            // 5. Сохранение плана
             $plan = DietPlan::create([
-                'tenant_id'      => $tenantId,
-                'client_id'      => $clientId,
-                'correlation_id' => $correlationId,
-                'name'           => $name,
-                'diet_type'      => $dietType,
-                'duration_days'  => $durationDays,
-                'daily_calories' => $dailyCalories,
-                'price_per_day'  => $pricePerDay,
-                'schedule'       => $schedule,
-                'status'         => 'active',
-                'starts_at'      => today(),
-                'ends_at'        => today()->addDays($durationDays),
+                "uuid" => (string) Str::uuid(),
+                "tenant_id" => $profile->tenant_id,
+                "user_id" => $userId,
+                "correlation_id" => $correlationId,
+                "status" => "active",
+                "goals_json" => $goals,
+                "meals_json" => $meals->map(fn($m) => [
+                    "meal_id" => $m->id,
+                    "name" => $m->name,
+                    "calories" => $m->calories,
+                    "day" => $m->day_number ?? 1
+                ])->toArray(),
+                "tags" => ["goal:" . ($goals["type"] ?? "general"), "generated:ai"]
             ]);
 
-            Log::channel('audit')->info('HealthyFood: diet plan created', [
-                'correlation_id' => $correlationId,
-                'plan_id'        => $plan->id,
-                'client_id'      => $clientId,
-            ]);
+            Log::channel("audit")->info("HealthyFood: diet plan generated", ["user_id" => $userId, "plan_id" => $plan->id]);
 
             return $plan;
         });
     }
 
     /**
-     * Подписаться на доставку блюд.
+     * Списание блюда по плану (факт приема пищи).
      */
-    public function subscribe(
-        int    $clientId,
-        int    $tenantId,
-        string $deliveryAddress,
-        int    $pricePerDelivery,
-        string $frequency = 'weekly',
-        ?int   $dietPlanId = null,
-    ): MealSubscription {
+    public function logMealConsumption(int $userId, int $mealId, string $correlationId = ""): void
+    {
+        $correlationId = $correlationId ?: (string) Str::uuid();
+        
+        DB::transaction(function () use ($userId, $mealId, $correlationId) {
+            $meal = HealthyMeal::findOrFail($mealId);
 
+            // Списание ингредиентов
+            foreach ($meal->ingredients_json as $ingredient) {
+                $this->inventory->deductStock(
+                    itemId: $ingredient["item_id"],
+                    quantity: $ingredient["quantity"],
+                    reason: "User Meal Logged: {$mealId}",
+                    sourceType: "meal_log",
+                    sourceId: $userId,
+                    correlationId: $correlationId
+                );
+            }
 
-        $correlationId = Str::uuid()->toString();
-        $key           = "meal_sub:{$tenantId}:{$clientId}";
-
-        if (RateLimiter::tooManyAttempts($key, 5)) {
-            throw new RuntimeException('Слишком много попыток. Попробуйте позже.');
-        }
-        RateLimiter::hit($key, 3600);
-
-        $nextDate = match ($frequency) {
-            'biweekly' => Carbon::today()->addWeeks(2),
-            'monthly'  => Carbon::today()->addMonth(),
-            default    => Carbon::today()->addWeek(),
-        };
-
-        return DB::transaction(function () use (
-            $clientId, $tenantId, $deliveryAddress, $pricePerDelivery,
-            $frequency, $dietPlanId, $correlationId, $nextDate
-        ) {
-            $sub = MealSubscription::create([
-                'tenant_id'           => $tenantId,
-                'client_id'           => $clientId,
-                'diet_plan_id'        => $dietPlanId,
-                'correlation_id'      => $correlationId,
-                'frequency'           => $frequency,
-                'next_delivery_date'  => $nextDate,
-                'delivery_address'    => $deliveryAddress,
-                'price_per_delivery'  => $pricePerDelivery,
-                'status'              => 'active',
-            ]);
-
-            Log::channel('audit')->info('HealthyFood: subscription created', [
-                'correlation_id' => $correlationId,
-                'subscription_id'=> $sub->id,
-                'client_id'      => $clientId,
-            ]);
-
-            return $sub;
+            Log::channel("audit")->info("HealthyFood: meal consumed", ["user_id" => $userId, "meal_id" => $mealId]);
         });
     }
 
     /**
-     * Отметить доставку выполненной.
+     * Обновление профиля здоровья.
      */
-    public function markDelivered(int $subscriptionId): MealSubscription
+    public function updateHealthProfile(int $userId, array $data): void
     {
-
-
-        $correlationId = Str::uuid()->toString();
-
-        return DB::transaction(function () use ($subscriptionId, $correlationId) {
-            /** @var MealSubscription $sub */
-            $sub = MealSubscription::lockForUpdate()->findOrFail($subscriptionId);
-
-            $next = match ($sub->frequency) {
-                'biweekly' => Carbon::today()->addWeeks(2),
-                'monthly'  => Carbon::today()->addMonth(),
-                default    => Carbon::today()->addWeek(),
-            };
-
-            $sub->increment('total_deliveries');
-            $sub->update(['next_delivery_date' => $next]);
-
-            event(new MealDelivered($sub, $correlationId));
-
-            Log::channel('audit')->info('HealthyFood: meal delivered', [
-                'correlation_id'  => $correlationId,
-                'subscription_id' => $sub->id,
-                'total_deliveries'=> $sub->total_deliveries,
-            ]);
-
-            return $sub->fresh();
-        });
-    }
-
-    /**
-     * Список блюд по типу диеты.
-     */
-    public function getMealsByDiet(string $dietType, int $tenantId): \Illuminate\Database\Eloquent\Collection
-    {
-
-
-        $correlationId = Str::uuid()->toString();
-
-        Log::channel('audit')->info('HealthyFood: get meals by diet', [
-            'correlation_id' => $correlationId,
-            'diet_type'      => $dietType,
-            'tenant_id'      => $tenantId,
+        $profile = HealthProfile::where("user_id", $userId)->firstOrFail();
+        
+        $profile->update([
+            "allergens_json" => $data["allergens"] ?? $profile->allergens_json,
+            "weight_kg" => $data["weight"] ?? $profile->weight_kg,
+            "height_cm" => $data["height"] ?? $profile->height_cm,
+            "meta" => array_merge($profile->meta ?? [], ["last_updated" => now()->toIso8601String()])
         ]);
-
-        return HealthyMeal::where('tenant_id', $tenantId)
-            ->where('diet_type', $dietType)
-            ->where('status', 'active')
-            ->orderBy('name')
-            ->get();
+        
+        Log::channel("audit")->info("HealthyFood: profile updated", ["user_id" => $userId]);
     }
 }

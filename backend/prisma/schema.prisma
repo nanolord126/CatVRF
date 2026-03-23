@@ -1,0 +1,35 @@
+// prisma/schema.prisma
+
+// Регуляторные интеграции для тенанта/продавца
+model ComplianceIntegration {
+  id                    String   @id @default(uuid())
+  tenantId              String   @index // ID продавца в системе
+  type                  ComplianceType
+  inn                   String   @db.VarChar(12) // ИНН продавца (12 цифр)
+  encryptedApiTokens    String   @db.Text // AES-256-GCM зашифрованные токены
+  status                IntegrationStatus @default(PENDING)
+  lastCheckedAt         DateTime?
+  errorMessage          String?  @db.Text
+  isMandatory           Boolean  @default(false) // Автоматически выставляется по категориям
+  correlationId         String?  @db.VarChar(36)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@unique([tenantId, type])
+  @@map("compliance_integrations")
+}
+
+enum ComplianceType {
+  HONEST_SIGN // Честный ЗНАК
+  MDLP        // МДЛП (Лекарства / Аптеки)
+  MERCURY     // Меркурий / ВетИС
+  GRAIN       // ФГИС Зерно
+  VETERINARY  // Ветеринарные препараты
+}
+
+enum IntegrationStatus {
+  PENDING
+  CONNECTED
+  ERROR
+  REQUIRED // Если категория выбрана, но API не привязано
+}

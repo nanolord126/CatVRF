@@ -16,19 +16,17 @@ final class UpdateShipmentStatusJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public function __construct(
-        private readonly int $shipmentId,
-        private readonly string $status,
-        private readonly string $correlationId,
+        private readonly int $shipmentId = 0,
+        private readonly string $status = '',
+        private readonly string $correlationId = '',
     ) {
         $this->onQueue('default');
-        $this->withTags(['logistics', 'shipment', "shipment_{$shipmentId}"]);
     }
 
     public function handle(): void
     {
         try {
             $shipment = Shipment::find($this->shipmentId);
-
             if (!$shipment) {
                 Log::channel('audit')->warning('Shipment not found for status update', [
                     'shipment_id' => $this->shipmentId,

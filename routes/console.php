@@ -235,10 +235,10 @@ Schedule::call(fn () => SendAppointmentRemindersJob::dispatch())
 //     ->name('freelance.calculate-earnings')
 //     ->withoutOverlapping(60);
 
-Schedule::job(new UpdateDeliverableStatusJob())
-    ->hourly()
-    ->name('freelance.update-deliverable-status')
-    ->withoutOverlapping(55);
+// Schedule::job(new UpdateDeliverableStatusJob())
+//     ->hourly()
+//     ->name('freelance.update-deliverable-status')
+//     ->withoutOverlapping(55);
 
 // ══════════════════════════════════════════════════════════════════════════════
 // HOME SERVICES

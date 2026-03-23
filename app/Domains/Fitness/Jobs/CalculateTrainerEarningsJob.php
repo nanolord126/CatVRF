@@ -20,7 +20,7 @@ final class CalculateTrainerEarningsJob implements ShouldQueue
     use Queueable;
     use SerializesModels;
 
-    public function __construct(public string $correlationId)
+    public function __construct(public ?string $correlationId = null)
     {
         $this->onQueue('default');
     }

@@ -16,11 +16,11 @@ final class SendEventReminderJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public function __construct(
-        public int $scheduleId,
-        public string $correlationId,
+        public ?int $scheduleId = null,
+        public ?string $correlationId = null,
     ) {
         $this->onQueue('notifications');
-        $this->tags(['entertainment', 'reminders', "schedule_{$scheduleId}"]);
+
     }
 
     public function handle(): void
@@ -63,3 +63,4 @@ final class SendEventReminderJob implements ShouldQueue
         return now()->addHours(4);
     }
 }
+

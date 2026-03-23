@@ -5,17 +5,17 @@ namespace App\Domains\HomeServices\Jobs;
 use App\Domains\HomeServices\Models\ServiceJob;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Foundation\Events\SerializesModels;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\Middleware\RateLimits;
+use Illuminate\Queue\SerializesModels;
 
 final class SendJobReminderJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, SerializesModels;
 
     public function __construct(
-        public int $jobId,
-        public string $correlationId
+        public int $jobId = 0,
+        public ?string $correlationId = 'system',
     ) {}
 
     public function handle(): void

@@ -17,15 +17,13 @@ final class CalculateClinicEarningsJob implements ShouldQueue
     use InteractsWithQueue;
     use Queueable;
 
-    public $queue = 'default';
-
-    public $tags = ['pet', 'earnings'];
-
     public function __construct(
-        private readonly int $clinicId,
-        private readonly \DateTime $month,
-        private readonly string $correlationId,
-    ) {}
+        private readonly int $clinicId = 0,
+        private readonly ?\DateTime $month = null,
+        private readonly string $correlationId = '',
+    ) {
+        $this->onQueue('default');
+    }
 
     public function handle(): void
     {

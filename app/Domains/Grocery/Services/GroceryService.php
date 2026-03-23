@@ -2,45 +2,174 @@
 
 namespace App\Domains\Grocery\Services;
 
-use App\Services\{FraudControlService, WalletService, PaymentService};
-use App\Domains\Grocery\Models\{GroceryStore, GroceryOrder};
-use Illuminate\Support\Facades\{DB, Log};
+use App\Domains\Grocery\Models\GroceryOrder;
+use App\Domains\Grocery\Models\GroceryProduct;
+use App\Domains\Grocery\Models\GroceryStore;
+use App\Services\FraudControlService;
+use App\Services\InventoryManagementService;
+use App\Services\PaymentService;
+use App\Services\WalletService;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 
+/**
+ * Сервис управления заказами супермаркета — КАНОН 2026.
+ * Полная реализация с интеграцией всех систем.
+ */
 final class GroceryService
 {
     public function __construct(
         private readonly FraudControlService $fraud,
-        private readonly WalletService $wallet,
+        private readonly InventoryManagementService $inventory,
         private readonly PaymentService $payment,
+        private readonly WalletService $wallet,
     ) {}
 
-    public function createOrder(array $data, bool $isB2B): array
+    /**
+     * Создание заказа в супермаркете.
+     */
+    public function createOrder(int $userId, int $storeId, array $items, string $address, string $correlationId = ""): GroceryOrder
     {
-        $cid = Str::uuid()->toString();
-        Log::channel('audit')->info('Grocery order', compact('cid', 'isB2B'));
-        $this->fraud->check(0, 'grocery_order', 0, null, null, $cid);
+        $correlationId = $correlationId ?: (string) Str::uuid();
 
-        return DB::transaction(function () use ($data, $isB2B, $cid) {
-            $store = GroceryStore::findOrFail($data['store_id']);
-            $total = collect($data['items'])->sum('price');
-            $finalPrice = $isB2B ? $total * 0.88 : $total;
+        // 1. Rate Limiting
+        $rlKey = "grocery:order:{$userId}";
+        if (RateLimiter::tooManyAttempts($rlKey, 5)) {
+            Log::channel("fraud_alert")->warning("Grocery: rate limit hit", ["user_id" => $userId, "correlation_id" => $correlationId]);
+            throw new \RuntimeException("Слишком много попыток заказа. Попробуйте позже.", 429);
+        }
+        RateLimiter::hit($rlKey, 3600);
 
-            $order = GroceryOrder::create([
-                'tenant_id' => tenant()->id,
-                'store_id' => $store->id,
-                'user_id' => $data['user_id'] ?? null,
-                'inn' => $data['inn'] ?? null,
-                'business_card_id' => $data['business_card_id'] ?? null,
-                'items' => $data['items'],
-                'total_price' => $finalPrice,
-                'delivery_address' => $data['delivery_address'],
-                'delivery_slot' => $data['delivery_slot'],
-                'status' => 'pending',
-                'correlation_id' => $cid,
+        return DB::transaction(function () use ($userId, $storeId, $items, $address, $correlationId) {
+            $store = GroceryStore::findOrFail($storeId);
+            $totalAmountKopecks = 0;
+            $processedItems = [];
+
+            // 2. Валидация остатков и расчет суммы
+            foreach ($items as $item) {
+                $product = GroceryProduct::where("store_id", $storeId)->where("uuid", $item["uuid"])->lockForUpdate()->firstOrFail();
+
+                if ($product->current_stock < $item["quantity"]) {
+                    throw new \RuntimeException("Недостаточно товара: {$product->name}", 422);
+                }
+
+                $totalAmountKopecks += $product->price_kopecks * $item["quantity"];
+                $processedItems[] = [
+                    "product_id" => $product->id,
+                    "name" => $product->name,
+                    "sku" => $product->sku,
+                    "quantity" => $item["quantity"],
+                    "price_at_purchase" => $product->price_kopecks,
+                ];
+            }
+
+            // 3. Fraud Check
+            $fraud = $this->fraud->check([
+                "user_id" => $userId,
+                "operation_type" => "grocery_order_create",
+                "amount" => $totalAmountKopecks,
+                "correlation_id" => $correlationId,
+                "meta" => ["items_count" => count($items), "store_id" => $storeId]
             ]);
 
-            return ['order' => $order, 'correlation_id' => $cid];
+            if ($fraud["decision"] === "block") {
+                Log::channel("audit")->warning("Grocery: fraud block", ["user_id" => $userId, "score" => $fraud["score"], "correlation_id" => $correlationId]);
+                throw new \RuntimeException("Заказ заблокирован службой безопасности.", 403);
+            }
+
+            // 4. Создание заказа
+            $order = GroceryOrder::create([
+                "tenant_id" => $store->tenant_id,
+                "business_group_id" => $store->business_group_id,
+                "user_id" => $userId,
+                "store_id" => $storeId,
+                "uuid" => (string) Str::uuid(),
+                "correlation_id" => $correlationId,
+                "status" => "pending",
+                "total_amount" => $totalAmountKopecks,
+                "delivery_address" => $address,
+                "items_json" => $processedItems,
+                "tags" => ["source:web", "vertical:grocery"]
+            ]);
+
+            // 5. Резервирование остатков
+            foreach ($processedItems as $pItem) {
+                $this->inventory->reserveStock(
+                    itemId: $pItem["product_id"],
+                    quantity: $pItem["quantity"],
+                    sourceType: "grocery_order",
+                    sourceId: $order->id,
+                    correlationId: $correlationId
+                );
+            }
+
+            Log::channel("audit")->info("Grocery: order created", [
+                "order_id" => $order->id,
+                "user_id" => $userId,
+                "total" => $totalAmountKopecks,
+                "correlation_id" => $correlationId
+            ]);
+
+            return $order;
+        });
+    }
+
+    /**
+     * Подтверждение сборки заказа.
+     */
+    public function finalizeOrder(int $orderId, string $correlationId = ""): void
+    {
+        $correlationId = $correlationId ?: (string) Str::uuid();
+        $order = GroceryOrder::findOrFail($orderId);
+
+        DB::transaction(function () use ($order, $correlationId) {
+            $order->lockForUpdate();
+            $order->update(["status" => "ready_for_delivery"]);
+
+            // Списание остатков
+            foreach ($order->items_json as $item) {
+                $this->inventory->deductStock(
+                    itemId: $item["product_id"],
+                    quantity: $item["quantity"],
+                    reason: "Grocery order finalized: {$order->id}",
+                    sourceType: "grocery_order",
+                    sourceId: $order->id,
+                    correlationId: $correlationId
+                );
+            }
+
+            Log::channel("audit")->info("Grocery: order finalized", ["order_id" => $order->id, "correlation_id" => $correlationId]);
+        });
+    }
+
+    /**
+     * Синхронизация остатков с торговой системой.
+     */
+    public function syncStock(int $storeId, array $stockData): void
+    {
+        $correlationId = (string) Str::uuid();
+
+        DB::transaction(function () use ($storeId, $stockData, $correlationId) {
+            foreach ($stockData as $data) {
+                $product = GroceryProduct::where("store_id", $storeId)->where("sku", $data["sku"])->first();
+                if ($product) {
+                    $diff = $data["quantity"] - $product->current_stock;
+                    $product->update(["current_stock" => $data["quantity"]]);
+
+                    if ($diff != 0) {
+                        $this->inventory->addStock(
+                            itemId: $product->id,
+                            quantity: $diff,
+                            reason: "External Stock Sync",
+                            sourceType: "external_sync",
+                            sourceId: $storeId,
+                            correlationId: $correlationId
+                        );
+                    }
+                }
+            }
         });
     }
 }

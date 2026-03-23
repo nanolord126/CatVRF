@@ -17,13 +17,13 @@ final class ClassReminderJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    private string $correlationId;
+    private ?string $correlationId;
 
     public function __construct(string $correlationId = '')
     {
         $this->correlationId = $correlationId;
         $this->onQueue('notifications');
-        $this->tags(['sports', 'reminders']);
+
     }
 
     public function handle(): void
@@ -87,3 +87,4 @@ final class ClassReminderJob implements ShouldQueue
         return now()->addHours(6);
     }
 }
+

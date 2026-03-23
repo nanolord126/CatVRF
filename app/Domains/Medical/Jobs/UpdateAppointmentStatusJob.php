@@ -19,9 +19,9 @@ final class UpdateAppointmentStatusJob implements ShouldQueue
     use SerializesModels;
 
     public function __construct(
-        private readonly int $appointmentId,
-        private readonly string $status,
-        private readonly string $correlationId,
+        private readonly int $appointmentId = 0,
+        private readonly string $status = '',
+        private readonly string $correlationId = '',
     ) {
         $this->onQueue('default');
     }

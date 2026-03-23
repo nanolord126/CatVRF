@@ -51,4 +51,16 @@ final class BeautyProduct extends Model
     {
         return $this->belongsTo(BeautySalon::class, 'salon_id');
     }
+
+    /**
+     * Check if product is legally sellable.
+     */
+    public function isSellable(): bool
+    {
+        if ($this->deleted_at !== null) return false;
+
+        $compliance = app(\App\Services\Compliance\ComplianceRequirementService::class);
+        
+        return ! $compliance->isBlocked($this);
+    }
 }

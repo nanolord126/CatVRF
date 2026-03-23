@@ -2,42 +2,56 @@
 
 namespace App\Domains\Pharmacy\Models;
 
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Traits\TenantScoped;
 
+/**
+ * Модель лекарственного средства — КАНОН 2026.
+ */
 final class Medicine extends Model
 {
-    use HasFactory, HasUuids, SoftDeletes, TenantScoped;
+    use HasFactory, SoftDeletes, TenantScoped;
 
-    protected $table = 'medicines';
+    protected $table = "pharmacy_medicines";
+
     protected $fillable = [
-        'tenant_id', 'business_group_id', 'uuid', 'correlation_id',
-        'name', 'manufacturer', 'type', 'strength_mg', 'form',
-        'price', 'current_stock', 'prescription_required',
-        'vet_certificate_num', 'expiry_date', 'batch_num',
-        'storage_temp_min', 'storage_temp_max', 'photo_url', 'status', 'tags',
-    ];
-    protected $casts = [
-        'price'                 => 'int',
-        'current_stock'         => 'int',
-        'strength_mg'           => 'float',
-        'prescription_required' => 'boolean',
-        'expiry_date'           => 'date',
-        'storage_temp_min'      => 'int',
-        'storage_temp_max'      => 'int',
-        'tags'                  => 'json',
+        "uuid",
+        "tenant_id",
+        "business_group_id",
+        "correlation_id",
+        "name",
+        "sku",
+        "barcode",
+        "description",
+        "active_ingredient",
+        "dosage",
+        "form_factor",
+        "is_prescription_required",
+        "is_refrigerated",
+        "price_kopecks",
+        "current_stock",
+        "min_stock_threshold",
+        "tags",
+        "meta"
     ];
 
-    protected static function booted(): void
+    protected $casts = [
+        "is_prescription_required" => "boolean",
+        "is_refrigerated" => "boolean",
+        "price_kopecks" => "integer",
+        "current_stock" => "integer",
+        "tags" => "array",
+        "meta" => "array",
+    ];
+
+    /**
+     * Глобальный скопинг для тенанта уже в трейте.
+     */
+     
+    public function pharmacy(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
-        parent::booted();
-        static::addGlobalScope('tenant_id', function ($query) {
-            if (function_exists('tenant') && tenant('id')) {
-                $query->where('tenant_id', tenant('id'));
-            }
-        });
+        return $this->belongsTo(Pharmacy::class);
     }
 }

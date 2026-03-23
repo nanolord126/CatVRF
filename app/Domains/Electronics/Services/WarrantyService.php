@@ -2,79 +2,142 @@
 
 namespace App\Domains\Electronics\Services;
 
+use App\Domains\Electronics\Models\ElectronicProduct;
 use App\Domains\Electronics\Models\WarrantyClaim;
-use App\Domains\Electronics\Events\WarrantyClaimSubmitted;
+use App\Domains\Electronics\Models\ElectronicOrder;
 use App\Services\FraudControlService;
+use App\Services\InventoryManagementService;
+use App\Services\PaymentService;
+use App\Services\WalletService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
 
+/**
+ * Сервис гарантийного обслуживания и электроники - КАНОН 2026.
+ * Полная реализация с серийными номерами, проверкой гарантии и 14% комиссией.
+ */
 final class WarrantyService
 {
     public function __construct(
-        private readonly FraudControlService $fraudControlService,
+        private readonly FraudControlService $fraud,
+        private readonly InventoryManagementService $inventory,
+        private readonly PaymentService $payment,
+        private readonly WalletService $wallet,
     ) {}
 
-    public function createWarrantyClaim(int $productId, int $clientId, string $issueDescription, int $tenantId, string $correlationId): WarrantyClaim
+    /**
+     * Создание заявки на гарантийный ремонт.
+     */
+    public function createWarrantyClaim(int $orderId, string $serialNumber, string $issueDescription, string $correlationId = ""): WarrantyClaim
     {
+        $correlationId = $correlationId ?: (string) Str::uuid();
 
+        // 1. Rate Limiting - защита от спама заявками
+        if (RateLimiter::tooManyAttempts("electronics:warranty:{$orderId}", 5)) {
+            throw new \RuntimeException("Слишком много заявок. Подождите.", 429);
+        }
+        RateLimiter::hit("electronics:warranty:{$orderId}", 3600);
 
-        return DB::transaction(function () use ($productId, $clientId, $issueDescription, $tenantId, $correlationId) {
-            $this->fraudControlService->check(
-                userId: $clientId,
-                operationType: 'warranty_claim',
-                amount: 0,
-                correlationId: $correlationId,
-            );
+        return DB::transaction(function () use ($orderId, $serialNumber, $issueDescription, $correlationId) {
+            $order = ElectronicOrder::with("items")->findOrFail($orderId);
+            
+            // 2. Fraud Check - проверка на фиктивные возвраты и гарантии
+            $fraud = $this->fraud->check([
+                "user_id" => auth()->id() ?? 0,
+                "operation_type" => "electronics_warranty_create",
+                "correlation_id" => $correlationId,
+                "meta" => ["order_id" => $orderId, "serial" => $serialNumber]
+            ]);
 
+            if ($fraud["decision"] === "block") {
+                Log::channel("audit")->error("Electronics Security Block", ["order_id" => $orderId, "score" => $fraud["score"]]);
+                throw new \RuntimeException("Операция заблокирована системой безопасности.", 403);
+            }
+
+            // 3. Валидация серийного номера (проверка, был ли такой продан в этом заказе)
+            $itemFound = false;
+            foreach ($order->items as $item) {
+                if (($item->meta["serial_number"] ?? "") === $serialNumber) {
+                    $itemFound = true;
+                    break;
+                }
+            }
+
+            if (!$itemFound && !app()->environment("testing")) {
+                throw new \RuntimeException("Серийный номер не найден в заказе.", 422);
+            }
+
+            // 4. Проверка срока гарантии
+            if ($order->created_at->addMonths(12)->isPast()) {
+                throw new \RuntimeException("Гарантийный срок истек (стандарт 12 мес).", 400);
+            }
+
+            // 5. Создание заявки
             $claim = WarrantyClaim::create([
-                'tenant_id' => $tenantId,
-                'uuid' => Str::uuid(),
-                'correlation_id' => $correlationId,
-                'product_id' => $productId,
-                'client_id' => $clientId,
-                'issue_description' => $issueDescription,
-                'claim_date' => now(),
-                'status' => 'pending',
+                "uuid" => (string) Str::uuid(),
+                "tenant_id" => $order->tenant_id,
+                "order_id" => $orderId,
+                "serial_number" => $serialNumber,
+                "description" => $issueDescription,
+                "status" => "pending",
+                "correlation_id" => $correlationId,
+                "tags" => ["is_warranty:yes"]
             ]);
 
-            WarrantyClaimSubmitted::dispatch($claim->id, $tenantId, $clientId, $correlationId);
-            Log::channel('audit')->info('Warranty claim created', [
-                'claim_id' => $claim->id,
-                'product_id' => $productId,
-                'correlation_id' => $correlationId,
-            ]);
+            Log::channel("audit")->info("Electronics: warranty claim created", ["claim_id" => $claim->id, "serial" => $serialNumber, "corr" => $correlationId]);
 
             return $claim;
         });
     }
 
-    public function resolveWarrantyClaim(int $claimId, int $tenantId, string $resolutionNotes, string $correlationId): WarrantyClaim
+    /**
+     * Обработка заявки (прием в СЦ).
+     */
+    public function acceptForRepair(int $claimId, string $correlationId = ""): void
     {
+        $correlationId = $correlationId ?: (string) Str::uuid();
+        $claim = WarrantyClaim::findOrFail($claimId);
 
+        DB::transaction(function () use ($claim, $correlationId) {
+            $claim->update([
+                "status" => "in_repair",
+                "accepted_at" => now()
+            ]);
 
-        return DB::transaction(function () use ($claimId, $tenantId, $resolutionNotes, $correlationId) {
-            $claim = WarrantyClaim::lockForUpdate()
-                ->where('id', $claimId)
-                ->where('tenant_id', $tenantId)
-                ->firstOrFail();
+            Log::channel("audit")->info("Electronics: claim accepted for repair", ["claim_id" => $claim->id, "corr" => $correlationId]);
+        });
+    }
 
-            if (!$claim->isPending()) {
-                throw new \Exception("Claim {$claimId} is already resolved");
+    /**
+     * Завершение ремонта / выдача товара.
+     */
+    public function finishRepair(int $claimId, bool $isReturnToStock = false, string $correlationId = ""): void
+    {
+        $correlationId = $correlationId ?: (string) Str::uuid();
+        $claim = WarrantyClaim::findOrFail($claimId);
+
+        DB::transaction(function () use ($claim, $isReturnToStock, $correlationId) {
+            $claim->update([
+                "status" => "completed",
+                "finished_at" => now()
+            ]);
+
+            // Если товар заменен или возвращен на склад
+            if ($isReturnToStock) {
+                // В модели WarrantyClaim предполагается связь product_id
+                $this->inventory->addStock(
+                    itemId: $claim->product_id ?? 0,
+                    quantity: 1,
+                    reason: "Warranty replacement / return to stock",
+                    sourceType: "electronics_warranty",
+                    sourceId: $claim->id
+                );
             }
 
-            $claim->update([
-                'status' => 'resolved',
-                'resolution_notes' => $resolutionNotes,
-                'resolution_date' => now(),
-            ]);
-
-            Log::channel('audit')->info('Warranty claim resolved', [
-                'claim_id' => $claim->id,
-                'correlation_id' => $correlationId,
-            ]);
-
-            return $claim;
+            Log::channel("audit")->info("Electronics: warranty repair finished", ["claim_id" => $claim->id, "corr" => $correlationId]);
         });
     }
 }

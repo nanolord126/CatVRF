@@ -17,11 +17,11 @@ final class CalculateFreelancerEarningsJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public function __construct(
-        public readonly int $freelancerId,
-        public readonly string $correlationId,
+        public readonly int $freelancerId = 0,
+        public readonly string $correlationId = '',
     ) {
         $this->onQueue('default');
-        $this->tags(['freelance', 'earnings']);
+
     }
 
     public function handle(): void
@@ -63,3 +63,4 @@ final class CalculateFreelancerEarningsJob implements ShouldQueue
         return now()->addHours(24);
     }
 }
+

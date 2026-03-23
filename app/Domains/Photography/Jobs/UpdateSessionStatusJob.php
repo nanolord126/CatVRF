@@ -21,9 +21,9 @@ class UpdateSessionStatusJob implements ShouldQueue
 	public int $timeout = 60;
 
 	public function __construct(
-		public readonly PhotoSession $session,
-		public readonly string $newStatus,
-		public readonly string $correlationId
+		public readonly ?PhotoSession $session = null,
+		public readonly string $newStatus = '',
+		public readonly string $correlationId = '',
 	) {}
 
 	public function handle(): void

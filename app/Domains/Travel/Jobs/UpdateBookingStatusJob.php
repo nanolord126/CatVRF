@@ -23,10 +23,10 @@ final class UpdateBookingStatusJob implements ShouldQueue
     public int $maxExceptions = 3;
 
     public function __construct(
-        public int $bookingId,
-        public string $newStatus,
-        public string $correlationId,
-        public string $queue = 'travel',
+        public ?int $bookingId = null,
+        public ?string $newStatus = null,
+        public ?string $correlationId = null,
+        
     ) {}
 
     public function handle(): void

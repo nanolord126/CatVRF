@@ -16,15 +16,15 @@ final class BookingConfirmationJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    private int $bookingId;
-    private string $correlationId;
+    private ?int $bookingId;
+    private ?string $correlationId;
 
-    public function __construct(int $bookingId, string $correlationId = '')
+    public function __construct(int $bookingId = 0, string $correlationId = '')
     {
         $this->bookingId = $bookingId;
         $this->correlationId = $correlationId;
         $this->onQueue('bookings');
-        $this->tags(['sports', 'bookings']);
+
     }
 
     public function handle(BookingService $service): void
@@ -57,3 +57,7 @@ final class BookingConfirmationJob implements ShouldQueue
         return now()->addHours(1);
     }
 }
+
+
+
+

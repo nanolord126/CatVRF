@@ -17,10 +17,9 @@ final class CalculateStoreEarningsJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public function __construct(
-        private readonly string $correlationId,
+        private readonly string $correlationId = '',
     ) {
         $this->onQueue('default');
-        $this->withTags(['fashion', 'earnings', 'daily']);
     }
 
     public function handle(): void

@@ -16,15 +16,15 @@ final class TicketGenerationJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    private int $ticketSaleId;
-    private string $correlationId;
+    private ?int $ticketSaleId;
+    private ?string $correlationId;
 
-    public function __construct(int $ticketSaleId, string $correlationId = '')
+    public function __construct(int $ticketSaleId = null, string $correlationId = '')
     {
         $this->ticketSaleId = $ticketSaleId;
         $this->correlationId = $correlationId;
         $this->onQueue('tickets');
-        $this->tags(['tickets', 'generation']);
+
     }
 
     public function handle(TicketGenerationService $service): void
@@ -64,3 +64,6 @@ final class TicketGenerationJob implements ShouldQueue
         return now()->addHours(1);
     }
 }
+
+
+

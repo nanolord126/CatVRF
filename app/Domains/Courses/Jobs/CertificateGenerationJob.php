@@ -16,10 +16,10 @@ final class CertificateGenerationJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    private int $certificateId;
-    private string $correlationId;
+    private ?int $certificateId;
+    private ?string $correlationId;
 
-    public function __construct(int $certificateId, string $correlationId = '')
+    public function __construct(int $certificateId = null, string $correlationId = '')
     {
         $this->certificateId = $certificateId;
         $this->correlationId = $correlationId;
@@ -57,3 +57,5 @@ final class CertificateGenerationJob implements ShouldQueue
         return now()->addHours(24)->toDateTime();
     }
 }
+
+

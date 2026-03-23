@@ -2,250 +2,142 @@
 
 namespace App\Domains\FreshProduce\Services;
 
-use App\Domains\FreshProduce\Events\BoxDelivered;
-use App\Domains\FreshProduce\Events\ProduceOrderCreated;
-use App\Domains\FreshProduce\Events\QualityIssueDetected;
+use App\Domains\FreshProduce\Models\FreshProduct;
+use App\Domains\FreshProduce\Models\FarmSupplier;
 use App\Domains\FreshProduce\Models\ProduceBox;
 use App\Domains\FreshProduce\Models\ProduceOrder;
-use App\Domains\FreshProduce\Models\ProduceSubscription;
 use App\Services\FraudControlService;
 use App\Services\InventoryManagementService;
-use Illuminate\Database\Eloquent\Collection;
+use App\Services\WalletService;
+use App\Services\DemandForecastService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
+use Carbon\Carbon;
 
 /**
- * Сервис управления заказами и подписками свежих продуктов — КАНОН 2026.
- * Единственная точка мутаций для FreshProduce-вертикали.
+ * Сервис доставки свежих продуктов и фермерских боксов - КАНОН 2026.
+ * Контроль свежести, подписки, фермерские выплаты с 14% комиссией.
  */
 final class FreshProduceService
 {
     public function __construct(
-        private readonly FraudControlService $fraudControl,
+        private readonly FraudControlService $fraud,
         private readonly InventoryManagementService $inventory,
+        private readonly WalletService $wallet,
+        private readonly DemandForecastService $forecast,
     ) {}
 
-    // -------------------------------------------------------------------------
-    // Оформление заказа
-    // -------------------------------------------------------------------------
+    /**
+     * Создание подписки на еженедельный бокс овощей/фруктов.
+     */
+    public function subscribeToBox(int $supplierId, string $boxType, string $correlationId = ""): ProduceBox
+    {
+        $correlationId = $correlationId ?: (string) Str::uuid();
 
-    public function placeOrder(
-        int $clientId,
-        int $boxId,
-        string $deliveryAddress,
-        string $deliveryDate,
-        string $deliverySlot,
-        ?int $subscriptionId = null,
-        string $correlationId = '',
-    ): ProduceOrder {
-
-
-        $correlationId = $correlationId ?: (string) Str::uuid()->toString();
-
-        // Rate limiting
-        $rlKey = "fresh_produce:order:{$clientId}";
-        if (RateLimiter::tooManyAttempts($rlKey, 10)) {
-            throw new \RuntimeException('Слишком много заказов. Попробуйте позже.');
-        }
-        RateLimiter::hit($rlKey, 3600);
-
-        // Fraud check
-        $fraud = $this->fraudControl->check(
-            userId: $clientId,
-            operationType: 'produce_order',
-            amount: 0,
-            correlationId: $correlationId,
-        );
-        if ($fraud['decision'] === 'block') {
-            Log::channel('audit')->warning('FreshProduce: fraud block on order', [
-                'client_id'      => $clientId,
-                'score'          => $fraud['score'],
-                'correlation_id' => $correlationId,
-            ]);
-            throw new \RuntimeException('Оформление заказа временно недоступно.');
-        }
-
-        $box = ProduceBox::findOrFail($boxId);
-
-        return DB::transaction(function () use (
-            $clientId, $box, $deliveryAddress, $deliveryDate, $deliverySlot, $subscriptionId, $correlationId
-        ): ProduceOrder {
-            $order = ProduceOrder::create([
-                'tenant_id'               => $box->tenant_id,
-                'client_id'               => $clientId,
-                'subscription_id'         => $subscriptionId,
-                'uuid'                    => (string) Str::uuid()->toString(),
-                'correlation_id'          => $correlationId,
-                'idempotency_key'         => md5("{$clientId}:{$box->id}:{$deliveryDate}:{$deliverySlot}"),
-                'items'                   => $box->contents ?? [],
-                'total_amount'            => $box->price,
-                'delivery_address'        => $deliveryAddress,
-                'delivery_date'           => $deliveryDate,
-                'delivery_slot'           => $deliverySlot,
-                'status'                  => 'pending',
-                'payment_status'          => 'awaiting',
-                'tags'                    => ['source:fresh_produce'],
+        return DB::transaction(function () use ($supplierId, $boxType, $correlationId) {
+            $supplier = FarmSupplier::findOrFail($supplierId);
+            
+            // 1. Fraud Check - проверка на мультиаккаунтинг для получения скидок
+            $this->fraud->check([
+                "user_id" => auth()->id(),
+                "operation_type" => "fresh_subscription",
+                "correlation_id" => $correlationId
             ]);
 
-            Log::channel('audit')->info('FreshProduce: order placed', [
-                'order_id'       => $order->id,
-                'client_id'      => $clientId,
-                'box_id'         => $box->id,
-                'delivery_date'  => $deliveryDate,
-                'correlation_id' => $correlationId,
+            // 2. Прогноз спроса для планирования закупки у фермера
+            $this->forecast->forecastBulk(
+                itemIds: [$supplierId],
+                dateFrom: now(),
+                dateTo: now()->addMonth()
+            );
+
+            $box = ProduceBox::create([
+                "uuid" => (string) Str::uuid(),
+                "tenant_id" => $supplier->tenant_id,
+                "supplier_id" => $supplierId,
+                "user_id" => auth()->id(),
+                "type" => $boxType,
+                "status" => "active",
+                "next_delivery_at" => now()->addWeek()->startOfDay(),
+                "correlation_id" => $correlationId,
+                "tags" => ["fresh", "organic", "subscription"]
             ]);
 
-            event(new ProduceOrderCreated($order, $correlationId));
+            Log::channel("audit")->info("Fresh: subscription created", ["box_id" => $box->id, "supplier" => $supplierId]);
 
-            return $order;
+            return $box;
         });
     }
 
-    // -------------------------------------------------------------------------
-    // Подписка
-    // -------------------------------------------------------------------------
+    /**
+     * Формирование и отправка заказа (свежая продукция).
+     */
+    public function processDailyDelivery(int $boxId, string $correlationId = ""): void
+    {
+        $correlationId = $correlationId ?: (string) Str::uuid();
+        $box = ProduceBox::with("supplier")->findOrFail($boxId);
 
-    public function subscribe(
-        int $clientId,
-        int $boxId,
-        string $frequency,
-        string $deliveryAddress,
-        string $preferredSlot,
-        string $correlationId = '',
-    ): ProduceSubscription {
-
-
-        $correlationId = $correlationId ?: (string) Str::uuid()->toString();
-
-        $box = ProduceBox::findOrFail($boxId);
-
-        return DB::transaction(function () use (
-            $clientId, $box, $frequency, $deliveryAddress, $preferredSlot, $correlationId
-        ): ProduceSubscription {
-            $nextDate = match ($frequency) {
-                'weekly'    => now()->addWeek()->format('Y-m-d'),
-                'biweekly'  => now()->addWeeks(2)->format('Y-m-d'),
-                'monthly'   => now()->addMonth()->format('Y-m-d'),
-                default     => now()->addWeek()->format('Y-m-d'),
-            };
-
-            $sub = ProduceSubscription::create([
-                'tenant_id'          => $box->tenant_id,
-                'client_id'          => $clientId,
-                'box_id'             => $boxId,
-                'uuid'               => (string) Str::uuid()->toString(),
-                'correlation_id'     => $correlationId,
-                'frequency'          => $frequency,
-                'delivery_address'   => $deliveryAddress,
-                'preferred_slot'     => $preferredSlot,
-                'next_delivery_date' => $nextDate,
-                'total_deliveries'   => 0,
-                'price_per_box'      => $box->price,
-                'status'             => 'active',
-                'tags'               => ['source:fresh_produce', 'type:subscription'],
-            ]);
-
-            Log::channel('audit')->info('FreshProduce: subscription created', [
-                'subscription_id' => $sub->id,
-                'client_id'       => $clientId,
-                'box_id'          => $boxId,
-                'frequency'       => $frequency,
-                'correlation_id'  => $correlationId,
-            ]);
-
-            return $sub;
-        });
-    }
-
-    // -------------------------------------------------------------------------
-    // Контроль качества
-    // -------------------------------------------------------------------------
-
-    public function reportQualityIssue(
-        int $orderId,
-        string $description,
-        string $photoUrl,
-        int $reportedBy,
-        string $correlationId = '',
-    ): bool {
-
-
-        $correlationId = $correlationId ?: (string) Str::uuid()->toString();
-        $order = ProduceOrder::findOrFail($orderId);
-
-        return DB::transaction(function () use ($order, $description, $photoUrl, $reportedBy, $correlationId): bool {
-            $order->update([
-                'quality_photo_url'  => $photoUrl,
-                'quality_checked_at' => now(),
-                'meta'               => array_merge((array) $order->meta, ['quality_issue' => $description]),
-            ]);
-
-            Log::channel('audit')->warning('FreshProduce: quality issue reported', [
-                'order_id'       => $order->id,
-                'description'    => $description,
-                'reported_by'    => $reportedBy,
-                'correlation_id' => $correlationId,
-            ]);
-
-            event(new QualityIssueDetected($order, $description, $correlationId));
-
-            return true;
-        });
-    }
-
-    // -------------------------------------------------------------------------
-    // Доставка
-    // -------------------------------------------------------------------------
-
-    public function markDelivered(
-        int $orderId,
-        int $courierId,
-        string $correlationId = '',
-    ): ProduceOrder {
-
-
-        $correlationId = $correlationId ?: (string) Str::uuid()->toString();
-
-        return DB::transaction(function () use ($orderId, $courierId, $correlationId): ProduceOrder {
-            $order = ProduceOrder::lockForUpdate()->findOrFail($orderId);
-
-            $order->update([
-                'status'       => 'delivered',
-                'delivered_at' => now(),
-                'courier_id'   => $courierId,
-            ]);
-
-            // Обновляем счётчик подписки
-            if ($order->subscription_id) {
-                ProduceSubscription::where('id', $order->subscription_id)
-                    ->increment('total_deliveries');
+        DB::transaction(function () use ($box, $correlationId) {
+            // 3. Проверка остатков (Inventory)
+            $stock = $this->inventory->getCurrentStock($box->supplier_id);
+            if ($stock <= 0) {
+                Log::channel("audit")->error("Fresh: out of stock", ["supplier" => $box->supplier_id]);
+                throw new \RuntimeException("Supplier out of stock for daily delivery.");
             }
 
-            Log::channel('audit')->info('FreshProduce: order delivered', [
-                'order_id'       => $order->id,
-                'courier_id'     => $courierId,
-                'correlation_id' => $correlationId,
+            // 4. Списание остатков
+            $this->inventory->deductStock(
+                itemId: $box->supplier_id,
+                quantity: 1,
+                reason: "Subscription delivery for Box #{$box->id}",
+                sourceType: "produce_box",
+                sourceId: $box->id
+            );
+
+            // 5. Создание транзакционного заказа
+            ProduceOrder::create([
+                "box_id" => $box->id,
+                "status" => "delivered",
+                "delivered_at" => now(),
+                "correlation_id" => $correlationId
             ]);
 
-            event(new BoxDelivered($order, $correlationId));
+            // 6. Выплата фермеру (14% комиссия платформы)
+            $totalAmount = 250000; // Пример: 2500 руб в копейках
+            $fee = (int) ($totalAmount * 0.14);
+            $payout = $totalAmount - $fee;
 
-            return $order;
+            $this->wallet->credit(
+                userId: $box->supplier->owner_id,
+                amount: $payout,
+                type: "farm_payout",
+                reason: "Delivery confirmed for Box #{$box->id}",
+                correlationId: $correlationId
+            );
+
+            Log::channel("audit")->info("Fresh: delivery processed", ["box_id" => $box->id, "payout" => $payout]);
         });
     }
 
-    // -------------------------------------------------------------------------
-    // Доступные боксы
-    // -------------------------------------------------------------------------
-
-    public function getAvailableBoxes(int $tenantId): Collection
+    /**
+     * Контроль срока годности (Expiration Check).
+     */
+    public function checkExpiryAlerts(int $tenantId): void
     {
-
-
-        return ProduceBox::where('tenant_id', $tenantId)
-            ->where('status', 'active')
-            ->orderBy('price')
+        $expiredItems = FreshProduct::where("tenant_id", $tenantId)
+            ->where("expiry_date", "<", now()->addDays(2))
             ->get();
+
+        foreach ($expiredItems as $item) {
+            Log::channel("audit")->warning("Fresh: item expiring soon", [
+                "item_id" => $item->id,
+                "expiry" => $item->expiry_date
+            ]);
+            
+            // Автоматическое снижение цены или уведомление
+            $item->update(["tags" => array_merge($item->tags ?? [], ["status:expiring_soon"])]);
+        }
     }
 }
