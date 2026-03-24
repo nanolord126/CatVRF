@@ -165,3 +165,18 @@ Route::middleware(['auth'])->prefix('account/integrations')->group(function () {
     Route::post('/{type}/connect', [\App\Http\Controllers\Account\ComplianceController::class, 'connect'])->name('account.integrations.connect');
     Route::delete('/{type}', [\App\Http\Controllers\Account\ComplianceController::class, 'disconnect'])->name('account.integrations.disconnect');
 });
+
+// WEBRTC LIVE STREAMING MESH ROUTES
+// ══════════════════════════════════════════════════════════════════════════════
+Route::middleware(['auth', 'tenant'])->prefix('mesh')->group(function () {
+    Route::post('/join', [\App\Http\Controllers\MeshController::class, 'join'])->name('mesh.join');
+    Route::post('/offer', [\App\Http\Controllers\MeshController::class, 'offer'])->name('mesh.offer');
+    Route::post('/answer', [\App\Http\Controllers\MeshController::class, 'answer'])->name('mesh.answer');
+    Route::post('/ice-candidate', [\App\Http\Controllers\MeshController::class, 'iceCandidate'])->name('mesh.ice-candidate');
+    Route::post('/connected', [\App\Http\Controllers\MeshController::class, 'connected'])->name('mesh.connected');
+    Route::post('/failed', [\App\Http\Controllers\MeshController::class, 'failed'])->name('mesh.failed');
+});
+
+Route::middleware(['auth', 'tenant'])->group(function () {
+    Route::get('/stream/{stream}', [\App\Http\Controllers\StreamController::class, 'show'])->name('stream.show');
+});

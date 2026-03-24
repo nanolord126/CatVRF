@@ -165,4 +165,66 @@ final class PharmacyService
             Log::channel("audit")->info("Pharmacy: payout done", ["order_id" => $order->id, "payout" => $payout]);
         });
     }
+
+    /**
+     * Получение заказа по ID.
+     */
+    public function getOrder(int $orderId): PharmacyOrder
+    {
+        return PharmacyOrder::with(['pharmacy', 'medicines'])->findOrFail($orderId);
+    }
+
+    /**
+     * Получение всех заказов пользователя.
+     */
+    public function getOrdersForUser(int $userId, int $limit = 10): \Illuminate\Support\Collection
+    {
+        return PharmacyOrder::where('client_id', $userId)
+            ->orderBy('created_at', 'desc')
+            ->limit($limit)
+            ->get();
+    }
+
+    /**
+     * Получение всех заказов аптеки.
+     */
+    public function getOrdersForPharmacy(int $pharmacyId, int $limit = 50): \Illuminate\Support\Collection
+    {
+        return PharmacyOrder::where('pharmacy_id', $pharmacyId)
+            ->orderBy('created_at', 'desc')
+            ->limit($limit)
+            ->get();
+    }
+
+    /**
+     * Отмена заказа.
+     */
+    public function cancelOrder(int $orderId, string $reason, string $correlationId = ""): void
+    {
+        $correlationId = $correlationId ?: (string) \Illuminate\Support\Str::uuid();
+        $order = PharmacyOrder::findOrFail($orderId);
+
+        DB::transaction(function () use ($order, $reason, $correlationId) {
+            if (in_array($order->status, ['completed', 'cancelled'])) {
+                throw new \RuntimeException("Cannot cancel order with status: {$order->status}");
+            }
+
+            $order->update(['status' => 'cancelled']);
+
+            // Возврат зарезервированного товара
+            // (В реальности нужно вернуть все резервации)
+            $this->inventory->releaseStock(
+                itemId: 0,
+                quantity: 1,
+                sourceType: 'pharmacy_order',
+                sourceId: $order->id
+            );
+
+            Log::channel("audit")->info("Pharmacy order cancelled", [
+                "order_id" => $order->id,
+                "reason" => $reason,
+                "correlation_id" => $correlationId,
+            ]);
+        });
+    }
 }

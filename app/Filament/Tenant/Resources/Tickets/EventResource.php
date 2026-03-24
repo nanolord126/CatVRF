@@ -134,6 +134,10 @@ final class EventResource extends Resource
                 Tables\Columns\TextColumn::make('rating')
                     ->label('Рейтинг')
                     ->numeric(decimalPlaces: 1),
+                Tables\Columns\BadgeColumn::make('is_live')
+                    ->label('Live')
+                    ->formatStateUsing(fn ($state) => $state ? '🔴 Live' : '⚪ Offline')
+                    ->color(fn ($state) => $state ? 'danger' : 'gray'),
                 Tables\Columns\TextColumn::make('status')
                     ->label('Статус')
                     ->badge()
@@ -166,6 +170,20 @@ final class EventResource extends Resource
                     ]),
             ])
             ->actions([
+                Tables\Actions\Action::make('stream')
+                    ->label('🎬 Трансляция')
+                    ->icon('heroicon-m-play')
+                    ->url(fn ($record) => route('stream.show', ['stream' => $record->id]))
+                    ->openUrlInNewTab()
+                    ->visible(fn ($record) => $record->status === 'published'),
+                Tables\Actions\Action::make('toggle-live')
+                    ->label('Live: Off')
+                    ->icon('heroicon-m-video-camera')
+                    ->action(function ($record) {
+                        $record->update(['is_live' => !$record->is_live]);
+                    })
+                    ->color(fn ($record) => $record->is_live ? 'danger' : 'gray')
+                    ->successNotificationTitle('Live статус обновлён'),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
             ])

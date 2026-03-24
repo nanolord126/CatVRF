@@ -17,7 +17,7 @@ final class Event extends Model
         'status', 'starts_at', 'ends_at', 'venue_name', 'venue_address',
         'geo_point', 'amenities', 'ticket_price_from', 'ticket_price_to',
         'total_capacity', 'tickets_sold', 'rating', 'review_count',
-        'banner_url', 'tags', 'metadata', 'correlation_id'
+        'banner_url', 'tags', 'metadata', 'correlation_id', 'is_live'
     ];
 
     protected $casts = [
@@ -29,6 +29,7 @@ final class Event extends Model
         'ticket_price_from' => 'float',
         'ticket_price_to' => 'float',
         'rating' => 'float',
+        'is_live' => 'boolean',
     ];
 
     protected static function booted(): void
