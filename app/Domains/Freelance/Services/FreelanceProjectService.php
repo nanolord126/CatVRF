@@ -39,7 +39,7 @@ final class FreelanceProjectService
         }
         RateLimiter::hit("freelance:post_project:".$clientId, 3600);
 
-        return DB::transaction(function () use ($clientId, $data, $correlationId) {
+        return $this->db->transaction(function () use ($clientId, $data, $correlationId) {
             // 2. Fraud Check - проверка клиента на наличие неоплаченных споров
             $this->fraud->check([
                 "user_id" => $clientId,
@@ -59,7 +59,7 @@ final class FreelanceProjectService
                 "tags" => array_merge($data["tags"] ?? [], ["escrow_protected:yes"])
             ]);
 
-            Log::channel("audit")->info("Freelance: project published", [
+            $this->log->channel("audit")->info("Freelance: project published", [
                 "project_id" => $project->id,
                 "budget" => $data["budget_kopecks"]
             ]);
@@ -77,7 +77,7 @@ final class FreelanceProjectService
         $project = FreelanceProject::findOrFail($projectId);
         $proposal = ProjectProposal::findOrFail($proposalId);
 
-        DB::transaction(function () use ($project, $proposal, $correlationId) {
+        $this->db->transaction(function () use ($project, $proposal, $correlationId) {
             // 3. Холдирование средств в кошельке клиента (Escrow)
             $this->wallet->hold(
                 userId: $project->client_id,
@@ -94,7 +94,7 @@ final class FreelanceProjectService
                 "started_at" => now()
             ]);
 
-            Log::channel("audit")->info("Freelance: contract started (Escrow active)", [
+            $this->log->channel("audit")->info("Freelance: contract started (Escrow active)", [
                 "project_id" => $projectId,
                 "freelancer_id" => $proposal->freelancer_id,
                 "hold_amount" => $project->budget_kopecks
@@ -111,7 +111,7 @@ final class FreelanceProjectService
         $milestone = ProjectMilestone::with("project")->findOrFail($milestoneId);
         $project = $milestone->project;
 
-        DB::transaction(function () use ($milestone, $project, $correlationId) {
+        $this->db->transaction(function () use ($milestone, $project, $correlationId) {
             // 4. Расчет комиссии платформы (14%)
             $amount = $milestone->budget_kopecks;
             $fee = (int) ($amount * 0.14);
@@ -134,7 +134,7 @@ final class FreelanceProjectService
 
             $milestone->update(["status" => "completed", "completed_at" => now()]);
 
-            Log::channel("audit")->info("Freelance: milestone payout done", [
+            $this->log->channel("audit")->info("Freelance: milestone payout done", [
                 "project_id" => $project->id,
                 "payout" => $payout,
                 "fee" => $fee

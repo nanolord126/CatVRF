@@ -45,14 +45,14 @@ final class B2BMedicalController
                 'min_order_amount' => 'numeric|min:1000',
             ]);
 
-            return DB::transaction(function () use ($validated, $correlationId) {
+            return $this->db->transaction(function () use ($validated, $correlationId) {
                 $storefront = B2BMedicalStorefront::create([
                     'tenant_id' => tenant()->id,
                     'correlation_id' => $correlationId,
                     ...$validated,
                 ]);
 
-                Log::channel('audit')->info('B2B Medical storefront created', [
+                $this->log->channel('audit')->info('B2B Medical storefront created', [
                     'storefront_id' => $storefront->id,
                     'correlation_id' => $correlationId,
                     'user_id' => auth()->id(),
@@ -65,7 +65,7 @@ final class B2BMedicalController
                 ], 201);
             });
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Medical storefront creation failed', [
+            $this->log->channel('audit')->error('Medical storefront creation failed', [
                 'error' => $e->getMessage(),
                 'user_id' => auth()->id(),
             ]);
@@ -90,11 +90,11 @@ final class B2BMedicalController
                 'items.*.quantity' => 'required|integer|min:1',
             ]);
 
-            return DB::transaction(function () use ($validated, $correlationId) {
+            return $this->db->transaction(function () use ($validated, $correlationId) {
                 $storefront = B2BMedicalStorefront::findOrFail($validated['storefront_id']);
                 $commission = ($validated['items'][0]['quantity'] ?? 1) * 0.14;
 
-                Log::channel('audit')->info('B2B Medical order created', [
+                $this->log->channel('audit')->info('B2B Medical order created', [
                     'storefront_id' => $storefront->id,
                     'correlation_id' => $correlationId,
                     'commission' => $commission,
@@ -107,7 +107,7 @@ final class B2BMedicalController
                 ], 201);
             });
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Medical order creation failed', [
+            $this->log->channel('audit')->error('Medical order creation failed', [
                 'error' => $e->getMessage(),
             ]);
 
@@ -135,11 +135,11 @@ final class B2BMedicalController
     public function approveOrder(int $id): JsonResponse
     {
         try {
-            return DB::transaction(function () use ($id) {
+            return $this->db->transaction(function () use ($id) {
                 $order = B2BMedicalStorefront::findOrFail($id);
                 $order->update(['status' => 'approved']);
 
-                Log::channel('audit')->info('Medical order approved', [
+                $this->log->channel('audit')->info('Medical order approved', [
                     'order_id' => $id,
                     'user_id' => auth()->id(),
                 ]);
@@ -163,14 +163,14 @@ final class B2BMedicalController
                 'reason' => 'required|string|max:500',
             ]);
 
-            return DB::transaction(function () use ($id, $validated) {
+            return $this->db->transaction(function () use ($id, $validated) {
                 $order = B2BMedicalStorefront::findOrFail($id);
                 $order->update([
                     'status' => 'rejected',
                     'rejection_reason' => $validated['reason'],
                 ]);
 
-                Log::channel('audit')->info('Medical order rejected', [
+                $this->log->channel('audit')->info('Medical order rejected', [
                     'order_id' => $id,
                     'reason' => $validated['reason'],
                 ]);
@@ -189,11 +189,11 @@ final class B2BMedicalController
     public function verifyInn(int $id): JsonResponse
     {
         try {
-            return DB::transaction(function () use ($id) {
+            return $this->db->transaction(function () use ($id) {
                 $storefront = B2BMedicalStorefront::findOrFail($id);
                 $storefront->update(['is_verified' => true]);
 
-                Log::channel('audit')->info('Medical storefront verified', [
+                $this->log->channel('audit')->info('Medical storefront verified', [
                     'storefront_id' => $id,
                     'admin_id' => auth()->id(),
                 ]);

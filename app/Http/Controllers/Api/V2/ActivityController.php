@@ -48,7 +48,7 @@ final class ActivityController extends BaseApiV2Controller
                 correlationId: $correlationId
             );
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to get activities', [
+            $this->log->channel('audit')->error('Failed to get activities', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -85,7 +85,7 @@ final class ActivityController extends BaseApiV2Controller
                 correlationId: $correlationId
             );
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to track activity', [
+            $this->log->channel('audit')->error('Failed to track activity', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);

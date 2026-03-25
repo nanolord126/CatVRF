@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Confectionery\Http\Controllers;
@@ -8,9 +10,26 @@ use Illuminate\Http\JsonResponse;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Str;
 
-final class MainController extends Controller
+final /**
+ * MainController
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class MainController extends Controller
 {
-    public function __construct(private readonly ConfectioneryService $service) {}
+    public function __construct(private readonly ConfectioneryService $service) {
+    /**
+     * Инициализировать класс
+     */
+    public function __construct()
+    {
+        // TODO: инициализация
+    }
+}
 
     public function index(Request $request): JsonResponse
     {

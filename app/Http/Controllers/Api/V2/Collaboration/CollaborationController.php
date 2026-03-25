@@ -66,7 +66,7 @@ final class CollaborationController extends Controller
                 correlationId: $correlationId
             ));
 
-            Log::channel('audit')->info('Editing session started', [
+            $this->log->channel('audit')->info('Editing session started', [
                 'correlation_id' => $correlationId,
                 'user_id' => auth()->id(),
                 'document' => "{$validated['document_type']}:{$validated['document_id']}",
@@ -78,7 +78,7 @@ final class CollaborationController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to start editing session', [
+            $this->log->channel('audit')->error('Failed to start editing session', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -127,7 +127,7 @@ final class CollaborationController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to end editing session', [
+            $this->log->channel('audit')->error('Failed to end editing session', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -164,7 +164,7 @@ final class CollaborationController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to get active editors', [
+            $this->log->channel('audit')->error('Failed to get active editors', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -221,7 +221,7 @@ final class CollaborationController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to submit edit', [
+            $this->log->channel('audit')->error('Failed to submit edit', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -258,7 +258,7 @@ final class CollaborationController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to get team presence', [
+            $this->log->channel('audit')->error('Failed to get team presence', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);

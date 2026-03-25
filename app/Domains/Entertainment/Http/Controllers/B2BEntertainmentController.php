@@ -25,7 +25,7 @@ final class B2BEntertainmentController
                 'correlation_id' => Str::uuid(),
             ], 200);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Entertainment B2B: Failed to fetch storefronts', [
+            $this->log->channel('audit')->error('Entertainment B2B: Failed to fetch storefronts', [
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
             ]);
@@ -54,7 +54,7 @@ final class B2BEntertainmentController
 
             $correlationId = Str::uuid()->toString();
 
-            DB::transaction(function () use ($validated, $correlationId) {
+            $this->db->transaction(function () use ($validated, $correlationId) {
                 B2BEntertainmentStorefront::create([
                     'uuid' => Str::uuid(),
                     'tenant_id' => auth()->user()->tenant_id,
@@ -62,7 +62,7 @@ final class B2BEntertainmentController
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Entertainment B2B: Storefront created', [
+                $this->log->channel('audit')->info('Entertainment B2B: Storefront created', [
                     'inn' => $validated['inn'],
                     'correlation_id' => $correlationId,
                 ]);
@@ -74,7 +74,7 @@ final class B2BEntertainmentController
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Entertainment B2B: Storefront creation failed', [
+            $this->log->channel('audit')->error('Entertainment B2B: Storefront creation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
             ]);
@@ -101,7 +101,7 @@ final class B2BEntertainmentController
             $correlationId = Str::uuid()->toString();
             $commission = (int) ($validated['total_amount'] * 0.14);
 
-            DB::transaction(function () use ($validated, $correlationId, $commission) {
+            $this->db->transaction(function () use ($validated, $correlationId, $commission) {
                 B2BEntertainmentOrder::create([
                     'uuid' => Str::uuid(),
                     'tenant_id' => auth()->user()->tenant_id,
@@ -112,7 +112,7 @@ final class B2BEntertainmentController
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Entertainment B2B: Order created', [
+                $this->log->channel('audit')->info('Entertainment B2B: Order created', [
                     'amount' => $validated['total_amount'],
                     'correlation_id' => $correlationId,
                 ]);
@@ -124,7 +124,7 @@ final class B2BEntertainmentController
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Entertainment B2B: Order creation failed', [
+            $this->log->channel('audit')->error('Entertainment B2B: Order creation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
             ]);
@@ -150,7 +150,7 @@ final class B2BEntertainmentController
                 'correlation_id' => Str::uuid(),
             ], 200);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Entertainment B2B: Failed to fetch orders', [
+            $this->log->channel('audit')->error('Entertainment B2B: Failed to fetch orders', [
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
             ]);
@@ -171,10 +171,10 @@ final class B2BEntertainmentController
 
             $correlationId = Str::uuid()->toString();
 
-            DB::transaction(function () use ($order, $correlationId) {
+            $this->db->transaction(function () use ($order, $correlationId) {
                 $order->update(['status' => 'approved']);
 
-                Log::channel('audit')->info('Entertainment B2B: Order approved', [
+                $this->log->channel('audit')->info('Entertainment B2B: Order approved', [
                     'order_id' => $order->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -186,7 +186,7 @@ final class B2BEntertainmentController
                 'correlation_id' => $correlationId,
             ], 200);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Entertainment B2B: Order approval failed', [
+            $this->log->channel('audit')->error('Entertainment B2B: Order approval failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
             ]);
@@ -208,13 +208,13 @@ final class B2BEntertainmentController
             $correlationId = Str::uuid()->toString();
             $reason = $request->get('reason', '');
 
-            DB::transaction(function () use ($order, $correlationId, $reason) {
+            $this->db->transaction(function () use ($order, $correlationId, $reason) {
                 $order->update([
                     'status' => 'rejected',
                     'notes' => $reason,
                 ]);
 
-                Log::channel('audit')->info('Entertainment B2B: Order rejected', [
+                $this->log->channel('audit')->info('Entertainment B2B: Order rejected', [
                     'order_id' => $order->id,
                     'reason' => $reason,
                     'correlation_id' => $correlationId,
@@ -227,7 +227,7 @@ final class B2BEntertainmentController
                 'correlation_id' => $correlationId,
             ], 200);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Entertainment B2B: Order rejection failed', [
+            $this->log->channel('audit')->error('Entertainment B2B: Order rejection failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
             ]);
@@ -248,10 +248,10 @@ final class B2BEntertainmentController
             $storefront = B2BEntertainmentStorefront::findOrFail($id);
             $correlationId = Str::uuid()->toString();
 
-            DB::transaction(function () use ($storefront, $correlationId) {
+            $this->db->transaction(function () use ($storefront, $correlationId) {
                 $storefront->update(['is_verified' => true]);
 
-                Log::channel('audit')->info('Entertainment B2B: Storefront verified', [
+                $this->log->channel('audit')->info('Entertainment B2B: Storefront verified', [
                     'storefront_id' => $storefront->id,
                     'inn' => $storefront->inn,
                     'correlation_id' => $correlationId,
@@ -264,7 +264,7 @@ final class B2BEntertainmentController
                 'correlation_id' => $correlationId,
             ], 200);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Entertainment B2B: Verification failed', [
+            $this->log->channel('audit')->error('Entertainment B2B: Verification failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
             ]);

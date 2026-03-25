@@ -1,6 +1,30 @@
 <?php declare(strict_types=1);
 
-namespace App\Domains\FreshProduce\Models;
+namespac
+
+/**
+ * Farm
+ * 
+ * Производитель: CatVRF Platform
+ * Версия: 1.0.0
+ * 
+ * Примеры использования:
+ * 
+ * ```php
+ * // Базовое использование
+ * $instance = new Farm();
+ * ```
+ * 
+ * Требования:
+ * - Laravel 10+
+ * - PHP 8.2+
+ * - Все методы должны быть явно типизированы
+ * 
+ * @author CatVRF
+ * @package namespace App\Domains\FreshProduce\Models
+ * @see https://github.com/iyegorovskyi_clemny/CatVRF
+ */
+e App\Domains\FreshProduce\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -15,7 +39,19 @@ final class Farm extends Model
     protected $fillable = ['uuid', 'tenant_id', 'business_group_id', 'correlation_id', 'name', 'owner_id', 'address', 'phone', 'latitude', 'longitude', 'certification', 'is_verified', 'commission_percent', 'min_order', 'tags'];
     protected $casts = ['is_verified' => 'boolean', 'commission_percent' => 'float', 'latitude' => 'float', 'longitude' => 'float', 'min_order' => 'integer', 'tags' => 'json'];
 
+    /**
+     * Выполнить операцию
+     * 
+     * @return mixed
+     * @throws \Exception
+     */
     public function products() { return $this->hasMany(ProduceProduct::class, 'farm_id'); }
+    /**
+     * Выполнить операцию
+     * 
+     * @return mixed
+     * @throws \Exception
+     */
     public function orders() { return $this->hasMany(ProduceOrder::class, 'farm_id'); }
 
     protected static function booted(): void

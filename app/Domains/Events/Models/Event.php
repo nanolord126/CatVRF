@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 declare(strict_types=1);
 
@@ -7,7 +9,16 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
-final class Event extends Model
+final /**
+ * Event
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class Event extends Model
 {
     use HasFactory, HasUuids;
 

@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\HomeServices\Services;
@@ -6,8 +8,19 @@ use Illuminate\Support\Facades\Log;
 
 use Illuminate\Support\Facades\DB;
 
-final class ContractorMatchingService
+final /**
+ * ContractorMatchingService
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class ContractorMatchingService
 {
+    // Dependencies injected via constructor
+    // Add private readonly properties here
     public function __construct()
     {
     }
@@ -17,14 +30,14 @@ final class ContractorMatchingService
 
 
         try {
-            $contractors = DB::table('contractors')
+            $contractors = $this->db->table('contractors')
                 ->where('service_type', $serviceType)
                 ->where('is_available', true)
                 ->orderBy('rating', 'desc')
                 ->limit(10)
                 ->get();
 
-            Log::channel('audit')->info('Contractors found', [
+            $this->log->channel('audit')->info('Contractors found', [
                 'service_type' => $serviceType,
                 'count' => $contractors->count(),
                 'correlation_id' => $correlationId,
@@ -32,7 +45,7 @@ final class ContractorMatchingService
 
             return $contractors;
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Contractor matching failed', [
+            $this->log->channel('audit')->error('Contractor matching failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
                 'trace' => $e->getTraceAsString(),

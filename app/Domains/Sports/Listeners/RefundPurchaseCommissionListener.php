@@ -16,14 +16,14 @@ final class RefundPurchaseCommissionListener implements ShouldQueue
     public function handle(PurchaseRefunded $event): void
     {
         try {
-            Log::channel('audit')->info('Processing purchase refund commission', [
+            $this->log->channel('audit')->info('Processing purchase refund commission', [
                 'purchase_id' => $event->purchase->id,
                 'commission_amount' => $event->purchase->commission_amount,
                 'reason' => $event->reason,
                 'correlation_id' => $event->correlationId,
             ]);
 
-            DB::transaction(function () use ($event) {
+            $this->db->transaction(function () use ($event) {
                 $wallet = \App\Models\Wallet::lockForUpdate()
                     ->where('tenant_id', $event->purchase->tenant_id)
                     ->firstOrFail();
@@ -43,12 +43,12 @@ final class RefundPurchaseCommissionListener implements ShouldQueue
                 ]);
             });
 
-            Log::channel('audit')->info('Purchase refund commission processed', [
+            $this->log->channel('audit')->info('Purchase refund commission processed', [
                 'purchase_id' => $event->purchase->id,
                 'correlation_id' => $event->correlationId,
             ]);
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to process purchase refund commission', [
+            $this->log->channel('audit')->error('Failed to process purchase refund commission', [
                 'purchase_id' => $event->purchase->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $event->correlationId,

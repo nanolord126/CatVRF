@@ -50,6 +50,12 @@ final class AgroCrop extends Model
         });
     }
 
+    /**
+     * Выполнить операцию
+     * 
+     * @return mixed
+     * @throws \Exception
+     */
     public function farm(): BelongsTo
     {
         return $this->belongsTo(AgroFarm::class, 'farm_id');

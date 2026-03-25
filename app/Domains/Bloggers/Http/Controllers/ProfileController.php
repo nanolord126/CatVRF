@@ -62,7 +62,7 @@ final class ProfileController extends Controller
 
         $profile = auth()->user()->bloggerProfile;
 
-        DB::transaction(function () use ($profile, $validated, $request) {
+        $this->db->transaction(function () use ($profile, $validated, $request) {
             if ($request->hasFile('profile_picture')) {
                 $path = $request->file('profile_picture')->store('profiles', 'public');
                 $validated['profile_picture'] = $path;
@@ -70,7 +70,7 @@ final class ProfileController extends Controller
 
             $profile->update($validated);
 
-            Log::channel('audit')->info('Blogger updated profile', [
+            $this->log->channel('audit')->info('Blogger updated profile', [
                 'blogger_id' => $profile->id,
                 'correlation_id' => request()->header('X-Correlation-ID') ?? \Str::uuid(),
                 'changes' => array_keys($validated),
@@ -101,10 +101,10 @@ final class ProfileController extends Controller
 
         $profile = auth()->user()->bloggerProfile;
 
-        DB::transaction(function () use ($profile, $validated) {
+        $this->db->transaction(function () use ($profile, $validated) {
             $profile->update($validated);
 
-            Log::channel('audit')->info('Blogger updated banking info', [
+            $this->log->channel('audit')->info('Blogger updated banking info', [
                 'blogger_id' => $profile->id,
                 'correlation_id' => request()->header('X-Correlation-ID') ?? \Str::uuid(),
                 'bank_last_digits' => substr($validated['bank_account'], -4),
@@ -135,7 +135,7 @@ final class ProfileController extends Controller
 
         $profile = auth()->user()->bloggerProfile;
 
-        DB::transaction(function () use ($profile, $validated) {
+        $this->db->transaction(function () use ($profile, $validated) {
             $profile->update([
                 'moderation_status' => 'banned',
                 'deactivated_at' => now(),
@@ -143,7 +143,7 @@ final class ProfileController extends Controller
 
             auth()->user()->delete();
 
-            Log::channel('audit')->info('Blogger account deactivated', [
+            $this->log->channel('audit')->info('Blogger account deactivated', [
                 'blogger_id' => $profile->id,
                 'correlation_id' => request()->header('X-Correlation-ID') ?? \Str::uuid(),
                 'reason' => $validated['reason'] ?? 'No reason provided',
@@ -163,7 +163,7 @@ final class ProfileController extends Controller
     {
         $profile = auth()->user()->bloggerProfile;
 
-        $payouts = DB::table('blogger_payouts')
+        $payouts = $this->db->table('blogger_payouts')
             ->where('blogger_id', $profile->id)
             ->orderByDesc('paid_at')
             ->limit(50)
@@ -196,10 +196,10 @@ final class ProfileController extends Controller
             ], 422);
         }
 
-        DB::transaction(function () use ($profile, $validated) {
+        $this->db->transaction(function () use ($profile, $validated) {
             $profile->decrement('wallet_balance', $validated['amount']);
 
-            DB::table('blogger_payouts')->insert([
+            $this->db->table('blogger_payouts')->insert([
                 'blogger_id' => $profile->id,
                 'amount' => $validated['amount'],
                 'status' => 'processing',
@@ -207,7 +207,7 @@ final class ProfileController extends Controller
                 'created_at' => now(),
             ]);
 
-            Log::channel('audit')->info('Blogger requested payout', [
+            $this->log->channel('audit')->info('Blogger requested payout', [
                 'blogger_id' => $profile->id,
                 'amount' => $validated['amount'],
                 'correlation_id' => request()->header('X-Correlation-ID') ?? \Str::uuid(),

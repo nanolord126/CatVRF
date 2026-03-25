@@ -365,9 +365,7 @@ class MigrationRefactor
 
 // === ГЛАВНЫЙ СКРИПТ ===
 
-if (php_sapi_name() !== 'cli') {
-    die("Этот скрипт должен запускаться из консоли\n");
-}
+if (php_sapi_name() !== 'cli') {}
 
 $refactor = new MigrationRefactor('database/migrations/tenant');
 

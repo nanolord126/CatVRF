@@ -17,7 +17,7 @@ use Throwable;
 
 /**
  * Контроллер управления финансовыми транзакциями.
- * Согласно КАНОН 2026: все мутации в DB::transaction(), correlation_id в каждом логе, FraudControl проверки.
+ * Согласно КАНОН 2026: все мутации в $this->db->transaction(), correlation_id в каждом логе, FraudControl проверки.
  */
 final class FinanceController extends Controller
 {
@@ -32,7 +32,7 @@ final class FinanceController extends Controller
         try {
             $tenantId = tenant('id') ?? 0;
 
-            Log::channel('audit')->info('Fetching financial transactions', [
+            $this->log->channel('audit')->info('Fetching financial transactions', [
                 'tenant_id' => $tenantId,
                 'correlation_id' => $correlationId,
                 'per_page' => $request->input('per_page', 15),
@@ -42,7 +42,7 @@ final class FinanceController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->paginate((int) $request->input('per_page', 15));
 
-            Log::channel('audit')->info('Financial transactions fetched successfully', [
+            $this->log->channel('audit')->info('Financial transactions fetched successfully', [
                 'tenant_id' => $tenantId,
                 'count' => $transactions->count(),
                 'correlation_id' => $correlationId,
@@ -58,7 +58,7 @@ final class FinanceController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to fetch financial transactions', [
+            $this->log->channel('audit')->error('Failed to fetch financial transactions', [
                 'tenant_id' => tenant('id'),
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -77,18 +77,18 @@ final class FinanceController extends Controller
 
     /**
      * Создать новую финансовую транзакцию.
-     * Согласно КАНОН 2026: DB::transaction(), FraudControl::check(), correlation_id, audit лог.
+     * Согласно КАНОН 2026: $this->db->transaction(), FraudControl::check(), correlation_id, audit лог.
      */
     public function store(StorePaymentTransactionRequest $request): JsonResponse
     {
         $correlationId = Str::uuid()->toString();
 
-        return DB::transaction(function () use ($request, $correlationId): JsonResponse {
+        return $this->db->transaction(function () use ($request, $correlationId): JsonResponse {
             try {
                 $tenantId = tenant('id') ?? 0;
                 $userId = auth()->id() ?? 0;
 
-                Log::channel('audit')->info('Creating payment transaction', [
+                $this->log->channel('audit')->info('Creating payment transaction', [
                     'tenant_id' => $tenantId,
                     'user_id' => $userId,
                     'amount' => $request->integer('amount'),
@@ -111,7 +111,7 @@ final class FinanceController extends Controller
                     'tags' => ['api', 'manual_creation'],
                 ]);
 
-                Log::channel('audit')->info('Payment transaction created successfully', [
+                $this->log->channel('audit')->info('Payment transaction created successfully', [
                     'transaction_id' => $transaction->id,
                     'tenant_id' => $tenantId,
                     'amount' => $request->integer('amount'),
@@ -123,7 +123,7 @@ final class FinanceController extends Controller
                     'correlation_id' => $correlationId,
                 ], 201);
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to create payment transaction', [
+                $this->log->channel('audit')->error('Failed to create payment transaction', [
                     'tenant_id' => tenant('id'),
                     'user_id' => auth()->id(),
                     'error' => $e->getMessage(),
@@ -147,11 +147,11 @@ final class FinanceController extends Controller
         try {
             $this->authorize('view', $transaction);
             
-            Log::info('Retrieving transaction', ['transaction_id' => $transaction->id]);
+            $this->log->info('Retrieving transaction', ['transaction_id' => $transaction->id]);
             
             return response()->json($transaction);
         } catch (\Exception $e) {
-            Log::warning('Unauthorized access to transaction', ['transaction_id' => $transaction->id]);
+            $this->log->warning('Unauthorized access to transaction', ['transaction_id' => $transaction->id]);
             return response()->json(['error' => 'Unauthorized'], 403);
         }
     }
@@ -161,15 +161,15 @@ final class FinanceController extends Controller
         try {
             $this->authorize('update', $transaction);
             
-            Log::info('Updating transaction', ['transaction_id' => $transaction->id]);
+            $this->log->info('Updating transaction', ['transaction_id' => $transaction->id]);
             
             $transaction->update($request->validated());
             
-            Log::info('Transaction updated', ['transaction_id' => $transaction->id]);
+            $this->log->info('Transaction updated', ['transaction_id' => $transaction->id]);
             
             return response()->json($transaction);
         } catch (\Exception $e) {
-            Log::error('Error updating transaction', ['transaction_id' => $transaction->id, 'error' => $e->getMessage()]);
+            $this->log->error('Error updating transaction', ['transaction_id' => $transaction->id, 'error' => $e->getMessage()]);
             return response()->json(['error' => 'Failed to update transaction'], 500);
         }
     }
@@ -179,15 +179,15 @@ final class FinanceController extends Controller
         try {
             $this->authorize('delete', $transaction);
             
-            Log::info('Deleting transaction', ['transaction_id' => $transaction->id]);
+            $this->log->info('Deleting transaction', ['transaction_id' => $transaction->id]);
             
             $transaction->delete();
             
-            Log::info('Transaction deleted', ['transaction_id' => $transaction->id]);
+            $this->log->info('Transaction deleted', ['transaction_id' => $transaction->id]);
             
             return response()->json(['message' => 'Transaction deleted'], 200);
         } catch (\Exception $e) {
-            Log::error('Error deleting transaction', ['transaction_id' => $transaction->id, 'error' => $e->getMessage()]);
+            $this->log->error('Error deleting transaction', ['transaction_id' => $transaction->id, 'error' => $e->getMessage()]);
             return response()->json(['error' => 'Failed to delete transaction'], 500);
         }
     }
@@ -195,7 +195,7 @@ final class FinanceController extends Controller
     public function balance(): JsonResponse
     {
         try {
-            Log::info('Fetching account balance', ['tenant_id' => tenant('id')]);
+            $this->log->info('Fetching account balance', ['tenant_id' => tenant('id')]);
             
             $balance = PaymentTransaction::where('tenant_id', tenant('id'))
                 ->where('status', 'completed')
@@ -203,7 +203,7 @@ final class FinanceController extends Controller
             
             return response()->json(['balance' => $balance]);
         } catch (QueryException $e) {
-            Log::error('Error fetching balance', ['error' => $e->getMessage()]);
+            $this->log->error('Error fetching balance', ['error' => $e->getMessage()]);
             return response()->json(['error' => 'Failed to fetch balance'], 500);
         }
     }
@@ -211,17 +211,17 @@ final class FinanceController extends Controller
     public function reconcile(): JsonResponse
     {
         try {
-            Log::warning('Starting financial reconciliation', ['tenant_id' => tenant('id')]);
+            $this->log->warning('Starting financial reconciliation', ['tenant_id' => tenant('id')]);
             
             $pending = PaymentTransaction::where('tenant_id', tenant('id'))
                 ->where('status', 'pending')
                 ->count();
             
-            Log::info('Reconciliation completed', ['pending' => $pending]);
+            $this->log->info('Reconciliation completed', ['pending' => $pending]);
             
             return response()->json(['pending_transactions' => $pending]);
         } catch (\Exception $e) {
-            Log::error('Error reconciling finances', ['error' => $e->getMessage()]);
+            $this->log->error('Error reconciling finances', ['error' => $e->getMessage()]);
             return response()->json(['error' => 'Failed to reconcile'], 500);
         }
     }
@@ -229,13 +229,13 @@ final class FinanceController extends Controller
     public function export(Request $request): JsonResponse
     {
         try {
-            Log::info('Exporting financial data', ['format' => $request->input('format', 'csv')]);
+            $this->log->info('Exporting financial data', ['format' => $request->input('format', 'csv')]);
             
             $transactions = PaymentTransaction::where('tenant_id', tenant('id'))->get();
             
             return response()->json(['data' => $transactions, 'count' => $transactions->count()]);
         } catch (QueryException $e) {
-            Log::error('Error exporting data', ['error' => $e->getMessage()]);
+            $this->log->error('Error exporting data', ['error' => $e->getMessage()]);
             return response()->json(['error' => 'Failed to export data'], 500);
         }
     }

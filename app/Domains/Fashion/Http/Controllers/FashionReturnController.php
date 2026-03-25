@@ -67,9 +67,9 @@ final class FashionReturnController
             $correlationId = (string) Str::uuid()->toString();
             $this->fraudControlService->check(auth()->id() ?? 0, 'fashion_return_update', 0, request()->ip(), null, $correlationId);
 
-            DB::transaction(function () use ($return, $id, $correlationId) {
+            $this->db->transaction(function () use ($return, $id, $correlationId) {
                 $return->update([...request()->except(['id', 'tenant_id', 'business_group_id', 'correlation_id']), 'correlation_id' => $correlationId]);
-                Log::channel('audit')->info('Fashion return updated', ['return_id' => $id, 'correlation_id' => $correlationId]);
+                $this->log->channel('audit')->info('Fashion return updated', ['return_id' => $id, 'correlation_id' => $correlationId]);
             });
 
             return response()->json(['success' => true, 'data' => $return, 'correlation_id' => $correlationId]);
@@ -108,9 +108,9 @@ final class FashionReturnController
             $return = FashionReturn::findOrFail($id);
             $correlationId = Str::uuid()->toString();
 
-            DB::transaction(function () use ($return, $id, $correlationId) {
+            $this->db->transaction(function () use ($return, $id, $correlationId) {
                 $return->update(['status' => 'rejected', 'correlation_id' => $correlationId]);
-                Log::channel('audit')->info('Fashion return rejected', ['return_id' => $id, 'correlation_id' => $correlationId]);
+                $this->log->channel('audit')->info('Fashion return rejected', ['return_id' => $id, 'correlation_id' => $correlationId]);
             });
 
             return response()->json(['success' => true, 'data' => null, 'correlation_id' => $correlationId]);

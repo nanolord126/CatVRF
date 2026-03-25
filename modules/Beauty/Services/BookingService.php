@@ -33,14 +33,14 @@ final class BookingService
         $correlationId ??= Str::uuid();
 
         try {
-            Log::channel('audit')->info('beauty.booking.create.start', [
+            $this->log->channel('audit')->info('beauty.booking.create.start', [
                 'correlation_id' => $correlationId,
                 'salon_id' => $salonId,
                 'service_id' => $serviceId,
                 'datetime' => $dateTime,
             ]);
 
-            $appointment = DB::transaction(function () use (
+            $appointment = $this->db->transaction(function () use (
                 $salonId,
                 $serviceId,
                 $masterId,
@@ -74,14 +74,14 @@ final class BookingService
                 ]);
             });
 
-            Log::channel('audit')->info('beauty.booking.create.success', [
+            $this->log->channel('audit')->info('beauty.booking.create.success', [
                 'correlation_id' => $correlationId,
                 'appointment_id' => $appointment->id,
             ]);
 
             return $appointment;
         } catch (Throwable $e) {
-            Log::channel('audit')->critical('beauty.booking.create.error', [
+            $this->log->channel('audit')->critical('beauty.booking.create.error', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -100,12 +100,12 @@ final class BookingService
         $correlationId ??= Str::uuid();
 
         try {
-            Log::channel('audit')->info('beauty.booking.cancel.start', [
+            $this->log->channel('audit')->info('beauty.booking.cancel.start', [
                 'correlation_id' => $correlationId,
                 'appointment_id' => $appointment->id,
             ]);
 
-            $cancelled = DB::transaction(function () use ($appointment, $correlationId) {
+            $cancelled = $this->db->transaction(function () use ($appointment, $correlationId) {
                 $appointment->update([
                     'status' => 'cancelled',
                     'cancelled_at' => now(),
@@ -113,14 +113,14 @@ final class BookingService
                 return $appointment->fresh();
             });
 
-            Log::channel('audit')->info('beauty.booking.cancel.success', [
+            $this->log->channel('audit')->info('beauty.booking.cancel.success', [
                 'correlation_id' => $correlationId,
                 'appointment_id' => $cancelled->id,
             ]);
 
             return $cancelled;
         } catch (Throwable $e) {
-            Log::channel('audit')->critical('beauty.booking.cancel.error', [
+            $this->log->channel('audit')->critical('beauty.booking.cancel.error', [
                 'correlation_id' => $correlationId,
                 'appointment_id' => $appointment->id,
                 'error' => $e->getMessage(),
@@ -139,12 +139,12 @@ final class BookingService
         $correlationId ??= Str::uuid();
 
         try {
-            Log::channel('audit')->info('beauty.booking.complete.start', [
+            $this->log->channel('audit')->info('beauty.booking.complete.start', [
                 'correlation_id' => $correlationId,
                 'appointment_id' => $appointment->id,
             ]);
 
-            $completed = DB::transaction(function () use ($appointment, $correlationId) {
+            $completed = $this->db->transaction(function () use ($appointment, $correlationId) {
                 $appointment->update([
                     'status' => 'completed',
                     'completed_at' => now(),
@@ -156,14 +156,14 @@ final class BookingService
                 return $appointment->fresh();
             });
 
-            Log::channel('audit')->info('beauty.booking.complete.success', [
+            $this->log->channel('audit')->info('beauty.booking.complete.success', [
                 'correlation_id' => $correlationId,
                 'appointment_id' => $completed->id,
             ]);
 
             return $completed;
         } catch (Throwable $e) {
-            Log::channel('audit')->critical('beauty.booking.complete.error', [
+            $this->log->channel('audit')->critical('beauty.booking.complete.error', [
                 'correlation_id' => $correlationId,
                 'appointment_id' => $appointment->id,
                 'error' => $e->getMessage(),
@@ -216,7 +216,7 @@ final class BookingService
 
             return $slots;
         } catch (Throwable $e) {
-            Log::channel('audit')->critical('beauty.booking.slots.error', [
+            $this->log->channel('audit')->critical('beauty.booking.slots.error', [
                 'error' => $e->getMessage(),
             ]);
             throw $e;

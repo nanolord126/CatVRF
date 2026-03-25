@@ -29,7 +29,7 @@ class BatchPayoutService
     {
         $correlationId = $correlationId ?? Str::uuid()->toString();
 
-        DB::beginTransaction();
+        $this->db->beginTransaction();
 
         try {
             $batchId = Str::uuid()->toString();
@@ -57,9 +57,9 @@ class BatchPayoutService
                 ]);
             }
 
-            DB::commit();
+            $this->db->commit();
 
-            Log::info('Batch payout created', [
+            $this->log->info('Batch payout created', [
                 'batch_id' => $batchId,
                 'count' => count($payouts),
                 'total_amount' => $totalAmount,
@@ -74,8 +74,8 @@ class BatchPayoutService
                 'correlation_id' => $correlationId,
             ];
         } catch (Exception $e) {
-            DB::rollBack();
-            Log::error('Failed to create batch payout', [
+            $this->db->rollBack();
+            $this->log->error('Failed to create batch payout', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -120,14 +120,14 @@ class BatchPayoutService
                         'error' => $e->getMessage(),
                     ];
                     
-                    Log::error('Failed to process single payout', [
+                    $this->log->error('Failed to process single payout', [
                         'transaction_id' => $payout->id,
                         'error' => $e->getMessage(),
                     ]);
                 }
             }
 
-            Log::info('Batch payout processed', [
+            $this->log->info('Batch payout processed', [
                 'batch_id' => $batchId,
                 'processed' => $results['processed'],
                 'failed' => $results['failed'],
@@ -135,7 +135,7 @@ class BatchPayoutService
 
             return $results;
         } catch (Exception $e) {
-            Log::error('Failed to process batch payout', [
+            $this->log->error('Failed to process batch payout', [
                 'batch_id' => $batchId,
                 'error' => $e->getMessage(),
             ]);
@@ -163,13 +163,13 @@ class BatchPayoutService
             ]);
 
             // Может быть асинхронное подтверждение через webhook
-            Log::info('Single payout sent to gateway', [
+            $this->log->info('Single payout sent to gateway', [
                 'transaction_id' => $payout->id,
                 'gateway' => $gateway,
                 'amount' => $payout->amount,
             ]);
         } catch (Exception $e) {
-            Log::error('Failed to send payout to gateway', [
+            $this->log->error('Failed to send payout to gateway', [
                 'transaction_id' => $payout->id,
                 'error' => $e->getMessage(),
             ]);
@@ -226,7 +226,7 @@ class BatchPayoutService
                 $cancelled++;
             }
 
-            Log::info('Batch cancelled', [
+            $this->log->info('Batch cancelled', [
                 'batch_id' => $batchId,
                 'cancelled_count' => $cancelled,
                 'reason' => $reason,
@@ -238,7 +238,7 @@ class BatchPayoutService
                 'status' => 'cancelled',
             ];
         } catch (Exception $e) {
-            Log::error('Failed to cancel batch', [
+            $this->log->error('Failed to cancel batch', [
                 'batch_id' => $batchId,
                 'error' => $e->getMessage(),
             ]);

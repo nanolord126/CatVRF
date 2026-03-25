@@ -39,7 +39,7 @@ final class FlowerShopController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -53,7 +53,7 @@ final class FlowerShopController
                 ->with(['products' => fn ($q) => $q->where('is_available', true)])
                 ->firstOrFail();
 
-            Log::channel('audit')->info('Flower shop viewed', [
+            $this->log->channel('audit')->info('Flower shop viewed', [
                 'shop_id' => $shop->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -68,7 +68,7 @@ final class FlowerShopController
                 'success' => false,
                 'message' => 'Shop not found',
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_NOT_FOUND);
+            ], $this->response->HTTP_NOT_FOUND);
         }
     }
 
@@ -84,7 +84,7 @@ final class FlowerShopController
                     'success' => false,
                     'message' => 'No flower shop found',
                     'correlation_id' => $correlationId,
-                ], Response::HTTP_NOT_FOUND);
+                ], $this->response->HTTP_NOT_FOUND);
             }
 
             return response()->json([
@@ -97,7 +97,7 @@ final class FlowerShopController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -115,7 +115,7 @@ final class FlowerShopController
                 'delivery_radius_km' => 'integer|min:1|max:50',
             ]);
 
-            $shop = DB::transaction(function () use ($validated, $correlationId) {
+            $shop = $this->db->transaction(function () use ($validated, $correlationId) {
                 $shop = FlowerShop::query()->create([
                     'tenant_id' => filament()->getTenant()->id,
                     'user_id' => auth()->id(),
@@ -123,7 +123,7 @@ final class FlowerShopController
                     ...$validated,
                 ]);
 
-                Log::channel('audit')->info('Flower shop created', [
+                $this->log->channel('audit')->info('Flower shop created', [
                     'shop_id' => $shop->id,
                     'user_id' => auth()->id(),
                     'correlation_id' => $correlationId,
@@ -136,9 +136,9 @@ final class FlowerShopController
                 'success' => true,
                 'data' => $shop,
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_CREATED);
+            ], $this->response->HTTP_CREATED);
         } catch (\Exception $exception) {
-            Log::channel('audit')->error('Shop creation failed', [
+            $this->log->channel('audit')->error('Shop creation failed', [
                 'error' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -147,7 +147,7 @@ final class FlowerShopController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -168,10 +168,10 @@ final class FlowerShopController
                 'delivery_radius_km' => 'integer|min:1|max:50',
             ]);
 
-            $shop = DB::transaction(function () use ($shop, $validated, $correlationId) {
+            $shop = $this->db->transaction(function () use ($shop, $validated, $correlationId) {
                 $shop->update([...$validated, 'correlation_id' => $correlationId]);
 
-                Log::channel('audit')->info('Flower shop updated', [
+                $this->log->channel('audit')->info('Flower shop updated', [
                     'shop_id' => $shop->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -189,7 +189,7 @@ final class FlowerShopController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -212,7 +212,7 @@ final class FlowerShopController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -236,7 +236,7 @@ final class FlowerShopController
                 'success' => false,
                 'message' => 'Shop not found',
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_NOT_FOUND);
+            ], $this->response->HTTP_NOT_FOUND);
         }
     }
 
@@ -245,7 +245,7 @@ final class FlowerShopController
         $correlationId = (string)Str::uuid()->toString();
 
         try {
-            $shop = DB::transaction(function () use ($id, $correlationId) {
+            $shop = $this->db->transaction(function () use ($id, $correlationId) {
                 $shop = FlowerShop::query()
                     ->where('id', $id)
                     ->lockForUpdate()
@@ -253,7 +253,7 @@ final class FlowerShopController
 
                 $shop->update(['is_verified' => true]);
 
-                Log::channel('audit')->info('Flower shop verified', [
+                $this->log->channel('audit')->info('Flower shop verified', [
                     'shop_id' => $shop->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -271,7 +271,7 @@ final class FlowerShopController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -280,11 +280,11 @@ final class FlowerShopController
         $correlationId = (string)Str::uuid()->toString();
 
         try {
-            DB::transaction(function () use ($id, $correlationId) {
+            $this->db->transaction(function () use ($id, $correlationId) {
                 $shop = FlowerShop::query()->findOrFail($id);
                 $shop->delete();
 
-                Log::channel('audit')->info('Flower shop deleted', [
+                $this->log->channel('audit')->info('Flower shop deleted', [
                     'shop_id' => $shop->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -300,7 +300,7 @@ final class FlowerShopController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -331,7 +331,7 @@ final class FlowerShopController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -361,7 +361,7 @@ final class FlowerShopController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 }

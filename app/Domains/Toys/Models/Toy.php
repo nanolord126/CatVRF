@@ -1,5 +1,29 @@
 <?php declare(strict_types=1);
 
+
+
+/**
+ * Toy
+ * 
+ * Производитель: CatVRF Platform
+ * Версия: 1.0.0
+ * 
+ * Примеры использования:
+ * 
+ * ```php
+ * // Базовое использование
+ * $instance = new Toy();
+ * ```
+ * 
+ * Требования:
+ * - Laravel 10+
+ * - PHP 8.2+
+ * - Все методы должны быть явно типизированы
+ * 
+ * @author CatVRF
+ * @package namespace App\Domains\Toys\Models
+ * @see https://github.com/iyegorovskyi_clemny/CatVRF
+ */
 namespace App\Domains\Toys\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;

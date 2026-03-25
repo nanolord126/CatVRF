@@ -50,9 +50,9 @@ final class ComparisonHeatmapService
         $cacheKey = $this->buildGeoCacheKey($tenantId, $vertical, $period1From, $period1To, $period2From, $period2To, $metric);
         
         // Проверить кэш
-        $cached = Cache::get($cacheKey);
+        $cached = $this->cache->get($cacheKey);
         if ($cached) {
-            Log::channel('analytics')->debug('Geo comparison cache hit', [
+            $this->log->channel('analytics')->debug('Geo comparison cache hit', [
                 'correlation_id' => $this->correlationId,
                 'cache_key' => $cacheKey,
                 'tenant_id' => $tenantId,
@@ -127,9 +127,9 @@ final class ComparisonHeatmapService
                 default => 86400,  // Месячные: 24 часа
             };
 
-            Cache::put($cacheKey, $response, $ttl);
+            $this->cache->put($cacheKey, $response, $ttl);
 
-            Log::channel('analytics')->info('Geo comparison generated', [
+            $this->log->channel('analytics')->info('Geo comparison generated', [
                 'correlation_id' => $this->correlationId,
                 'tenant_id' => $tenantId,
                 'metric' => $metric,
@@ -141,7 +141,7 @@ final class ComparisonHeatmapService
 
             return $response;
         } catch (\Exception $e) {
-            Log::channel('error')->error('Geo comparison failed', [
+            $this->log->channel('error')->error('Geo comparison failed', [
                 'correlation_id' => $this->correlationId,
                 'tenant_id' => $tenantId,
                 'message' => $e->getMessage(),
@@ -181,9 +181,9 @@ final class ComparisonHeatmapService
         $cacheKey = $this->buildClickCacheKey($tenantId, $vertical, $pageUrl, $period1From, $period1To, $period2From, $period2To);
 
         // Проверить кэш
-        $cached = Cache::get($cacheKey);
+        $cached = $this->cache->get($cacheKey);
         if ($cached) {
-            Log::channel('analytics')->debug('Click comparison cache hit', [
+            $this->log->channel('analytics')->debug('Click comparison cache hit', [
                 'correlation_id' => $this->correlationId,
                 'cache_key' => $cacheKey,
             ]);
@@ -249,9 +249,9 @@ final class ComparisonHeatmapService
             ];
 
             // Кэшировать (5 минут)
-            Cache::put($cacheKey, $response, 5 * 60);
+            $this->cache->put($cacheKey, $response, 5 * 60);
 
-            Log::channel('analytics')->info('Click comparison generated', [
+            $this->log->channel('analytics')->info('Click comparison generated', [
                 'correlation_id' => $this->correlationId,
                 'tenant_id' => $tenantId,
                 'page_url' => $pageUrl,
@@ -260,7 +260,7 @@ final class ComparisonHeatmapService
 
             return $response;
         } catch (\Exception $e) {
-            Log::channel('error')->error('Click comparison failed', [
+            $this->log->channel('error')->error('Click comparison failed', [
                 'correlation_id' => $this->correlationId,
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -413,9 +413,9 @@ final class ComparisonHeatmapService
      */
     public function invalidateCache(int $tenantId, string $vertical = '*'): void
     {
-        Cache::tags(['heatmap_comparison', "tenant:{$tenantId}"])->flush();
+        $this->cache->tags(['heatmap_comparison', "tenant:{$tenantId}"])->flush();
         
-        Log::channel('analytics')->info('Comparison cache invalidated', [
+        $this->log->channel('analytics')->info('Comparison cache invalidated', [
             'correlation_id' => $this->correlationId,
             'tenant_id' => $tenantId,
             'vertical' => $vertical,

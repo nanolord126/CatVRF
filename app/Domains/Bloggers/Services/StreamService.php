@@ -54,7 +54,7 @@ class StreamService
             'correlation_id' => $correlationId,
         ]);
 
-        return DB::transaction(function () use ($bloggerId, $title, $description, $scheduledAt, $settings, $correlationId) {
+        return $this->db->transaction(function () use ($bloggerId, $title, $description, $scheduledAt, $settings, $correlationId) {
             // Генерируем уникальный room_id и broadcast_key
             $roomId = 'stream_' . Str::random(16);
             $broadcastKey = Str::random(32);
@@ -86,7 +86,7 @@ class StreamService
             ]);
 
             // Audit log
-            Log::channel('audit')->info('Stream created', [
+            $this->log->channel('audit')->info('Stream created', [
                 'stream_id' => $stream->id,
                 'blogger_id' => $bloggerId,
                 'title' => $title,
@@ -112,7 +112,7 @@ class StreamService
             throw new \RuntimeException('Only scheduled streams can be started');
         }
 
-        return DB::transaction(function () use ($stream, $correlationId) {
+        return $this->db->transaction(function () use ($stream, $correlationId) {
             $stream->update([
                 'status' => 'live',
                 'started_at' => now(),
@@ -120,7 +120,7 @@ class StreamService
             ]);
 
             // Audit log
-            Log::channel('audit')->info('Stream started', [
+            $this->log->channel('audit')->info('Stream started', [
                 'stream_id' => $stream->id,
                 'blogger_id' => $stream->blogger_id,
                 'correlation_id' => $correlationId,
@@ -145,7 +145,7 @@ class StreamService
             throw new \RuntimeException('Only live streams can be ended');
         }
 
-        return DB::transaction(function () use ($stream, $correlationId) {
+        return $this->db->transaction(function () use ($stream, $correlationId) {
             $durationSeconds = $stream->started_at ? now()->diffInSeconds($stream->started_at) : 0;
 
             $stream->update([
@@ -156,7 +156,7 @@ class StreamService
             ]);
 
             // Audit log
-            Log::channel('audit')->info('Stream ended', [
+            $this->log->channel('audit')->info('Stream ended', [
                 'stream_id' => $stream->id,
                 'duration_seconds' => $durationSeconds,
                 'peak_viewers' => $stream->peak_viewers,

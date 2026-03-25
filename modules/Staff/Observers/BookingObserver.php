@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 namespace Modules\Staff\Observers;
@@ -6,6 +8,15 @@ use Modules\Hotels\Models\Booking;
 use Modules\Staff\Models\StaffTask;
 use Illuminate\Support\Str;
 
+/**
+ * BookingObserver
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
 class BookingObserver
 {
     public function updated(Booking $booking): void

@@ -42,7 +42,7 @@ final class MaterialController
 
             return response()->json(['success' => true, 'data' => $materials, 'correlation_id' => $correlationId]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('ConstructionMaterials: index error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+            $this->log->channel('audit')->error('ConstructionMaterials: index error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
             return response()->json(['success' => false, 'message' => 'Ошибка загрузки', 'correlation_id' => $correlationId], 500);
         }
     }
@@ -107,7 +107,7 @@ final class MaterialController
                 'comment'          => 'nullable|string|max:500',
             ]);
 
-            $order = DB::transaction(function () use ($validated, $userId, $correlationId): MaterialOrder {
+            $order = $this->db->transaction(function () use ($validated, $userId, $correlationId): MaterialOrder {
                 $material = ConstructionMaterial::findOrFail($validated['material_id']);
                 $order    = MaterialOrder::create([
                     'uuid'             => Str::uuid(),
@@ -123,7 +123,7 @@ final class MaterialController
                     'correlation_id'   => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('ConstructionMaterials: Order created', [
+                $this->log->channel('audit')->info('ConstructionMaterials: Order created', [
                     'order_id'       => $order->id,
                     'material_id'    => $validated['material_id'],
                     'user_id'        => $userId,
@@ -137,7 +137,7 @@ final class MaterialController
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('ConstructionMaterials: order error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+            $this->log->channel('audit')->error('ConstructionMaterials: order error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
             return response()->json(['success' => false, 'message' => 'Ошибка заказа', 'correlation_id' => $correlationId], 500);
         }
     }

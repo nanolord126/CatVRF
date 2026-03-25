@@ -1,6 +1,30 @@
 <?php declare(strict_types=1);
 
-namespace App\Domains\Confectionery\Models;
+namespace
+
+/**
+ * ConfectioneryShop
+ * 
+ * Производитель: CatVRF Platform
+ * Версия: 1.0.0
+ * 
+ * Примеры использования:
+ * 
+ * ```php
+ * // Базовое использование
+ * $instance = new ConfectioneryShop();
+ * ```
+ * 
+ * Требования:
+ * - Laravel 10+
+ * - PHP 8.2+
+ * - Все методы должны быть явно типизированы
+ * 
+ * @author CatVRF
+ * @package namespace App\Domains\Confectionery\Models
+ * @see https://github.com/iyegorovskyi_clemny/CatVRF
+ */
+ App\Domains\Confectionery\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -33,8 +57,26 @@ final class ConfectioneryShop extends Model
         'tags' => 'json',
     ];
 
+    /**
+     * Выполнить операцию
+     * 
+     * @return mixed
+     * @throws \Exception
+     */
     public function products() { return $this->hasMany(Cake::class, 'confectionery_shop_id'); }
+    /**
+     * Выполнить операцию
+     * 
+     * @return mixed
+     * @throws \Exception
+     */
     public function orders() { return $this->hasMany(CakeOrder::class, 'confectionery_shop_id'); }
+    /**
+     * Выполнить операцию
+     * 
+     * @return mixed
+     * @throws \Exception
+     */
     public function customDesigns() { return $this->hasMany(CustomCakeDesign::class, 'confectionery_shop_id'); }
 
     protected static function booted(): void

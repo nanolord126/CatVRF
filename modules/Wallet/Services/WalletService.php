@@ -3,21 +3,39 @@
 namespace App\Modules\Wallet\Services;
 
 use App\Modules\Wallet\Models\WalletTransaction;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use App\Services\FraudControlService;
+use Illuminate\Database\ConnectionInterface;
+use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
 use DomainException;
 use Throwable;
 
 /**
- * Сервис управления кошельком.
+ * Сервис управления кошельком (Wallet Service)
+ *
+ * КАНОН 2026 - Production Ready
  * Единственная точка для операций с балансом.
- * Production 2026.
+ * Все операции требуют:
+ * 1. FraudControlService::check() перед мутацией
+ * 2. DB::transaction() для атомарности
+ * 3. correlation_id для трейсирования
+ * 4. Log::channel('audit') для всех операций
+ * 5. Exception handling с полным backtrace
  */
 final class WalletService
 {
+    public function __construct(
+        private readonly ConnectionInterface $db,
+        private readonly LogManager $log,
+        private readonly FraudControlService $fraud,
+    ) {}
+
     /**
-     * Получить текущий баланс пользователя.
+     * Получить текущий баланс пользователя
+     *
+     * @param int $userId
+     * @param int $tenantId
+     * @return int (копейки)
      */
     public function getBalance(int $userId, int $tenantId): int
     {
@@ -28,8 +46,19 @@ final class WalletService
     }
 
     /**
-     * Пополнить кошелек (deposit).
+     * Пополнить кошелек (deposit)
+     *
+     * @param int $userId
+     * @param int $tenantId
+     * @param int $amountCents (копейки)
+     * @param string $currency
+     * @param ?array $metadata
+     * @param ?string $description
+     * @param ?string $correlationId
+     * @return WalletTransaction
+     *
      * @throws DomainException
+     * @throws Throwable
      */
     public function deposit(
         int $userId,
@@ -38,21 +67,30 @@ final class WalletService
         string $currency = 'RUB',
         ?array $metadata = null,
         ?string $description = null,
+        ?string $correlationId = null,
     ): WalletTransaction {
-        $correlationId = Str::uuid();
+        $correlationId ??= Str::uuid()->toString();
 
         try {
-            // Fraud check - не делаем здесь, это должно быть в контроллере
-            // WalletService —純粹 бизнес-логика, fraud check на уровне API контроллера
-
-            Log::channel('audit')->info('wallet.service.deposit.start', [
-                'correlation_id' => $correlationId,
-                'user_id' => $userId,
+            // 1. FRAUD CHECK BEFORE transaction
+            $this->fraud->check([
+                'operation_type' => 'wallet_deposit',
                 'amount' => $amountCents,
+                'user_id' => $userId,
+                'ip_address' => request()->ip(),
+                'correlation_id' => $correlationId,
             ]);
 
-            // Транзакция БД
-            $transaction = DB::transaction(function () use (
+            $this->log->channel('audit')->info('Wallet: Deposit initiated', [
+                'correlation_id' => $correlationId,
+                'user_id' => $userId,
+                'tenant_id' => $tenantId,
+                'amount' => $amountCents,
+                'currency' => $currency,
+            ]);
+
+            // 2. DATABASE TRANSACTION
+            $transaction = $this->db->transaction(function () use (
                 $userId,
                 $tenantId,
                 $amountCents,
@@ -68,33 +106,55 @@ final class WalletService
                     'amount' => $amountCents,
                     'status' => 'completed',
                     'currency' => $currency,
-                    'correlation_id' => (string) $correlationId,
+                    'correlation_id' => $correlationId,
                     'tags' => ['deposit', 'completed'],
                     'metadata' => $metadata ?? [],
                     'description' => $description,
                 ]);
             });
 
-            Log::channel('audit')->info('wallet.service.deposit.success', [
+            // 3. SUCCESS LOG
+            $this->log->channel('audit')->info('Wallet: Deposit succeeded', [
                 'correlation_id' => $correlationId,
                 'transaction_id' => $transaction->id,
                 'amount' => $amountCents,
+                'new_balance' => $this->getBalance($userId, $tenantId),
             ]);
 
             return $transaction;
-        } catch (Throwable $e) {
-            Log::channel('audit')->critical('wallet.service.deposit.error', [
-                'correlation_id' => $correlationId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+        } catch (\Exception $e) {
+            // 4. ERROR LOG with backtrace
+            if ($e instanceof DomainException) {
+                $this->log->channel('audit')->warning('Wallet: Deposit failed - domain error', [
+                    'correlation_id' => $correlationId,
+                    'error' => $e->getMessage(),
+                ]);
+            } else {
+                $this->log->channel('audit')->error('Wallet: Deposit error', [
+                    'correlation_id' => $correlationId,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+            }
+
             throw $e;
         }
     }
 
     /**
-     * Вывести с кошелька (withdrawal).
-     * @throws DomainException
+     * Вывести с кошелька (withdrawal)
+     *
+     * @param int $userId
+     * @param int $tenantId
+     * @param int $amountCents (копейки)
+     * @param string $currency
+     * @param ?array $metadata
+     * @param ?string $description
+     * @param ?string $correlationId
+     * @return WalletTransaction
+     *
+     * @throws DomainException (недостаточно средств)
+     * @throws Throwable
      */
     public function withdraw(
         int $userId,
@@ -103,21 +163,30 @@ final class WalletService
         string $currency = 'RUB',
         ?array $metadata = null,
         ?string $description = null,
+        ?string $correlationId = null,
     ): WalletTransaction {
-        $correlationId = Str::uuid();
+        $correlationId ??= Str::uuid()->toString();
 
         try {
-            // Fraud check - не делаем здесь, это должно быть в контроллере
-            // WalletService — бизнес-логика, fraud check на уровне API контроллера
-
-            Log::channel('audit')->info('wallet.service.withdraw.start', [
-                'correlation_id' => $correlationId,
-                'user_id' => $userId,
+            // 1. FRAUD CHECK BEFORE transaction
+            $this->fraud->check([
+                'operation_type' => 'wallet_withdrawal',
                 'amount' => $amountCents,
+                'user_id' => $userId,
+                'ip_address' => request()->ip(),
+                'correlation_id' => $correlationId,
             ]);
 
-            // Проверка баланса и транзакция
-            $transaction = DB::transaction(function () use (
+            $this->log->channel('audit')->info('Wallet: Withdrawal initiated', [
+                'correlation_id' => $correlationId,
+                'user_id' => $userId,
+                'tenant_id' => $tenantId,
+                'amount' => $amountCents,
+                'currency' => $currency,
+            ]);
+
+            // 2. DATABASE TRANSACTION with balance check
+            $transaction = $this->db->transaction(function () use (
                 $userId,
                 $tenantId,
                 $amountCents,
@@ -126,6 +195,7 @@ final class WalletService
                 $description,
                 $correlationId,
             ) {
+                // Check balance INSIDE transaction (atomic)
                 $currentBalance = WalletTransaction::where('tenant_id', $tenantId)
                     ->where('user_id', $userId)
                     ->where('status', 'completed')
@@ -134,7 +204,7 @@ final class WalletService
                 if ($currentBalance < $amountCents) {
                     throw new DomainException(
                         sprintf(
-                            'Insufficient balance: required %d, available %d',
+                            'Insufficient balance: required %d cents, available %d cents',
                             $amountCents,
                             $currentBalance
                         )
@@ -145,35 +215,54 @@ final class WalletService
                     'tenant_id' => $tenantId,
                     'user_id' => $userId,
                     'type' => 'withdrawal',
-                    'amount' => -$amountCents,
+                    'amount' => -$amountCents,  // negative amount
                     'status' => 'completed',
                     'currency' => $currency,
-                    'correlation_id' => (string) $correlationId,
+                    'correlation_id' => $correlationId,
                     'tags' => ['withdrawal', 'completed'],
                     'metadata' => $metadata ?? [],
                     'description' => $description,
                 ]);
             });
 
-            Log::channel('audit')->info('wallet.service.withdraw.success', [
+            // 3. SUCCESS LOG
+            $this->log->channel('audit')->info('Wallet: Withdrawal succeeded', [
                 'correlation_id' => $correlationId,
                 'transaction_id' => $transaction->id,
                 'amount' => $amountCents,
+                'new_balance' => $this->getBalance($userId, $tenantId),
             ]);
 
             return $transaction;
-        } catch (Throwable $e) {
-            Log::channel('audit')->critical('wallet.service.withdraw.error', [
-                'correlation_id' => $correlationId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+        } catch (\Exception $e) {
+            // 4. ERROR LOG with context
+            if ($e instanceof DomainException) {
+                $this->log->channel('audit')->warning('Wallet: Withdrawal failed - insufficient balance', [
+                    'correlation_id' => $correlationId,
+                    'user_id' => $userId,
+                    'requested_amount' => $amountCents,
+                    'current_balance' => $this->getBalance($userId, $tenantId),
+                    'error' => $e->getMessage(),
+                ]);
+            } else {
+                $this->log->channel('audit')->error('Wallet: Withdrawal error', [
+                    'correlation_id' => $correlationId,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+            }
+
             throw $e;
         }
     }
 
     /**
-     * Получить историю транзакций.
+     * Получить историю транзакций (пагинированно)
+     *
+     * @param int $userId
+     * @param int $tenantId
+     * @param int $perPage
+     * @return \Illuminate\Pagination\Paginator
      */
     public function getHistory(int $userId, int $tenantId, int $perPage = 20): \Illuminate\Pagination\Paginator
     {
@@ -181,5 +270,263 @@ final class WalletService
             ->where('user_id', $userId)
             ->orderBy('created_at', 'desc')
             ->paginate($perPage);
+    }
+
+    /**
+     * Перевести средства между пользователями (внутри платформы)
+     *
+     * @param int $fromUserId
+     * @param int $toUserId
+     * @param int $tenantId
+     * @param int $amountCents
+     * @param ?string $correlationId
+     * @return array ['from' => WalletTransaction, 'to' => WalletTransaction]
+     *
+     * @throws DomainException
+     * @throws Throwable
+     */
+    public function transfer(
+        int $fromUserId,
+        int $toUserId,
+        int $tenantId,
+        int $amountCents,
+        ?string $correlationId = null,
+    ): array {
+        $correlationId ??= Str::uuid()->toString();
+
+        try {
+            // 1. FRAUD CHECK
+            $this->fraud->check([
+                'operation_type' => 'wallet_transfer',
+                'amount' => $amountCents,
+                'from_user_id' => $fromUserId,
+                'to_user_id' => $toUserId,
+                'ip_address' => request()->ip(),
+                'correlation_id' => $correlationId,
+            ]);
+
+            $this->log->channel('audit')->info('Wallet: Transfer initiated', [
+                'correlation_id' => $correlationId,
+                'from_user_id' => $fromUserId,
+                'to_user_id' => $toUserId,
+                'amount' => $amountCents,
+            ]);
+
+            // 2. TRANSACTION
+            $result = $this->db->transaction(function () use (
+                $fromUserId,
+                $toUserId,
+                $tenantId,
+                $amountCents,
+                $correlationId,
+            ) {
+                // Check sender balance
+                $senderBalance = $this->getBalance($fromUserId, $tenantId);
+                if ($senderBalance < $amountCents) {
+                    throw new DomainException('Insufficient balance for transfer');
+                }
+
+                // Debit sender
+                $debit = WalletTransaction::create([
+                    'tenant_id' => $tenantId,
+                    'user_id' => $fromUserId,
+                    'type' => 'transfer_out',
+                    'amount' => -$amountCents,
+                    'status' => 'completed',
+                    'correlation_id' => $correlationId,
+                    'tags' => ['transfer', 'completed'],
+                ]);
+
+                // Credit recipient
+                $credit = WalletTransaction::create([
+                    'tenant_id' => $tenantId,
+                    'user_id' => $toUserId,
+                    'type' => 'transfer_in',
+                    'amount' => $amountCents,
+                    'status' => 'completed',
+                    'correlation_id' => $correlationId,
+                    'tags' => ['transfer', 'completed'],
+                ]);
+
+                return [
+                    'from' => $debit,
+                    'to' => $credit,
+                ];
+            });
+
+            // 3. SUCCESS LOG
+            $this->log->channel('audit')->info('Wallet: Transfer succeeded', [
+                'correlation_id' => $correlationId,
+                'from_user_id' => $fromUserId,
+                'to_user_id' => $toUserId,
+                'amount' => $amountCents,
+            ]);
+
+            return $result;
+        } catch (\Exception $e) {
+            // 4. ERROR LOG
+            $this->log->channel('audit')->error('Wallet: Transfer failed', [
+                'correlation_id' => $correlationId,
+                'from_user_id' => $fromUserId,
+                'to_user_id' => $toUserId,
+                'amount' => $amountCents,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            throw $e;
+        }
+    }
+
+    /**
+     * Заморозить средства (hold) для зарезервированной операции
+     *
+     * Используется при заказе, но до фактической оплаты
+     * (например, бронирование услуги или товара)
+     *
+     * @param int $userId
+     * @param int $tenantId
+     * @param int $amountCents
+     * @param string $holdReason (appointment, order, booking)
+     * @param ?string $correlationId
+     * @return WalletTransaction
+     *
+     * @throws DomainException
+     * @throws Throwable
+     */
+    public function hold(
+        int $userId,
+        int $tenantId,
+        int $amountCents,
+        string $holdReason = 'appointment',
+        ?string $correlationId = null,
+    ): WalletTransaction {
+        $correlationId ??= Str::uuid()->toString();
+
+        try {
+            // 1. FRAUD CHECK
+            $this->fraud->check([
+                'operation_type' => 'wallet_hold',
+                'amount' => $amountCents,
+                'user_id' => $userId,
+                'hold_reason' => $holdReason,
+                'ip_address' => request()->ip(),
+                'correlation_id' => $correlationId,
+            ]);
+
+            $this->log->channel('audit')->info('Wallet: Hold initiated', [
+                'correlation_id' => $correlationId,
+                'user_id' => $userId,
+                'amount' => $amountCents,
+                'reason' => $holdReason,
+            ]);
+
+            // 2. TRANSACTION
+            $transaction = $this->db->transaction(function () use (
+                $userId,
+                $tenantId,
+                $amountCents,
+                $holdReason,
+                $correlationId,
+            ) {
+                // Check balance
+                $currentBalance = $this->getBalance($userId, $tenantId);
+                if ($currentBalance < $amountCents) {
+                    throw new DomainException('Insufficient balance for hold');
+                }
+
+                return WalletTransaction::create([
+                    'tenant_id' => $tenantId,
+                    'user_id' => $userId,
+                    'type' => 'hold',
+                    'amount' => -$amountCents,
+                    'status' => 'pending',  // pending until release
+                    'correlation_id' => $correlationId,
+                    'tags' => ['hold', 'pending', $holdReason],
+                    'description' => "Hold for {$holdReason}",
+                ]);
+            });
+
+            // 3. SUCCESS LOG
+            $this->log->channel('audit')->info('Wallet: Hold succeeded', [
+                'correlation_id' => $correlationId,
+                'transaction_id' => $transaction->id,
+                'amount' => $amountCents,
+                'reason' => $holdReason,
+            ]);
+
+            return $transaction;
+        } catch (\Exception $e) {
+            // 4. ERROR LOG
+            $this->log->channel('audit')->error('Wallet: Hold failed', [
+                'correlation_id' => $correlationId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            throw $e;
+        }
+    }
+
+    /**
+     * Освободить заморозленные средства (release hold)
+     *
+     * @param int $transactionId (ID записи hold из WalletTransaction)
+     * @param ?string $correlationId
+     * @return void
+     *
+     * @throws Throwable
+     */
+    public function releaseHold(int $transactionId, ?string $correlationId = null): void
+    {
+        $correlationId ??= Str::uuid()->toString();
+
+        try {
+            $holdTransaction = WalletTransaction::findOrFail($transactionId);
+
+            if ($holdTransaction->type !== 'hold' || $holdTransaction->status !== 'pending') {
+                throw new DomainException('Transaction is not a pending hold');
+            }
+
+            $this->log->channel('audit')->info('Wallet: Release hold initiated', [
+                'correlation_id' => $correlationId,
+                'hold_transaction_id' => $transactionId,
+                'amount' => abs($holdTransaction->amount),
+            ]);
+
+            // UPDATE the hold transaction status
+            $holdTransaction->update([
+                'status' => 'released',
+                'correlation_id' => $correlationId,
+            ]);
+
+            // CREATE reversal transaction
+            $this->db->transaction(function () use ($holdTransaction, $correlationId) {
+                WalletTransaction::create([
+                    'tenant_id' => $holdTransaction->tenant_id,
+                    'user_id' => $holdTransaction->user_id,
+                    'type' => 'hold_release',
+                    'amount' => abs($holdTransaction->amount),  // positive (reverse the hold)
+                    'status' => 'completed',
+                    'correlation_id' => $correlationId,
+                    'tags' => ['hold_release', 'completed'],
+                    'description' => "Release hold from transaction {$holdTransaction->id}",
+                ]);
+            });
+
+            $this->log->channel('audit')->info('Wallet: Release hold succeeded', [
+                'correlation_id' => $correlationId,
+                'hold_transaction_id' => $transactionId,
+            ]);
+        } catch (\Exception $e) {
+            $this->log->channel('audit')->error('Wallet: Release hold failed', [
+                'correlation_id' => $correlationId,
+                'transaction_id' => $transactionId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            throw $e;
+        }
     }
 }

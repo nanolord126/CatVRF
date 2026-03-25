@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources;
@@ -10,6 +12,15 @@ use Filament\Forms\Form;
 use App\Domains\PetServices\Models\B2BPetServicesOrder;
 use Illuminate\Database\Eloquent\Builder;
 
+/**
+ * PetServicesResource
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
 class PetServicesResource extends Resource
 {
     protected static ?string $model = B2BPetServicesOrder::class;

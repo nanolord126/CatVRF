@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -12,7 +14,16 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-final class NotifyLowConsumablesJob implements ShouldQueue
+final /**
+ * NotifyLowConsumablesJob
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class NotifyLowConsumablesJob implements ShouldQueue
 {
     use Dispatchable;
     use InteractsWithQueue;
@@ -21,7 +32,15 @@ final class NotifyLowConsumablesJob implements ShouldQueue
 
     public function __construct(
         private readonly string $correlationId,
-    ) {}
+    ) {
+    /**
+     * Инициализировать класс
+     */
+    public function __construct()
+    {
+        // TODO: инициализация
+    }
+}
 
     public function handle(): void
     {
@@ -30,7 +49,7 @@ final class NotifyLowConsumablesJob implements ShouldQueue
             ->get();
 
         foreach ($lowStock as $item) {
-            Log::channel('audit')->warning('Low consumable stock', [
+            $this->log->channel('audit')->warning('Low consumable stock', [
                 'consumable_id' => $item->id,
                 'name' => $item->name,
                 'stock' => $item->current_stock,

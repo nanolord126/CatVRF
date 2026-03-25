@@ -39,7 +39,7 @@ final class PostSchedulerJob implements ShouldQueue
             return;
         }
 
-        Log::channel('audit')->info('PostSchedulerJob processing', [
+        $this->log->channel('audit')->info('PostSchedulerJob processing', [
             'correlation_id' => $correlationId,
             'count'          => $due->count(),
         ]);
@@ -54,7 +54,7 @@ final class PostSchedulerJob implements ShouldQueue
                     $postService->publishPost($post, 'scheduler', $correlationId);
                 }
             } catch (\Throwable $e) {
-                Log::channel('audit')->error('PostSchedulerJob failed for post', [
+                $this->log->channel('audit')->error('PostSchedulerJob failed for post', [
                     'correlation_id' => $correlationId,
                     'post_id'        => $post->id,
                     'error'          => $e->getMessage(),

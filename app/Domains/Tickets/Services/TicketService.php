@@ -29,7 +29,7 @@ final class TicketService
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($eventId, $quantity, $userId, $tenantId) {
+$this->db->transaction(function () use ($eventId, $quantity, $userId, $tenantId) {
         $tickets = [];
         for ($i = 0; $i < $quantity; $i++) {
             $tickets[] = Ticket::create([
@@ -44,7 +44,7 @@ DB::transaction(function () use ($eventId, $quantity, $userId, $tenantId) {
             ]);
         }
 
-        Log::channel('audit')->info('Tickets purchased', [
+        $this->log->channel('audit')->info('Tickets purchased', [
             'correlation_id' => $this->correlationId,
             'quantity' => $quantity,
         ]);
@@ -68,7 +68,7 @@ DB::transaction(function () use ($eventId, $quantity, $userId, $tenantId) {
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($callback) {
+$this->db->transaction(function () use ($callback) {
             return $callback();
         });
     }

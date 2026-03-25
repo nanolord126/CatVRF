@@ -32,14 +32,14 @@ final class B2BFlowerController
                 'shop_id' => 'required|integer|exists:flower_shops,id',
             ]);
 
-            $storefront = DB::transaction(function () use ($validated, $correlationId) {
+            $storefront = $this->db->transaction(function () use ($validated, $correlationId) {
                 $storefront = B2BFlowerStorefront::query()->create([
                     'tenant_id' => filament()->getTenant()->id,
                     'correlation_id' => $correlationId,
                     ...$validated,
                 ]);
 
-                Log::channel('audit')->info('B2B flower storefront created', [
+                $this->log->channel('audit')->info('B2B flower storefront created', [
                     'storefront_id' => $storefront->id,
                     'company_inn' => $validated['company_inn'],
                     'correlation_id' => $correlationId,
@@ -53,9 +53,9 @@ final class B2BFlowerController
                 'data' => $storefront,
                 'message' => 'Registration submitted. Awaiting verification.',
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_CREATED);
+            ], $this->response->HTTP_CREATED);
         } catch (\Exception $exception) {
-            Log::channel('audit')->error('B2B registration failed', [
+            $this->log->channel('audit')->error('B2B registration failed', [
                 'error' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -64,7 +64,7 @@ final class B2BFlowerController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -87,7 +87,7 @@ final class B2BFlowerController
                 'success' => false,
                 'message' => 'Storefront not found',
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_NOT_FOUND);
+            ], $this->response->HTTP_NOT_FOUND);
         }
     }
 
@@ -106,10 +106,10 @@ final class B2BFlowerController
                 ->where('company_inn', auth()->user()->company_inn)
                 ->firstOrFail();
 
-            $storefront = DB::transaction(function () use ($storefront, $validated, $correlationId) {
+            $storefront = $this->db->transaction(function () use ($storefront, $validated, $correlationId) {
                 $storefront->update([...$validated, 'correlation_id' => $correlationId]);
 
-                Log::channel('audit')->info('B2B storefront updated', [
+                $this->log->channel('audit')->info('B2B storefront updated', [
                     'storefront_id' => $storefront->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -127,7 +127,7 @@ final class B2BFlowerController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -155,7 +155,7 @@ final class B2BFlowerController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -177,7 +177,7 @@ final class B2BFlowerController
                 'success' => false,
                 'message' => 'Product not found',
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_NOT_FOUND);
+            ], $this->response->HTTP_NOT_FOUND);
         }
     }
 
@@ -191,7 +191,7 @@ final class B2BFlowerController
                 'message' => 'nullable|string',
             ]);
 
-            Log::channel('audit')->info('B2B product inquiry', [
+            $this->log->channel('audit')->info('B2B product inquiry', [
                 'product_id' => $id,
                 'quantity' => $validated['quantity'],
                 'correlation_id' => $correlationId,
@@ -207,7 +207,7 @@ final class B2BFlowerController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -239,9 +239,9 @@ final class B2BFlowerController
                 'success' => true,
                 'data' => $order,
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_CREATED);
+            ], $this->response->HTTP_CREATED);
         } catch (\Exception $exception) {
-            Log::channel('audit')->error('B2B order creation failed', [
+            $this->log->channel('audit')->error('B2B order creation failed', [
                 'error' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -250,7 +250,7 @@ final class B2BFlowerController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -277,7 +277,7 @@ final class B2BFlowerController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -300,7 +300,7 @@ final class B2BFlowerController
                 'success' => false,
                 'message' => 'Order not found',
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_NOT_FOUND);
+            ], $this->response->HTTP_NOT_FOUND);
         }
     }
 
@@ -316,7 +316,7 @@ final class B2BFlowerController
                     'success' => false,
                     'message' => 'Cannot update this order',
                     'correlation_id' => $correlationId,
-                ], Response::HTTP_UNPROCESSABLE_ENTITY);
+                ], $this->response->HTTP_UNPROCESSABLE_ENTITY);
             }
 
             $validated = $request->validate([
@@ -324,10 +324,10 @@ final class B2BFlowerController
                 'delivery_date' => 'date|after:today',
             ]);
 
-            $order = DB::transaction(function () use ($order, $validated, $correlationId) {
+            $order = $this->db->transaction(function () use ($order, $validated, $correlationId) {
                 $order->update([...$validated, 'correlation_id' => $correlationId]);
 
-                Log::channel('audit')->info('B2B order updated', [
+                $this->log->channel('audit')->info('B2B order updated', [
                     'order_id' => $order->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -345,7 +345,7 @@ final class B2BFlowerController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -356,10 +356,10 @@ final class B2BFlowerController
         try {
             $order = B2BFlowerOrder::query()->findOrFail($id);
 
-            $order = DB::transaction(function () use ($order, $correlationId) {
+            $order = $this->db->transaction(function () use ($order, $correlationId) {
                 $order->update(['status' => 'submitted']);
 
-                Log::channel('audit')->info('B2B order submitted', [
+                $this->log->channel('audit')->info('B2B order submitted', [
                     'order_id' => $order->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -377,7 +377,7 @@ final class B2BFlowerController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -393,13 +393,13 @@ final class B2BFlowerController
                     'success' => false,
                     'message' => 'Cannot cancel this order',
                     'correlation_id' => $correlationId,
-                ], Response::HTTP_UNPROCESSABLE_ENTITY);
+                ], $this->response->HTTP_UNPROCESSABLE_ENTITY);
             }
 
-            $order = DB::transaction(function () use ($order, $correlationId) {
+            $order = $this->db->transaction(function () use ($order, $correlationId) {
                 $order->update(['status' => 'cancelled']);
 
-                Log::channel('audit')->info('B2B order cancelled', [
+                $this->log->channel('audit')->info('B2B order cancelled', [
                     'order_id' => $order->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -417,7 +417,7 @@ final class B2BFlowerController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -446,7 +446,7 @@ final class B2BFlowerController
                 'success' => false,
                 'message' => 'Invoice not found',
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_NOT_FOUND);
+            ], $this->response->HTTP_NOT_FOUND);
         }
     }
 
@@ -478,7 +478,7 @@ final class B2BFlowerController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -510,7 +510,7 @@ final class B2BFlowerController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -531,7 +531,7 @@ final class B2BFlowerController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -542,10 +542,10 @@ final class B2BFlowerController
         try {
             $storefront = B2BFlowerStorefront::query()->findOrFail($id);
 
-            $storefront = DB::transaction(function () use ($storefront, $correlationId) {
+            $storefront = $this->db->transaction(function () use ($storefront, $correlationId) {
                 $storefront->update(['is_verified' => true]);
 
-                Log::channel('audit')->info('B2B storefront verified', [
+                $this->log->channel('audit')->info('B2B storefront verified', [
                     'storefront_id' => $storefront->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -563,7 +563,7 @@ final class B2BFlowerController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -572,11 +572,11 @@ final class B2BFlowerController
         $correlationId = (string)Str::uuid()->toString();
 
         try {
-            DB::transaction(function () use ($id, $correlationId) {
+            $this->db->transaction(function () use ($id, $correlationId) {
                 $storefront = B2BFlowerStorefront::query()->findOrFail($id);
                 $storefront->delete();
 
-                Log::channel('audit')->info('B2B storefront deleted', [
+                $this->log->channel('audit')->info('B2B storefront deleted', [
                     'storefront_id' => $storefront->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -592,7 +592,7 @@ final class B2BFlowerController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 }

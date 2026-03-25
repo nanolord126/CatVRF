@@ -31,7 +31,7 @@ final class AgroService
         // Fraud Check (защита от массовой регистрации фейковых ферм)
         FraudControlService::check($this->correlationId);
 
-        return DB::transaction(function () use ($data, $tenantId) {
+        return $this->db->transaction(function () use ($data, $tenantId) {
             $farm = AgroFarm::create([
                 'tenant_id' => $tenantId,
                 'name' => $data['name'],
@@ -41,7 +41,7 @@ final class AgroService
                 'correlation_id' => $this->correlationId,
             ]);
 
-            Log::channel('audit')->info('Agro farm registered', [
+            $this->log->channel('audit')->info('Agro farm registered', [
                 'farm_id' => $farm->id,
                 'tenant_id' => $tenantId,
                 'correlation_id' => $this->correlationId,
@@ -56,14 +56,14 @@ final class AgroService
      */
     public function updateStock(int $productId, float $quantity, string $reason = 'manual_update'): bool
     {
-        return DB::transaction(function () use ($productId, $quantity, $reason) {
+        return $this->db->transaction(function () use ($productId, $quantity, $reason) {
             $product = AgroProduct::lockForUpdate()->findOrFail($productId);
             
             $oldStock = $product->current_stock;
             $product->current_stock = $quantity;
             $product->save();
 
-            Log::channel('audit')->info('Agro stock updated', [
+            $this->log->channel('audit')->info('Agro stock updated', [
                 'product_id' => $productId,
                 'old_stock' => $oldStock,
                 'new_stock' => $quantity,

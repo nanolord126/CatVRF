@@ -27,7 +27,7 @@ final class FlowerDeliveryController
             
             $this->authorize('track', $delivery);
 
-            Log::channel('audit')->info('Flower delivery tracked', [
+            $this->log->channel('audit')->info('Flower delivery tracked', [
                 'delivery_id' => $delivery->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -42,7 +42,7 @@ final class FlowerDeliveryController
                 'success' => false,
                 'message' => 'Delivery not found',
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_NOT_FOUND);
+            ], $this->response->HTTP_NOT_FOUND);
         }
     }
 
@@ -68,7 +68,7 @@ final class FlowerDeliveryController
                 'success' => false,
                 'message' => 'Delivery not found',
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_NOT_FOUND);
+            ], $this->response->HTTP_NOT_FOUND);
         }
     }
 
@@ -83,7 +83,7 @@ final class FlowerDeliveryController
                     'success' => false,
                     'message' => 'Flower shop not found',
                     'correlation_id' => $correlationId,
-                ], Response::HTTP_FORBIDDEN);
+                ], $this->response->HTTP_FORBIDDEN);
             }
 
             $deliveries = FlowerDelivery::query()
@@ -101,7 +101,7 @@ final class FlowerDeliveryController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -126,9 +126,9 @@ final class FlowerDeliveryController
                 'success' => true,
                 'data' => $delivery,
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_CREATED);
+            ], $this->response->HTTP_CREATED);
         } catch (\Exception $exception) {
-            Log::channel('audit')->error('Delivery assignment failed', [
+            $this->log->channel('audit')->error('Delivery assignment failed', [
                 'error' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -137,7 +137,7 @@ final class FlowerDeliveryController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -169,7 +169,7 @@ final class FlowerDeliveryController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 }

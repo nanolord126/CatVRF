@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Cars\Models;
@@ -7,7 +9,16 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
-final class CarDealer extends Model
+final /**
+ * CarDealer
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class CarDealer extends Model
 {
     protected $table = 'car_dealers';
 

@@ -2,6 +2,30 @@
 
 declare(strict_types=1);
 
+
+
+/**
+ * TicketEvent
+ * 
+ * Производитель: CatVRF Platform
+ * Версия: 1.0.0
+ * 
+ * Примеры использования:
+ * 
+ * ```php
+ * // Базовое использование
+ * $instance = new TicketEvent();
+ * ```
+ * 
+ * Требования:
+ * - Laravel 10+
+ * - PHP 8.2+
+ * - Все методы должны быть явно типизированы
+ * 
+ * @author CatVRF
+ * @package namespace App\Domains\Tickets\Models
+ * @see https://github.com/iyegorovskyi_clemny/CatVRF
+ */
 namespace App\Domains\Tickets\Models;
 
 use App\Traits\BelongsToTenant;
@@ -40,6 +64,12 @@ final class TicketEvent extends Model
         'end_at' => 'datetime',
     ];
 
+    /**
+     * Выполнить операцию
+     * 
+     * @return mixed
+     * @throws \Exception
+     */
     public function tickets(): HasMany
     {
         return $this->hasMany(Ticket::class, 'event_id');

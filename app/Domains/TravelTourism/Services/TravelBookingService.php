@@ -24,7 +24,7 @@ final class TravelBookingService
 
 
 
-        Log::channel('audit')->info('TravelBookingService: Creating travel booking', [
+        $this->log->channel('audit')->info('TravelBookingService: Creating travel booking', [
             'correlation_id' => $data['correlation_id'] ?? Str::uuid(),
             'tour_id' => $data['tour_id'],
             'tenant_id' => filament()->getTenant()->id,
@@ -38,7 +38,7 @@ final class TravelBookingService
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(fn () => TravelBooking::create([
+$this->db->transaction(fn () => TravelBooking::create([
             'uuid' => Str::uuid(),
             'correlation_id' => $data['correlation_id'] ?? Str::uuid(),
             'tenant_id' => filament()->getTenant()->id,
@@ -65,7 +65,7 @@ DB::transaction(fn () => TravelBooking::create([
 
         $booking = TravelBooking::findOrFail($bookingId);
 
-        Log::channel('audit')->info('TravelBookingService: Confirming booking', [
+        $this->log->channel('audit')->info('TravelBookingService: Confirming booking', [
             'correlation_id' => $booking->correlation_id,
             'booking_id' => $bookingId,
         ]);
@@ -78,7 +78,7 @@ DB::transaction(fn () => TravelBooking::create([
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($booking) {
+$this->db->transaction(function () use ($booking) {
             $booking->update(['status' => 'confirmed']);
             return true;
         });
@@ -92,7 +92,7 @@ DB::transaction(function () use ($booking) {
 
         $booking = TravelBooking::findOrFail($bookingId);
 
-        Log::channel('audit')->info('TravelBookingService: Processing payment', [
+        $this->log->channel('audit')->info('TravelBookingService: Processing payment', [
             'correlation_id' => $booking->correlation_id,
             'booking_id' => $bookingId,
             'payment_method' => $paymentMethodId,
@@ -106,7 +106,7 @@ DB::transaction(function () use ($booking) {
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($booking) {
+$this->db->transaction(function () use ($booking) {
             $booking->update(['payment_status' => 'paid']);
             
             // Debit from traveler wallet
@@ -129,7 +129,7 @@ DB::transaction(function () use ($booking) {
 
         $booking = TravelBooking::findOrFail($bookingId);
 
-        Log::channel('audit')->info('TravelBookingService: Issuing vouchers', [
+        $this->log->channel('audit')->info('TravelBookingService: Issuing vouchers', [
             'correlation_id' => $booking->correlation_id,
             'booking_id' => $bookingId,
         ]);
@@ -142,7 +142,7 @@ DB::transaction(function () use ($booking) {
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($booking) {
+$this->db->transaction(function () use ($booking) {
             $booking->update([
                 'vouchers_issued_at' => now(),
                 'voucher_codes' => $this->generateVoucherCodes($booking->participants),
@@ -159,7 +159,7 @@ DB::transaction(function () use ($booking) {
 
         $booking = TravelBooking::findOrFail($bookingId);
 
-        Log::channel('audit')->info('TravelBookingService: Cancelling booking', [
+        $this->log->channel('audit')->info('TravelBookingService: Cancelling booking', [
             'correlation_id' => $booking->correlation_id,
             'booking_id' => $bookingId,
             'reason' => $reason,
@@ -173,7 +173,7 @@ DB::transaction(function () use ($booking) {
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($booking, $reason) {
+$this->db->transaction(function () use ($booking, $reason) {
             $booking->update([
                 'status' => 'cancelled',
                 'cancellation_reason' => $reason,

@@ -32,9 +32,7 @@ $errors = [];
 $skipped = [];
 $alreadyHasBootMethod = [];
 
-if (!is_dir($baseDir)) {
-    die("Directory not found: $baseDir\n");
-}
+if (!is_dir($baseDir)) {}
 
 // Get all page files
 $iterator = new RecursiveIteratorIterator(

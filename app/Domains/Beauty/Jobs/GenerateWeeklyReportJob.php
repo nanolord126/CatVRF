@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -12,7 +14,16 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-final class GenerateWeeklyReportJob implements ShouldQueue
+final /**
+ * GenerateWeeklyReportJob
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class GenerateWeeklyReportJob implements ShouldQueue
 {
     use Dispatchable;
     use InteractsWithQueue;
@@ -22,7 +33,15 @@ final class GenerateWeeklyReportJob implements ShouldQueue
     public function __construct(
         private readonly int $salonId,
         private readonly string $correlationId,
-    ) {}
+    ) {
+    /**
+     * Инициализировать класс
+     */
+    public function __construct()
+    {
+        // TODO: инициализация
+    }
+}
 
     public function handle(): void
     {
@@ -35,7 +54,7 @@ final class GenerateWeeklyReportJob implements ShouldQueue
             'revenue' => $salon->appointments()->sum('price'),
         ];
 
-        Log::channel('audit')->info('Weekly report generated', [
+        $this->log->channel('audit')->info('Weekly report generated', [
             'salon_id' => $salon->id,
             'report' => $report,
             'correlation_id' => $this->correlationId,

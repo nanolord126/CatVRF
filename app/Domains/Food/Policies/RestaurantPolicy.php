@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Food\Policies;
@@ -25,27 +27,27 @@ final class RestaurantPolicy
     public function create(User $user): Response
     {
         if (!$user->can('create_restaurant')) {
-            return Response::deny('Вы не можете создавать рестораны');
+            return $this->response->deny('Вы не можете создавать рестораны');
         }
 
-        return Response::allow();
+        return $this->response->allow();
     }
 
     public function update(User $user, Restaurant $restaurant): Response
     {
         if ($user->id !== $restaurant->owner_id && !$user->isAdmin()) {
-            return Response::deny('Вы не можете редактировать этот ресторан');
+            return $this->response->deny('Вы не можете редактировать этот ресторан');
         }
 
-        return Response::allow();
+        return $this->response->allow();
     }
 
     public function delete(User $user, Restaurant $restaurant): Response
     {
         if (!$user->isAdmin()) {
-            return Response::deny('Только администратор может удалять рестораны');
+            return $this->response->deny('Только администратор может удалять рестораны');
         }
 
-        return Response::allow();
+        return $this->response->allow();
     }
 }

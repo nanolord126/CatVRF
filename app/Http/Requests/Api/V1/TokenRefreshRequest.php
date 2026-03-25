@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 declare(strict_types=1);
 
@@ -5,7 +7,16 @@ namespace App\Http\Requests\Api\V1;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-final class TokenRefreshRequest extends FormRequest
+final /**
+ * TokenRefreshRequest
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class TokenRefreshRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -21,7 +32,7 @@ final class TokenRefreshRequest extends FormRequest
                 $correlationId,
             );
             if ($fraudResult['decision'] === 'block') {
-                \Illuminate\Support\Facades\Log::channel('fraud_alert')->warning('FormRequest blocked', [
+                \Illuminate\Support\Facades\$this->log->channel('fraud_alert')->warning('FormRequest blocked', [
                     'class'          => __CLASS__,
                     'correlation_id' => $correlationId,
                     'score'          => $fraudResult['score'],

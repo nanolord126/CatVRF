@@ -41,7 +41,7 @@ final class WarrantyService
         }
         RateLimiter::hit("electronics:warranty:{$orderId}", 3600);
 
-        return DB::transaction(function () use ($orderId, $serialNumber, $issueDescription, $correlationId) {
+        return $this->db->transaction(function () use ($orderId, $serialNumber, $issueDescription, $correlationId) {
             $order = ElectronicOrder::with("items")->findOrFail($orderId);
             
             // 2. Fraud Check - проверка на фиктивные возвраты и гарантии
@@ -53,7 +53,7 @@ final class WarrantyService
             ]);
 
             if ($fraud["decision"] === "block") {
-                Log::channel("audit")->error("Electronics Security Block", ["order_id" => $orderId, "score" => $fraud["score"]]);
+                $this->log->channel("audit")->error("Electronics Security Block", ["order_id" => $orderId, "score" => $fraud["score"]]);
                 throw new \RuntimeException("Операция заблокирована системой безопасности.", 403);
             }
 
@@ -87,7 +87,7 @@ final class WarrantyService
                 "tags" => ["is_warranty:yes"]
             ]);
 
-            Log::channel("audit")->info("Electronics: warranty claim created", ["claim_id" => $claim->id, "serial" => $serialNumber, "corr" => $correlationId]);
+            $this->log->channel("audit")->info("Electronics: warranty claim created", ["claim_id" => $claim->id, "serial" => $serialNumber, "corr" => $correlationId]);
 
             return $claim;
         });
@@ -101,13 +101,13 @@ final class WarrantyService
         $correlationId = $correlationId ?: (string) Str::uuid();
         $claim = WarrantyClaim::findOrFail($claimId);
 
-        DB::transaction(function () use ($claim, $correlationId) {
+        $this->db->transaction(function () use ($claim, $correlationId) {
             $claim->update([
                 "status" => "in_repair",
                 "accepted_at" => now()
             ]);
 
-            Log::channel("audit")->info("Electronics: claim accepted for repair", ["claim_id" => $claim->id, "corr" => $correlationId]);
+            $this->log->channel("audit")->info("Electronics: claim accepted for repair", ["claim_id" => $claim->id, "corr" => $correlationId]);
         });
     }
 
@@ -119,7 +119,7 @@ final class WarrantyService
         $correlationId = $correlationId ?: (string) Str::uuid();
         $claim = WarrantyClaim::findOrFail($claimId);
 
-        DB::transaction(function () use ($claim, $isReturnToStock, $correlationId) {
+        $this->db->transaction(function () use ($claim, $isReturnToStock, $correlationId) {
             $claim->update([
                 "status" => "completed",
                 "finished_at" => now()
@@ -137,7 +137,7 @@ final class WarrantyService
                 );
             }
 
-            Log::channel("audit")->info("Electronics: warranty repair finished", ["claim_id" => $claim->id, "corr" => $correlationId]);
+            $this->log->channel("audit")->info("Electronics: warranty repair finished", ["claim_id" => $claim->id, "corr" => $correlationId]);
         });
     }
 }

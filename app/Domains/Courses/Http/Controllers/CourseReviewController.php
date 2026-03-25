@@ -31,7 +31,7 @@ final class CourseReviewController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to list course reviews', [
+            \$this->log->channel('audit')->error('Failed to list course reviews', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -53,7 +53,7 @@ final class CourseReviewController
         );
 
         if ($fraudResult['decision'] === 'block') {
-            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+            $this->log->channel('fraud_alert')->warning('Operation blocked by fraud control', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'score'          => $fraudResult['score'],
@@ -79,7 +79,7 @@ final class CourseReviewController
 
             $correlationId = Str::uuid()->toString();
 
-            $review = DB::transaction(function () use ($course, $enrollment, $validated, $courseId, $correlationId) {
+            $review = $this->db->transaction(function () use ($course, $enrollment, $validated, $courseId, $correlationId) {
                 $review = CourseReview::create([
                     'tenant_id' => tenant('id'),
                     'course_id' => $courseId,
@@ -103,7 +103,7 @@ final class CourseReviewController
                 return $review;
             });
 
-            \Log::channel('audit')->info('Review created', [
+            \$this->log->channel('audit')->info('Review created', [
                 'review_id' => $review->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -114,7 +114,7 @@ final class CourseReviewController
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to create review', [
+            \$this->log->channel('audit')->error('Failed to create review', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -137,7 +137,7 @@ final class CourseReviewController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to list my reviews', [
+            \$this->log->channel('audit')->error('Failed to list my reviews', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -159,7 +159,7 @@ final class CourseReviewController
         );
 
         if ($fraudResult['decision'] === 'block') {
-            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+            $this->log->channel('fraud_alert')->warning('Operation blocked by fraud control', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'score'          => $fraudResult['score'],
@@ -184,7 +184,7 @@ final class CourseReviewController
             $correlationId = Str::uuid()->toString();
             $review->update($validated + ['correlation_id' => $correlationId]);
 
-            \Log::channel('audit')->info('Review updated', [
+            \$this->log->channel('audit')->info('Review updated', [
                 'review_id' => $review->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -195,7 +195,7 @@ final class CourseReviewController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to update review', [
+            \$this->log->channel('audit')->error('Failed to update review', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -214,7 +214,7 @@ final class CourseReviewController
             $correlationId = Str::uuid()->toString();
             $review->delete();
 
-            \Log::channel('audit')->info('Review deleted', [
+            \$this->log->channel('audit')->info('Review deleted', [
                 'review_id' => $id,
                 'correlation_id' => $correlationId,
             ]);
@@ -225,7 +225,7 @@ final class CourseReviewController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to delete review', [
+            \$this->log->channel('audit')->error('Failed to delete review', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([

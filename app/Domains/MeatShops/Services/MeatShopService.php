@@ -37,7 +37,7 @@ final class MeatShopService
         }
         RateLimiter::hit("meat:order:".auth()->id(), 3600);
 
-        return DB::transaction(function () use ($meatShopId, $items, $correlationId) {
+        return $this->db->transaction(function () use ($meatShopId, $items, $correlationId) {
             $shop = MeatShop::findOrFail($meatShopId);
 
             // Fraud Check
@@ -49,7 +49,7 @@ final class MeatShopService
             ]);
 
             if ($fraud['decision'] === 'block') {
-                Log::channel('audit')->error('Meat order security block', [
+                $this->log->channel('audit')->error('Meat order security block', [
                     'user_id' => auth()->id(),
                     'score' => $fraud['score'],
                     'correlation_id' => $correlationId,
@@ -85,7 +85,7 @@ final class MeatShopService
                 'tags' => ['cold_chain:yes', 'fresh_meat:true'],
             ]);
 
-            Log::channel('audit')->info('Meat order created', [
+            $this->log->channel('audit')->info('Meat order created', [
                 'order_id' => $order->id,
                 'user_id' => auth()->id(),
                 'total' => $totalPrice,
@@ -103,7 +103,7 @@ final class MeatShopService
     {
         $correlationId = $correlationId ?: (string) Str::uuid();
 
-        return DB::transaction(function () use ($meatShopId, $data, $correlationId) {
+        return $this->db->transaction(function () use ($meatShopId, $data, $correlationId) {
             $shop = MeatShop::findOrFail($meatShopId);
 
             // Fraud Check - проверка частоты подписок одного пользователя
@@ -135,7 +135,7 @@ final class MeatShopService
                 'tags' => ['subscription:active', 'auto_renewal:true'],
             ]);
 
-            Log::channel('audit')->info('Meat subscription created', [
+            $this->log->channel('audit')->info('Meat subscription created', [
                 'subscription_id' => $subscription->id,
                 'user_id' => auth()->id(),
                 'frequency' => $data['frequency'],
@@ -154,7 +154,7 @@ final class MeatShopService
         $correlationId = $correlationId ?: (string) Str::uuid();
         $order = MeatOrder::with('meatShop')->findOrFail($orderId);
 
-        DB::transaction(function () use ($order, $correlationId) {
+        $this->db->transaction(function () use ($order, $correlationId) {
             if ($order->status !== 'paid') {
                 throw new \RuntimeException("Order must be paid before completing");
             }
@@ -187,7 +187,7 @@ final class MeatShopService
                 correlationId: $correlationId
             );
 
-            Log::channel('audit')->info('Meat order completed and payout processed', [
+            $this->log->channel('audit')->info('Meat order completed and payout processed', [
                 'order_id' => $order->id,
                 'payout_kopecks' => $payout,
                 'commission' => $platformFee,

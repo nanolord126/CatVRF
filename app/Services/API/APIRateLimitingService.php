@@ -66,7 +66,7 @@ final class APIRateLimitingService
             Redis::incr($keyHour);
             Redis::expire($keyHour, 3600);
         } else {
-            Log::channel('rate_limit')->warning('Rate limit exceeded', [
+            $this->log->channel('rate_limit')->warning('Rate limit exceeded', [
                 'identifier' => $identifier,
                 'plan' => $plan,
                 'endpoint' => $endpoint,
@@ -137,7 +137,7 @@ final class APIRateLimitingService
             3600 * 24 * 30 // 30 дней
         );
 
-        Log::channel('rate_limit')->info('Custom limit set', $custom);
+        $this->log->channel('rate_limit')->info('Custom limit set', $custom);
 
         return $custom;
     }
@@ -189,7 +189,7 @@ final class APIRateLimitingService
             'duration_minutes' => $durationMinutes,
         ]), $durationMinutes * 60);
 
-        Log::channel('rate_limit')->alert('Identifier blocked', [
+        $this->log->channel('rate_limit')->alert('Identifier blocked', [
             'identifier' => $identifier,
             'reason' => $reason,
             'duration_minutes' => $durationMinutes,
@@ -213,7 +213,7 @@ final class APIRateLimitingService
     {
         Redis::del("blocked:{$identifier}");
 
-        Log::channel('rate_limit')->info('Identifier unblocked', [
+        $this->log->channel('rate_limit')->info('Identifier unblocked', [
             'identifier' => $identifier,
         ]);
     }

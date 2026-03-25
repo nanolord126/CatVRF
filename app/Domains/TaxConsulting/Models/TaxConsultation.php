@@ -1,5 +1,29 @@
 <?php declare(strict_types=1);
-namespace App\Domains\TaxConsulting\Models;
+namespace A
+
+/**
+ * TaxConsultation
+ * 
+ * Производитель: CatVRF Platform
+ * Версия: 1.0.0
+ * 
+ * Примеры использования:
+ * 
+ * ```php
+ * // Базовое использование
+ * $instance = new TaxConsultation();
+ * ```
+ * 
+ * Требования:
+ * - Laravel 10+
+ * - PHP 8.2+
+ * - Все методы должны быть явно типизированы
+ * 
+ * @author CatVRF
+ * @package namespace App\Domains\TaxConsulting\Models
+ * @see https://github.com/iyegorovskyi_clemny/CatVRF
+ */
+pp\Domains\TaxConsulting\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;

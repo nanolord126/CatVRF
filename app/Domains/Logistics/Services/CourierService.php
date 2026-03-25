@@ -42,7 +42,7 @@ final class CourierService
         }
         RateLimiter::hit("logistics:dispatch:{$orderId}", 3600);
 
-        return DB::transaction(function () use ($orderId, $vertical, $addressData, $correlationId) {
+        return $this->db->transaction(function () use ($orderId, $vertical, $addressData, $correlationId) {
             // 2. Поиск ближайшего свободного курьера (GeoHeatmap/OSRM)
             $courier = Courier::where("status", "active")
                 ->where("is_busy", false)
@@ -51,7 +51,7 @@ final class CourierService
                 ->first();
 
             if (!$courier) {
-                Log::channel("audit")->warning("Logistics: no courier available", ["order_id" => $orderId, "vert" => $vertical]);
+                $this->log->channel("audit")->warning("Logistics: no courier available", ["order_id" => $orderId, "vert" => $vertical]);
                 throw new \RuntimeException("Нет свободных курьеров в вашей зоне. Поиск продолжается.", 404);
             }
 
@@ -64,7 +64,7 @@ final class CourierService
             ]);
 
             if ($fraud["decision"] === "block") {
-                Log::channel("audit")->error("Logistics Security Block", ["courier_id" => $courier->id, "score" => $fraud["score"]]);
+                $this->log->channel("audit")->error("Logistics Security Block", ["courier_id" => $courier->id, "score" => $fraud["score"]]);
                 throw new \RuntimeException("Курьер заблокирован безопасностью.", 403);
             }
 
@@ -85,7 +85,7 @@ final class CourierService
 
             $courier->update(["is_busy" => true]);
 
-            Log::channel("audit")->info("Logistics: task assigned", ["task_id" => $task->id, "courier_id" => $courier->id, "corr" => $correlationId]);
+            $this->log->channel("audit")->info("Logistics: task assigned", ["task_id" => $task->id, "courier_id" => $courier->id, "corr" => $correlationId]);
 
             return $task;
         });
@@ -99,7 +99,7 @@ final class CourierService
         $correlationId = $correlationId ?: (string) Str::uuid();
         $task = CourierTask::findOrFail($taskId);
 
-        DB::transaction(function () use ($task, $status, $geoCoord, $correlationId) {
+        $this->db->transaction(function () use ($task, $status, $geoCoord, $correlationId) {
             $task->update([
                 "status" => $status,
                 "last_geo_coord" => $geoCoord,
@@ -120,7 +120,7 @@ final class CourierService
                     correlationId: $correlationId
                 );
 
-                Log::channel("audit")->info("Logistics: delivery completed + payout", ["task_id" => $task->id]);
+                $this->log->channel("audit")->info("Logistics: delivery completed + payout", ["task_id" => $task->id]);
             }
         });
     }
@@ -130,7 +130,7 @@ final class CourierService
      */
     public function getOptimizedRoute(array $points): array
     {
-        Log::channel("audit")->info("Logistics: route optimization request", ["points_count" => count($points)]);
+        $this->log->channel("audit")->info("Logistics: route optimization request", ["points_count" => count($points)]);
         
         // В продакшене вызывается внешний OSRM API (Yandex/GraphHopper)
         return [

@@ -30,7 +30,7 @@ final class ConsumableDeductionService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-            DB::transaction(function () use ($appointmentId, $consumables, $correlationId) {
+            $this->db->transaction(function () use ($appointmentId, $consumables, $correlationId) {
                 foreach ($consumables as $consumableId => $quantity) {
                     $consumable = BeautyConsumable::lockForUpdate()->findOrFail($consumableId);
 
@@ -40,7 +40,7 @@ final class ConsumableDeductionService
 
                     $consumable->decrement('current_stock', $quantity);
 
-                    Log::channel('audit')->info('Consumable deducted', [
+                    $this->log->channel('audit')->info('Consumable deducted', [
                         'appointment_id' => $appointmentId,
                         'consumable_id' => $consumableId,
                         'quantity' => $quantity,
@@ -52,7 +52,7 @@ final class ConsumableDeductionService
 
             return true;
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Consumable deduction failed', [
+            $this->log->channel('audit')->error('Consumable deduction failed', [
                 'appointment_id' => $appointmentId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -76,7 +76,7 @@ final class ConsumableDeductionService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-            DB::transaction(function () use ($appointmentId, $consumables, $correlationId) {
+            $this->db->transaction(function () use ($appointmentId, $consumables, $correlationId) {
                 foreach ($consumables as $consumableId => $quantity) {
                     $consumable = BeautyConsumable::lockForUpdate()->findOrFail($consumableId);
 
@@ -86,7 +86,7 @@ final class ConsumableDeductionService
 
                     $consumable->increment('hold_stock', $quantity);
 
-                    Log::channel('audit')->info('Consumable reserved', [
+                    $this->log->channel('audit')->info('Consumable reserved', [
                         'appointment_id' => $appointmentId,
                         'consumable_id' => $consumableId,
                         'quantity' => $quantity,
@@ -97,7 +97,7 @@ final class ConsumableDeductionService
 
             return true;
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Consumable reservation failed', [
+            $this->log->channel('audit')->error('Consumable reservation failed', [
                 'appointment_id' => $appointmentId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -121,12 +121,12 @@ final class ConsumableDeductionService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-            DB::transaction(function () use ($appointmentId, $consumables, $correlationId) {
+            $this->db->transaction(function () use ($appointmentId, $consumables, $correlationId) {
                 foreach ($consumables as $consumableId => $quantity) {
                     $consumable = BeautyConsumable::lockForUpdate()->findOrFail($consumableId);
                     $consumable->decrement('hold_stock', $quantity);
 
-                    Log::channel('audit')->info('Consumable released', [
+                    $this->log->channel('audit')->info('Consumable released', [
                         'appointment_id' => $appointmentId,
                         'consumable_id' => $consumableId,
                         'quantity' => $quantity,
@@ -137,7 +137,7 @@ final class ConsumableDeductionService
 
             return true;
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Consumable release failed', [
+            $this->log->channel('audit')->error('Consumable release failed', [
                 'appointment_id' => $appointmentId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

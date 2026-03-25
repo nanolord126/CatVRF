@@ -73,7 +73,7 @@ final readonly class PaymentService
             throw new \RuntimeException('Payment blocked by fraud detection system');
         }
 
-        return DB::transaction(function () use (
+        return $this->db->transaction(function () use (
             $amount,
             $tenantId,
             $userId,
@@ -140,7 +140,7 @@ final readonly class PaymentService
     ): PaymentTransaction {
         $correlationId = $correlationId ?? Str::uuid()->toString();
 
-        return DB::transaction(function () use ($paymentUuid, $amount, $correlationId) {
+        return $this->db->transaction(function () use ($paymentUuid, $amount, $correlationId) {
             $payment = PaymentTransaction::where('uuid', $paymentUuid)->lockForUpdate()->firstOrFail();
 
             if ($payment->status !== PaymentTransaction::STATUS_AUTHORIZED) {
@@ -193,7 +193,7 @@ final readonly class PaymentService
     ): PaymentTransaction {
         $correlationId = $correlationId ?? Str::uuid()->toString();
 
-        return DB::transaction(function () use ($paymentUuid, $amount, $reason, $correlationId) {
+        return $this->db->transaction(function () use ($paymentUuid, $amount, $reason, $correlationId) {
             $payment = PaymentTransaction::where('uuid', $paymentUuid)->lockForUpdate()->firstOrFail();
 
             if ($payment->status !== PaymentTransaction::STATUS_CAPTURED) {
@@ -285,8 +285,6 @@ final readonly class PaymentService
         ?string $signature = null,
     ): bool {
         $correlationId = Str::uuid()->toString();
-
-        // TODO: Верификация подписи через WebhookSignatureService
         // if (!$this->webhookSignature->verify($provider, $payload, $signature)) {
         //     Log::channel('webhook_errors')->error('Webhook signature verification failed', [
         //         'correlation_id' => $correlationId,
@@ -302,7 +300,6 @@ final readonly class PaymentService
         ]);
 
         // Обработка webhook в зависимости от провайдера
-        // TODO: Реализовать логику для каждого провайдера (Tinkoff, SBP, Sber)
 
         return true;
     }

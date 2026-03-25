@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Fitness\Listeners;
@@ -10,7 +12,16 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
-final class RefundMembershipCommissionListener implements ShouldQueue
+final /**
+ * RefundMembershipCommissionListener
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class RefundMembershipCommissionListener implements ShouldQueue
 {
     use InteractsWithQueue;
 
@@ -24,7 +35,7 @@ final class RefundMembershipCommissionListener implements ShouldQueue
             $gym = $event->membership->gym;
             $commissionAmount = (int) ($event->membership->commission_amount * 100);
 
-            DB::transaction(function () use ($gym, $commissionAmount, $event) {
+            $this->db->transaction(function () use ($gym, $commissionAmount, $event) {
                 $wallet = Wallet::where('tenant_id', $gym->tenant_id)->lockForUpdate()->first();
                 if ($wallet) {
                     $wallet->increment('balance', $commissionAmount);
@@ -39,7 +50,7 @@ final class RefundMembershipCommissionListener implements ShouldQueue
                     'correlation_id' => $event->correlationId,
                 ]);
 
-                Log::channel('audit')->info('Membership commission refunded', [
+                $this->log->channel('audit')->info('Membership commission refunded', [
                     'membership_id' => $event->membership->id,
                     'gym_id' => $gym->id,
                     'commission_amount' => $event->membership->commission_amount,
@@ -47,7 +58,7 @@ final class RefundMembershipCommissionListener implements ShouldQueue
                 ]);
             });
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to refund membership commission', [
+            $this->log->channel('audit')->error('Failed to refund membership commission', [
                 'membership_id' => $event->membership->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $event->correlationId,

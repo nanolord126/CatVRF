@@ -38,8 +38,8 @@ final class CreateVehicleRental extends CreateRecord
 
     protected function afterCreate(): void
     {
-        DB::transaction(function () {
-            Log::channel('audit')->info('VehicleRental created', [
+        $this->db->transaction(function () {
+            $this->log->channel('audit')->info('VehicleRental created', [
                 'correlation_id' => $this->record->correlation_id,
                 'rental_id' => $this->record->id,
             ]);
@@ -52,7 +52,7 @@ final class CreateVehicleRental extends CreateRecord
             }
         });
 
-        Notification::make()
+        $this->notification->make()
             ->success()
             ->title('Аренда оформлена')
             ->send();

@@ -60,7 +60,7 @@ final class TrainerController
                 'hourly_rate' => 'required|numeric',
             ]);
 
-            $trainer = DB::transaction(function () use ($correlationId) {
+            $trainer = $this->db->transaction(function () use ($correlationId) {
                 return Trainer::create([
                     'tenant_id' => tenant('id'),
                     'gym_id' => request('gym_id'),
@@ -75,11 +75,11 @@ final class TrainerController
                 ]);
             });
 
-            Log::channel('audit')->info('Trainer registered', ['trainer_id' => $trainer->id, 'user_id' => auth()->id(), 'correlation_id' => $correlationId]);
+            $this->log->channel('audit')->info('Trainer registered', ['trainer_id' => $trainer->id, 'user_id' => auth()->id(), 'correlation_id' => $correlationId]);
 
             return response()->json(['success' => true, 'data' => $trainer, 'correlation_id' => $correlationId], 201);
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to register trainer', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+            $this->log->channel('audit')->error('Failed to register trainer', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
             return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
         }
     }
@@ -102,7 +102,7 @@ final class TrainerController
             $trainer = Trainer::where('user_id', auth()->id())->firstOrFail();
             $trainer->update(array_merge(request()->except(['id', 'tenant_id', 'business_group_id', 'correlation_id']), ['correlation_id' => $correlationId]));
 
-            Log::channel('audit')->info('Trainer profile updated', ['trainer_id' => $trainer->id, 'correlation_id' => $correlationId]);
+            $this->log->channel('audit')->info('Trainer profile updated', ['trainer_id' => $trainer->id, 'correlation_id' => $correlationId]);
 
             return response()->json(['success' => true, 'data' => $trainer, 'correlation_id' => $correlationId]);
         } catch (Throwable $e) {
@@ -128,7 +128,7 @@ final class TrainerController
         try {
             $trainer = Trainer::where('user_id', auth()->id())->firstOrFail();
 
-            DB::transaction(function () use ($trainer, $correlationId) {
+            $this->db->transaction(function () use ($trainer, $correlationId) {
                 $trainer->schedules()->delete();
 
                 foreach (request('schedule', []) as $slot) {
@@ -144,7 +144,7 @@ final class TrainerController
                 }
             });
 
-            Log::channel('audit')->info('Trainer schedule updated', ['trainer_id' => $trainer->id, 'correlation_id' => $correlationId]);
+            $this->log->channel('audit')->info('Trainer schedule updated', ['trainer_id' => $trainer->id, 'correlation_id' => $correlationId]);
 
             return response()->json(['success' => true, 'correlation_id' => $correlationId]);
         } catch (Throwable $e) {

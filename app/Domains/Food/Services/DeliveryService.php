@@ -45,7 +45,7 @@ final class DeliveryService
             $surgeMultiplier = $zone?->surge_multiplier ?? 1.0;
             $finalPrice = (int) ($basePrice * $surgeMultiplier);
 
-            Log::channel('audit')->info('Delivery price calculated', [
+            $this->log->channel('audit')->info('Delivery price calculated', [
                 'order_id' => $order->id,
                 'base_price' => $basePrice,
                 'surge' => $surgeMultiplier,
@@ -55,7 +55,7 @@ final class DeliveryService
 
             return $finalPrice;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Delivery price calculation failed', [
+            $this->log->channel('audit')->error('Delivery price calculation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -83,7 +83,7 @@ final class DeliveryService
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
 
-            return DB::transaction(function () use ($order, $customerAddress, $deliveryPoint, $correlationId) {
+            return $this->db->transaction(function () use ($order, $customerAddress, $deliveryPoint, $correlationId) {
                 $deliveryPrice = $this->calculateDeliveryPrice($order, $deliveryPoint, $correlationId);
 
                 $delivery = DeliveryOrder::create([
@@ -97,7 +97,7 @@ final class DeliveryService
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Delivery order created', [
+                $this->log->channel('audit')->info('Delivery order created', [
                     'delivery_id' => $delivery->id,
                     'order_id' => $order->id,
                     'price' => $deliveryPrice,
@@ -107,7 +107,7 @@ final class DeliveryService
                 return $delivery;
             });
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Delivery order creation failed', [
+            $this->log->channel('audit')->error('Delivery order creation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -132,7 +132,7 @@ final class DeliveryService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-DB::transaction(function () use ($delivery, $correlationId) {
+$this->db->transaction(function () use ($delivery, $correlationId) {
                 $delivery->update([
                     'status' => 'on_way',
                     'picked_up_at' => now(),
@@ -140,7 +140,7 @@ DB::transaction(function () use ($delivery, $correlationId) {
 
                 event(new \App\Domains\Food\Events\DeliveryStarted($delivery, $correlationId));
 
-                Log::channel('audit')->info('Delivery started', [
+                $this->log->channel('audit')->info('Delivery started', [
                     'delivery_id' => $delivery->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -148,7 +148,7 @@ DB::transaction(function () use ($delivery, $correlationId) {
                 return true;
             });
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Delivery start failed', [
+            $this->log->channel('audit')->error('Delivery start failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);

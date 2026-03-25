@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Taxi\Listeners;
@@ -6,14 +8,23 @@ use App\Domains\Taxi\Events\RideCompleted;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-final class ProcessRideCompletedPayout
+final /**
+ * ProcessRideCompletedPayout
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class ProcessRideCompletedPayout
 {
     public function handle(RideCompleted $event): void
     {
         try {
-            DB::transaction(function () use ($event) {
+            $this->db->transaction(function () use ($event) {
                 // Update driver wallet with ride earnings
-                Log::channel('audit')->info('Ride payout processed', [
+                $this->log->channel('audit')->info('Ride payout processed', [
                     'ride_id' => $event->rideId,
                     'driver_id' => $event->driverId,
                     'amount' => $event->priceAmount,
@@ -23,7 +34,7 @@ final class ProcessRideCompletedPayout
                 // WalletService::credit($driver_id, $event->priceAmount)
             });
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Failed to process ride payout', [
+            $this->log->channel('audit')->error('Failed to process ride payout', [
                 'correlation_id' => $event->correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

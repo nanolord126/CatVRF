@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Livewire\Marketplace;
@@ -5,7 +7,16 @@ namespace App\Livewire\Marketplace;
 use Livewire\Component;
 use Illuminate\View\View;
 
-final class ServiceCard extends Component
+final /**
+ * ServiceCard
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class ServiceCard extends Component
 {
     public int $serviceId;
     public string $serviceName;

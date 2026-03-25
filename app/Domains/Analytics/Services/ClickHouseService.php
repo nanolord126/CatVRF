@@ -42,7 +42,7 @@ final class ClickHouseService
             $settings,
         );
 
-        Log::channel('analytics')->debug('[ClickHouse] Client initialized', [
+        $this->log->channel('analytics')->debug('[ClickHouse] Client initialized', [
             'correlation_id' => $this->correlationId,
         ]);
     }
@@ -80,12 +80,12 @@ final class ClickHouseService
         try {
             $this->client->insert('ch_geo_events', $rows);
 
-            Log::channel('audit')->info('[ClickHouse] Geo events inserted', [
+            $this->log->channel('audit')->info('[ClickHouse] Geo events inserted', [
                 'count' => count($rows),
                 'correlation_id' => $this->correlationId,
             ]);
         } catch (Exception $e) {
-            Log::channel('error')->error('[ClickHouse] Insert geo events failed', [
+            $this->log->channel('error')->error('[ClickHouse] Insert geo events failed', [
                 'error' => $e->getMessage(),
                 'count' => count($rows),
                 'correlation_id' => $this->correlationId,
@@ -131,12 +131,12 @@ final class ClickHouseService
         try {
             $this->client->insert('ch_click_events', $rows);
 
-            Log::channel('audit')->info('[ClickHouse] Click events inserted', [
+            $this->log->channel('audit')->info('[ClickHouse] Click events inserted', [
                 'count' => count($rows),
                 'correlation_id' => $this->correlationId,
             ]);
         } catch (Exception $e) {
-            Log::channel('error')->error('[ClickHouse] Insert click events failed', [
+            $this->log->channel('error')->error('[ClickHouse] Insert click events failed', [
                 'error' => $e->getMessage(),
                 'count' => count($rows),
                 'correlation_id' => $this->correlationId,
@@ -364,7 +364,7 @@ final class ClickHouseService
                 'correlation_id' => $this->correlationId,
             ];
         } catch (Exception $e) {
-            Log::channel('error')->error('[ClickHouse] Health check failed', [
+            $this->log->channel('error')->error('[ClickHouse] Health check failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $this->correlationId,
             ]);
@@ -388,7 +388,7 @@ final class ClickHouseService
             $result = $statement->fetchAll();
             $executionTime = (microtime(true) - $startTime) * 1000;
 
-            Log::channel('analytics')->debug('[ClickHouse] Query executed', [
+            $this->log->channel('analytics')->debug('[ClickHouse] Query executed', [
                 'execution_time_ms' => $executionTime,
                 'result_count' => count($result),
                 'correlation_id' => $this->correlationId,
@@ -396,7 +396,7 @@ final class ClickHouseService
 
             return $result;
         } catch (Exception $e) {
-            Log::channel('error')->error('[ClickHouse] Query execution failed', [
+            $this->log->channel('error')->error('[ClickHouse] Query execution failed', [
                 'error' => $e->getMessage(),
                 'query' => substr($query, 0, 200),
                 'correlation_id' => $this->correlationId,

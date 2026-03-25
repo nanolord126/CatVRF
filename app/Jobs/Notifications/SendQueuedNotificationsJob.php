@@ -37,14 +37,14 @@ final class SendQueuedNotificationsJob implements ShouldQueue
     public function handle(NotificationService $notificationService): void
     {
         try {
-            DB::transaction(function () use ($notificationService) {
+            $this->db->transaction(function () use ($notificationService) {
                 $queuedNotifications = $notificationService->getQueuedNotifications(limit: 100);
 
                 foreach ($queuedNotifications as $notification) {
                     try {
                         $notificationService->send($notification, $this->correlationId);
 
-                        Log::channel('audit')->info('Notification sent', [
+                        $this->log->channel('audit')->info('Notification sent', [
                             'correlation_id' => $this->correlationId,
                             'notification_id' => $notification->id,
                             'user_id' => $notification->user_id,
@@ -54,7 +54,7 @@ final class SendQueuedNotificationsJob implements ShouldQueue
                         if ($notification->retry_count < 3) {
                             $notificationService->incrementRetry($notification->id);
 
-                            Log::channel('audit')->warning('Notification retry scheduled', [
+                            $this->log->channel('audit')->warning('Notification retry scheduled', [
                                 'correlation_id' => $this->correlationId,
                                 'notification_id' => $notification->id,
                                 'retry_count' => $notification->retry_count + 1,
@@ -63,7 +63,7 @@ final class SendQueuedNotificationsJob implements ShouldQueue
                         } else {
                             $notificationService->markFailed($notification->id, $e->getMessage());
 
-                            Log::channel('audit')->error('Notification failed after retries', [
+                            $this->log->channel('audit')->error('Notification failed after retries', [
                                 'correlation_id' => $this->correlationId,
                                 'notification_id' => $notification->id,
                                 'error' => $e->getMessage(),
@@ -73,7 +73,7 @@ final class SendQueuedNotificationsJob implements ShouldQueue
                 }
             });
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Notification batch job failed', [
+            $this->log->channel('audit')->error('Notification batch job failed', [
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

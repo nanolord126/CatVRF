@@ -30,7 +30,7 @@ final class BookingService
 
 
         try {
-            Log::channel('audit')->info('Creating booking', [
+            $this->log->channel('audit')->info('Creating booking', [
                 'hotel_id' => $hotelId,
                 'room_type_id' => $roomTypeId,
                 'check_in_date' => $checkInDate,
@@ -46,7 +46,7 @@ final class BookingService
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
 
-            $booking = DB::transaction(function () use (
+            $booking = $this->db->transaction(function () use (
                 $hotelId,
                 $roomTypeId,
                 $checkInDate,
@@ -94,14 +94,14 @@ final class BookingService
                 ]);
             });
 
-            Log::channel('audit')->info('Booking created successfully', [
+            $this->log->channel('audit')->info('Booking created successfully', [
                 'booking_id' => $booking->id,
                 'correlation_id' => $correlationId,
             ]);
 
             return $booking;
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Booking creation failed', [
+            $this->log->channel('audit')->error('Booking creation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -114,7 +114,7 @@ final class BookingService
 
 
         try {
-            Log::channel('audit')->info('Confirming booking', [
+            $this->log->channel('audit')->info('Confirming booking', [
                 'booking_id' => $booking->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -124,14 +124,14 @@ final class BookingService
                 'paid_at' => now(),
             ]);
 
-            Log::channel('audit')->info('Booking confirmed', [
+            $this->log->channel('audit')->info('Booking confirmed', [
                 'booking_id' => $booking->id,
                 'correlation_id' => $correlationId,
             ]);
 
             return $booking;
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Booking confirmation failed', [
+            $this->log->channel('audit')->error('Booking confirmation failed', [
                 'booking_id' => $booking->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -145,7 +145,7 @@ final class BookingService
 
 
         try {
-            Log::channel('audit')->info('Cancelling booking', [
+            $this->log->channel('audit')->info('Cancelling booking', [
                 'booking_id' => $booking->id,
                 'reason' => $reason,
                 'correlation_id' => $correlationId,
@@ -155,14 +155,14 @@ final class BookingService
                 'booking_status' => 'cancelled',
             ]);
 
-            Log::channel('audit')->info('Booking cancelled', [
+            $this->log->channel('audit')->info('Booking cancelled', [
                 'booking_id' => $booking->id,
                 'correlation_id' => $correlationId,
             ]);
 
             return true;
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Booking cancellation failed', [
+            $this->log->channel('audit')->error('Booking cancellation failed', [
                 'booking_id' => $booking->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

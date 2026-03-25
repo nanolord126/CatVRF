@@ -20,7 +20,7 @@ final readonly class AttendanceService
         try {
             $schedule = ClassSchedule::findOrFail($classScheduleId);
 
-            $attendance = DB::transaction(function () use ($schedule, $memberId, $correlationId) {
+            $attendance = $this->db->transaction(function () use ($schedule, $memberId, $correlationId) {
                 $attendance = Attendance::create([
                     'tenant_id' => $schedule->tenant_id,
                     'class_schedule_id' => $schedule->id,
@@ -34,7 +34,7 @@ final readonly class AttendanceService
 
                 AttendanceRecorded::dispatch($attendance, $correlationId);
 
-                Log::channel('audit')->info('Member checked in', [
+                $this->log->channel('audit')->info('Member checked in', [
                     'attendance_id' => $attendance->id,
                     'class_schedule_id' => $classScheduleId,
                     'member_id' => $memberId,
@@ -46,7 +46,7 @@ final readonly class AttendanceService
 
             return $attendance;
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to record check-in', [
+            $this->log->channel('audit')->error('Failed to record check-in', [
                 'class_schedule_id' => $classScheduleId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -60,7 +60,7 @@ final readonly class AttendanceService
 
 
         try {
-            DB::transaction(function () use ($attendance, $correlationId) {
+            $this->db->transaction(function () use ($attendance, $correlationId) {
                 $checkedOutAt = now();
                 $durationMinutes = $checkedOutAt->diffInMinutes($attendance->checked_in_at);
 
@@ -71,14 +71,14 @@ final readonly class AttendanceService
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Member checked out', [
+                $this->log->channel('audit')->info('Member checked out', [
                     'attendance_id' => $attendance->id,
                     'duration_minutes' => $durationMinutes,
                     'correlation_id' => $correlationId,
                 ]);
             });
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to record check-out', [
+            $this->log->channel('audit')->error('Failed to record check-out', [
                 'attendance_id' => $attendance->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

@@ -29,8 +29,8 @@ final class BeautyTryOnService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-            DB::transaction(function () use ($productId, $userId, $purchased, $correlationId) {
-                DB::table('cosmetic_tryons')->insert([
+            $this->db->transaction(function () use ($productId, $userId, $purchased, $correlationId) {
+                $this->db->table('cosmetic_tryons')->insert([
                     'product_id' => $productId,
                     'user_id' => $userId,
                     'purchased' => $purchased,
@@ -38,7 +38,7 @@ final class BeautyTryOnService
                     'created_at' => now(),
                 ]);
 
-                Log::channel('audit')->info('Cosmetic try-on logged', [
+                $this->log->channel('audit')->info('Cosmetic try-on logged', [
                     'product_id' => $productId,
                     'user_id' => $userId,
                     'purchased' => $purchased,
@@ -48,7 +48,7 @@ final class BeautyTryOnService
 
             return true;
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Try-on logging failed', [
+            $this->log->channel('audit')->error('Try-on logging failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
                 'trace' => $e->getTraceAsString(),

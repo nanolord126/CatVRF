@@ -38,7 +38,7 @@ final class GlobalCDNOptimizationService
             }
         }
 
-        Log::channel('deployment')->info('Assets preloaded', [
+        $this->log->channel('deployment')->info('Assets preloaded', [
             'assets_count' => count($assets),
             'regions' => $regions,
             'preloaded_count' => count($preloaded),

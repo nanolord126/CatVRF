@@ -25,7 +25,7 @@ final class DeliverableService
 
         $this->fraudControlService->check(['method' => 'submitDeliverable'], $correlationId ?? 'system');
 
-        return DB::transaction(function () use ($contractId, $freelancerId, $data, $correlationId) {
+        return $this->db->transaction(function () use ($contractId, $freelancerId, $data, $correlationId) {
             $deliverable = FreelanceDeliverable::create([
                 'tenant_id' => tenant()->id,
                 'contract_id' => $contractId,
@@ -40,7 +40,7 @@ final class DeliverableService
 
             DeliverableSubmitted::dispatch($deliverable, $correlationId);
 
-            Log::channel('audit')->info('Freelance deliverable submitted', [
+            $this->log->channel('audit')->info('Freelance deliverable submitted', [
                 'deliverable_id' => $deliverable->id,
                 'contract_id' => $contractId,
                 'freelancer_id' => $freelancerId,
@@ -59,14 +59,14 @@ final class DeliverableService
 
         $this->fraudControlService->check(['method' => 'approveDeliverable'], $correlationId ?? 'system');
 
-        DB::transaction(function () use ($deliverableId, $correlationId) {
+        $this->db->transaction(function () use ($deliverableId, $correlationId) {
             $deliverable = FreelanceDeliverable::findOrFail($deliverableId);
             $deliverable->update([
                 'status' => 'approved',
                 'approved_at' => now(),
             ]);
 
-            Log::channel('audit')->info('Freelance deliverable approved', [
+            $this->log->channel('audit')->info('Freelance deliverable approved', [
                 'deliverable_id' => $deliverableId,
                 'contract_id' => $deliverable->contract_id,
                 'correlation_id' => $correlationId,
@@ -82,7 +82,7 @@ final class DeliverableService
 
         $this->fraudControlService->check(['method' => 'requestRevision'], $correlationId ?? 'system');
 
-        DB::transaction(function () use ($deliverableId, $feedback, $correlationId) {
+        $this->db->transaction(function () use ($deliverableId, $feedback, $correlationId) {
             $deliverable = FreelanceDeliverable::findOrFail($deliverableId);
             $deliverable->update([
                 'status' => 'revisions_requested',
@@ -90,7 +90,7 @@ final class DeliverableService
                 'revision_count' => $deliverable->revision_count + 1,
             ]);
 
-            Log::channel('audit')->info('Revision requested for freelance deliverable', [
+            $this->log->channel('audit')->info('Revision requested for freelance deliverable', [
                 'deliverable_id' => $deliverableId,
                 'revision_count' => $deliverable->revision_count + 1,
                 'correlation_id' => $correlationId,
@@ -106,14 +106,14 @@ final class DeliverableService
 
         $this->fraudControlService->check(['method' => 'rejectDeliverable'], $correlationId ?? 'system');
 
-        DB::transaction(function () use ($deliverableId, $reason, $correlationId) {
+        $this->db->transaction(function () use ($deliverableId, $reason, $correlationId) {
             $deliverable = FreelanceDeliverable::findOrFail($deliverableId);
             $deliverable->update([
                 'status' => 'rejected',
                 'revision_notes' => $reason,
             ]);
 
-            Log::channel('audit')->info('Freelance deliverable rejected', [
+            $this->log->channel('audit')->info('Freelance deliverable rejected', [
                 'deliverable_id' => $deliverableId,
                 'reason' => $reason,
                 'correlation_id' => $correlationId,

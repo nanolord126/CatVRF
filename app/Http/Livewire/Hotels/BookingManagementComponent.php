@@ -50,7 +50,7 @@ final class BookingManagementComponent extends Component
                 ->toArray();
 
         } catch (\Exception $e) {
-            \Log::channel('error')->error('Failed to load bookings', [
+            \$this->log->channel('error')->error('Failed to load bookings', [
                 'user_id' => auth()->user()->id,
                 'exception' => $e->getMessage(),
                 'correlation_id' => (string) Str::uuid(),
@@ -90,7 +90,7 @@ final class BookingManagementComponent extends Component
                 'correlation_id' => (string) Str::uuid(),
             ]);
 
-            \Log::channel('audit')->info('Booking cancelled', [
+            \$this->log->channel('audit')->info('Booking cancelled', [
                 'booking_id' => $bookingId,
                 'user_id' => auth()->user()->id,
             ]);
@@ -99,7 +99,7 @@ final class BookingManagementComponent extends Component
             $this->emit('bookingCancelled', $bookingId);
 
         } catch (\Exception $e) {
-            \Log::channel('error')->error('Failed to cancel booking', [
+            \$this->log->channel('error')->error('Failed to cancel booking', [
                 'exception' => $e->getMessage(),
             ]);
         }

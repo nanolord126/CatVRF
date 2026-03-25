@@ -25,7 +25,7 @@ final class RevenueChartWidget extends ChartWidget
     protected function getData(): array
     {
         $tenantId = auth()->user()->tenant_id;
-        $data = Cache::remember(
+        $data = $this->cache->remember(
             "revenue_chart:{$tenantId}",
             3600,
             function () {

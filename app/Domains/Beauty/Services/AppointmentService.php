@@ -42,7 +42,7 @@ final class AppointmentService
         }
         RateLimiter::hit("beauty:book:{$salonId}", 3600);
 
-        return DB::transaction(function () use ($salonId, $masterId, $serviceId, $data, $correlationId) {
+        return $this->db->transaction(function () use ($salonId, $masterId, $serviceId, $data, $correlationId) {
             $salon = BeautySalon::findOrFail($salonId);
             $master = Master::findOrFail($masterId);
             $service = BeautyService::findOrFail($serviceId);
@@ -56,7 +56,7 @@ final class AppointmentService
             ]);
 
             if ($fraud["decision"] === "block") {
-                Log::channel("audit")->error("Beauty Security Block", ["salon_id" => $salonId, "score" => $fraud["score"]]);
+                $this->log->channel("audit")->error("Beauty Security Block", ["salon_id" => $salonId, "score" => $fraud["score"]]);
                 throw new \RuntimeException("Операция заблокирована системой безопасности.", 403);
             }
 
@@ -87,7 +87,7 @@ final class AppointmentService
                 }
             }
 
-            Log::channel("audit")->info("Beauty: appointment created", ["app_id" => $appointment->id, "master" => $master->id, "corr" => $correlationId]);
+            $this->log->channel("audit")->info("Beauty: appointment created", ["app_id" => $appointment->id, "master" => $master->id, "corr" => $correlationId]);
 
             return $appointment;
         });
@@ -101,7 +101,7 @@ final class AppointmentService
         $correlationId = $correlationId ?: (string) Str::uuid();
         $appointment = Appointment::with("salon", "service")->findOrFail($appointmentId);
 
-        DB::transaction(function () use ($appointment, $correlationId) {
+        $this->db->transaction(function () use ($appointment, $correlationId) {
             $appointment->update([
                 "status" => "completed",
                 "finished_at" => now()
@@ -135,7 +135,7 @@ final class AppointmentService
                 correlationId: $correlationId
             );
 
-            Log::channel("audit")->info("Beauty: appointment finished + payout", ["app_id" => $appointment->id, "payout" => $salonPayout]);
+            $this->log->channel("audit")->info("Beauty: appointment finished + payout", ["app_id" => $appointment->id, "payout" => $salonPayout]);
         });
     }
 
@@ -145,7 +145,7 @@ final class AppointmentService
     public function sendReminder(int $appointmentId): void
     {
         $appointment = Appointment::findOrFail($appointmentId);
-        Log::channel("audit")->info("Beauty: notification reminder sent", ["app_id" => $appointmentId]);
+        $this->log->channel("audit")->info("Beauty: notification reminder sent", ["app_id" => $appointmentId]);
         // Здесь вызов NotificationService
     }
 }

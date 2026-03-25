@@ -205,7 +205,7 @@ final class PostResource extends Resource
                     ->visible(fn (Post $record) => $record->status === 'published')
                     ->action(function (Post $record): void {
                         app(PostService::class)->archivePost($record, Str::uuid()->toString());
-                        Notification::make()->title('Пост перенесён в архив')->success()->send();
+                        $this->notification->make()->title('Пост перенесён в архив')->success()->send();
                     }),
             ])
             ->bulkActions([

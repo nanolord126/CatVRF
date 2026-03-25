@@ -1,11 +1,24 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Services\ThreeD;
 
 use Illuminate\Support\Str;
 
-final class PetServices3DService
+final /**
+ * PetServices3DService
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class PetServices3DService
 {
+    // Dependencies injected via constructor
+    // Add private readonly properties here
     public function generateProductVisualization(array $productData): array
     {
         return [

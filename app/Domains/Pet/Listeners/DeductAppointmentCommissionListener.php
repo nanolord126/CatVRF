@@ -13,7 +13,7 @@ final class DeductAppointmentCommissionListener implements ShouldQueue
     public function handle(AppointmentBooked $event): void
     {
         try {
-            DB::transaction(function () use ($event) {
+            $this->db->transaction(function () use ($event) {
                 $clinic = $event->appointment->clinic;
                 $wallet = $clinic->owner->wallet;
 
@@ -38,7 +38,7 @@ final class DeductAppointmentCommissionListener implements ShouldQueue
                     ],
                 ]);
 
-                Log::channel('audit')->info('Pet appointment commission deducted', [
+                $this->log->channel('audit')->info('Pet appointment commission deducted', [
                     'appointment_id' => $event->appointment->id,
                     'clinic_id' => $clinic->id,
                     'amount' => $commissionAmount / 100,
@@ -47,7 +47,7 @@ final class DeductAppointmentCommissionListener implements ShouldQueue
                 ]);
             });
         } catch (\Throwable $e) {
-            Log::error('Failed to deduct appointment commission', [
+            $this->log->error('Failed to deduct appointment commission', [
                 'appointment_id' => $event->appointment->id,
                 'correlation_id' => $event->correlationId,
                 'error' => $e->getMessage(),

@@ -23,7 +23,7 @@ final class LowPartsStock implements ShouldBroadcast
         public readonly AutoPart $part,
         public readonly string $correlationId,
     ) {
-        Log::channel('audit')->warning('Low parts stock detected', [
+        $this->log->channel('audit')->warning('Low parts stock detected', [
             'correlation_id' => $this->correlationId,
             'part_id' => $this->part->id,
             'part_name' => $this->part->name,

@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\HomeServices\Models;
@@ -7,7 +9,16 @@ use App\Models\Tenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-final class ServiceDispute extends Model
+final /**
+ * ServiceDispute
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class ServiceDispute extends Model
 {
     protected $table = 'service_disputes';
     protected $fillable = ['tenant_id', 'job_id', 'initiator_id', 'type', 'description', 'status', 'resolution', 'resolved_by', 'refund_amount', 'evidence', 'resolved_at', 'correlation_id'];

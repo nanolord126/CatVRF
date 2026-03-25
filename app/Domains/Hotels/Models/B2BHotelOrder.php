@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -8,7 +10,16 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-final class B2BHotelOrder extends Model
+final /**
+ * B2BHotelOrder
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class B2BHotelOrder extends Model
 {
 	use SoftDeletes;
 

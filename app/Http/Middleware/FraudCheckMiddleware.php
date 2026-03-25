@@ -39,7 +39,7 @@ final class FraudCheckMiddleware
         );
 
         if ($fraudResult['decision'] === 'block') {
-            \Illuminate\Support\Facades\Log::channel('fraud_alert')->warning('High fraud score detected', [
+            \Illuminate\Support\Facades\$this->log->channel('fraud_alert')->warning('High fraud score detected', [
                 'user_id'        => auth()->id(),
                 'score'          => $fraudResult['score'],
                 'endpoint'       => $request->path(),

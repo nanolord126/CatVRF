@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Food\Policies;
@@ -25,9 +27,9 @@ final class DeliveryOrderPolicy
     public function track(User $user, DeliveryOrder $delivery): Response
     {
         if ($user->id !== $delivery->order->client_id && $user->id !== $delivery->courier_id && !$user->isAdmin()) {
-            return Response::deny('Вы не можете отслеживать эту доставку');
+            return $this->response->deny('Вы не можете отслеживать эту доставку');
         }
 
-        return Response::allow();
+        return $this->response->allow();
     }
 }

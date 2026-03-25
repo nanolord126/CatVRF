@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Logistics\Http\Controllers;
@@ -8,7 +10,16 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
-final class ShipmentInsuranceController
+final /**
+ * ShipmentInsuranceController
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class ShipmentInsuranceController
 {
     public function getInsurance(int $shipmentId): JsonResponse
     {
@@ -25,7 +36,7 @@ final class ShipmentInsuranceController
         try {
             $correlationId = Str::uuid()->toString();
 
-            DB::transaction(function () use ($shipmentId, $correlationId) {
+            $this->db->transaction(function () use ($shipmentId, $correlationId) {
                 $shipment = \App\Domains\Logistics\Models\Shipment::findOrFail($shipmentId);
 
                 ShipmentInsurance::create([
@@ -37,7 +48,7 @@ final class ShipmentInsuranceController
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Shipment insurance added', [
+                $this->log->channel('audit')->info('Shipment insurance added', [
                     'shipment_id' => $shipmentId,
                     'insurance_amount' => request('insurance_amount'),
                     'correlation_id' => $correlationId,

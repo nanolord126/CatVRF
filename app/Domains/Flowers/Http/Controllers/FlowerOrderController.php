@@ -50,9 +50,9 @@ final class FlowerOrderController
                 'success' => true,
                 'data' => $order->load('items.product'),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_CREATED);
+            ], $this->response->HTTP_CREATED);
         } catch (\Exception $exception) {
-            Log::channel('audit')->error('Order creation failed', [
+            $this->log->channel('audit')->error('Order creation failed', [
                 'error' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -61,7 +61,7 @@ final class FlowerOrderController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -85,7 +85,7 @@ final class FlowerOrderController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -111,7 +111,7 @@ final class FlowerOrderController
                 'success' => false,
                 'message' => 'Order not found',
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_NOT_FOUND);
+            ], $this->response->HTTP_NOT_FOUND);
         }
     }
 
@@ -129,13 +129,13 @@ final class FlowerOrderController
                     'success' => false,
                     'message' => 'Cannot cancel this order',
                     'correlation_id' => $correlationId,
-                ], Response::HTTP_UNPROCESSABLE_ENTITY);
+                ], $this->response->HTTP_UNPROCESSABLE_ENTITY);
             }
 
-            $order = DB::transaction(function () use ($order, $correlationId) {
+            $order = $this->db->transaction(function () use ($order, $correlationId) {
                 $order->update(['status' => 'cancelled']);
 
-                Log::channel('audit')->info('Flower order cancelled', [
+                $this->log->channel('audit')->info('Flower order cancelled', [
                     'order_id' => $order->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -153,7 +153,7 @@ final class FlowerOrderController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -187,7 +187,7 @@ final class FlowerOrderController
                 'success' => false,
                 'message' => 'Receipt not found',
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_NOT_FOUND);
+            ], $this->response->HTTP_NOT_FOUND);
         }
     }
 
@@ -210,7 +210,7 @@ final class FlowerOrderController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -234,7 +234,7 @@ final class FlowerOrderController
                 'success' => false,
                 'message' => 'Order not found',
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_NOT_FOUND);
+            ], $this->response->HTTP_NOT_FOUND);
         }
     }
 
@@ -259,7 +259,7 @@ final class FlowerOrderController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 }

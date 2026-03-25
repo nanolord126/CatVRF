@@ -36,7 +36,7 @@ final class VehicleInsuranceController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Vehicle insurance index failed', [
+            $this->log->channel('audit')->error('Vehicle insurance index failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -78,7 +78,7 @@ final class VehicleInsuranceController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Insurance calculation failed', [
+            $this->log->channel('audit')->error('Insurance calculation failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -112,7 +112,7 @@ final class VehicleInsuranceController extends Controller
                 'amount' => $validated['premium_amount'],
             ]);
 
-            $insurance = DB::transaction(function () use ($validated, $correlationId) {
+            $insurance = $this->db->transaction(function () use ($validated, $correlationId) {
                 return VehicleInsurance::create([
                     ...$validated,
                     'tenant_id' => tenant()->id,
@@ -124,7 +124,7 @@ final class VehicleInsuranceController extends Controller
                 ]);
             });
 
-            Log::channel('audit')->info('Vehicle insurance created', [
+            $this->log->channel('audit')->info('Vehicle insurance created', [
                 'correlation_id' => $correlationId,
                 'insurance_id' => $insurance->id,
             ]);
@@ -135,7 +135,7 @@ final class VehicleInsuranceController extends Controller
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Vehicle insurance creation failed', [
+            $this->log->channel('audit')->error('Vehicle insurance creation failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -163,7 +163,7 @@ final class VehicleInsuranceController extends Controller
         try {
             $insurance->delete();
 
-            Log::channel('audit')->info('Vehicle insurance deleted', [
+            $this->log->channel('audit')->info('Vehicle insurance deleted', [
                 'correlation_id' => $correlationId,
                 'insurance_id' => $insurance->id,
             ]);
@@ -174,7 +174,7 @@ final class VehicleInsuranceController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Vehicle insurance deletion failed', [
+            $this->log->channel('audit')->error('Vehicle insurance deletion failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);

@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 namespace App\Http\Middleware;
@@ -7,6 +9,15 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
 
+/**
+ * EnforceDbTransaction
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
 class EnforceDbTransaction
 {
     /**
@@ -24,7 +35,7 @@ class EnforceDbTransaction
         }
 
         // For cross-database or multiple connection scenarios, this wraps the default connection
-        return DB::transaction(function () use ($request, $next) {
+        return $this->db->transaction(function () use ($request, $next) {
             return $next($request);
         });
     }

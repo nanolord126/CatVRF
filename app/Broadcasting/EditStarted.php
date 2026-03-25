@@ -25,7 +25,7 @@ final class EditStarted implements ShouldBroadcast
         public readonly string $userName,
         public readonly string $correlationId
     ) {
-        Log::channel('audit')->info('EditStarted event broadcasted', [
+        $this->log->channel('audit')->info('EditStarted event broadcasted', [
             'user_id' => $this->userId,
             'tenant_id' => $this->tenantId,
             'document_type' => $this->documentType,

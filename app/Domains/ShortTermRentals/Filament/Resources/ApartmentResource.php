@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\ShortTermRentals\Filament\Resources;
@@ -7,7 +9,16 @@ use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Tables;
 
-final class ApartmentResource extends Resource
+final /**
+ * ApartmentResource
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class ApartmentResource extends Resource
 {
     protected static ?string $model = Apartment::class;
     protected static ?string $navigationGroup = 'Посуточная аренда';

@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Auto\Filament\Resources\VehicleInsuranceResource\Pages;
@@ -7,7 +9,16 @@ use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Log;
 
-final class EditVehicleInsurance extends EditRecord
+final /**
+ * EditVehicleInsurance
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class EditVehicleInsurance extends EditRecord
 {
     protected static string $resource = VehicleInsuranceResource::class;
 
@@ -16,7 +27,7 @@ final class EditVehicleInsurance extends EditRecord
         return [
             Actions\DeleteAction::make()
                 ->after(function () {
-                    Log::channel('audit')->info('VehicleInsurance deleted', [
+                    $this->log->channel('audit')->info('VehicleInsurance deleted', [
                         'correlation_id' => $this->record->correlation_id,
                         'policy_id' => $this->record->id,
                     ]);
@@ -26,7 +37,7 @@ final class EditVehicleInsurance extends EditRecord
 
     protected function afterSave(): void
     {
-        Log::channel('audit')->info('VehicleInsurance updated', [
+        $this->log->channel('audit')->info('VehicleInsurance updated', [
             'correlation_id' => $this->record->correlation_id,
             'policy_id' => $this->record->id,
             'status' => $this->record->status,

@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -9,7 +11,16 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-final class FlowerCategory extends Model
+final /**
+ * FlowerCategory
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class FlowerCategory extends Model
 {
     use HasFactory, SoftDeletes;
 

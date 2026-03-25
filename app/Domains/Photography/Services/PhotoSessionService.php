@@ -15,7 +15,7 @@ final class PhotoSessionService
         private readonly FraudControlService $fraudControlService,)
     {
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Photography', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in Photography', ['correlation_id' => $correlationId]);
 
     }
 
@@ -30,7 +30,7 @@ final class PhotoSessionService
         string $correlationId,
     ): int {
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Photography', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in Photography', ['correlation_id' => $correlationId]);
 
         try {
                         $this->fraudControlService->check(
@@ -41,8 +41,8 @@ final class PhotoSessionService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-            $sessionId = DB::transaction(function () use ($photographerId, $eventType, $sessionDate, $durationMinutes, $correlationId) {
-                $sessionId = DB::table('photo_sessions')->insertGetId([
+            $sessionId = $this->db->transaction(function () use ($photographerId, $eventType, $sessionDate, $durationMinutes, $correlationId) {
+                $sessionId = $this->db->table('photo_sessions')->insertGetId([
                     'photographer_id' => $photographerId,
                     'event_type' => $eventType,
                     'session_date' => $sessionDate,
@@ -52,7 +52,7 @@ final class PhotoSessionService
                     'created_at' => now(),
                 ]);
 
-                Log::channel('audit')->info('Photo session booked', [
+                $this->log->channel('audit')->info('Photo session booked', [
                     'session_id' => $sessionId,
                     'photographer_id' => $photographerId,
                     'event_type' => $eventType,
@@ -64,7 +64,7 @@ final class PhotoSessionService
 
             return $sessionId;
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Photo session booking failed', [
+            $this->log->channel('audit')->error('Photo session booking failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
                 'trace' => $e->getTraceAsString(),
@@ -79,7 +79,7 @@ final class PhotoSessionService
     public function completePhotoSession(int $sessionId, int $photosCount, string $correlationId): bool
     {
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Photography', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in Photography', ['correlation_id' => $correlationId]);
 
         try {
                         $this->fraudControlService->check(
@@ -90,12 +90,12 @@ final class PhotoSessionService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-            DB::transaction(function () use ($sessionId, $photosCount, $correlationId) {
-                DB::table('photo_sessions')
+            $this->db->transaction(function () use ($sessionId, $photosCount, $correlationId) {
+                $this->db->table('photo_sessions')
                     ->where('id', $sessionId)
                     ->update(['status' => 'completed', 'photos_count' => $photosCount, 'completed_at' => now()]);
 
-                Log::channel('audit')->info('Photo session completed', [
+                $this->log->channel('audit')->info('Photo session completed', [
                     'session_id' => $sessionId,
                     'photos_count' => $photosCount,
                     'correlation_id' => $correlationId,
@@ -104,7 +104,7 @@ final class PhotoSessionService
 
             return true;
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Photo session completion failed', [
+            $this->log->channel('audit')->error('Photo session completion failed', [
                 'session_id' => $sessionId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Flowers\Jobs;
@@ -8,7 +10,16 @@ use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-final class ProcessFlowerOrderStatusJob implements ShouldQueue
+final /**
+ * ProcessFlowerOrderStatusJob
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class ProcessFlowerOrderStatusJob implements ShouldQueue
 {
     use Queueable;
 
@@ -18,7 +29,7 @@ final class ProcessFlowerOrderStatusJob implements ShouldQueue
     public function handle(): void
     {
         try {
-            DB::transaction(function () {
+            $this->db->transaction(function () {
                 $orders = FlowerOrder::query()
                     ->where('status', 'confirmed')
                     ->where('delivery_date', '>=', now()->toDateString())
@@ -29,7 +40,7 @@ final class ProcessFlowerOrderStatusJob implements ShouldQueue
                     if ($order->items()->count() > 0) {
                         $order->update(['status' => 'preparing']);
 
-                        Log::channel('audit')->info('Flower order marked as preparing', [
+                        $this->log->channel('audit')->info('Flower order marked as preparing', [
                             'order_id' => $order->id,
                             'shop_id' => $order->shop_id,
                             'correlation_id' => $order->correlation_id,
@@ -38,7 +49,7 @@ final class ProcessFlowerOrderStatusJob implements ShouldQueue
                 }
             });
         } catch (\Exception $exception) {
-            Log::channel('audit')->error('Flower order status processing failed', [
+            $this->log->channel('audit')->error('Flower order status processing failed', [
                 'error' => $exception->getMessage(),
             ]);
             throw $exception;

@@ -40,7 +40,7 @@ final class SendEventReminderJob implements ShouldQueue
                     ->get();
 
                 foreach ($bookings as $booking) {
-                    Log::channel('audit')->info('Event reminder sent', [
+                    $this->log->channel('audit')->info('Event reminder sent', [
                         'schedule_id' => $this->scheduleId,
                         'booking_id' => $booking->id,
                         'customer_id' => $booking->customer_id,
@@ -49,7 +49,7 @@ final class SendEventReminderJob implements ShouldQueue
                 }
             }
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to send event reminders', [
+            $this->log->channel('audit')->error('Failed to send event reminders', [
                 'schedule_id' => $this->scheduleId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $this->correlationId,

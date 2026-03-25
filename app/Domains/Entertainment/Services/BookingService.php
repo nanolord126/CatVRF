@@ -23,7 +23,7 @@ final class BookingService
 
 
         try {
-            return DB::transaction(function () use ($venueId, $scheduleId, $customerId, $numberOfSeats, $correlationId) {
+            return $this->db->transaction(function () use ($venueId, $scheduleId, $customerId, $numberOfSeats, $correlationId) {
                 $venue = EntertainmentVenue::findOrFail($venueId);
                 $schedule = \App\Domains\Entertainment\Models\EventSchedule::findOrFail($scheduleId);
 
@@ -48,7 +48,7 @@ final class BookingService
 
                 event(new BookingCreated($booking, $correlationId));
 
-                Log::channel('audit')->info('Booking created', [
+                $this->log->channel('audit')->info('Booking created', [
                     'booking_id' => $booking->id,
                     'venue_id' => $venueId,
                     'customer_id' => $customerId,
@@ -61,7 +61,7 @@ final class BookingService
                 return $booking;
             });
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to create booking', [
+            $this->log->channel('audit')->error('Failed to create booking', [
                 'venue_id' => $venueId,
                 'customer_id' => $customerId,
                 'error' => $e->getMessage(),
@@ -84,7 +84,7 @@ final class BookingService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-            DB::transaction(function () use ($booking, $reason, $correlationId) {
+            $this->db->transaction(function () use ($booking, $reason, $correlationId) {
                 $booking->update([
                     'status' => 'cancelled',
                     'cancellation_reason' => $reason,
@@ -95,14 +95,14 @@ final class BookingService
                 $schedule = $booking->eventSchedule;
                 $schedule->increment('available_seats', $booking->number_of_seats);
 
-                Log::channel('audit')->info('Booking cancelled', [
+                $this->log->channel('audit')->info('Booking cancelled', [
                     'booking_id' => $booking->id,
                     'reason' => $reason,
                     'correlation_id' => $correlationId,
                 ]);
             });
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to cancel booking', [
+            $this->log->channel('audit')->error('Failed to cancel booking', [
                 'booking_id' => $booking->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

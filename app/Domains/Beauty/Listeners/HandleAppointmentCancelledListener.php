@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -9,7 +11,16 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 
-final class HandleAppointmentCancelledListener implements ShouldQueue
+final /**
+ * HandleAppointmentCancelledListener
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class HandleAppointmentCancelledListener implements ShouldQueue
 {
     public function handle(AppointmentCancelled $event): void
     {
@@ -26,7 +37,7 @@ final class HandleAppointmentCancelledListener implements ShouldQueue
 
         // Notify client about cancellation
         if ($appointment->client) {
-            Notification::send(
+            $this->notification->send(
                 $appointment->client,
                 new \App\Notifications\AppointmentCancelledNotification(
                     $appointment,
@@ -35,7 +46,7 @@ final class HandleAppointmentCancelledListener implements ShouldQueue
             );
         }
 
-        Log::channel('audit')->info('AppointmentCancelled event handled', [
+        $this->log->channel('audit')->info('AppointmentCancelled event handled', [
             'appointment_id' => $appointment->id,
             'reason' => $event->reason,
             'correlation_id' => $event->correlationId,

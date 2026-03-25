@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 declare(strict_types=1);
 
@@ -8,11 +10,30 @@ use Illuminate\Support\Facades\Log;
 use App\Services\FraudControlService;
 use App\Domains\SportingGoods\Models\SportProduct;
 
-final readonly class SportingGoodsService
+final readonly /**
+ * SportingGoodsService
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class SportingGoodsService
 {
+    // Dependencies injected via constructor
+    // Add private readonly properties here
     public function __construct(
         private FraudControlService $fraudControlService
-    ) {}
+    ) {
+    /**
+     * Инициализировать класс
+     */
+    public function __construct()
+    {
+        // TODO: инициализация
+    }
+}
 
     public function createProduct(array $data, string $correlationId): SportProduct
     {
@@ -24,8 +45,8 @@ final readonly class SportingGoodsService
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($data, $correlationId) {
-            Log::channel('audit')->info("СОЗДАНИЕ СПОРТТОВАРА", ["correlation_id" => $correlationId]);
+$this->db->transaction(function () use ($data, $correlationId) {
+            $this->log->channel('audit')->info("СОЗДАНИЕ СПОРТТОВАРА", ["correlation_id" => $correlationId]);
             
 
             $product = SportProduct::create([
@@ -36,7 +57,7 @@ DB::transaction(function () use ($data, $correlationId) {
                 "tags" => []
             ]);
 
-            Log::channel('audit')->info("СПОРТТОВАР СОЗДАН", ["correlation_id" => $correlationId, "id" => $product->id]);
+            $this->log->channel('audit')->info("СПОРТТОВАР СОЗДАН", ["correlation_id" => $correlationId, "id" => $product->id]);
 
             return $product;
         });

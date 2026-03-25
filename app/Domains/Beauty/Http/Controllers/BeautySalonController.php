@@ -26,7 +26,7 @@ final class BeautySalonController
                 ->paginate(20);
 
             $correlationId = Str::uuid()->toString();
-            Log::channel('audit')->info('Beauty salons listed', [
+            $this->log->channel('audit')->info('Beauty salons listed', [
                 'count' => $salons->count(),
                 'correlation_id' => $correlationId,
             ]);
@@ -38,7 +38,7 @@ final class BeautySalonController
             ]);
         } catch (\Throwable $e) {
             $correlationId = Str::uuid()->toString();
-            Log::error('Beauty salon listing failed', [
+            $this->log->error('Beauty salon listing failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -84,7 +84,7 @@ final class BeautySalonController
         );
 
         if ($fraudResult['decision'] === 'block') {
-            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+            $this->log->channel('fraud_alert')->warning('Operation blocked by fraud control', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'score'          => $fraudResult['score'],
@@ -97,7 +97,7 @@ final class BeautySalonController
         }
 
         try {
-            $salon = DB::transaction(function () use ($correlationId) {
+            $salon = $this->db->transaction(function () use ($correlationId) {
                 return BeautySalon::create([
                     'uuid' => Str::uuid(),
                     'tenant_id' => tenant('id'),
@@ -113,7 +113,7 @@ final class BeautySalonController
                 ]);
             });
 
-            Log::channel('audit')->info('Beauty salon created', [
+            $this->log->channel('audit')->info('Beauty salon created', [
                 'salon_id' => $salon->id,
                 'owner_id' => auth()->id(),
                 'correlation_id' => $correlationId,
@@ -126,7 +126,7 @@ final class BeautySalonController
             ], 201);
         } catch (\Throwable $e) {
             $correlationId = Str::uuid()->toString();
-            Log::error('Beauty salon creation failed', [
+            $this->log->error('Beauty salon creation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -153,7 +153,7 @@ final class BeautySalonController
         );
 
         if ($fraudResult['decision'] === 'block') {
-            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+            $this->log->channel('fraud_alert')->warning('Operation blocked by fraud control', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'score'          => $fraudResult['score'],
@@ -168,7 +168,7 @@ final class BeautySalonController
         try {
             $salon = BeautySalon::findOrFail($id);
 
-            DB::transaction(function () use ($salon, $correlationId) {
+            $this->db->transaction(function () use ($salon, $correlationId) {
                 $salon->update([
                     'name' => request('name', $salon->name),
                     'description' => request('description', $salon->description),
@@ -178,7 +178,7 @@ final class BeautySalonController
                 ]);
             });
 
-            Log::channel('audit')->info('Beauty salon updated', [
+            $this->log->channel('audit')->info('Beauty salon updated', [
                 'salon_id' => $id,
                 'correlation_id' => $correlationId,
             ]);
@@ -190,7 +190,7 @@ final class BeautySalonController
             ]);
         } catch (\Throwable $e) {
             $correlationId = Str::uuid()->toString();
-            Log::error('Beauty salon update failed', [
+            $this->log->error('Beauty salon update failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);

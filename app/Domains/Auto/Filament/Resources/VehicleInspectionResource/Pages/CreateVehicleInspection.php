@@ -28,8 +28,8 @@ final class CreateVehicleInspection extends CreateRecord
 
     protected function afterCreate(): void
     {
-        DB::transaction(function () {
-            Log::channel('audit')->info('VehicleInspection created', [
+        $this->db->transaction(function () {
+            $this->log->channel('audit')->info('VehicleInspection created', [
                 'correlation_id' => $this->record->correlation_id,
                 'inspection_id' => $this->record->id,
                 'vehicle_id' => $this->record->vehicle_id,
@@ -41,7 +41,7 @@ final class CreateVehicleInspection extends CreateRecord
                     $this->record,
                     $this->record->correlation_id
                 ));
-                Notification::make()
+                $this->notification->make()
                     ->success()
                     ->title('Техосмотр пройден')
                     ->body('Сертификат выдан: ' . $this->record->certificate_number)
@@ -51,7 +51,7 @@ final class CreateVehicleInspection extends CreateRecord
                     $this->record,
                     $this->record->correlation_id
                 ));
-                Notification::make()
+                $this->notification->make()
                     ->warning()
                     ->title('Техосмотр не пройден')
                     ->body('Требуется устранение замечаний')

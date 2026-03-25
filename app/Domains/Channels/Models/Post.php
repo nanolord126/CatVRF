@@ -86,7 +86,7 @@ final class Post extends Model
 
     public function reactionLogs(): HasMany
     {
-        return $this->hasMany(PostReactionLog::class, 'post_id');
+        return $this->hasMany(PostReaction$this->log->class, 'post_id');
     }
 
     public function stats(): HasMany

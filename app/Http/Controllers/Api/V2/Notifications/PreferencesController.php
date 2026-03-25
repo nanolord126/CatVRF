@@ -49,7 +49,7 @@ final class PreferencesController extends BaseApiV2Controller
                 correlationId: $correlationId
             );
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to get preferences', [
+            $this->log->channel('audit')->error('Failed to get preferences', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -100,7 +100,7 @@ final class PreferencesController extends BaseApiV2Controller
                 correlationId: $correlationId
             );
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to update channel preferences', [
+            $this->log->channel('audit')->error('Failed to update channel preferences', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -142,7 +142,7 @@ final class PreferencesController extends BaseApiV2Controller
                 correlationId: $correlationId
             );
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to set DND', [
+            $this->log->channel('audit')->error('Failed to set DND', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -174,7 +174,7 @@ final class PreferencesController extends BaseApiV2Controller
                 correlationId: $correlationId
             );
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to disable DND', [
+            $this->log->channel('audit')->error('Failed to disable DND', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);

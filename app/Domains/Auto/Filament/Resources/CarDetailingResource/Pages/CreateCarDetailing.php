@@ -31,7 +31,7 @@ final class CreateCarDetailing extends CreateRecord
         ]);
 
         if ($fraudCheck['blocked']) {
-            Log::channel('fraud_alert')->warning('Detailing booking blocked by fraud control', [
+            $this->log->channel('fraud_alert')->warning('Detailing booking blocked by fraud control', [
                 'correlation_id' => $correlationId,
                 'user_id' => auth()->id(),
             ]);
@@ -43,8 +43,8 @@ final class CreateCarDetailing extends CreateRecord
 
     protected function afterCreate(): void
     {
-        DB::transaction(function () {
-            Log::channel('audit')->info('CarDetailing created', [
+        $this->db->transaction(function () {
+            $this->log->channel('audit')->info('CarDetailing created', [
                 'correlation_id' => $this->record->correlation_id,
                 'detailing_id' => $this->record->id,
                 'vehicle_id' => $this->record->vehicle_id,
@@ -57,7 +57,7 @@ final class CreateCarDetailing extends CreateRecord
             ));
         });
 
-        Notification::make()
+        $this->notification->make()
             ->success()
             ->title('Детейлинг запланирован')
             ->body('Бронирование создано успешно')

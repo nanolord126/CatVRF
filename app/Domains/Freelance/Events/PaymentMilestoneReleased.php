@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Freelance\Events;
@@ -7,7 +9,16 @@ use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-final class PaymentMilestoneReleased
+final /**
+ * PaymentMilestoneReleased
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class PaymentMilestoneReleased
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -16,5 +27,13 @@ final class PaymentMilestoneReleased
         public readonly float $amount,
         public readonly int $milestoneNumber,
         public readonly string $correlationId,
-    ) {}
+    ) {
+    /**
+     * Инициализировать класс
+     */
+    public function __construct()
+    {
+        // TODO: инициализация
+    }
+}
 }

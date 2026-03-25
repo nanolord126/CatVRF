@@ -1,6 +1,30 @@
 <?php declare(strict_types=1);
 
-namespace App\Domains\OfficeCatering\Models;
+namespace 
+
+/**
+ * OfficeMenu
+ * 
+ * Производитель: CatVRF Platform
+ * Версия: 1.0.0
+ * 
+ * Примеры использования:
+ * 
+ * ```php
+ * // Базовое использование
+ * $instance = new OfficeMenu();
+ * ```
+ * 
+ * Требования:
+ * - Laravel 10+
+ * - PHP 8.2+
+ * - Все методы должны быть явно типизированы
+ * 
+ * @author CatVRF
+ * @package namespace App\Domains\OfficeCatering\Models
+ * @see https://github.com/iyegorovskyi_clemny/CatVRF
+ */
+App\Domains\OfficeCatering\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -28,6 +52,12 @@ final class OfficeMenu extends Model
         'tags'               => 'json',
     ];
 
+    /**
+     * Выполнить операцию
+     * 
+     * @return mixed
+     * @throws \Exception
+     */
     public function client(): BelongsTo
     {
         return $this->belongsTo(CorporateClient::class, 'client_id');

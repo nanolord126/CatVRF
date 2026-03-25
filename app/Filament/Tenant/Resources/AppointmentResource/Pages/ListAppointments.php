@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -8,7 +10,16 @@ use App\Filament\Tenant\Resources\AppointmentResource;
 use Filament\Resources\Pages\ListRecords;
 use Filament\Actions;
 
-final class ListAppointments extends ListRecords
+final /**
+ * ListAppointments
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class ListAppointments extends ListRecords
 {
     protected static string $resource = AppointmentResource::class;
 

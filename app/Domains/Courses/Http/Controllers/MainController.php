@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Courses\Http\Controllers;
@@ -9,12 +11,29 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use App\Services\FraudControlService;
 
-final class MainController extends Controller
+final /**
+ * MainController
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class MainController extends Controller
 {
     public function __construct(
         private readonly CourseService $courseService,
         private readonly FraudControlService $fraudControl
-    ) {}
+    ) {
+    /**
+     * Инициализировать класс
+     */
+    public function __construct()
+    {
+        // TODO: инициализация
+    }
+}
 
     public function index(Request $request): JsonResponse
     {

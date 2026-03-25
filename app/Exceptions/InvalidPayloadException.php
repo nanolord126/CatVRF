@@ -21,6 +21,6 @@ final class InvalidPayloadException extends Exception
         return response()->json([
             'error' => 'Invalid payload',
             'message' => $this->message,
-        ], Response::HTTP_BAD_REQUEST);  // 400
+        ], $this->response->HTTP_BAD_REQUEST);  // 400
     }
 }

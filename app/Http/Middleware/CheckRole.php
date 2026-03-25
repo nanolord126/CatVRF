@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 declare(strict_types=1);
 
@@ -7,7 +9,16 @@ use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Auth\Access\AuthorizationException;
 
-final class CheckRole
+final /**
+ * CheckRole
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class CheckRole
 {
     public function handle(Request $request, Closure $next, string ...$roles): mixed
     {

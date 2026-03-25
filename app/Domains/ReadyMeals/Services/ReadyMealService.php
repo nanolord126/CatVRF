@@ -31,7 +31,7 @@ final class ReadyMealService
         // Rate limiting
         $rlKey = "ready_meals:order:{$clientId}";
         if (RateLimiter::tooManyAttempts($rlKey, 10)) {
-            Log::channel('fraud_alert')->warning('ReadyMeals: rate limit reached', [
+            $this->log->channel('fraud_alert')->warning('ReadyMeals: rate limit reached', [
                 'client_id' => $clientId,
                 'correlation_id' => $correlationId
             ]);
@@ -55,7 +55,7 @@ final class ReadyMealService
         ]);
 
         if ($fraud['decision'] === 'block') {
-            Log::channel('audit')->warning('ReadyMeals: fraud block on order', [
+            $this->log->channel('audit')->warning('ReadyMeals: fraud block on order', [
                 'client_id' => $clientId,
                 'score' => $fraud['score'],
                 'correlation_id' => $correlationId
@@ -63,7 +63,7 @@ final class ReadyMealService
             throw new \RuntimeException('Действие заблокировано системой безопасности.', 403);
         }
 
-        return DB::transaction(function () use ($clientId, $meal, $quantity, $correlationId) {
+        return $this->db->transaction(function () use ($clientId, $meal, $quantity, $correlationId) {
             $meal->lockForUpdate();
 
             if ($meal->current_stock < $quantity) {
@@ -91,7 +91,7 @@ final class ReadyMealService
                 correlationId: $correlationId
             );
 
-            Log::channel('audit')->info('ReadyMeals: meal ordered successfully', [
+            $this->log->channel('audit')->info('ReadyMeals: meal ordered successfully', [
                 'client_id' => $clientId,
                 'meal_name' => $meal->name,
                 'quantity' => $quantity,
@@ -116,7 +116,7 @@ final class ReadyMealService
         $correlationId = $correlationId ?: (string) Str::uuid();
         $meal = ReadyMeal::findOrFail($mealId);
 
-        DB::transaction(function () use ($meal, $inventoryMapping, $correlationId) {
+        $this->db->transaction(function () use ($meal, $inventoryMapping, $correlationId) {
             foreach ($meal->ingredients as $ingredient) {
                 $inventoryId = $inventoryMapping[$ingredient['name']] ?? null;
                 if ($inventoryId) {
@@ -131,7 +131,7 @@ final class ReadyMealService
                 }
             }
 
-            Log::channel('audit')->info('ReadyMeals: ingredients deducted for cooking', [
+            $this->log->channel('audit')->info('ReadyMeals: ingredients deducted for cooking', [
                 'meal_id' => $meal->id,
                 'correlation_id' => $correlationId
             ]);
@@ -150,10 +150,10 @@ final class ReadyMealService
             ->get();
 
         foreach ($expiredMeals as $meal) {
-            DB::transaction(function () use ($meal, $correlationId) {
+            $this->db->transaction(function () use ($meal, $correlationId) {
                 $meal->update(['status' => 'out_of_stock', 'tags' => array_merge($meal->tags ?? [], ['expired'])]);
                 
-                Log::channel('audit')->warning('ReadyMeals: meal expired and deactivated', [
+                $this->log->channel('audit')->warning('ReadyMeals: meal expired and deactivated', [
                     'meal_id' => $meal->id,
                     'meal_name' => $meal->name,
                     'correlation_id' => $correlationId
@@ -169,7 +169,7 @@ final class ReadyMealService
     {
         $correlationId = (string) Str::uuid();
 
-        DB::transaction(function () use ($tenantId, $data, $correlationId) {
+        $this->db->transaction(function () use ($tenantId, $data, $correlationId) {
             foreach ($data as $item) {
                 $meal = ReadyMeal::where('tenant_id', $tenantId)
                     ->where('name', $item['name'])

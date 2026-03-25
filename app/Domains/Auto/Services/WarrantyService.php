@@ -19,7 +19,7 @@ final class WarrantyService
     {
         $correlationId = Str::uuid()->toString();
 
-        Log::channel('audit')->info('Creating part warranty', [
+        $this->log->channel('audit')->info('Creating part warranty', [
             'correlation_id' => $correlationId,
             'tenant_id' => tenant()->id,
         ]);
@@ -30,7 +30,7 @@ final class WarrantyService
                 'auto_part_id' => $data['auto_part_id'],
             ]);
 
-            $warranty = DB::transaction(function () use ($data, $correlationId) {
+            $warranty = $this->db->transaction(function () use ($data, $correlationId) {
                 $startDate = \Carbon\Carbon::parse($data['start_date']);
                 $endDate = $startDate->copy()->addMonths($data['warranty_months']);
 
@@ -45,14 +45,14 @@ final class WarrantyService
                 ]);
             });
 
-            Log::channel('audit')->info('Part warranty created', [
+            $this->log->channel('audit')->info('Part warranty created', [
                 'correlation_id' => $correlationId,
                 'warranty_id' => $warranty->id,
             ]);
 
             return $warranty;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Part warranty creation failed', [
+            $this->log->channel('audit')->error('Part warranty creation failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -66,7 +66,7 @@ final class WarrantyService
     {
         $correlationId = Str::uuid()->toString();
 
-        Log::channel('audit')->info('Creating service warranty', [
+        $this->log->channel('audit')->info('Creating service warranty', [
             'correlation_id' => $correlationId,
             'tenant_id' => tenant()->id,
         ]);
@@ -77,7 +77,7 @@ final class WarrantyService
                 'auto_service_order_id' => $data['auto_service_order_id'],
             ]);
 
-            $warranty = DB::transaction(function () use ($data, $correlationId) {
+            $warranty = $this->db->transaction(function () use ($data, $correlationId) {
                 $startDate = \Carbon\Carbon::parse($data['start_date']);
                 $endDate = $startDate->copy()->addMonths($data['warranty_months']);
 
@@ -92,14 +92,14 @@ final class WarrantyService
                 ]);
             });
 
-            Log::channel('audit')->info('Service warranty created', [
+            $this->log->channel('audit')->info('Service warranty created', [
                 'correlation_id' => $correlationId,
                 'warranty_id' => $warranty->id,
             ]);
 
             return $warranty;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Service warranty creation failed', [
+            $this->log->channel('audit')->error('Service warranty creation failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -124,7 +124,7 @@ final class WarrantyService
                 throw new \Exception('Warranty claim already submitted');
             }
 
-            DB::transaction(function () use ($warranty, $reason, $notes) {
+            $this->db->transaction(function () use ($warranty, $reason, $notes) {
                 $warranty->update([
                     'claim_date' => now(),
                     'claim_reason' => $reason,
@@ -133,14 +133,14 @@ final class WarrantyService
                 ]);
             });
 
-            Log::channel('audit')->info('Part warranty claim submitted', [
+            $this->log->channel('audit')->info('Part warranty claim submitted', [
                 'correlation_id' => $correlationId,
                 'warranty_id' => $warrantyId,
             ]);
 
             return $warranty;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Part warranty claim submission failed', [
+            $this->log->channel('audit')->error('Part warranty claim submission failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -172,7 +172,7 @@ final class WarrantyService
                 throw new \Exception('Warranty claim already submitted');
             }
 
-            DB::transaction(function () use ($warranty, $reason, $claimMileage, $notes) {
+            $this->db->transaction(function () use ($warranty, $reason, $claimMileage, $notes) {
                 $warranty->update([
                     'claim_date' => now(),
                     'claim_reason' => $reason,
@@ -182,14 +182,14 @@ final class WarrantyService
                 ]);
             });
 
-            Log::channel('audit')->info('Service warranty claim submitted', [
+            $this->log->channel('audit')->info('Service warranty claim submitted', [
                 'correlation_id' => $correlationId,
                 'warranty_id' => $warrantyId,
             ]);
 
             return $warranty;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Service warranty claim submission failed', [
+            $this->log->channel('audit')->error('Service warranty claim submission failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -208,7 +208,7 @@ final class WarrantyService
         try {
             $warranty = PartWarranty::findOrFail($warrantyId);
 
-            DB::transaction(function () use ($warranty, $replacementPartId, $notes) {
+            $this->db->transaction(function () use ($warranty, $replacementPartId, $notes) {
                 $warranty->update([
                     'claim_status' => 'approved',
                     'replacement_part_id' => $replacementPartId,
@@ -216,14 +216,14 @@ final class WarrantyService
                 ]);
             });
 
-            Log::channel('audit')->info('Part warranty claim approved', [
+            $this->log->channel('audit')->info('Part warranty claim approved', [
                 'correlation_id' => $correlationId,
                 'warranty_id' => $warrantyId,
             ]);
 
             return $warranty;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Part warranty claim approval failed', [
+            $this->log->channel('audit')->error('Part warranty claim approval failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -239,21 +239,21 @@ final class WarrantyService
         try {
             $warranty = ServiceWarranty::findOrFail($warrantyId);
 
-            DB::transaction(function () use ($warranty, $notes) {
+            $this->db->transaction(function () use ($warranty, $notes) {
                 $warranty->update([
                     'claim_status' => 'approved',
                     'notes' => $notes,
                 ]);
             });
 
-            Log::channel('audit')->info('Service warranty claim approved', [
+            $this->log->channel('audit')->info('Service warranty claim approved', [
                 'correlation_id' => $correlationId,
                 'warranty_id' => $warrantyId,
             ]);
 
             return $warranty;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Service warranty claim approval failed', [
+            $this->log->channel('audit')->error('Service warranty claim approval failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -269,21 +269,21 @@ final class WarrantyService
         try {
             $warranty = PartWarranty::findOrFail($warrantyId);
 
-            DB::transaction(function () use ($warranty, $notes) {
+            $this->db->transaction(function () use ($warranty, $notes) {
                 $warranty->update([
                     'claim_status' => 'rejected',
                     'notes' => $notes,
                 ]);
             });
 
-            Log::channel('audit')->info('Part warranty claim rejected', [
+            $this->log->channel('audit')->info('Part warranty claim rejected', [
                 'correlation_id' => $correlationId,
                 'warranty_id' => $warrantyId,
             ]);
 
             return $warranty;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Part warranty claim rejection failed', [
+            $this->log->channel('audit')->error('Part warranty claim rejection failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -299,21 +299,21 @@ final class WarrantyService
         try {
             $warranty = ServiceWarranty::findOrFail($warrantyId);
 
-            DB::transaction(function () use ($warranty, $notes) {
+            $this->db->transaction(function () use ($warranty, $notes) {
                 $warranty->update([
                     'claim_status' => 'rejected',
                     'notes' => $notes,
                 ]);
             });
 
-            Log::channel('audit')->info('Service warranty claim rejected', [
+            $this->log->channel('audit')->info('Service warranty claim rejected', [
                 'correlation_id' => $correlationId,
                 'warranty_id' => $warrantyId,
             ]);
 
             return $warranty;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Service warranty claim rejection failed', [
+            $this->log->channel('audit')->error('Service warranty claim rejection failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);

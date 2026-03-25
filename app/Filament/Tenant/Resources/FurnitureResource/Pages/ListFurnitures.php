@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\FurnitureResource\Pages;
@@ -5,7 +7,16 @@ namespace App\Filament\Tenant\Resources\FurnitureResource\Pages;
 use App\Filament\Tenant\Resources\FurnitureResource;
 use Filament\Resources\Pages\ListRecords;
 
-final class ListFurnitures extends ListRecords
+final /**
+ * ListFurnitures
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class ListFurnitures extends ListRecords
 {
     protected static string $resource = FurnitureResource::class;
 

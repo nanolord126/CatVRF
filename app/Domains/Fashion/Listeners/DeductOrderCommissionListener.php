@@ -15,7 +15,7 @@ final class DeductOrderCommissionListener implements ShouldQueue
     public function handle(OrderPlaced $event): void
     {
         try {
-            DB::transaction(function () use ($event) {
+            $this->db->transaction(function () use ($event) {
                 $wallet = Wallet::where('tenant_id', $event->order->tenant_id)
                     ->lockForUpdate()
                     ->first();
@@ -39,7 +39,7 @@ final class DeductOrderCommissionListener implements ShouldQueue
                     'correlation_id' => $event->correlationId,
                 ]);
 
-                Log::channel('audit')->info('Order commission deducted', [
+                $this->log->channel('audit')->info('Order commission deducted', [
                     'order_id' => $event->order->id,
                     'fashion_store_id' => $event->order->fashion_store_id,
                     'customer_id' => $event->order->customer_id,
@@ -48,7 +48,7 @@ final class DeductOrderCommissionListener implements ShouldQueue
                 ]);
             });
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to deduct order commission', [
+            $this->log->channel('audit')->error('Failed to deduct order commission', [
                 'order_id' => $event->order->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $event->correlationId,

@@ -31,14 +31,14 @@ final class Process3DModelJob implements ShouldQueue
     public function handle(): void
     {
         try {
-            Log::channel('audit')->info('Начало обработки 3D модели', [
+            $this->log->channel('audit')->info('Начало обработки 3D модели', [
                 'model_id' => $this->model->id,
                 'correlation_id' => $this->correlationId,
                 'file_size' => $this->model->file_size,
             ]);
 
             // 1. Проверка файла
-            if (!Storage::disk('private')->exists($this->model->file_path)) {
+            if (!$this->storage->disk('private')->exists($this->model->file_path)) {
                 throw new \Exception('Файл модели не найден');
             }
 
@@ -56,14 +56,14 @@ final class Process3DModelJob implements ShouldQueue
                 'status' => 'active',
             ]);
 
-            Log::channel('audit')->info('Обработка 3D модели завершена', [
+            $this->log->channel('audit')->info('Обработка 3D модели завершена', [
                 'model_id' => $this->model->id,
                 'correlation_id' => $this->correlationId,
                 'status' => 'active',
             ]);
 
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Ошибка при обработке 3D модели', [
+            $this->log->channel('audit')->error('Ошибка при обработке 3D модели', [
                 'model_id' => $this->model->id,
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
@@ -89,7 +89,7 @@ final class Process3DModelJob implements ShouldQueue
     {
         // В production использовать gltf-transform CLI
         // Пример: gltf-transform optimize input.glb output.glb
-        Log::channel('audit')->info('Оптимизация модели (стаб)', [
+        $this->log->channel('audit')->info('Оптимизация модели (стаб)', [
             'model_id' => $this->model->id,
         ]);
     }
@@ -102,7 +102,7 @@ final class Process3DModelJob implements ShouldQueue
     {
         // В production использовать headless Three.js rendering
         // или Babylon.js Node.js API для генерации PNG
-        Log::channel('audit')->info('Генерация превью (стаб)', [
+        $this->log->channel('audit')->info('Генерация превью (стаб)', [
             'model_id' => $this->model->id,
         ]);
     }
@@ -117,7 +117,7 @@ final class Process3DModelJob implements ShouldQueue
             $filePath = $this->model->file_path;
 
             // Читаем информацию о файле
-            $fileSize = Storage::disk('private')->size($filePath);
+            $fileSize = $this->storage->disk('private')->size($filePath);
 
             // Базовые метаданные
             $metadata = [
@@ -131,13 +131,13 @@ final class Process3DModelJob implements ShouldQueue
                 'metadata' => $metadata,
             ]);
 
-            Log::channel('audit')->info('Метаданные модели экстрагированы', [
+            $this->log->channel('audit')->info('Метаданные модели экстрагированы', [
                 'model_id' => $this->model->id,
                 'metadata' => $metadata,
             ]);
 
         } catch (\Exception $e) {
-            Log::warning('Ошибка при экстракции метаданных', [
+            $this->log->warning('Ошибка при экстракции метаданных', [
                 'model_id' => $this->model->id,
                 'error' => $e->getMessage(),
             ]);

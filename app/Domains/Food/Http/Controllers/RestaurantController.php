@@ -29,7 +29,7 @@ final class RestaurantController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to fetch restaurants', ['error' => $e->getMessage()]);
+            $this->log->channel('audit')->error('Failed to fetch restaurants', ['error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => 'Ошибка'], 500);
         }
     }

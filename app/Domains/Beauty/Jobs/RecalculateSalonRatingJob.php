@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -13,7 +15,16 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-final class RecalculateSalonRatingJob implements ShouldQueue
+final /**
+ * RecalculateSalonRatingJob
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class RecalculateSalonRatingJob implements ShouldQueue
 {
     use Dispatchable;
     use InteractsWithQueue;
@@ -22,18 +33,26 @@ final class RecalculateSalonRatingJob implements ShouldQueue
 
     public function __construct(
         private readonly string $correlationId,
-    ) {}
+    ) {
+    /**
+     * Инициализировать класс
+     */
+    public function __construct()
+    {
+        // TODO: инициализация
+    }
+}
 
     public function handle(): void
     {
         $salons = BeautySalon::query()->with('reviews')->get();
 
-        DB::transaction(function () use ($salons): void {
+        $this->db->transaction(function () use ($salons): void {
             foreach ($salons as $salon) {
                 $avgRating = $salon->reviews()->avg('rating') ?? 0.0;
                 $salon->update(['rating' => $avgRating]);
 
-                Log::channel('audit')->info('Salon rating updated', [
+                $this->log->channel('audit')->info('Salon rating updated', [
                     'salon_id' => $salon->id,
                     'rating' => $avgRating,
                     'correlation_id' => $this->correlationId,

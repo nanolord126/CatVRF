@@ -58,6 +58,6 @@ final class PhotoReview extends Model
 
 	public function session(): BelongsTo
 	{
-		return $this->belongsTo(PhotoSession::class, 'photo_session_id');
+		return $this->belongsTo(Photo$this->session->class, 'photo_session_id');
 	}
 }

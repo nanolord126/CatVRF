@@ -41,7 +41,7 @@ final class OrderController
                 correlationId: $correlationId,
             );
 
-            Log::channel('audit')->info('Live order created', [
+            $this->log->channel('audit')->info('Live order created', [
                 'correlation_id' => $correlationId,
                 'order_id' => $order->id,
                 'user_id' => $userId,
@@ -56,7 +56,7 @@ final class OrderController
                 'requires_confirmation' => $order->status === 'pending',
             ], 201);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Create order failed', [
+            $this->log->channel('audit')->error('Create order failed', [
                 'error' => $e->getMessage(),
                 'user_id' => auth()->id(),
             ]);
@@ -81,7 +81,7 @@ final class OrderController
 
             // Verify order belongs to current user
             if ($order->user_id !== $userId) {
-                Log::channel('audit')->warning('Unauthorized order confirmation attempt', [
+                $this->log->channel('audit')->warning('Unauthorized order confirmation attempt', [
                     'user_id' => $userId,
                     'order_id' => $orderId,
                 ]);
@@ -96,7 +96,7 @@ final class OrderController
                 correlationId: $correlationId,
             );
 
-            Log::channel('audit')->info('Order payment confirmed', [
+            $this->log->channel('audit')->info('Order payment confirmed', [
                 'correlation_id' => $correlationId,
                 'order_id' => $orderId,
                 'user_id' => $userId,
@@ -108,7 +108,7 @@ final class OrderController
                 'status' => 'paid',
             ]);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Confirm payment failed', [
+            $this->log->channel('audit')->error('Confirm payment failed', [
                 'error' => $e->getMessage(),
             ]);
 
@@ -201,7 +201,7 @@ final class OrderController
                 'cancelled_at' => now(),
             ]);
 
-            Log::channel('audit')->info('Order cancelled', [
+            $this->log->channel('audit')->info('Order cancelled', [
                 'correlation_id' => $correlationId,
                 'order_id' => $orderId,
                 'user_id' => $userId,

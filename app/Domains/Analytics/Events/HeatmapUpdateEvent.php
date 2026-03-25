@@ -101,7 +101,7 @@ final class HeatmapUpdateEvent implements ShouldBroadcast
 
         // Validate data structure
         if (empty($data) || !isset($data['points'], $data['stats']) && !isset($data['clicks'], $data['stats'])) {
-            \Log::channel('audit')->warning('HeatmapUpdateEvent: Invalid data structure', [
+            \$this->log->channel('audit')->warning('HeatmapUpdateEvent: Invalid data structure', [
                 'heatmap_type' => $heatmapType,
                 'has_points' => isset($data['points']),
                 'has_clicks' => isset($data['clicks']),
@@ -117,7 +117,7 @@ final class HeatmapUpdateEvent implements ShouldBroadcast
         $this->correlationId = $correlationId ?? "heatmap-{$this->generateTraceId()}";
 
         // Log event creation
-        \Log::channel('audit')->info('HeatmapUpdateEvent created', [
+        \$this->log->channel('audit')->info('HeatmapUpdateEvent created', [
             'tenant_id' => $this->tenantId,
             'heatmap_type' => $this->heatmapType,
             'vertical' => $this->vertical,

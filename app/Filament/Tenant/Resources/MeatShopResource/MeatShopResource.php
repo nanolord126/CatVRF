@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\MeatShopResource;
@@ -10,7 +12,16 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Section;
 use Filament\Tables\Columns\TextColumn;
 
-final class MeatShopResource extends Resource
+final /**
+ * MeatShopResource
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class MeatShopResource extends Resource
 {
     protected static ?string $model = MeatShop::class;
     public static function form(Form $f): Form

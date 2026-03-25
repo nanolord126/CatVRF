@@ -30,13 +30,13 @@ final class CalculateContractorEarningsJob implements ShouldQueue
                 }
             });
 
-            \Log::channel('audit')->info('Contractor earnings calculated', [
+            \$this->log->channel('audit')->info('Contractor earnings calculated', [
                 'month' => $month,
                 'year' => $year,
                 'correlation_id' => $this->correlationId,
             ]);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to calculate earnings', [
+            \$this->log->channel('audit')->error('Failed to calculate earnings', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $this->correlationId,
             ]);

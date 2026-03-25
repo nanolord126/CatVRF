@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace Modules\Fitness\Services;
@@ -7,11 +9,28 @@ use Illuminate\Support\Facades\Log;
 use Modules\Fitness\Models\FitnessGym;
 use App\Services\FraudControlService;
 
-final class FitnessGymService
+final /**
+ * FitnessGymService
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class FitnessGymService
 {
     public function __construct(
         private readonly FraudControlService $fraudControlService,
-    ) {}
+    ) {
+    /**
+     * Инициализировать класс
+     */
+    public function __construct()
+    {
+        // TODO: инициализация
+    }
+}
 
     public function createGym(array $data, int $tenantId, string $correlationId): FitnessGym
     {
@@ -25,8 +44,8 @@ final class FitnessGymService
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($data, $tenantId, $correlationId) {
-            Log::channel('audit')->info('Creating fitness gym', ['correlation_id' => $correlationId]);
+$this->db->transaction(function () use ($data, $tenantId, $correlationId) {
+            $this->log->channel('audit')->info('Creating fitness gym', ['correlation_id' => $correlationId]);
 
             return FitnessGym::create([
                 'tenant_id' => $tenantId,

@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\HomeServices\Models;
@@ -6,7 +8,16 @@ use App\Models\Tenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-final class ContractorEarning extends Model
+final /**
+ * ContractorEarning
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class ContractorEarning extends Model
 {
     protected $table = 'contractor_earnings';
     protected $fillable = ['tenant_id', 'contractor_id', 'period_month', 'period_year', 'total_revenue', 'total_commission', 'contractor_earnings', 'total_jobs', 'completed_jobs', 'average_rating', 'payout_initiated_at', 'payout_completed_at', 'payout_method', 'correlation_id'];

@@ -27,7 +27,7 @@ final class WalletPolicy
     {
         // CANON 2026: Strict tenant scoping check
         if (isset($wallet->tenant_id) && $user->tenant_id !== $wallet->tenant_id && !$user->hasRole('admin')) {
-            \Illuminate\Support\Facades\Log::warning('Tenant mismatch in ' . __CLASS__ . '::' . __FUNCTION__, [
+            \Illuminate\Support\Facades\$this->log->warning('Tenant mismatch in ' . __CLASS__ . '::' . __FUNCTION__, [
                 'user_id' => $user->id,
                 'user_tenant_id' => $user->tenant_id,
                 'model_tenant_id' => $wallet->tenant_id,
@@ -38,7 +38,7 @@ final class WalletPolicy
         $allowed = $user->wallet_id === $wallet->id || $user->tenant_id === $wallet->tenant_id || $user->hasRole('admin');
 
         if (!$allowed) {
-            Log::warning('Unauthorized wallet view attempt', [
+            $this->log->warning('Unauthorized wallet view attempt', [
                 'user_id' => $user->id,
                 'wallet_id' => $wallet->id,
             ]);
@@ -64,7 +64,7 @@ final class WalletPolicy
     {
         // Базовые проверки
         if ($user->wallet_id !== $wallet->id) {
-            Log::warning('Unauthorized withdrawal attempt - wallet mismatch', [
+            $this->log->warning('Unauthorized withdrawal attempt - wallet mismatch', [
                 'user_id' => $user->id,
                 'user_wallet_id' => $user->wallet_id,
                 'wallet_id' => $wallet->id,
@@ -74,7 +74,7 @@ final class WalletPolicy
 
         // KYC проверка
         if (!$user->kyc_verified) {
-            Log::info('KYC required for withdrawal', [
+            $this->log->info('KYC required for withdrawal', [
                 'user_id' => $user->id,
             ]);
             return false;
@@ -82,7 +82,7 @@ final class WalletPolicy
 
         // Баланс проверка
         if ($wallet->current_balance < (int) config('wallet.withdrawal.min_amount')) {
-            Log::info('Insufficient balance for withdrawal', [
+            $this->log->info('Insufficient balance for withdrawal', [
                 'user_id' => $user->id,
                 'current_balance' => $wallet->current_balance,
                 'min_required' => (int) config('wallet.withdrawal.min_amount'),
@@ -100,7 +100,7 @@ final class WalletPolicy
     public function transfer(User $user, Wallet $walletFrom): bool
     {
         if ($user->wallet_id !== $walletFrom->id) {
-            Log::warning('Unauthorized transfer from wallet', [
+            $this->log->warning('Unauthorized transfer from wallet', [
                 'user_id' => $user->id,
                 'wallet_id' => $walletFrom->id,
             ]);
@@ -227,7 +227,7 @@ final class WalletPolicy
         // CANON 2026 FRAUD: Predict/check operation before mutating
         $fraudScore = 0; // fraud check at service layer
         if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-            \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+            \Illuminate\Support\Facades\$this->log->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                 'user_id' => $user->id,
                 'score' => $fraudScore
             ]);
@@ -237,7 +237,7 @@ final class WalletPolicy
         $allowed = $user->hasRole('admin') && $user->tenant_id === $wallet->tenant_id;
 
         if (!$allowed) {
-            Log::warning('Unauthorized wallet update attempt', [
+            $this->log->warning('Unauthorized wallet update attempt', [
                 'user_id' => $user->id,
                 'wallet_id' => $wallet->id,
             ]);
@@ -255,7 +255,7 @@ final class WalletPolicy
         // CANON 2026 FRAUD: Predict/check operation before mutating
         $fraudScore = 0; // fraud check at service layer
         if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-            \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+            \Illuminate\Support\Facades\$this->log->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                 'user_id' => $user->id,
                 'score' => $fraudScore
             ]);
@@ -274,7 +274,7 @@ final class WalletPolicy
         // CANON 2026 FRAUD: Predict/check operation before mutating
         $fraudScore = 0; // fraud check at service layer
         if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-            \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+            \Illuminate\Support\Facades\$this->log->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                 'user_id' => $user->id,
                 'score' => $fraudScore
             ]);
@@ -293,7 +293,7 @@ final class WalletPolicy
         // CANON 2026 FRAUD: Predict/check operation before mutating
         $fraudScore = 0; // fraud check at service layer
         if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-            \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+            \Illuminate\Support\Facades\$this->log->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                 'user_id' => $user->id,
                 'score' => $fraudScore
             ]);

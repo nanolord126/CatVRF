@@ -22,7 +22,7 @@ class ContentShieldService
     {
         $this->openAiKey = config('services.openai.key', '');
         $this->correlationId = Str::uuid();
-        $this->tenantId = Auth::guard('tenant')?->id();
+        $this->tenantId = $this->auth->guard('tenant')?->id();
     }
 
     /**
@@ -34,7 +34,7 @@ class ContentShieldService
         $uploadHash = hash('sha256', $file->getContent());
         
         try {
-            Log::channel('security')->info('ContentShield: analyzeUpload started', [
+            $this->log->channel('security')->info('ContentShield: analyzeUpload started', [
                 'correlation_id' => $this->correlationId,
                 'filename' => $file->getClientOriginalName(),
                 'mime_type' => $file->getMimeType(),
@@ -52,7 +52,7 @@ class ContentShieldService
             ];
 
             // 1. Проверка кеша для известных вредоносных хешей
-            if (Cache::has("blocked_upload_hash:{$uploadHash}")) {
+            if ($this->cache->has("blocked_upload_hash:{$uploadHash}")) {
                 throw new \RuntimeException('Upload hash already flagged as malicious');
             }
 
@@ -84,11 +84,11 @@ class ContentShieldService
             }
 
             // 5. Логирование успешной проверки
-            AuditLog::create([
+            Audit$this->log->create([
                 'entity_type' => 'ContentShield',
                 'entity_id' => $uploadHash,
                 'action' => 'upload_analyzed',
-                'user_id' => Auth::id(),
+                'user_id' => $this->auth->id(),
                 'tenant_id' => $this->tenantId,
                 'correlation_id' => $this->correlationId,
                 'changes' => [],
@@ -102,14 +102,14 @@ class ContentShieldService
                 ],
             ]);
 
-            Log::channel('security')->info('ContentShield: upload approved', [
+            $this->log->channel('security')->info('ContentShield: upload approved', [
                 'correlation_id' => $this->correlationId,
                 'upload_hash' => $uploadHash,
             ]);
 
             return $results;
         } catch (Throwable $e) {
-            Log::error('ContentShield: analyzeUpload failed', [
+            $this->log->error('ContentShield: analyzeUpload failed', [
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -126,7 +126,7 @@ class ContentShieldService
             if ($size > 50 * 1024 * 1024) return 0.3;
             return 0.95;
         } catch (Throwable $e) {
-            Log::warning('ContentShield: quality evaluation failed', [
+            $this->log->warning('ContentShield: quality evaluation failed', [
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -139,7 +139,7 @@ class ContentShieldService
         try {
             return "[OCR text extraction via API]";
         } catch (Throwable $e) {
-            Log::warning('ContentShield: OCR failed', [
+            $this->log->warning('ContentShield: OCR failed', [
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -163,7 +163,7 @@ class ContentShieldService
         try {
             return ['safe' => true, 'label' => 'clear', 'confidence' => 0.99];
         } catch (Throwable $e) {
-            Log::warning('ContentShield: visual audit failed', [
+            $this->log->warning('ContentShield: visual audit failed', [
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -174,11 +174,11 @@ class ContentShieldService
     private function recordThreat(UploadedFile $file, string $reason, string $uploadHash): void
     {
         try {
-            AuditLog::create([
+            Audit$this->log->create([
                 'entity_type' => 'ContentShield',
                 'entity_id' => $uploadHash,
                 'action' => 'upload_blocked',
-                'user_id' => Auth::id(),
+                'user_id' => $this->auth->id(),
                 'tenant_id' => $this->tenantId,
                 'correlation_id' => $this->correlationId,
                 'changes' => [],
@@ -192,19 +192,19 @@ class ContentShieldService
                 ],
             ]);
 
-            Cache::put("blocked_upload_hash:{$uploadHash}", true, 86400 * 30);
+            $this->cache->put("blocked_upload_hash:{$uploadHash}", true, 86400 * 30);
 
-            Log::critical('ContentShield: THREAT DETECTED', [
+            $this->log->critical('ContentShield: THREAT DETECTED', [
                 'correlation_id' => $this->correlationId,
                 'filename' => $file->getClientOriginalName(),
                 'reason' => $reason,
                 'ip' => request()->ip(),
-                'user_id' => Auth::id(),
+                'user_id' => $this->auth->id(),
             ]);
 
             \Sentry\captureMessage("ContentShield threat: {$reason}", \Sentry\Severity::error());
         } catch (Throwable $e) {
-            Log::error('ContentShield: threat recording failed', [
+            $this->log->error('ContentShield: threat recording failed', [
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
             ]);

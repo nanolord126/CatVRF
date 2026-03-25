@@ -26,9 +26,9 @@ final class SurgeService
 
         $cacheKey = "surge:zone:{$zoneId}";
         
-        $multiplier = Cache::get($cacheKey, 1.0);
+        $multiplier = $this->cache->get($cacheKey, 1.0);
         
-        Log::channel('audit')->info('Surge multiplier retrieved', [
+        $this->log->channel('audit')->info('Surge multiplier retrieved', [
             'zone_id' => $zoneId,
             'multiplier' => $multiplier,
             'correlation_id' => $correlationId,
@@ -47,18 +47,18 @@ final class SurgeService
         $results = [];
 
         try {
-            DB::transaction(function () use (&$results, $correlationId) {
+            $this->db->transaction(function () use (&$results, $correlationId) {
                 $zones = TaxiSurgeZone::all();
 
                 foreach ($zones as $zone) {
                     $demandFactor = $this->calculateDemandFactor($zone->id);
                     $multiplier = max(1.0, min(2.5, 1.0 + ($demandFactor * 1.5)));
 
-                    Cache::put("surge:zone:{$zone->id}", $multiplier, self::SURGE_CACHE_TTL);
+                    $this->cache->put("surge:zone:{$zone->id}", $multiplier, self::SURGE_CACHE_TTL);
 
                     $results[$zone->id] = $multiplier;
 
-                    Log::channel('audit')->info('Surge recalculated', [
+                    $this->log->channel('audit')->info('Surge recalculated', [
                         'zone_id' => $zone->id,
                         'demand_factor' => $demandFactor,
                         'multiplier' => $multiplier,
@@ -67,7 +67,7 @@ final class SurgeService
                 }
             });
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Surge recalculation failed', [
+            $this->log->channel('audit')->error('Surge recalculation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
                 'trace' => $e->getTraceAsString(),
@@ -83,7 +83,7 @@ final class SurgeService
      */
     private function calculateDemandFactor(string $zoneId): float
     {
-        $rideCount5Min = DB::table('taxi_rides')
+        $rideCount5Min = $this->db->table('taxi_rides')
             ->where('zone_id', $zoneId)
             ->where('created_at', '>=', Carbon::now()->subMinutes(5))
             ->where('status', 'pending')

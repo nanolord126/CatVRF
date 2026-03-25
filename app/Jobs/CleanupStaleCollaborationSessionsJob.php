@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -9,7 +11,16 @@ use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
-final class CleanupStaleCollaborationSessionsJob implements ShouldQueue
+final /**
+ * CleanupStaleCollaborationSessionsJob
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class CleanupStaleCollaborationSessionsJob implements ShouldQueue
 {
     use Queueable;
 
@@ -22,11 +33,11 @@ final class CleanupStaleCollaborationSessionsJob implements ShouldQueue
             // Очищаем устаревшие сессии редактирования
             // В продакшене можно использовать более оптимизированный подход с Redis SCAN
 
-            Log::channel('audit')->info('Cleanup stale collaboration sessions job completed', [
+            $this->log->channel('audit')->info('Cleanup stale collaboration sessions job completed', [
                 'timestamp' => now()->toIso8601String(),
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to cleanup stale collaboration sessions', [
+            $this->log->channel('audit')->error('Failed to cleanup stale collaboration sessions', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);

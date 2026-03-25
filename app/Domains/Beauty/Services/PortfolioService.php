@@ -29,7 +29,7 @@ final class PortfolioService
     {
         $correlationId = $correlationId ?: (string) Str::uuid();
 
-        return DB::transaction(function () use ($masterId, $imageFile, $metadata, $correlationId) {
+        return $this->db->transaction(function () use ($masterId, $imageFile, $metadata, $correlationId) {
             $master = Master::findOrFail($masterId);
 
             // 1. Fraud Check - проверка на загрузку чужого контента
@@ -56,7 +56,7 @@ final class PortfolioService
                 "tags" => array_merge($metadata["tags"] ?? [], ["auto_optimized:yes"])
             ]);
 
-            Log::channel("audit")->info("Beauty: portfolio item added", [
+            $this->log->channel("audit")->info("Beauty: portfolio item added", [
                 "master_id" => $masterId,
                 "item_id" => $item->id,
                 "path" => $path
@@ -76,7 +76,7 @@ final class PortfolioService
 
         if (!$isSafe) {
             $item->update(["is_active" => false, "moderation_status" => "blocked"]);
-            Log::channel("audit")->warning("Beauty: NSFW portfolio item detected", ["item_id" => $itemId]);
+            $this->log->channel("audit")->warning("Beauty: NSFW portfolio item detected", ["item_id" => $itemId]);
             return false;
         }
 
@@ -91,11 +91,11 @@ final class PortfolioService
     {
         $item = PortfolioItem::findOrFail($itemId);
 
-        DB::transaction(function () use ($item, $correlationId) {
-            Storage::disk("public")->delete($item->image_path);
+        $this->db->transaction(function () use ($item, $correlationId) {
+            $this->storage->disk("public")->delete($item->image_path);
             $item->delete();
 
-            Log::channel("audit")->info("Beauty: portfolio item deleted", [
+            $this->log->channel("audit")->info("Beauty: portfolio item deleted", [
                 "item_id" => $item->id,
                 "correlation_id" => $correlationId
             ]);

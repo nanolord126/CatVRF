@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Channels\Events;
@@ -15,5 +17,13 @@ final class ChannelArchived
         public readonly BusinessChannel $channel,
         public readonly string $reason,
         public readonly string $correlationId,
-    ) {}
+    ) {
+    /**
+     * Инициализировать класс
+     */
+    public function __construct()
+    {
+        // TODO: инициализация
+    }
+}
 }

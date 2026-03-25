@@ -33,7 +33,7 @@ final class OrderReadyReminderJob implements ShouldQueue
     public function handle(): void
     {
         try {
-            Log::channel('audit')->info('Order ready reminder job started', [
+            $this->log->channel('audit')->info('Order ready reminder job started', [
                 'order_id' => $this->order->id,
                 'correlation_id' => $this->correlationId,
             ]);
@@ -41,7 +41,7 @@ final class OrderReadyReminderJob implements ShouldQueue
             // Проверить статус заказа
             $order = RestaurantOrder::find($this->order->id);
             if (!$order || $order->status !== 'ready') {
-                Log::channel('audit')->notice('Order not in ready status', [
+                $this->log->channel('audit')->notice('Order not in ready status', [
                     'order_id' => $this->order->id,
                     'status' => $order?->status,
                 ]);
@@ -50,12 +50,12 @@ final class OrderReadyReminderJob implements ShouldQueue
             }
             // Notification::send($order->client, new OrderReadyNotification($order));
 
-            Log::channel('audit')->info('Order ready reminder sent', [
+            $this->log->channel('audit')->info('Order ready reminder sent', [
                 'order_id' => $order->id,
                 'correlation_id' => $this->correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Order ready reminder job failed', [
+            $this->log->channel('audit')->error('Order ready reminder job failed', [
                 'order_id' => $this->order->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

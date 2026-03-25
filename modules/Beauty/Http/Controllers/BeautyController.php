@@ -37,7 +37,7 @@ final class BeautyController extends Controller
         $correlationId = Str::uuid();
         
         try {
-            Log::channel('audit')->info('beauty.salons.index.start', [
+            $this->log->channel('audit')->info('beauty.salons.index.start', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => tenant('id'),
             ]);
@@ -47,7 +47,7 @@ final class BeautyController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->paginate($perPage);
 
-            Log::channel('audit')->info('beauty.salons.index.success', [
+            $this->log->channel('audit')->info('beauty.salons.index.success', [
                 'correlation_id' => $correlationId,
                 'count' => $salons->count(),
             ]);
@@ -58,7 +58,7 @@ final class BeautyController extends Controller
                 'correlation_id' => (string) $correlationId,
             ]);
         } catch (Throwable $e) {
-            Log::channel('audit')->critical('beauty.salons.index.error', [
+            $this->log->channel('audit')->critical('beauty.salons.index.error', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -80,12 +80,12 @@ final class BeautyController extends Controller
         $correlationId = Str::uuid();
         
         try {
-            Log::channel('audit')->info('beauty.salon.create.start', [
+            $this->log->channel('audit')->info('beauty.salon.create.start', [
                 'correlation_id' => $correlationId,
                 'name' => $request->name,
             ]);
 
-            $salon = DB::transaction(function () use ($request, $correlationId) {
+            $salon = $this->db->transaction(function () use ($request, $correlationId) {
                 return $this->beautyService->createSalon(
                     tenantId: tenant('id'),
                     name: $request->name,
@@ -98,7 +98,7 @@ final class BeautyController extends Controller
                 );
             });
 
-            Log::channel('audit')->info('beauty.salon.create.success', [
+            $this->log->channel('audit')->info('beauty.salon.create.success', [
                 'correlation_id' => $correlationId,
                 'salon_id' => $salon->id,
             ]);
@@ -109,7 +109,7 @@ final class BeautyController extends Controller
                 'correlation_id' => (string) $correlationId,
             ], 201);
         } catch (Throwable $e) {
-            Log::channel('audit')->critical('beauty.salon.create.error', [
+            $this->log->channel('audit')->critical('beauty.salon.create.error', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -133,7 +133,7 @@ final class BeautyController extends Controller
         try {
             $this->authorize('view', $salon);
             
-            Log::channel('audit')->info('beauty.salon.show', [
+            $this->log->channel('audit')->info('beauty.salon.show', [
                 'correlation_id' => $correlationId,
                 'salon_id' => $salon->id,
             ]);
@@ -144,7 +144,7 @@ final class BeautyController extends Controller
                 'correlation_id' => (string) $correlationId,
             ]);
         } catch (Throwable $e) {
-            Log::channel('audit')->critical('beauty.salon.show.error', [
+            $this->log->channel('audit')->critical('beauty.salon.show.error', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -173,7 +173,7 @@ final class BeautyController extends Controller
             ]);
 
             if ($fraudScore > 80) {
-                Log::channel('audit')->warning('beauty.appointment.fraud.blocked', [
+                $this->log->channel('audit')->warning('beauty.appointment.fraud.blocked', [
                     'correlation_id' => $correlationId,
                     'fraud_score' => $fraudScore,
                 ]);
@@ -185,13 +185,13 @@ final class BeautyController extends Controller
                 ], 403);
             }
 
-            Log::channel('audit')->info('beauty.appointment.create.start', [
+            $this->log->channel('audit')->info('beauty.appointment.create.start', [
                 'correlation_id' => $correlationId,
                 'salon_id' => $request->salon_id,
                 'service_id' => $request->service_id,
             ]);
 
-            $appointment = DB::transaction(function () use ($request, $correlationId) {
+            $appointment = $this->db->transaction(function () use ($request, $correlationId) {
                 return $this->bookingService->createAppointment(
                     salonId: $request->salon_id,
                     serviceId: $request->service_id,
@@ -204,7 +204,7 @@ final class BeautyController extends Controller
                 );
             });
 
-            Log::channel('audit')->info('beauty.appointment.create.success', [
+            $this->log->channel('audit')->info('beauty.appointment.create.success', [
                 'correlation_id' => $correlationId,
                 'appointment_id' => $appointment->id,
             ]);
@@ -215,7 +215,7 @@ final class BeautyController extends Controller
                 'correlation_id' => (string) $correlationId,
             ], 201);
         } catch (Throwable $e) {
-            Log::channel('audit')->critical('beauty.appointment.create.error', [
+            $this->log->channel('audit')->critical('beauty.appointment.create.error', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -239,19 +239,19 @@ final class BeautyController extends Controller
         try {
             $this->authorize('delete', $appointment);
 
-            Log::channel('audit')->info('beauty.appointment.cancel.start', [
+            $this->log->channel('audit')->info('beauty.appointment.cancel.start', [
                 'correlation_id' => $correlationId,
                 'appointment_id' => $appointment->id,
             ]);
 
-            $cancelled = DB::transaction(function () use ($appointment, $correlationId) {
+            $cancelled = $this->db->transaction(function () use ($appointment, $correlationId) {
                 return $this->bookingService->cancelAppointment(
                     appointment: $appointment,
                     correlationId: $correlationId,
                 );
             });
 
-            Log::channel('audit')->info('beauty.appointment.cancel.success', [
+            $this->log->channel('audit')->info('beauty.appointment.cancel.success', [
                 'correlation_id' => $correlationId,
                 'appointment_id' => $cancelled->id,
             ]);
@@ -262,7 +262,7 @@ final class BeautyController extends Controller
                 'correlation_id' => (string) $correlationId,
             ]);
         } catch (Throwable $e) {
-            Log::channel('audit')->critical('beauty.appointment.cancel.error', [
+            $this->log->channel('audit')->critical('beauty.appointment.cancel.error', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -291,7 +291,7 @@ final class BeautyController extends Controller
                 date: $request->date,
             );
 
-            Log::channel('audit')->info('beauty.slots.check', [
+            $this->log->channel('audit')->info('beauty.slots.check', [
                 'correlation_id' => $correlationId,
                 'salon_id' => $request->salon_id,
                 'slots_count' => count($slots),
@@ -303,7 +303,7 @@ final class BeautyController extends Controller
                 'correlation_id' => (string) $correlationId,
             ]);
         } catch (Throwable $e) {
-            Log::channel('audit')->critical('beauty.slots.error', [
+            $this->log->channel('audit')->critical('beauty.slots.error', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -326,19 +326,19 @@ final class BeautyController extends Controller
         try {
             $this->authorize('update', $appointment);
 
-            Log::channel('audit')->info('beauty.appointment.complete.start', [
+            $this->log->channel('audit')->info('beauty.appointment.complete.start', [
                 'correlation_id' => $correlationId,
                 'appointment_id' => $appointment->id,
             ]);
 
-            $completed = DB::transaction(function () use ($appointment, $correlationId) {
+            $completed = $this->db->transaction(function () use ($appointment, $correlationId) {
                 return $this->bookingService->completeAppointment(
                     appointment: $appointment,
                     correlationId: $correlationId,
                 );
             });
 
-            Log::channel('audit')->info('beauty.appointment.complete.success', [
+            $this->log->channel('audit')->info('beauty.appointment.complete.success', [
                 'correlation_id' => $correlationId,
                 'appointment_id' => $completed->id,
             ]);
@@ -349,7 +349,7 @@ final class BeautyController extends Controller
                 'correlation_id' => (string) $correlationId,
             ]);
         } catch (Throwable $e) {
-            Log::channel('audit')->critical('beauty.appointment.complete.error', [
+            $this->log->channel('audit')->critical('beauty.appointment.complete.error', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

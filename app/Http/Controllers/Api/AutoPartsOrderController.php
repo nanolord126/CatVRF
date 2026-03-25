@@ -31,7 +31,7 @@ final class AutoPartsOrderController extends BaseApiController
 
             return $this->successResponse($orders);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('AutoParts orders list error', ['error' => $e->getMessage()]);
+            $this->log->channel('audit')->error('AutoParts orders list error', ['error' => $e->getMessage()]);
             return $this->errorResponse('Failed to fetch orders', 500);
         }
     }
@@ -54,11 +54,11 @@ final class AutoPartsOrderController extends BaseApiController
                 correlationId: $correlationId,
             );
 
-            Log::channel('audit')->info('AutoParts order created', ['order_id' => $order->id]);
+            $this->log->channel('audit')->info('AutoParts order created', ['order_id' => $order->id]);
 
             return $this->successResponse($order, 'Order created successfully', 201);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('AutoParts order creation failed', ['error' => $e->getMessage()]);
+            $this->log->channel('audit')->error('AutoParts order creation failed', ['error' => $e->getMessage()]);
             return $this->errorResponse('Failed to create order: ' . $e->getMessage(), 400);
         }
     }
@@ -71,11 +71,11 @@ final class AutoPartsOrderController extends BaseApiController
 
             $parts = $this->service->findCompatibleParts($vin, $tenantId);
 
-            Log::channel('audit')->info('AutoParts compatible search', ['vin' => $vin]);
+            $this->log->channel('audit')->info('AutoParts compatible search', ['vin' => $vin]);
 
             return $this->successResponse($parts, 'Compatible parts found');
         } catch (\Exception $e) {
-            Log::channel('audit')->error('AutoParts compatibility search failed', ['error' => $e->getMessage()]);
+            $this->log->channel('audit')->error('AutoParts compatibility search failed', ['error' => $e->getMessage()]);
             return $this->errorResponse('Failed to search parts: ' . $e->getMessage(), 400);
         }
     }

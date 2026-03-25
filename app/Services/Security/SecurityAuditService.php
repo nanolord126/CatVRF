@@ -60,7 +60,7 @@ final class SecurityAuditService
         // Вычисляем итоги
         $audit['summary'] = self::calculateSummary($audit);
 
-        Log::channel('security')->info('Security audit completed', [
+        $this->log->channel('security')->info('Security audit completed', [
             'audit_id' => $audit['id'],
             'issues_found' => $audit['summary']['total_issues'],
             'duration' => $duration,

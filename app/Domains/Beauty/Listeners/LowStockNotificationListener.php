@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Beauty\Listeners;
@@ -22,7 +24,7 @@ final class LowStockNotificationListener implements ShouldQueue
 
             // Отправить уведомление владельцу салона
 
-            Log::channel('audit')->warning('Low stock alert', [
+            $this->log->channel('audit')->warning('Low stock alert', [
                 'product_id' => $product->id,
                 'product_name' => $product->name,
                 'current_stock' => $product->current_stock,
@@ -31,7 +33,7 @@ final class LowStockNotificationListener implements ShouldQueue
                 'correlation_id' => $event->correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('LowStockNotificationListener failed', [
+            $this->log->channel('audit')->error('LowStockNotificationListener failed', [
                 'product_id' => $event->product->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $event->correlationId,

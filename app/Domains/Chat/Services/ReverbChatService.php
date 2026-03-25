@@ -27,7 +27,7 @@ final class ReverbChatService
      */
     public function createConversation(array $userIds, string $type = 'private', array $metadata = []): Conversation
     {
-        return DB::transaction(function () use ($userIds, $type, $metadata) {
+        return $this->db->transaction(function () use ($userIds, $type, $metadata) {
             $conversation = Conversation::create([
                 'tenant_id' => function_exists('tenant') ? tenant('id') : 1,
                 'type' => $type,
@@ -36,7 +36,7 @@ final class ReverbChatService
 
             $conversation->participants()->sync($userIds);
 
-            Log::channel('audit')->info('Chat Conversation created', [
+            $this->log->channel('audit')->info('Chat Conversation created', [
                 'conversation_id' => $conversation->id,
                 'participants' => $userIds,
                 'correlation_id' => $this->correlationId,
@@ -58,7 +58,7 @@ final class ReverbChatService
             'correlation_id' => $this->correlationId,
         ]);
 
-        return DB::transaction(function () use ($conversationUuid, $senderId, $content, $type) {
+        return $this->db->transaction(function () use ($conversationUuid, $senderId, $content, $type) {
             $conversation = Conversation::where('uuid', $conversationUuid)->firstOrFail();
             
             // 2. Создание сообщения
@@ -73,7 +73,7 @@ final class ReverbChatService
             // 3. Широковещание через Reverb
             event(new MessageSent($message, $this->correlationId));
 
-            Log::channel('audit')->info('Chat Message sent', [
+            $this->log->channel('audit')->info('Chat Message sent', [
                 'message_id' => $message->id,
                 'conversation_id' => $conversation->id,
                 'sender_id' => $senderId,

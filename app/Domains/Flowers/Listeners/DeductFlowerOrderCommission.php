@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Flowers\Listeners;
@@ -9,19 +11,36 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-final class DeductFlowerOrderCommission implements ShouldQueue
+final /**
+ * DeductFlowerOrderCommission
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class DeductFlowerOrderCommission implements ShouldQueue
 {
     use InteractsWithQueue;
 
     public function __construct(
         private readonly WalletService $walletService,
-    ) {}
+    ) {
+    /**
+     * Инициализировать класс
+     */
+    public function __construct()
+    {
+        // TODO: инициализация
+    }
+}
 
     public function handle(FlowerOrderPlaced $event): void
     {
         try {
-            DB::transaction(function () use ($event) {
-                Log::channel('audit')->info('Deduct flower order commission', [
+            $this->db->transaction(function () use ($event) {
+                $this->log->channel('audit')->info('Deduct flower order commission', [
                     'order_id' => $event->order->id,
                     'commission_amount' => $event->order->commission_amount,
                     'correlation_id' => $event->correlationId,
@@ -36,7 +55,7 @@ final class DeductFlowerOrderCommission implements ShouldQueue
                 );
             });
         } catch (\Exception $exception) {
-            Log::channel('audit')->error('Commission deduction failed', [
+            $this->log->channel('audit')->error('Commission deduction failed', [
                 'order_id' => $event->order->id,
                 'error' => $exception->getMessage(),
                 'correlation_id' => $event->correlationId,

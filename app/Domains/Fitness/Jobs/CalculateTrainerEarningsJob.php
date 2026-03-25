@@ -43,13 +43,13 @@ final class CalculateTrainerEarningsJob implements ShouldQueue
                     }
                 });
 
-            Log::channel('audit')->info('Trainer earnings calculated', [
+            $this->log->channel('audit')->info('Trainer earnings calculated', [
                 'month' => $month,
                 'year' => $year,
                 'correlation_id' => $this->correlationId,
             ]);
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to calculate trainer earnings', [
+            $this->log->channel('audit')->error('Failed to calculate trainer earnings', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $this->correlationId,
             ]);
@@ -60,7 +60,7 @@ final class CalculateTrainerEarningsJob implements ShouldQueue
     private function calculateEarnings(Trainer $trainer, int $month, int $year): void
     {
         try {
-            DB::transaction(function () use ($trainer, $month, $year) {
+            $this->db->transaction(function () use ($trainer, $month, $year) {
                 $startDate = now()->setMonth($month)->setYear($year)->startOfMonth();
                 $endDate = clone $startDate;
                 $endDate = $endDate->endOfMonth();
@@ -73,7 +73,7 @@ final class CalculateTrainerEarningsJob implements ShouldQueue
                         'trainer_earnings_calculated' => true,
                     ]);
 
-                Log::channel('audit')->info('Trainer earnings updated', [
+                $this->log->channel('audit')->info('Trainer earnings updated', [
                     'trainer_id' => $trainer->id,
                     'month' => $month,
                     'year' => $year,
@@ -81,7 +81,7 @@ final class CalculateTrainerEarningsJob implements ShouldQueue
                 ]);
             });
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to calculate earnings for trainer', [
+            $this->log->channel('audit')->error('Failed to calculate earnings for trainer', [
                 'trainer_id' => $trainer->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $this->correlationId,

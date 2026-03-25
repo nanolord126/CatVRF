@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 declare(strict_types=1);
 
@@ -8,6 +10,15 @@ use Filament\Tables\Table;
 use Filament\Forms\Form;
 use App\Domains\SportingGoods\Models\SportProduct;
 
+/**
+ * SportingGoodsResource
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
 class SportingGoodsResource extends Resource
 {
     protected static ?string $model = SportProduct::class;

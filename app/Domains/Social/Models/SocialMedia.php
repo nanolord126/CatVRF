@@ -45,6 +45,12 @@ final class SocialMedia extends Model
         });
     }
 
+    /**
+     * Выполнить операцию
+     * 
+     * @return mixed
+     * @throws \Exception
+     */
     public function mediable(): MorphTo
     {
         return $this->morphTo();

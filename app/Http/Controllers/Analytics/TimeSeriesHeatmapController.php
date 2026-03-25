@@ -48,7 +48,7 @@ final class TimeSeriesHeatmapController extends Controller
             // Rate limiting
             $cacheKey = "ratelimit:timeseries:{$tenantId}:{$vertical}";
             if (cache()->has($cacheKey) && cache()->get($cacheKey) > 100) {
-                Log::channel('fraud_alert')->warning('[TimeSeriesHeatmap] Rate limit exceeded', [
+                $this->log->channel('fraud_alert')->warning('[TimeSeriesHeatmap] Rate limit exceeded', [
                     'tenant_id' => $tenantId,
                     'correlation_id' => $correlationId,
                 ]);
@@ -71,7 +71,7 @@ final class TimeSeriesHeatmapController extends Controller
                 metric: $metric
             );
 
-            Log::channel('audit')->info('[TimeSeriesHeatmap] Geo heatmap requested', [
+            $this->log->channel('audit')->info('[TimeSeriesHeatmap] Geo heatmap requested', [
                 'tenant_id' => $tenantId,
                 'vertical' => $vertical,
                 'aggregation' => $aggregation,
@@ -83,7 +83,7 @@ final class TimeSeriesHeatmapController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
-            Log::channel('error')->warning('[TimeSeriesHeatmap] Validation failed', [
+            $this->log->channel('error')->warning('[TimeSeriesHeatmap] Validation failed', [
                 'errors' => $e->errors(),
                 'correlation_id' => $correlationId ?? 'unknown',
             ]);
@@ -94,7 +94,7 @@ final class TimeSeriesHeatmapController extends Controller
                 'correlation_id' => $correlationId ?? 'unknown',
             ], 422);
         } catch (\Exception $e) {
-            Log::channel('error')->error('[TimeSeriesHeatmap] Geo heatmap request failed', [
+            $this->log->channel('error')->error('[TimeSeriesHeatmap] Geo heatmap request failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId ?? 'unknown',
                 'stacktrace' => $e->getTraceAsString(),
@@ -135,7 +135,7 @@ final class TimeSeriesHeatmapController extends Controller
             // Rate limiting
             $cacheKey = "ratelimit:timeseries:click:{$tenantId}";
             if (cache()->has($cacheKey) && cache()->get($cacheKey) > 100) {
-                Log::channel('fraud_alert')->warning('[TimeSeriesHeatmap] Rate limit exceeded (click)', [
+                $this->log->channel('fraud_alert')->warning('[TimeSeriesHeatmap] Rate limit exceeded (click)', [
                     'tenant_id' => $tenantId,
                     'correlation_id' => $correlationId,
                 ]);
@@ -158,7 +158,7 @@ final class TimeSeriesHeatmapController extends Controller
                 aggregation: $aggregation
             );
 
-            Log::channel('audit')->info('[TimeSeriesHeatmap] Click heatmap requested', [
+            $this->log->channel('audit')->info('[TimeSeriesHeatmap] Click heatmap requested', [
                 'tenant_id' => $tenantId,
                 'vertical' => $vertical,
                 'page_url' => substr($pageUrl, 0, 100),
@@ -171,7 +171,7 @@ final class TimeSeriesHeatmapController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
-            Log::channel('error')->warning('[TimeSeriesHeatmap] Validation failed (click)', [
+            $this->log->channel('error')->warning('[TimeSeriesHeatmap] Validation failed (click)', [
                 'errors' => $e->errors(),
                 'correlation_id' => $correlationId ?? 'unknown',
             ]);
@@ -182,7 +182,7 @@ final class TimeSeriesHeatmapController extends Controller
                 'correlation_id' => $correlationId ?? 'unknown',
             ], 422);
         } catch (\Exception $e) {
-            Log::channel('error')->error('[TimeSeriesHeatmap] Click heatmap request failed', [
+            $this->log->channel('error')->error('[TimeSeriesHeatmap] Click heatmap request failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId ?? 'unknown',
                 'stacktrace' => $e->getTraceAsString(),

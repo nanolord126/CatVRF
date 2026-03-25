@@ -1,6 +1,30 @@
 <?php declare(strict_types=1);
 
-namespace App\Domains\CoffeeShops\Models;
+namespa
+
+/**
+ * CoffeeDrink
+ * 
+ * Производитель: CatVRF Platform
+ * Версия: 1.0.0
+ * 
+ * Примеры использования:
+ * 
+ * ```php
+ * // Базовое использование
+ * $instance = new CoffeeDrink();
+ * ```
+ * 
+ * Требования:
+ * - Laravel 10+
+ * - PHP 8.2+
+ * - Все методы должны быть явно типизированы
+ * 
+ * @author CatVRF
+ * @package namespace App\Domains\CoffeeShops\Models
+ * @see https://github.com/iyegorovskyi_clemny/CatVRF
+ */
+ce App\Domains\CoffeeShops\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -15,6 +39,12 @@ final class CoffeeDrink extends Model
     protected $fillable = ['uuid', 'tenant_id', 'shop_id', 'correlation_id', 'name', 'price_kopecks', 'description', 'tags'];
     protected $casts = ['price_kopecks' => 'integer', 'tags' => 'json'];
 
+    /**
+     * Выполнить операцию
+     * 
+     * @return mixed
+     * @throws \Exception
+     */
     public function shop() { return $this->belongsTo(CoffeeShop::class, 'shop_id'); }
 
     protected static function booted(): void

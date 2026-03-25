@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Auto\Filament\Resources\VehicleInsuranceResource\Pages;
@@ -10,7 +12,16 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
-final class CreateVehicleInsurance extends CreateRecord
+final /**
+ * CreateVehicleInsurance
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class CreateVehicleInsurance extends CreateRecord
 {
     protected static string $resource = VehicleInsuranceResource::class;
 
@@ -26,8 +37,8 @@ final class CreateVehicleInsurance extends CreateRecord
 
     protected function afterCreate(): void
     {
-        DB::transaction(function () {
-            Log::channel('audit')->info('VehicleInsurance created', [
+        $this->db->transaction(function () {
+            $this->log->channel('audit')->info('VehicleInsurance created', [
                 'correlation_id' => $this->record->correlation_id,
                 'policy_id' => $this->record->id,
                 'policy_number' => $this->record->policy_number,
@@ -40,7 +51,7 @@ final class CreateVehicleInsurance extends CreateRecord
             ));
         });
 
-        Notification::make()
+        $this->notification->make()
             ->success()
             ->title('Полис оформлен')
             ->body('Номер полиса: ' . $this->record->policy_number)

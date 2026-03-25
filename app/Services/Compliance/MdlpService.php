@@ -38,7 +38,7 @@ final class MdlpService
 
             return $response->successful() && $response->json('is_valid') === true;
         } catch (Throwable $e) {
-            Log::channel('fraud_alert')->error('MDLP KIZ verification failed', [
+            $this->log->channel('fraud_alert')->error('MDLP KIZ verification failed', [
                 'kiz' => $kizCode,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId

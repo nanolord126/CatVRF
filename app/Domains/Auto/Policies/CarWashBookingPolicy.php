@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Auto\Policies;
@@ -30,18 +32,18 @@ final class CarWashBookingPolicy
     public function cancel(User $user, CarWashBooking $booking): Response
     {
         if ($user->id !== $booking->client_id && !$user->isAdmin()) {
-            return Response::deny('Вы не можете отменить эту бронь');
+            return $this->response->deny('Вы не можете отменить эту бронь');
         }
 
         if ($booking->status === 'completed' || $booking->status === 'cancelled') {
-            return Response::deny('Бронь уже завершена или отменена');
+            return $this->response->deny('Бронь уже завершена или отменена');
         }
 
         $hoursUntilStart = $booking->scheduled_at->diffInHours(now(), false);
         if ($hoursUntilStart < -24) {
-            return Response::deny('Отмену можно сделать только за 24 часа до начала');
+            return $this->response->deny('Отмену можно сделать только за 24 часа до начала');
         }
 
-        return Response::allow();
+        return $this->response->allow();
     }
 }

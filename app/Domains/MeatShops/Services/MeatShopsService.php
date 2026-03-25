@@ -20,7 +20,7 @@ final class MeatShopsService
 
     public function createOrder(int $productId, float $weightKg, int $clientId, Carbon $deliveryDate, int $tenantId, string $correlationId): MeatOrder
     {
-        return DB::transaction(function () use ($productId, $weightKg, $clientId, $deliveryDate, $tenantId, $correlationId) {
+        return $this->db->transaction(function () use ($productId, $weightKg, $clientId, $deliveryDate, $tenantId, $correlationId) {
             $this->fraudControlService->check(
                 userId: $clientId,
                 operationType: 'meat_order',
@@ -46,7 +46,7 @@ final class MeatShopsService
             ]);
 
             MeatOrderCreated::dispatch($order->id, $tenantId, $clientId, $totalPrice, $correlationId);
-            Log::channel('audit')->info('Meat order created', [
+            $this->log->channel('audit')->info('Meat order created', [
                 'order_id' => $order->id,
                 'product_id' => $productId,
                 'weight_kg' => $weightKg,
@@ -70,7 +70,7 @@ final class MeatShopsService
 
         $order->update(['status' => 'delivered']);
 
-        Log::channel('audit')->info('Meat order delivered', [
+        $this->log->channel('audit')->info('Meat order delivered', [
             'order_id' => $order->id,
             'correlation_id' => $correlationId,
         ]);

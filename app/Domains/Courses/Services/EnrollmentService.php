@@ -25,7 +25,7 @@ final class EnrollmentService
 
 
         try {
-            Log::channel('audit')->info('Enrolling student in course', [
+            $this->log->channel('audit')->info('Enrolling student in course', [
                 'course_id' => $courseId,
                 'student_id' => $studentId,
                 'correlation_id' => $correlationId,
@@ -40,7 +40,7 @@ final class EnrollmentService
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
 
-            $enrollment = DB::transaction(function () use ($courseId, $studentId, $correlationId) {
+            $enrollment = $this->db->transaction(function () use ($courseId, $studentId, $correlationId) {
                 $course = Course::findOrFail($courseId);
 
                 $commission = (int) ($course->price * 14 / 100);
@@ -64,14 +64,14 @@ final class EnrollmentService
                 return $enrollment;
             });
 
-            Log::channel('audit')->info('Student enrolled successfully', [
+            $this->log->channel('audit')->info('Student enrolled successfully', [
                 'enrollment_id' => $enrollment->id,
                 'correlation_id' => $correlationId,
             ]);
 
             return $enrollment;
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Enrollment failed', [
+            $this->log->channel('audit')->error('Enrollment failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -84,7 +84,7 @@ final class EnrollmentService
 
 
         try {
-            Log::channel('audit')->info('Completing enrollment', [
+            $this->log->channel('audit')->info('Completing enrollment', [
                 'enrollment_id' => $enrollment->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -95,14 +95,14 @@ final class EnrollmentService
                 'progress_percent' => 100,
             ]);
 
-            Log::channel('audit')->info('Enrollment completed', [
+            $this->log->channel('audit')->info('Enrollment completed', [
                 'enrollment_id' => $enrollment->id,
                 'correlation_id' => $correlationId,
             ]);
 
             return $enrollment;
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to complete enrollment', [
+            $this->log->channel('audit')->error('Failed to complete enrollment', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -115,7 +115,7 @@ final class EnrollmentService
 
 
         try {
-            Log::channel('audit')->info('Dropping enrollment', [
+            $this->log->channel('audit')->info('Dropping enrollment', [
                 'enrollment_id' => $enrollment->id,
                 'reason' => $reason,
                 'correlation_id' => $correlationId,
@@ -123,14 +123,14 @@ final class EnrollmentService
 
             $enrollment->update(['status' => 'dropped']);
 
-            Log::channel('audit')->info('Enrollment dropped', [
+            $this->log->channel('audit')->info('Enrollment dropped', [
                 'enrollment_id' => $enrollment->id,
                 'correlation_id' => $correlationId,
             ]);
 
             return true;
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to drop enrollment', [
+            $this->log->channel('audit')->error('Failed to drop enrollment', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);

@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Jobs\Bonus;
@@ -11,7 +13,16 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
-final class BonusUnlockJob implements ShouldQueue
+final /**
+ * BonusUnlockJob
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class BonusUnlockJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -29,13 +40,13 @@ final class BonusUnlockJob implements ShouldQueue
             $unlockedCount = $bonusService->unlockExpiredHolds();
 
             if ($unlockedCount > 0) {
-                Log::channel('audit')->info('Bonus unlock job completed', [
+                $this->log->channel('audit')->info('Bonus unlock job completed', [
                     'correlation_id' => $this->correlationId,
                     'unlocked_count' => $unlockedCount,
                 ]);
             }
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Bonus unlock job failed', [
+            $this->log->channel('audit')->error('Bonus unlock job failed', [
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

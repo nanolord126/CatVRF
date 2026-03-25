@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace Modules\Sports\Services;
@@ -8,16 +10,33 @@ use Modules\Sports\Models\SportVenue;
 use Illuminate\Support\Str;
 use App\Services\FraudControlService;
 
-final class SportVenueService
+final /**
+ * SportVenueService
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class SportVenueService
 {
     public function __construct(
         private readonly FraudControlService $fraudControlService,
-    ) {}
+    ) {
+    /**
+     * Инициализировать класс
+     */
+    public function __construct()
+    {
+        // TODO: инициализация
+    }
+}
 
     public function createVenue(array $data, int $tenantId, string $correlationId): SportVenue
     {
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
 
         $this->fraudControlService->check(
             auth()->id() ?? 0,
@@ -27,8 +46,8 @@ final class SportVenueService
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($data, $tenantId, $correlationId) {
-            Log::channel('audit')->info('Creating sport venue', [
+$this->db->transaction(function () use ($data, $tenantId, $correlationId) {
+            $this->log->channel('audit')->info('Creating sport venue', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
             ]);

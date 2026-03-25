@@ -33,19 +33,19 @@ final class ClassBookingService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-            $bookingId = DB::transaction(function () use ($classId, $userId, $correlationId) {
+            $bookingId = $this->db->transaction(function () use ($classId, $userId, $correlationId) {
                 // Проверить лимит участников
-                $booked = DB::table('class_bookings')
+                $booked = $this->db->table('class_bookings')
                     ->where('class_id', $classId)
                     ->where('status', 'booked')
                     ->count();
 
-                $classData = DB::table('fitness_classes')->findOrFail($classId);
+                $classData = $this->db->table('fitness_classes')->findOrFail($classId);
                 if ($booked >= $classData->max_participants) {
                     throw new \Exception('Class is full');
                 }
 
-                $bookingId = DB::table('class_bookings')->insertGetId([
+                $bookingId = $this->db->table('class_bookings')->insertGetId([
                     'class_id' => $classId,
                     'user_id' => $userId,
                     'status' => 'booked',
@@ -53,7 +53,7 @@ final class ClassBookingService
                     'created_at' => now(),
                 ]);
 
-                Log::channel('audit')->info('Fitness class booked', [
+                $this->log->channel('audit')->info('Fitness class booked', [
                     'booking_id' => $bookingId,
                     'class_id' => $classId,
                     'user_id' => $userId,
@@ -65,7 +65,7 @@ final class ClassBookingService
 
             return $bookingId;
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Fitness class booking failed', [
+            $this->log->channel('audit')->error('Fitness class booking failed', [
                 'class_id' => $classId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -91,12 +91,12 @@ final class ClassBookingService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-            DB::transaction(function () use ($bookingId, $correlationId) {
-                DB::table('class_bookings')
+            $this->db->transaction(function () use ($bookingId, $correlationId) {
+                $this->db->table('class_bookings')
                     ->where('id', $bookingId)
                     ->update(['status' => 'cancelled', 'cancelled_at' => now()]);
 
-                Log::channel('audit')->info('Fitness class booking cancelled', [
+                $this->log->channel('audit')->info('Fitness class booking cancelled', [
                     'booking_id' => $bookingId,
                     'correlation_id' => $correlationId,
                 ]);
@@ -104,7 +104,7 @@ final class ClassBookingService
 
             return true;
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Fitness class cancellation failed', [
+            $this->log->channel('audit')->error('Fitness class cancellation failed', [
                 'booking_id' => $bookingId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

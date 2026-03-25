@@ -25,7 +25,7 @@ final class RateLimitException extends Exception
         return response()->json([
             'error' => 'Too many requests',
             'message' => $this->message,
-        ], Response::HTTP_TOO_MANY_REQUESTS)  // 429
+        ], $this->response->HTTP_TOO_MANY_REQUESTS)  // 429
             ->header('Retry-After', $this->retryAfter)
             ->header('X-RateLimit-Reset', now()->addSeconds($this->retryAfter)->timestamp);
     }

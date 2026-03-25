@@ -24,7 +24,7 @@ final class TourService
 
 
 
-        Log::channel('audit')->info('TourService: Creating tour', [
+        $this->log->channel('audit')->info('TourService: Creating tour', [
             'correlation_id' => $data['correlation_id'] ?? Str::uuid(),
             'tour_operator_id' => $data['tour_operator_id'],
             'tenant_id' => filament()->getTenant()->id,
@@ -38,7 +38,7 @@ final class TourService
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(fn () => TravelTour::create([
+$this->db->transaction(fn () => TravelTour::create([
             'uuid' => Str::uuid(),
             'correlation_id' => $data['correlation_id'] ?? Str::uuid(),
             'tenant_id' => filament()->getTenant()->id,
@@ -70,7 +70,7 @@ DB::transaction(fn () => TravelTour::create([
 
         $tour = TravelTour::findOrFail($tourId);
 
-        Log::channel('audit')->info('TourService: Updating tour details', [
+        $this->log->channel('audit')->info('TourService: Updating tour details', [
             'correlation_id' => $tour->correlation_id,
             'tour_id' => $tourId,
         ]);
@@ -83,7 +83,7 @@ DB::transaction(fn () => TravelTour::create([
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($tour, $data) {
+$this->db->transaction(function () use ($tour, $data) {
             $tour->update($data);
             return true;
         });
@@ -98,7 +98,7 @@ DB::transaction(function () use ($tour, $data) {
         return TravelTour::where('destination_country', $country)
             ->when($city, fn ($q) => $q->where('destination_city', $city))
             ->where('status', 'active')
-            ->where('current_participants', '<', DB::raw('max_participants'))
+            ->where('current_participants', '<', $this->db->raw('max_participants'))
             ->orderByDesc('start_date')
             ->get();
     }
@@ -124,7 +124,7 @@ DB::transaction(function () use ($tour, $data) {
 
         $tour = TravelTour::findOrFail($tourId);
 
-        Log::channel('audit')->info('TourService: Publishing tour', [
+        $this->log->channel('audit')->info('TourService: Publishing tour', [
             'correlation_id' => $tour->correlation_id,
             'tour_id' => $tourId,
         ]);
@@ -137,7 +137,7 @@ DB::transaction(function () use ($tour, $data) {
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($tour) {
+$this->db->transaction(function () use ($tour) {
             $tour->update(['status' => 'published']);
             return true;
         });
@@ -151,7 +151,7 @@ DB::transaction(function () use ($tour) {
 
         $tour = TravelTour::findOrFail($tourId);
 
-        Log::channel('audit')->info('TourService: Closing tour registration', [
+        $this->log->channel('audit')->info('TourService: Closing tour registration', [
             'correlation_id' => $tour->correlation_id,
             'tour_id' => $tourId,
         ]);
@@ -164,7 +164,7 @@ DB::transaction(function () use ($tour) {
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($tour) {
+$this->db->transaction(function () use ($tour) {
             $tour->update(['status' => 'registration_closed']);
             return true;
         });
@@ -178,7 +178,7 @@ DB::transaction(function () use ($tour) {
 
         $tour = TravelTour::findOrFail($tourId);
 
-        Log::channel('audit')->info('TourService: Completing tour', [
+        $this->log->channel('audit')->info('TourService: Completing tour', [
             'correlation_id' => $tour->correlation_id,
             'tour_id' => $tourId,
         ]);
@@ -191,7 +191,7 @@ DB::transaction(function () use ($tour) {
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($tour) {
+$this->db->transaction(function () use ($tour) {
             $tour->update(['status' => 'completed']);
             return true;
         });

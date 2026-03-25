@@ -91,7 +91,7 @@ final class TimeSeriesChartComponent extends Component
             
         } catch (\Exception $e) {
             $this->errorMessage = 'Не удалось загрузить данные: ' . $e->getMessage();
-            Log::channel('error')->error('Chart data loading failed', [
+            $this->log->channel('error')->error('Chart data loading failed', [
                 'correlation_id' => $this->correlationId,
                 'heatmap_type' => $this->heatmapType,
                 'message' => $e->getMessage(),
@@ -107,7 +107,7 @@ final class TimeSeriesChartComponent extends Component
     #[\Livewire\Attributes\On('reload-chart-data')]
     public function reloadChartData(): void
     {
-        Log::channel('analytics')->info('Reloading chart data via WebSocket', [
+        $this->log->channel('analytics')->info('Reloading chart data via WebSocket', [
             'correlation_id' => $this->correlationId,
             'heatmap_type' => $this->heatmapType,
             'vertical' => $this->vertical,
@@ -444,7 +444,7 @@ final class TimeSeriesChartComponent extends Component
      */
     public function exportPng(): void
     {
-        Log::channel('audit')->info('PNG export initiated', [
+        $this->log->channel('audit')->info('PNG export initiated', [
             'correlation_id' => $this->correlationId,
             'heatmap_type' => $this->heatmapType,
         ]);
@@ -457,7 +457,7 @@ final class TimeSeriesChartComponent extends Component
      */
     public function exportPdf(): void
     {
-        Log::channel('audit')->info('PDF export initiated', [
+        $this->log->channel('audit')->info('PDF export initiated', [
             'correlation_id' => $this->correlationId,
             'heatmap_type' => $this->heatmapType,
         ]);
@@ -471,7 +471,7 @@ final class TimeSeriesChartComponent extends Component
      */
     public function pollChartData(): void
     {
-        Log::channel('analytics')->debug('Polling chart data (30s interval)', [
+        $this->log->channel('analytics')->debug('Polling chart data (30s interval)', [
             'correlation_id' => $this->correlationId,
             'heatmap_type' => $this->heatmapType,
             'vertical' => $this->vertical,
@@ -488,14 +488,14 @@ final class TimeSeriesChartComponent extends Component
             $this->loadChartData();
 
             // Логирование успеха
-            Log::channel('analytics')->debug('Poll completed successfully', [
+            $this->log->channel('analytics')->debug('Poll completed successfully', [
                 'correlation_id' => $this->correlationId,
                 'data_points' => count($this->chartData['datasets'][0]['data'] ?? []),
             ]);
 
         } catch (\Exception $e) {
             // Логирование ошибки, но не прерывать polling
-            Log::channel('analytics')->warning('Poll error (non-critical)', [
+            $this->log->channel('analytics')->warning('Poll error (non-critical)', [
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
             ]);

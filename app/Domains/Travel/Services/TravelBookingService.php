@@ -44,7 +44,7 @@ final class TravelBookingService
         }
         RateLimiter::hit("travel:book:{$tourId}", 3600);
 
-        return DB::transaction(function () use ($tourId, $data, $correlationId) {
+        return $this->db->transaction(function () use ($tourId, $data, $correlationId) {
             $tour = TravelTour::with("agency")->findOrFail($tourId);
 
             // 2. Fraud Check (проверка на подозрительно дорогие туры или кардинг)
@@ -56,7 +56,7 @@ final class TravelBookingService
             ]);
 
             if ($fraud["decision"] === "block") {
-                Log::channel("audit")->error("Travel Security Block", ["tour_id" => $tourId, "score" => $fraud["score"]]);
+                $this->log->channel("audit")->error("Travel Security Block", ["tour_id" => $tourId, "score" => $fraud["score"]]);
                 throw new \RuntimeException("Операция заблокирована системой безопасности.", 403);
             }
 
@@ -75,9 +75,9 @@ final class TravelBookingService
             ]);
 
             // 4. HOLD (резервация) отеля и перелета (симуляция внешней интеграции)
-            Log::channel("audit")->info("Travel: External HOLD requested", ["booking_id" => $booking->id, "carrier" => "Aeroflot", "hotel" => "Hilton Riyadh"]);
+            $this->log->channel("audit")->info("Travel: External HOLD requested", ["booking_id" => $booking->id, "carrier" => "Aeroflot", "hotel" => "Hilton Riyadh"]);
 
-            Log::channel("audit")->info("Travel: tour booked", ["booking_id" => $booking->id, "agency" => $tour->agency->id, "corr" => $correlationId]);
+            $this->log->channel("audit")->info("Travel: tour booked", ["booking_id" => $booking->id, "agency" => $tour->agency->id, "corr" => $correlationId]);
 
             return $booking;
         });
@@ -91,7 +91,7 @@ final class TravelBookingService
         $correlationId = $correlationId ?: (string) Str::uuid();
         $booking = TravelBooking::with("tour.agency")->findOrFail($bookingId);
 
-        DB::transaction(function () use ($booking, $correlationId) {
+        $this->db->transaction(function () use ($booking, $correlationId) {
             $booking->update([
                 "status" => "completed",
                 "finished_at" => now()
@@ -112,7 +112,7 @@ final class TravelBookingService
                 correlationId: $correlationId
             );
 
-            Log::channel("audit")->info("Travel: payout processed", ["booking_id" => $booking->id, "payout" => $agencyPayout, "fee" => $platformFee]);
+            $this->log->channel("audit")->info("Travel: payout processed", ["booking_id" => $booking->id, "payout" => $agencyPayout, "fee" => $platformFee]);
         });
     }
 
@@ -121,7 +121,7 @@ final class TravelBookingService
      */
     public function predictTourDemand(int $agencyId): array
     {
-        Log::channel("audit")->info("Travel: demand prediction initiated", ["agency" => $agencyId]);
+        $this->log->channel("audit")->info("Travel: demand prediction initiated", ["agency" => $agencyId]);
         
         // Вызов DemandForecastService для планирования сезонов и акций
         return [
@@ -139,6 +139,6 @@ final class TravelBookingService
         $guide = TravelGuide::findOrFail($guideId);
 
         $booking->update(["guide_id" => $guideId]);
-        Log::channel("audit")->info("Travel: guide assigned to booking", ["guide_id" => $guideId, "booking" => $bookingId]);
+        $this->log->channel("audit")->info("Travel: guide assigned to booking", ["guide_id" => $guideId, "booking" => $bookingId]);
     }
 }

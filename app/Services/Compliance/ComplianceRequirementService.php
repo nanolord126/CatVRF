@@ -76,7 +76,7 @@ final class ComplianceRequirementService
      */
     public function hasActiveIntegration(int $tenantId, string $type): bool
     {
-        return Cache::remember("compliance:{$tenantId}:{$type}:active", 300, function () use ($tenantId, $type) {
+        return $this->cache->remember("compliance:{$tenantId}:{$type}:active", 300, function () use ($tenantId, $type) {
             return ComplianceIntegration::where('tenant_id', $tenantId)
                 ->where('type', $type)
                 ->where('status', 'connected')

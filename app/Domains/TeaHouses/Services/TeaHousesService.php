@@ -28,7 +28,7 @@ final class TeaHousesService
         }
         RateLimiter::hit("tea:order:".auth()->id(), 3600);
 
-        return DB::transaction(function () use ($houseId, $items, $data, $correlationId) {
+        return $this->db->transaction(function () use ($houseId, $items, $data, $correlationId) {
             $house = TeaHouse::findOrFail($houseId);
             $total = 0;
 
@@ -46,7 +46,7 @@ final class TeaHousesService
             ]);
 
             if ($fraud['decision'] === 'block') {
-                Log::channel('audit')->error('Tea order blocked', [
+                $this->log->channel('audit')->error('Tea order blocked', [
                     'user_id' => auth()->id(),
                     'score' => $fraud['score'],
                     'correlation_id' => $correlationId,
@@ -69,7 +69,7 @@ final class TeaHousesService
                 'tags' => ['tea' => true, 'items_count' => count($items)],
             ]);
 
-            Log::channel('audit')->info('Tea order created', [
+            $this->log->channel('audit')->info('Tea order created', [
                 'order_id' => $order->id,
                 'house_id' => $houseId,
                 'total_kopecks' => $total,
@@ -84,7 +84,7 @@ final class TeaHousesService
     {
         $correlationId = $correlationId ?: (string) Str::uuid();
 
-        return DB::transaction(function () use ($orderId, $correlationId) {
+        return $this->db->transaction(function () use ($orderId, $correlationId) {
             $order = TeaOrder::findOrFail($orderId);
 
             if ($order->payment_status !== 'completed') {
@@ -98,7 +98,7 @@ final class TeaHousesService
                 'order_id' => $order->id,
             ]);
 
-            Log::channel('audit')->info('Tea order completed', [
+            $this->log->channel('audit')->info('Tea order completed', [
                 'order_id' => $order->id,
                 'payout_kopecks' => $order->payout_kopecks,
                 'correlation_id' => $correlationId,
@@ -112,7 +112,7 @@ final class TeaHousesService
     {
         $correlationId = $correlationId ?: (string) Str::uuid();
 
-        return DB::transaction(function () use ($orderId, $correlationId) {
+        return $this->db->transaction(function () use ($orderId, $correlationId) {
             $order = TeaOrder::findOrFail($orderId);
 
             if ($order->status === 'completed') {
@@ -128,7 +128,7 @@ final class TeaHousesService
                 ]);
             }
 
-            Log::channel('audit')->info('Tea order cancelled', [
+            $this->log->channel('audit')->info('Tea order cancelled', [
                 'order_id' => $order->id,
                 'correlation_id' => $correlationId,
             ]);

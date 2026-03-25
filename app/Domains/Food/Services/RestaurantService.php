@@ -33,8 +33,8 @@ final class RestaurantService
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
 
-        return DB::transaction(function () use ($data, $tenantId, $correlationId) {
-            Log::channel('audit')->info('Creating restaurant', [
+        return $this->db->transaction(function () use ($data, $tenantId, $correlationId) {
+            $this->log->channel('audit')->info('Creating restaurant', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
             ]);
@@ -64,8 +64,8 @@ final class RestaurantService
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
 
-        return DB::transaction(function () use ($data, $restaurantId, $userId, $correlationId) {
-            Log::channel('audit')->info('Creating restaurant order', [
+        return $this->db->transaction(function () use ($data, $restaurantId, $userId, $correlationId) {
+            $this->log->channel('audit')->info('Creating restaurant order', [
                 'correlation_id' => $correlationId,
                 'restaurant_id' => $restaurantId,
                 'user_id' => $userId,

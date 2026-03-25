@@ -53,7 +53,7 @@ final class SaleListingController
                 'description'       => 'nullable|string',
             ]);
 
-            $listing = DB::transaction(function () use ($data, $correlationId) {
+            $listing = $this->db->transaction(function () use ($data, $correlationId) {
                 return SaleListing::create([
                     ...$data,
                     'tenant_id'      => tenant('id') ?? auth()->user()?->tenant_id ?? 1,
@@ -63,7 +63,7 @@ final class SaleListingController
                 ]);
             });
 
-            Log::channel('audit')->info('Sale listing created', [
+            $this->log->channel('audit')->info('Sale listing created', [
                 'correlation_id' => $correlationId,
                 'listing_id'     => $listing->id,
                 'tenant_id'      => $listing->tenant_id,
@@ -80,7 +80,7 @@ final class SaleListingController
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Sale listing create failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            $this->log->channel('audit')->error('Sale listing create failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json(['success' => false, 'message' => 'Ошибка создания объявления.', 'correlation_id' => $correlationId], 500);
         }
     }
@@ -95,12 +95,12 @@ final class SaleListingController
         }
 
         try {
-            DB::transaction(function () use ($saleListing) {
+            $this->db->transaction(function () use ($saleListing) {
                 $saleListing->update(['status' => 'removed']);
                 $saleListing->delete();
             });
 
-            Log::channel('audit')->info('Sale listing deleted', [
+            $this->log->channel('audit')->info('Sale listing deleted', [
                 'correlation_id' => $correlationId,
                 'listing_id'     => $saleListing->id,
                 'tenant_id'      => $saleListing->tenant_id,
@@ -112,7 +112,7 @@ final class SaleListingController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Sale listing delete failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            $this->log->channel('audit')->error('Sale listing delete failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json(['success' => false, 'message' => 'Ошибка удаления объявления.', 'correlation_id' => $correlationId], 500);
         }
     }

@@ -19,7 +19,7 @@ final readonly class ClassService
         try {
             $gym = Gym::findOrFail($gymId);
 
-            $class = DB::transaction(function () use ($gym, $trainerId, $name, $description, $classType, $durationMinutes, $maxParticipants, $pricePerClass, $correlationId) {
+            $class = $this->db->transaction(function () use ($gym, $trainerId, $name, $description, $classType, $durationMinutes, $maxParticipants, $pricePerClass, $correlationId) {
                 $class = FitnessClass::create([
                     'tenant_id' => $gym->tenant_id,
                     'gym_id' => $gym->id,
@@ -34,7 +34,7 @@ final readonly class ClassService
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Fitness class created', [
+                $this->log->channel('audit')->info('Fitness class created', [
                     'class_id' => $class->id,
                     'gym_id' => $gym->id,
                     'trainer_id' => $trainerId,
@@ -46,7 +46,7 @@ final readonly class ClassService
 
             return $class;
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to create fitness class', [
+            $this->log->channel('audit')->error('Failed to create fitness class', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -59,16 +59,16 @@ final readonly class ClassService
 
 
         try {
-            DB::transaction(function () use ($class, $data, $correlationId) {
+            $this->db->transaction(function () use ($class, $data, $correlationId) {
                 $class->update(array_merge($data, ['correlation_id' => $correlationId]));
 
-                Log::channel('audit')->info('Fitness class updated', [
+                $this->log->channel('audit')->info('Fitness class updated', [
                     'class_id' => $class->id,
                     'correlation_id' => $correlationId,
                 ]);
             });
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to update fitness class', [
+            $this->log->channel('audit')->error('Failed to update fitness class', [
                 'class_id' => $class->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

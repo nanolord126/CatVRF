@@ -40,7 +40,7 @@ final class PaymentWebhookController extends Controller
 
         try {
             if (!$this->verifyTinkoffSignature($request)) {
-                Log::channel('audit')->warning('Tinkoff webhook: signature verification failed', [
+                $this->log->channel('audit')->warning('Tinkoff webhook: signature verification failed', [
                     'correlation_id' => $correlationId,
                     'ip' => $request->ip(),
                 ]);
@@ -58,7 +58,7 @@ final class PaymentWebhookController extends Controller
                 'RebillId' => 'nullable|string',
             ]);
 
-            return DB::transaction(function () use ($data, $correlationId, $request) {
+            return $this->db->transaction(function () use ($data, $correlationId, $request) {
                 $payment = PaymentTransaction::where('provider_payment_id', $data['PaymentId'])
                     ->where('provider_code', 'tinkoff')
                     ->lockForUpdate()
@@ -108,7 +108,7 @@ final class PaymentWebhookController extends Controller
                 return response()->json(['OK'], 200);
             });
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Tinkoff webhook error: ' . $e->getMessage(), [
+            $this->log->channel('audit')->error('Tinkoff webhook error: ' . $e->getMessage(), [
                 'correlation_id' => $correlationId,
                 'trace' => $e->getTraceAsString(),
             ]);

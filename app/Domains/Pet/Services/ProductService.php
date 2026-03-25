@@ -31,7 +31,7 @@ final class ProductService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-DB::transaction(function () use ($clinic, $data, $correlationId) {
+$this->db->transaction(function () use ($clinic, $data, $correlationId) {
                 $product = PetProduct::create([
                     ...$data,
                     'tenant_id' => tenant()->id,
@@ -40,7 +40,7 @@ DB::transaction(function () use ($clinic, $data, $correlationId) {
                     'uuid' => Str::uuid(),
                 ]);
 
-                Log::channel('audit')->info('Pet product created', [
+                $this->log->channel('audit')->info('Pet product created', [
                     'product_id' => $product->id,
                     'clinic_id' => $clinic->id,
                     'name' => $product->name,
@@ -50,7 +50,7 @@ DB::transaction(function () use ($clinic, $data, $correlationId) {
                 return $product;
             });
         } catch (\Throwable $e) {
-            Log::error('Failed to create pet product', [
+            $this->log->error('Failed to create pet product', [
                 'clinic_id' => $clinic->id,
                 'data' => $data,
                 'correlation_id' => $correlationId,
@@ -76,13 +76,13 @@ DB::transaction(function () use ($clinic, $data, $correlationId) {
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-DB::transaction(function () use ($product, $data, $correlationId) {
+$this->db->transaction(function () use ($product, $data, $correlationId) {
                 $product->update([
                     ...$data,
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Pet product updated', [
+                $this->log->channel('audit')->info('Pet product updated', [
                     'product_id' => $product->id,
                     'clinic_id' => $product->clinic_id,
                     'correlation_id' => $correlationId,
@@ -91,7 +91,7 @@ DB::transaction(function () use ($product, $data, $correlationId) {
                 return $product;
             });
         } catch (\Throwable $e) {
-            Log::error('Failed to update pet product', [
+            $this->log->error('Failed to update pet product', [
                 'product_id' => $product->id,
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
@@ -116,7 +116,7 @@ DB::transaction(function () use ($product, $data, $correlationId) {
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-DB::transaction(function () use ($product, $quantity, $correlationId) {
+$this->db->transaction(function () use ($product, $quantity, $correlationId) {
                 $newStock = $product->current_stock + $quantity;
                 if ($newStock < 0) {
                     throw new \RuntimeException('Insufficient stock');
@@ -127,7 +127,7 @@ DB::transaction(function () use ($product, $quantity, $correlationId) {
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Pet product stock updated', [
+                $this->log->channel('audit')->info('Pet product stock updated', [
                     'product_id' => $product->id,
                     'previous_stock' => $product->current_stock - $quantity,
                     'new_stock' => $newStock,
@@ -138,7 +138,7 @@ DB::transaction(function () use ($product, $quantity, $correlationId) {
                 return $product;
             });
         } catch (\Throwable $e) {
-            Log::error('Failed to update product stock', [
+            $this->log->error('Failed to update product stock', [
                 'product_id' => $product->id,
                 'quantity' => $quantity,
                 'correlation_id' => $correlationId,

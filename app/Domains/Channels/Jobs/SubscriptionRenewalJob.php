@@ -31,7 +31,7 @@ final class SubscriptionRenewalJob implements ShouldQueue
         $correlationId = Str::uuid()->toString();
         $warnDays      = config('channels.notifications.plan_expiry_warn_days', 3);
 
-        Log::channel('audit')->info('SubscriptionRenewalJob started', [
+        $this->log->channel('audit')->info('SubscriptionRenewalJob started', [
             'correlation_id' => $correlationId,
         ]);
 
@@ -42,7 +42,7 @@ final class SubscriptionRenewalJob implements ShouldQueue
             ->get();
 
         foreach ($expiringSoon as $usage) {
-            Log::channel('audit')->info('Channel plan expiring soon', [
+            $this->log->channel('audit')->info('Channel plan expiring soon', [
                 'correlation_id' => $correlationId,
                 'channel_id'     => $usage->channel_id,
                 'tenant_id'      => $usage->tenant_id,
@@ -79,7 +79,7 @@ final class SubscriptionRenewalJob implements ShouldQueue
                 $failed++;
 
                 // Если оплата не прошла — деградация до архива
-                Log::channel('audit')->warning('Channel subscription renewal failed', [
+                $this->log->channel('audit')->warning('Channel subscription renewal failed', [
                     'correlation_id' => $correlationId,
                     'channel_id'     => $usage->channel_id,
                     'tenant_id'      => $usage->tenant_id,
@@ -98,7 +98,7 @@ final class SubscriptionRenewalJob implements ShouldQueue
             }
         }
 
-        Log::channel('audit')->info('SubscriptionRenewalJob completed', [
+        $this->log->channel('audit')->info('SubscriptionRenewalJob completed', [
             'correlation_id' => $correlationId,
             'renewed'        => $renewed,
             'failed'         => $failed,

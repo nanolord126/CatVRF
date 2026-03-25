@@ -31,12 +31,12 @@ final class SendOrderNotification implements ShouldQueue
     public function handle(OrderCreated $event): void
     {
         try {
-            DB::transaction(function () use ($event) {
+            $this->db->transaction(function () use ($event) {
                 // Get order with related data
                 $order = $event->order->load(['user', 'items', 'tenant']);
 
                 // Log event
-                Log::channel('audit')->info('Order notification sent', [
+                $this->log->channel('audit')->info('Order notification sent', [
                     'order_id' => $order->id,
                     'order_uuid' => $order->uuid,
                     'user_id' => $order->user_id,
@@ -45,7 +45,7 @@ final class SendOrderNotification implements ShouldQueue
                 ]);
 
                 // Send notification to user
-                Notification::send(
+                $this->notification->send(
                     $order->user,
                     new OrderStatusNotification(
                         $order,
@@ -56,7 +56,7 @@ final class SendOrderNotification implements ShouldQueue
 
                 // Send notification to tenant admin (optional)
                 if ($order->tenant?->admin) {
-                    Notification::send(
+                    $this->notification->send(
                         $order->tenant->admin,
                         new OrderStatusNotification(
                             $order,
@@ -67,7 +67,7 @@ final class SendOrderNotification implements ShouldQueue
                 }
             });
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to send order notification', [
+            $this->log->channel('audit')->error('Failed to send order notification', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $event->correlationId,
                 'trace' => $e->getTraceAsString(),

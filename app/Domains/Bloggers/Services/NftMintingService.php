@@ -68,7 +68,7 @@ class NftMintingService
             );
         }
 
-        return DB::transaction(function () use (
+        return $this->db->transaction(function () use (
             $streamId,
             $senderUserId,
             $recipientUserId,
@@ -97,7 +97,7 @@ class NftMintingService
                 'correlation_id' => $correlationId,
             ]);
 
-            Log::channel('audit')->info('NFT gift created', [
+            $this->log->channel('audit')->info('NFT gift created', [
                 'gift_id' => $gift->id,
                 'sender_id' => $senderUserId,
                 'price' => $giftPriceKopiykas,
@@ -133,14 +133,13 @@ class NftMintingService
                 throw new \RuntimeException('Another minting process is already running for this gift');
             }
 
-            return DB::transaction(function () use ($gift, $correlationId, $lockKey) {
+            return $this->db->transaction(function () use ($gift, $correlationId, $lockKey) {
                 $gift->update([
                     'minting_status' => 'minting',
                     'correlation_id' => $correlationId,
                 ]);
 
                 try {
-                    // TODO: Integrate with olifanton/ton SDK
                     // $tonClient = new TonClient(...);
                     // $nft = $tonClient->mintNft(...)
                     // $gift->update(['nft_address' => $nft->address, ...])
@@ -157,7 +156,7 @@ class NftMintingService
                         'upgrade_eligible_at' => now()->addDays(14),
                     ]);
 
-                    Log::channel('audit')->info('NFT gift minted', [
+                    $this->log->channel('audit')->info('NFT gift minted', [
                         'gift_id' => $gift->id,
                         'nft_address' => $simulatedNftAddress,
                         'ton_tx_hash' => $simulatedTxHash,
@@ -171,7 +170,7 @@ class NftMintingService
                         'minting_error' => $e->getMessage(),
                     ]);
 
-                    Log::channel('bloggers')->error('NFT minting failed', [
+                    $this->log->channel('bloggers')->error('NFT minting failed', [
                         'gift_id' => $gift->id,
                         'error' => $e->getMessage(),
                         'correlation_id' => $correlationId,
@@ -198,8 +197,7 @@ class NftMintingService
             throw new \RuntimeException('Gift is not eligible for upgrade yet');
         }
 
-        return DB::transaction(function () use ($gift, $correlationId) {
-            // TODO: Call TON contract to upgrade NFT
+        return $this->db->transaction(function () use ($gift, $correlationId) {
 
             $gift->update([
                 'is_upgraded' => true,
@@ -207,7 +205,7 @@ class NftMintingService
                 'correlation_id' => $correlationId,
             ]);
 
-            Log::channel('audit')->info('NFT gift upgraded to collector', [
+            $this->log->channel('audit')->info('NFT gift upgraded to collector', [
                 'gift_id' => $gift->id,
                 'correlation_id' => $correlationId,
             ]);

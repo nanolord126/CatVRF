@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Medical\Events;
@@ -7,7 +9,16 @@ use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-final class TestOrderCreated
+final /**
+ * TestOrderCreated
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class TestOrderCreated
 {
     use Dispatchable;
     use InteractsWithSockets;
@@ -16,5 +27,13 @@ final class TestOrderCreated
     public function __construct(
         public readonly MedicalTestOrder $testOrder,
         public readonly string $correlationId,
-    ) {}
+    ) {
+    /**
+     * Инициализировать класс
+     */
+    public function __construct()
+    {
+        // TODO: инициализация
+    }
+}
 }

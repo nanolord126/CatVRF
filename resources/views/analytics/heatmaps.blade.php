@@ -104,16 +104,14 @@
     // Переключение типа анализа
     document.getElementById('geoTypeBtn').addEventListener('click', function() {
         document.getElementById('geoTypeBtn').classList.replace('bg-gray-300', 'bg-blue-500');
-        document.getElementById('geoTypeBtn').classList.add('text-white');
-        document.getElementById('clickTypeBtn').classList.replace('bg-blue-500', 'bg-gray-300');
+        document.getElementById('geoTypeBtn').classList.adocument.getElementById('clickTypeBtn').classList.replace('bg-blue-500', 'bg-gray-300');
         document.getElementById('clickTypeBtn').classList.remove('text-white');
         // Обновить компонент в Livewire
     });
 
     document.getElementById('clickTypeBtn').addEventListener('click', function() {
         document.getElementById('clickTypeBtn').classList.replace('bg-gray-300', 'bg-blue-500');
-        document.getElementById('clickTypeBtn').classList.add('text-white');
-        document.getElementById('geoTypeBtn').classList.replace('bg-blue-500', 'bg-gray-300');
+        document.getElementById('clickTypeBtn').classList.adocument.getElementById('geoTypeBtn').classList.replace('bg-blue-500', 'bg-gray-300');
         document.getElementById('geoTypeBtn').classList.remove('text-white');
         // Обновить компонент в Livewire
     });

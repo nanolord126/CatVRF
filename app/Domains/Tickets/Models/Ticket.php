@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Tickets\Models;
@@ -6,7 +8,16 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\{BelongsTo, HasOne};
 use Illuminate\Database\Eloquent\Casts\AsCollection;
 
-final class Ticket extends Model
+final /**
+ * Ticket
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class Ticket extends Model
 {
     protected $table = 'tickets';
     protected $fillable = [
@@ -31,7 +42,7 @@ final class Ticket extends Model
 
     public function event(): BelongsTo
     {
-        return $this->belongsTo(Event::class);
+        return $this->belongsTo($this->event->class);
     }
 
     public function ticketType(): BelongsTo

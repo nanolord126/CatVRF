@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 namespace Modules\Inventory\Listeners;
@@ -8,6 +10,15 @@ use Modules\Inventory\Models\StockMovement;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * DeductAppointmentConsumables
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
 class DeductAppointmentConsumables
 {
     public function handle(Appointment $appointment): void
@@ -25,7 +36,7 @@ class DeductAppointmentConsumables
             if (str_contains(strtolower($appointment->service_name), strtolower($service))) {
                 $product = Product::where('sku', $data['sku'])->first();
                 if ($product) {
-                    DB::transaction(function () use ($product, $data, $appointment) {
+                    $this->db->transaction(function () use ($product, $data, $appointment) {
                         $product->decrement('stock', $data['qty']);
                         
                         StockMovement::create([

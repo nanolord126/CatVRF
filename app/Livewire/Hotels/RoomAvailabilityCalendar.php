@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Livewire\Hotels;
@@ -5,7 +7,16 @@ namespace App\Livewire\Hotels;
 use Livewire\Component;
 use Illuminate\View\View;
 
-final class RoomAvailabilityCalendar extends Component
+final /**
+ * RoomAvailabilityCalendar
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class RoomAvailabilityCalendar extends Component
 {
     public int $hotelId;
     public string $startDate;

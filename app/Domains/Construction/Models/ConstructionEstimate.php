@@ -45,6 +45,12 @@ final class ConstructionEstimate extends Model
         });
     }
 
+    /**
+     * Выполнить операцию
+     * 
+     * @return mixed
+     * @throws \Exception
+     */
     public function project(): BelongsTo
     {
         return $this->belongsTo(ConstructionProject::class, 'project_id');

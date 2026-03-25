@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Furniture\Events;
@@ -6,7 +8,16 @@ use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-final class FurnitureOrderCreated
+final /**
+ * FurnitureOrderCreated
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class FurnitureOrderCreated
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -16,5 +27,13 @@ final class FurnitureOrderCreated
         public readonly int $userId,
         public readonly int $totalPrice,
         public readonly string $correlationId,
-    ) {}
+    ) {
+    /**
+     * Инициализировать класс
+     */
+    public function __construct()
+    {
+        // TODO: инициализация
+    }
+}
 }

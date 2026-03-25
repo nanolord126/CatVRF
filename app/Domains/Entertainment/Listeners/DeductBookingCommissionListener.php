@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Entertainment\Listeners;
@@ -8,14 +10,23 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-final class DeductBookingCommissionListener implements ShouldQueue
+final /**
+ * DeductBookingCommissionListener
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class DeductBookingCommissionListener implements ShouldQueue
 {
     use InteractsWithQueue;
 
     public function handle(BookingCreated $event): void
     {
         try {
-            DB::transaction(function () use ($event) {
+            $this->db->transaction(function () use ($event) {
                 $commissionAmount = (int) ($event->booking->commission_amount * 100);
                 $wallet = \App\Models\Wallet::lockForUpdate()->where('tenant_id', $event->booking->tenant_id)->firstOrFail();
                 $wallet->decrement('balance', $commissionAmount);
@@ -28,7 +39,7 @@ final class DeductBookingCommissionListener implements ShouldQueue
                     'correlation_id' => $event->correlationId,
                 ]);
 
-                Log::channel('audit')->info('Booking commission deducted', [
+                $this->log->channel('audit')->info('Booking commission deducted', [
                     'booking_id' => $event->booking->id,
                     'venue_id' => $event->booking->venue_id,
                     'customer_id' => $event->booking->customer_id,
@@ -37,7 +48,7 @@ final class DeductBookingCommissionListener implements ShouldQueue
                 ]);
             });
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to deduct booking commission', [
+            $this->log->channel('audit')->error('Failed to deduct booking commission', [
                 'booking_id' => $event->booking->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $event->correlationId,

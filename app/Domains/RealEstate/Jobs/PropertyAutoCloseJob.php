@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Jobs;
@@ -38,14 +40,14 @@ final class PropertyAutoCloseJob implements ShouldQueue
             if ($this->listing->status === 'active' && $this->listing->created_at->addDays(90) < now()) {
                 $this->listing->update(['status' => 'archived']);
 
-                Log::channel('audit')->info('Property listing auto-closed', [
+                $this->log->channel('audit')->info('Property listing auto-closed', [
                     'listing_id' => $this->listing->id,
                     'reason' => 'Inactive for 90 days',
                     'correlation_id' => $this->correlationId,
                 ]);
             }
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Property auto-close job failed', [
+            $this->log->channel('audit')->error('Property auto-close job failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $this->correlationId,
             ]);

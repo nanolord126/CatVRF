@@ -124,7 +124,7 @@ final class ChannelResource extends Resource
                                 $planSlug = $get('plan_slug_select');
 
                                 if (!$planSlug || !$record) {
-                                    Notification::make()->title('Выберите тарифный план')->warning()->send();
+                                    $this->notification->make()->title('Выберите тарифный план')->warning()->send();
                                     return;
                                 }
 
@@ -135,12 +135,12 @@ final class ChannelResource extends Resource
                                         Str::uuid()->toString()
                                     );
 
-                                    Notification::make()
+                                    $this->notification->make()
                                         ->title('Подписка оформлена')
                                         ->success()
                                         ->send();
                                 } catch (\Throwable $e) {
-                                    Notification::make()
+                                    $this->notification->make()
                                         ->title('Ошибка: ' . $e->getMessage())
                                         ->danger()
                                         ->send();
@@ -204,7 +204,7 @@ final class ChannelResource extends Resource
                     ->visible(fn (BusinessChannel $record) => $record->isArchived())
                     ->action(function (BusinessChannel $record): void {
                         app(ChannelService::class)->restoreChannel($record);
-                        Notification::make()->title('Канал восстановлен')->success()->send();
+                        $this->notification->make()->title('Канал восстановлен')->success()->send();
                     }),
             ])
             ->defaultSort('created_at', 'desc');

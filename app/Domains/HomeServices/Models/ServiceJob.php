@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\HomeServices\Models;
@@ -8,7 +10,16 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-final class ServiceJob extends Model
+final /**
+ * ServiceJob
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class ServiceJob extends Model
 {
     protected $table = 'service_jobs';
     protected $fillable = ['tenant_id', 'service_listing_id', 'contractor_id', 'client_id', 'status', 'description', 'address_point', 'address', 'scheduled_at', 'started_at', 'completed_at', 'actual_duration_minutes', 'base_amount', 'commission_amount', 'total_amount', 'payment_status', 'transaction_id', 'photos', 'notes', 'correlation_id'];

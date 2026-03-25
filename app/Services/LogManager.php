@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -12,29 +14,31 @@ use Illuminate\Support\Facades\Log;
  */
 class LogManager
 {
+    // Dependencies injected via constructor
+    // Add private readonly properties here
     public function info(string $message, array $context = []): void
     {
-        Log::info($message, $context);
+        $this->log->info($message, $context);
     }
 
     public function warn(string $message, array $context = []): void
     {
-        Log::warning($message, $context);
+        $this->log->warning($message, $context);
     }
 
     public function warning(string $message, array $context = []): void
     {
-        Log::warning($message, $context);
+        $this->log->warning($message, $context);
     }
 
     public function error(string $message, array $context = []): void
     {
-        Log::error($message, $context);
+        $this->log->error($message, $context);
     }
 
     public function debug(string $message, array $context = []): void
     {
-        Log::debug($message, $context);
+        $this->log->debug($message, $context);
     }
 
     public function channel(string $channel): static

@@ -16,16 +16,16 @@ final readonly class EmailService
         try {
             $tenant = \App\Models\Tenant::findOrFail($tenantId);
 
-            Mail::send('emails.daily-report', $data, function ($message) use ($tenant) {
+            $this->mail->send('emails.daily-report', $data, function ($message) use ($tenant) {
                 $message->to($tenant->email)
                     ->subject('Ежедневный отчёт — ' . date('d.m.Y'));
             });
 
-            Log::channel('audit')->info('Daily report sent', [
+            $this->log->channel('audit')->info('Daily report sent', [
                 'tenant_id' => $tenantId,
             ]);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Daily report send failed', [
+            $this->log->channel('audit')->error('Daily report send failed', [
                 'tenant_id' => $tenantId,
                 'error' => $e->getMessage(),
             ]);
@@ -37,16 +37,16 @@ final readonly class EmailService
         try {
             $tenant = \App\Models\Tenant::findOrFail($tenantId);
 
-            Mail::send('emails.weekly-report', $data, function ($message) use ($tenant) {
+            $this->mail->send('emails.weekly-report', $data, function ($message) use ($tenant) {
                 $message->to($tenant->email)
                     ->subject('Еженедельный отчёт — ' . date('W, Y'));
             });
 
-            Log::channel('audit')->info('Weekly report sent', [
+            $this->log->channel('audit')->info('Weekly report sent', [
                 'tenant_id' => $tenantId,
             ]);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Weekly report send failed', [
+            $this->log->channel('audit')->error('Weekly report send failed', [
                 'tenant_id' => $tenantId,
                 'error' => $e->getMessage(),
             ]);
@@ -56,16 +56,16 @@ final readonly class EmailService
     public function sendTransactionalEmail(string $email, string $template, array $data): void
     {
         try {
-            Mail::send("emails.$template", $data, function ($message) use ($email) {
+            $this->mail->send("emails.$template", $data, function ($message) use ($email) {
                 $message->to($email);
             });
 
-            Log::channel('audit')->info('Transactional email sent', [
+            $this->log->channel('audit')->info('Transactional email sent', [
                 'email' => $email,
                 'template' => $template,
             ]);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Transactional email send failed', [
+            $this->log->channel('audit')->error('Transactional email send failed', [
                 'email' => $email,
                 'error' => $e->getMessage(),
             ]);

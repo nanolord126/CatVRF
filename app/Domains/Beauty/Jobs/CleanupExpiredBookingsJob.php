@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -13,7 +15,16 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-final class CleanupExpiredBookingsJob implements ShouldQueue
+final /**
+ * CleanupExpiredBookingsJob
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class CleanupExpiredBookingsJob implements ShouldQueue
 {
     use Dispatchable;
     use InteractsWithQueue;
@@ -22,17 +33,25 @@ final class CleanupExpiredBookingsJob implements ShouldQueue
 
     public function __construct(
         private readonly string $correlationId,
-    ) {}
+    ) {
+    /**
+     * Инициализировать класс
+     */
+    public function __construct()
+    {
+        // TODO: инициализация
+    }
+}
 
     public function handle(): void
     {
-        DB::transaction(function (): void {
+        $this->db->transaction(function (): void {
             $expired = Appointment::query()
                 ->where('status', 'pending')
                 ->where('created_at', '<', now()->subMinutes(15))
                 ->update(['status' => 'expired']);
 
-            Log::channel('audit')->info('Expired bookings cleaned', [
+            $this->log->channel('audit')->info('Expired bookings cleaned', [
                 'count' => $expired,
                 'correlation_id' => $this->correlationId,
             ]);

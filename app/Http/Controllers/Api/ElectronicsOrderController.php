@@ -33,7 +33,7 @@ final class ElectronicsOrderController extends BaseApiController
 
             return $this->successResponse($orders);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Electronics orders list error', ['error' => $e->getMessage()]);
+            $this->log->channel('audit')->error('Electronics orders list error', ['error' => $e->getMessage()]);
             return $this->errorResponse('Failed to fetch orders', 500);
         }
     }
@@ -60,11 +60,11 @@ final class ElectronicsOrderController extends BaseApiController
             ]);
             $order->save();
 
-            Log::channel('audit')->info('Electronics order created', ['order_id' => $order->id]);
+            $this->log->channel('audit')->info('Electronics order created', ['order_id' => $order->id]);
 
             return $this->successResponse($order, 'Order created successfully', 201);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Electronics order creation failed', ['error' => $e->getMessage()]);
+            $this->log->channel('audit')->error('Electronics order creation failed', ['error' => $e->getMessage()]);
             return $this->errorResponse('Failed to create order: ' . $e->getMessage(), 400);
         }
     }
@@ -83,11 +83,11 @@ final class ElectronicsOrderController extends BaseApiController
                 correlationId: $correlationId,
             );
 
-            Log::channel('audit')->info('Warranty claim created', ['claim_id' => $claim->id]);
+            $this->log->channel('audit')->info('Warranty claim created', ['claim_id' => $claim->id]);
 
             return $this->successResponse($claim, 'Warranty claim submitted', 201);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Warranty claim creation failed', ['error' => $e->getMessage()]);
+            $this->log->channel('audit')->error('Warranty claim creation failed', ['error' => $e->getMessage()]);
             return $this->errorResponse('Failed to submit claim: ' . $e->getMessage(), 400);
         }
     }

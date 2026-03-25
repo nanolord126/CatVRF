@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -8,7 +10,16 @@ use App\Filament\Tenant\Resources\BeautyProductResource;
 use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 
-final class EditBeautyProduct extends EditRecord
+final /**
+ * EditBeautyProduct
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class EditBeautyProduct extends EditRecord
 {
     protected static string $resource = BeautyProductResource::class;
 

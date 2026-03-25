@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Hotels\Jobs;
@@ -10,7 +12,16 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-final class CheckInReminderJob implements ShouldQueue
+final /**
+ * CheckInReminderJob
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class CheckInReminderJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -24,7 +35,7 @@ final class CheckInReminderJob implements ShouldQueue
     public function handle(): void
     {
         try {
-            Log::channel('audit')->info('Sending check-in reminder', [
+            $this->log->channel('audit')->info('Sending check-in reminder', [
                 'booking_id' => $this->booking->id,
                 'correlation_id' => $this->correlationId,
             ]);
@@ -32,12 +43,12 @@ final class CheckInReminderJob implements ShouldQueue
             // Send notification to guest (24 hours before check-in)
             // $this->booking->guest->notify(new CheckInReminderNotification($this->booking));
 
-            Log::channel('audit')->info('Check-in reminder sent', [
+            $this->log->channel('audit')->info('Check-in reminder sent', [
                 'booking_id' => $this->booking->id,
                 'correlation_id' => $this->correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to send check-in reminder', [
+            $this->log->channel('audit')->error('Failed to send check-in reminder', [
                 'booking_id' => $this->booking->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $this->correlationId,

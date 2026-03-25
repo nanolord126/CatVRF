@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -7,7 +9,16 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\File;
 
-final class Upload3DModelRequest extends FormRequest
+final /**
+ * Upload3DModelRequest
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class Upload3DModelRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -21,7 +32,7 @@ final class Upload3DModelRequest extends FormRequest
             'model' => [
                 'required',
                 'file',
-                File::types(['glb', 'gltf', 'obj', 'fbx'])
+                $this->file->types(['glb', 'gltf', 'obj', 'fbx'])
                     ->max(52428800) // 50MB
                     ->min(100), // 100 байт минимум
             ],

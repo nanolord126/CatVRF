@@ -27,7 +27,7 @@ final class HandleModel3DUploadedListener implements ShouldQueue
     public function handle(Model3DUploaded $event): void
     {
         try {
-            Log::channel('audit')->info('Начало обработки загруженной 3D модели', [
+            $this->log->channel('audit')->info('Начало обработки загруженной 3D модели', [
                 'correlation_id' => $event->correlationId,
                 'model_id' => $event->model->id,
                 'model_uuid' => $event->model->uuid,
@@ -35,20 +35,20 @@ final class HandleModel3DUploadedListener implements ShouldQueue
             ]);
 
             // Запускаем асинхронный job для обработки
-            Queue::dispatch(
+            $this->queue->dispatch(
                 new Process3DModelJob(
                     model: $event->model,
                     correlationId: $event->correlationId,
                 )
             );
 
-            Log::channel('audit')->info('Job обработки 3D модели добавлен в очередь', [
+            $this->log->channel('audit')->info('Job обработки 3D модели добавлен в очередь', [
                 'correlation_id' => $event->correlationId,
                 'model_id' => $event->model->id,
             ]);
 
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Ошибка при запуске обработки 3D модели', [
+            $this->log->channel('audit')->error('Ошибка при запуске обработки 3D модели', [
                 'correlation_id' => $event->correlationId,
                 'model_id' => $event->model->id,
                 'error' => $e->getMessage(),

@@ -1,5 +1,29 @@
 <?php declare(strict_types=1);
-namespace App\Domains\Copywriting\Models;
+namespace
+
+/**
+ * CopywritingProject
+ * 
+ * Производитель: CatVRF Platform
+ * Версия: 1.0.0
+ * 
+ * Примеры использования:
+ * 
+ * ```php
+ * // Базовое использование
+ * $instance = new CopywritingProject();
+ * ```
+ * 
+ * Требования:
+ * - Laravel 10+
+ * - PHP 8.2+
+ * - Все методы должны быть явно типизированы
+ * 
+ * @author CatVRF
+ * @package namespace App\Domains\Copywriting\Models
+ * @see https://github.com/iyegorovskyi_clemny/CatVRF
+ */
+ App\Domains\Copywriting\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;

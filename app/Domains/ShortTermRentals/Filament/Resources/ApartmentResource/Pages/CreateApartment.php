@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\ShortTermRentals\Filament\Resources\ApartmentResource\Pages;
@@ -5,7 +7,16 @@ namespace App\Domains\ShortTermRentals\Filament\Resources\ApartmentResource\Page
 use App\Domains\ShortTermRentals\Filament\Resources\ApartmentResource;
 use Filament\Resources\Pages\CreateRecord;
 
-final class CreateApartment extends CreateRecord
+final /**
+ * CreateApartment
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class CreateApartment extends CreateRecord
 {
     protected static string $resource = ApartmentResource::class;
 

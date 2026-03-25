@@ -28,7 +28,7 @@ final readonly class BeautyService
             'correlation_id' => $correlationId,
         ]);
 
-        return DB::transaction(function () use ($data, $isB2B, $correlationId): Appointment {
+        return $this->db->transaction(function () use ($data, $isB2B, $correlationId): Appointment {
             // B2B logic: different pricing/commission
             if ($isB2B && isset($data['inn'], $data['business_card_id'])) {
                 $data['commission_rate'] = 0.12; // 12% for B2B
@@ -44,7 +44,7 @@ final readonly class BeautyService
                 'status' => 'pending',
             ]);
 
-            Log::channel('audit')->info('Appointment created', [
+            $this->log->channel('audit')->info('Appointment created', [
                 'appointment_id' => $appointment->id,
                 'is_b2b' => $isB2B,
                 'correlation_id' => $correlationId,
@@ -68,11 +68,11 @@ final readonly class BeautyService
 
     public function confirmAppointment(int $appointmentId, string $correlationId): Appointment
     {
-        return DB::transaction(function () use ($appointmentId, $correlationId): Appointment {
+        return $this->db->transaction(function () use ($appointmentId, $correlationId): Appointment {
             $appointment = Appointment::lockForUpdate()->findOrFail($appointmentId);
             $appointment->update(['status' => 'confirmed']);
 
-            Log::channel('audit')->info('Appointment confirmed', [
+            $this->log->channel('audit')->info('Appointment confirmed', [
                 'appointment_id' => $appointmentId,
                 'correlation_id' => $correlationId,
             ]);
@@ -83,14 +83,14 @@ final readonly class BeautyService
 
     public function completeAppointment(int $appointmentId, string $correlationId): Appointment
     {
-        return DB::transaction(function () use ($appointmentId, $correlationId): Appointment {
+        return $this->db->transaction(function () use ($appointmentId, $correlationId): Appointment {
             $appointment = Appointment::lockForUpdate()->findOrFail($appointmentId);
             $appointment->update([
                 'status' => 'completed',
                 'payment_status' => 'paid',
             ]);
 
-            Log::channel('audit')->info('Appointment completed', [
+            $this->log->channel('audit')->info('Appointment completed', [
                 'appointment_id' => $appointmentId,
                 'correlation_id' => $correlationId,
             ]);
@@ -104,11 +104,11 @@ final readonly class BeautyService
         string $reason,
         string $correlationId
     ): Appointment {
-        return DB::transaction(function () use ($appointmentId, $reason, $correlationId): Appointment {
+        return $this->db->transaction(function () use ($appointmentId, $reason, $correlationId): Appointment {
             $appointment = Appointment::lockForUpdate()->findOrFail($appointmentId);
             $appointment->update(['status' => 'cancelled']);
 
-            Log::channel('audit')->info('Appointment cancelled', [
+            $this->log->channel('audit')->info('Appointment cancelled', [
                 'appointment_id' => $appointmentId,
                 'reason' => $reason,
                 'correlation_id' => $correlationId,

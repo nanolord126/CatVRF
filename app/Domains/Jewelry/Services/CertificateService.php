@@ -28,7 +28,7 @@ final class CertificateService
         $correlationId = $correlationId ?: (string) Str::uuid();
         $item = JewelryItem::findOrFail($itemId);
 
-        return DB::transaction(function () use ($item, $data, $correlationId) {
+        return $this->db->transaction(function () use ($item, $data, $correlationId) {
             // 1. Проверка на дублирование сертификата
             if (JewelryCertificate::where("item_id", $item->id)->where("status", "active")->exists()) {
                 throw new \RuntimeException("Item already has an active certificate.", 409);
@@ -56,7 +56,7 @@ final class CertificateService
                 "correlation_id" => $correlationId
             ]);
 
-            Log::channel("audit")->info("Jewelry: certificate issued", [
+            $this->log->channel("audit")->info("Jewelry: certificate issued", [
                 "cert_uuid" => $certificate->uuid,
                 "item_id" => $item->id
             ]);
@@ -98,14 +98,14 @@ final class CertificateService
         $correlationId = $correlationId ?: (string) Str::uuid();
         $cert = JewelryCertificate::findOrFail($certId);
 
-        DB::transaction(function () use ($cert, $reason, $correlationId) {
+        $this->db->transaction(function () use ($cert, $reason, $correlationId) {
             $cert->update([
                 "status" => "revoked",
                 "revocation_reason" => $reason,
                 "revoked_at" => now()
             ]);
 
-            Log::channel("audit")->warning("Jewelry: certificate revoked", [
+            $this->log->channel("audit")->warning("Jewelry: certificate revoked", [
                 "cert_id" => $cert->id,
                 "reason" => $reason,
                 "correlation_id" => $correlationId

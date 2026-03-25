@@ -38,7 +38,7 @@ final class ReturnService
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
 
-            $return = DB::transaction(function () use (
+            $return = $this->db->transaction(function () use (
                 $tenantId,
                 $orderId,
                 $customerId,
@@ -59,7 +59,7 @@ final class ReturnService
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Fashion return requested', [
+                $this->log->channel('audit')->info('Fashion return requested', [
                     'return_id' => $return->id,
                     'order_id' => $orderId,
                     'customer_id' => $customerId,
@@ -72,7 +72,7 @@ final class ReturnService
 
             return $return;
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to request fashion return', [
+            $this->log->channel('audit')->error('Failed to request fashion return', [
                 'error' => $e->getMessage(),
                 'order_id' => $orderId,
                 'correlation_id' => $correlationId ?? 'unknown',
@@ -97,7 +97,7 @@ final class ReturnService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-DB::transaction(function () use ($return, $refundAmount, $correlationId) {
+$this->db->transaction(function () use ($return, $refundAmount, $correlationId) {
                 $return->update([
                     'status' => 'approved',
                     'refund_amount' => $refundAmount,
@@ -105,14 +105,14 @@ DB::transaction(function () use ($return, $refundAmount, $correlationId) {
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Fashion return approved', [
+                $this->log->channel('audit')->info('Fashion return approved', [
                     'return_id' => $return->id,
                     'refund_amount' => $refundAmount,
                     'correlation_id' => $correlationId,
                 ]);
             });
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to approve fashion return', [
+            $this->log->channel('audit')->error('Failed to approve fashion return', [
                 'return_id' => $return->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId ?? 'unknown',
@@ -137,21 +137,21 @@ DB::transaction(function () use ($return, $refundAmount, $correlationId) {
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-DB::transaction(function () use ($return, $correlationId) {
+$this->db->transaction(function () use ($return, $correlationId) {
                 $return->update([
                     'status' => 'refunded',
                     'refunded_at' => now(),
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Fashion return refunded', [
+                $this->log->channel('audit')->info('Fashion return refunded', [
                     'return_id' => $return->id,
                     'refund_amount' => $return->refund_amount,
                     'correlation_id' => $correlationId,
                 ]);
             });
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to process fashion return refund', [
+            $this->log->channel('audit')->error('Failed to process fashion return refund', [
                 'return_id' => $return->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId ?? 'unknown',

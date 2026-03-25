@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -6,7 +8,16 @@ namespace App\Domains\Finances\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-final class StorePaymentTransactionRequest extends FormRequest
+final /**
+ * StorePaymentTransactionRequest
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class StorePaymentTransactionRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -14,7 +25,7 @@ final class StorePaymentTransactionRequest extends FormRequest
         if (class_exists(\App\Services\Fraud\FraudControlService::class) && auth()->check()) {
             $fraudScore = app(\App\Services\Fraud\FraudControlService::class)->scoreOperation(new \stdClass());
             if ($fraudScore > 0.7 && !auth()->user()->hasRole('admin')) {
-                \Illuminate\Support\Facades\Log::channel('audit')->warning('Fraud check blocked request', ['class' => __CLASS__, 'score' => $fraudScore]);
+                \Illuminate\Support\Facades\$this->log->channel('audit')->warning('Fraud check blocked request', ['class' => __CLASS__, 'score' => $fraudScore]);
                 return false;
             }
         }

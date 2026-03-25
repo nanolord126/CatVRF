@@ -29,7 +29,7 @@ final class EntertainmentVenueController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to fetch venues', [
+            $this->log->channel('audit')->error('Failed to fetch venues', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -52,7 +52,7 @@ final class EntertainmentVenueController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to fetch venue', ['id' => $id, 'error' => $e->getMessage()]);
+            $this->log->channel('audit')->error('Failed to fetch venue', ['id' => $id, 'error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => 'Venue not found', 'correlation_id' => Str::uuid()], 404);
         }
     }
@@ -69,7 +69,7 @@ final class EntertainmentVenueController
         );
 
         if ($fraudResult['decision'] === 'block') {
-            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+            $this->log->channel('fraud_alert')->warning('Operation blocked by fraud control', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'score'          => $fraudResult['score'],
@@ -82,7 +82,7 @@ final class EntertainmentVenueController
         }
 
         try {
-            DB::transaction(function () {
+            $this->db->transaction(function () {
                 $correlationId = Str::uuid()->toString();
 
                 $venue = EntertainmentVenue::create([
@@ -97,7 +97,7 @@ final class EntertainmentVenueController
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Entertainment venue created', [
+                $this->log->channel('audit')->info('Entertainment venue created', [
                     'venue_id' => $venue->id,
                     'name' => $venue->name,
                     'correlation_id' => $correlationId,
@@ -106,7 +106,7 @@ final class EntertainmentVenueController
 
             return response()->json(['success' => true, 'data' => null, 'correlation_id' => Str::uuid()], 201);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to create venue', ['error' => $e->getMessage()]);
+            $this->log->channel('audit')->error('Failed to create venue', ['error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 400);
         }
     }
@@ -123,7 +123,7 @@ final class EntertainmentVenueController
         );
 
         if ($fraudResult['decision'] === 'block') {
-            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+            $this->log->channel('fraud_alert')->warning('Operation blocked by fraud control', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'score'          => $fraudResult['score'],
@@ -139,7 +139,7 @@ final class EntertainmentVenueController
             $venue = EntertainmentVenue::findOrFail($id);
             $correlationId = Str::uuid()->toString();
 
-            DB::transaction(function () use ($venue, $correlationId) {
+            $this->db->transaction(function () use ($venue, $correlationId) {
                 $venue->update([
                     'name' => request('name', $venue->name),
                     'description' => request('description', $venue->description),
@@ -147,7 +147,7 @@ final class EntertainmentVenueController
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Entertainment venue updated', [
+                $this->log->channel('audit')->info('Entertainment venue updated', [
                     'venue_id' => $venue->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -155,7 +155,7 @@ final class EntertainmentVenueController
 
             return response()->json(['success' => true, 'data' => $venue, 'correlation_id' => $correlationId]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to update venue', ['id' => $id, 'error' => $e->getMessage()]);
+            $this->log->channel('audit')->error('Failed to update venue', ['id' => $id, 'error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
         }
     }
@@ -166,14 +166,14 @@ final class EntertainmentVenueController
             $venue = EntertainmentVenue::findOrFail($id);
             $correlationId = Str::uuid()->toString();
 
-            DB::transaction(function () use ($venue, $correlationId) {
+            $this->db->transaction(function () use ($venue, $correlationId) {
                 $venue->delete();
-                Log::channel('audit')->info('Entertainment venue deleted', ['venue_id' => $id, 'correlation_id' => $correlationId]);
+                $this->log->channel('audit')->info('Entertainment venue deleted', ['venue_id' => $id, 'correlation_id' => $correlationId]);
             });
 
             return response()->json(['success' => true, 'data' => null, 'correlation_id' => $correlationId]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to delete venue', ['id' => $id, 'error' => $e->getMessage()]);
+            $this->log->channel('audit')->error('Failed to delete venue', ['id' => $id, 'error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
         }
     }

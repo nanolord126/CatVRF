@@ -19,7 +19,7 @@ class DeviceIntelligenceService
     public function __construct()
     {
         $this->correlationId = Str::uuid();
-        $this->tenantId = Auth::guard('tenant')?->id();
+        $this->tenantId = $this->auth->guard('tenant')?->id();
     }
 
     /**
@@ -30,7 +30,7 @@ class DeviceIntelligenceService
         $this->correlationId = Str::uuid();
 
         try {
-            Log::channel('security')->info('DeviceIntelligence: capturing fingerprint', [
+            $this->log->channel('security')->info('DeviceIntelligence: capturing fingerprint', [
                 'correlation_id' => $this->correlationId,
                 'user_id' => $user->id,
                 'device_type' => $this->getDeviceScale(),
@@ -74,11 +74,11 @@ class DeviceIntelligenceService
                 ]
             );
 
-            AuditLog::create([
+            Audit$this->log->create([
                 'entity_type' => UserDeviceFingerprint::class,
                 'entity_id' => $fingerprint->id,
                 'action' => $fingerprint->wasRecentlyCreated ? 'created' : 'updated',
-                'user_id' => Auth::id(),
+                'user_id' => $this->auth->id(),
                 'tenant_id' => $this->tenantId,
                 'correlation_id' => $this->correlationId,
                 'changes' => [],
@@ -91,7 +91,7 @@ class DeviceIntelligenceService
                 ],
             ]);
 
-            Log::channel('security')->info('DeviceIntelligence: fingerprint captured', [
+            $this->log->channel('security')->info('DeviceIntelligence: fingerprint captured', [
                 'correlation_id' => $this->correlationId,
                 'fingerprint_id' => $fingerprint->id,
                 'user_id' => $user->id,
@@ -100,7 +100,7 @@ class DeviceIntelligenceService
 
             return $fingerprint;
         } catch (Throwable $e) {
-            Log::error('DeviceIntelligence: fingerprint capture failed', [
+            $this->log->error('DeviceIntelligence: fingerprint capture failed', [
                 'correlation_id' => $this->correlationId,
                 'user_id' => $user->id,
                 'error' => $e->getMessage(),
@@ -135,7 +135,7 @@ class DeviceIntelligenceService
                 'is_vpn' => $latest->metadata['is_vpn'] ?? false,
             ];
         } catch (Throwable $e) {
-            Log::error('DeviceIntelligence: targeting context failed', [
+            $this->log->error('DeviceIntelligence: targeting context failed', [
                 'correlation_id' => $this->correlationId,
                 'user_id' => $user->id,
                 'error' => $e->getMessage(),

@@ -17,12 +17,12 @@ final class DeductOrderConsumablesListener implements ShouldQueue
     public function handle(OrderCompleted $event): void
     {
         try {
-            Log::channel('audit')->info('Order consumables deduction started', [
+            $this->log->channel('audit')->info('Order consumables deduction started', [
                 'order_id' => $event->order->id,
                 'correlation_id' => $event->correlationId,
             ]);
 
-            DB::transaction(function () use ($event) {
+            $this->db->transaction(function () use ($event) {
                 $items = $event->order->items_json ?? [];
 
                 foreach ($items as $item) {
@@ -47,7 +47,7 @@ final class DeductOrderConsumablesListener implements ShouldQueue
                         $quantity = ($consumable['qty'] ?? 1) * ($item['qty'] ?? 1);
                         $ingredient->decrement('current_stock', $quantity);
 
-                        Log::channel('audit')->info('Consumable deducted', [
+                        $this->log->channel('audit')->info('Consumable deducted', [
                             'consumable_id' => $ingredient->id,
                             'quantity' => $quantity,
                             'current_stock' => $ingredient->current_stock,
@@ -65,12 +65,12 @@ final class DeductOrderConsumablesListener implements ShouldQueue
                 }
             });
 
-            Log::channel('audit')->info('Order consumables deduction completed', [
+            $this->log->channel('audit')->info('Order consumables deduction completed', [
                 'order_id' => $event->order->id,
                 'correlation_id' => $event->correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Order consumables deduction failed', [
+            $this->log->channel('audit')->error('Order consumables deduction failed', [
                 'order_id' => $event->order->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

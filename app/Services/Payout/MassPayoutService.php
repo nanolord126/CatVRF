@@ -43,7 +43,7 @@ final readonly class MassPayoutService
         if (RateLimiter::tooManyAttempts($rateLimitKey, self::RATE_LIMIT_MAX)) {
             $seconds = RateLimiter::availableIn($rateLimitKey);
             
-            Log::channel('fraud_alert')->warning('Mass payout rate limit exceeded', [
+            $this->log->channel('fraud_alert')->warning('Mass payout rate limit exceeded', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
                 'available_in_seconds' => $seconds,
@@ -60,7 +60,7 @@ final readonly class MassPayoutService
             'total_amount' => 0,
         ];
 
-        Log::channel('audit')->info('Mass payout batch started', [
+        $this->log->channel('audit')->info('Mass payout batch started', [
             'correlation_id' => $correlationId,
             'tenant_id' => $tenantId,
             'payouts_count' => count($payouts),
@@ -79,7 +79,7 @@ final readonly class MassPayoutService
                 $results['success'][] = $payout['wallet_id'];
                 $results['total_amount'] += $payout['amount'];
             } catch (\Exception $e) {
-                Log::channel('audit')->error('Mass payout single item failed', [
+                $this->log->channel('audit')->error('Mass payout single item failed', [
                     'correlation_id' => $correlationId,
                     'wallet_id' => $payout['wallet_id'],
                     'error' => $e->getMessage(),
@@ -92,7 +92,7 @@ final readonly class MassPayoutService
             }
         }
 
-        Log::channel('audit')->info('Mass payout batch completed', [
+        $this->log->channel('audit')->info('Mass payout batch completed', [
             'correlation_id' => $correlationId,
             'tenant_id' => $tenantId,
             'success_count' => count($results['success']),
@@ -124,7 +124,7 @@ final readonly class MassPayoutService
         );
 
         if ($fraudResult['decision'] === 'block') {
-            Log::channel('fraud_alert')->warning('Mass payout item blocked by fraud check', [
+            $this->log->channel('fraud_alert')->warning('Mass payout item blocked by fraud check', [
                 'correlation_id' => $correlationId,
                 'wallet_id' => $walletId,
                 'amount' => $amount,
@@ -153,7 +153,7 @@ final readonly class MassPayoutService
             walletId: $walletId,
         );
 
-        Log::channel('audit')->info('Mass payout single item processed', [
+        $this->log->channel('audit')->info('Mass payout single item processed', [
             'correlation_id' => $correlationId,
             'wallet_id' => $walletId,
             'amount' => $amount,
@@ -167,7 +167,6 @@ final readonly class MassPayoutService
     public function calculateCommission(int $amount, int $tenantId): int
     {
         // Стандартная комиссия 14%
-        // TODO: Взять из CommissionRule по tenant_id
         $commissionPercent = 14;
 
         return (int) floor($amount * $commissionPercent / 100);

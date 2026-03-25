@@ -39,7 +39,7 @@ final class ChatController extends Controller
                 correlationId: $correlationId
             );
 
-            Log::channel('audit')->info('Chat message sent', [
+            $this->log->channel('audit')->info('Chat message sent', [
                 'correlation_id' => $correlationId,
                 'room_id' => $validated['room_id'],
             ]);
@@ -49,7 +49,7 @@ final class ChatController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to send chat message', [
+            $this->log->channel('audit')->error('Failed to send chat message', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -82,7 +82,7 @@ final class ChatController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to get messages', [
+            $this->log->channel('audit')->error('Failed to get messages', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -114,7 +114,7 @@ final class ChatController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to delete message', [
+            $this->log->channel('audit')->error('Failed to delete message', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -151,7 +151,7 @@ final class ChatController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to edit message', [
+            $this->log->channel('audit')->error('Failed to edit message', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -189,7 +189,7 @@ final class ChatController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to create room', [
+            $this->log->channel('audit')->error('Failed to create room', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);

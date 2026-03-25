@@ -27,7 +27,7 @@ final class FitnessClassController
 
             return response()->json(['success' => true, 'data' => $classes, 'correlation_id' => Str::uuid()]);
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to list classes', ['error' => $e->getMessage()]);
+            $this->log->channel('audit')->error('Failed to list classes', ['error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
@@ -98,7 +98,7 @@ final class FitnessClassController
 
             return response()->json(['success' => true, 'data' => $class, 'correlation_id' => $correlationId], 201);
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to create class', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+            $this->log->channel('audit')->error('Failed to create class', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
             return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
         }
     }
@@ -128,7 +128,7 @@ final class FitnessClassController
 
             $class->delete();
 
-            Log::channel('audit')->info('Class deleted', ['class_id' => $id, 'correlation_id' => $correlationId]);
+            $this->log->channel('audit')->info('Class deleted', ['class_id' => $id, 'correlation_id' => $correlationId]);
 
             return response()->json(['success' => true, 'correlation_id' => $correlationId]);
         } catch (Throwable $e) {

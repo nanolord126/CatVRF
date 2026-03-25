@@ -75,7 +75,7 @@ final class HeatmapUpdateListener implements ShouldQueue
             $this->recordUpdateMetrics($event);
 
         } catch (\Exception $e) {
-            Log::channel('audit')->error('HeatmapUpdateListener failed', [
+            $this->log->channel('audit')->error('HeatmapUpdateListener failed', [
                 'event' => $event->getTraceString(),
                 'tenant_id' => $event->tenantId,
                 'heatmap_type' => $event->heatmapType,
@@ -111,10 +111,10 @@ final class HeatmapUpdateListener implements ShouldQueue
             // Invalidate geo-heatmap cache for this vertical
             if ($vertical) {
                 $cacheKey = "heatmap:geo:tenant:{$tenantId}:vertical:{$vertical}";
-                Cache::forget($cacheKey);
+                $this->cache->forget($cacheKey);
                 $cacheKeysInvalidated++;
 
-                Log::channel('audit')->debug('Invalidated geo-heatmap cache', [
+                $this->log->channel('audit')->debug('Invalidated geo-heatmap cache', [
                     'cache_key' => $cacheKey,
                     'correlation_id' => $event->correlationId,
                 ]);
@@ -123,11 +123,11 @@ final class HeatmapUpdateListener implements ShouldQueue
                 $verticals = ['beauty', 'food', 'auto', 'hotels', 'realestate'];
                 foreach ($verticals as $v) {
                     $cacheKey = "heatmap:geo:tenant:{$tenantId}:vertical:{$v}";
-                    Cache::forget($cacheKey);
+                    $this->cache->forget($cacheKey);
                     $cacheKeysInvalidated++;
                 }
 
-                Log::channel('audit')->debug('Invalidated all geo-heatmap cache entries', [
+                $this->log->channel('audit')->debug('Invalidated all geo-heatmap cache entries', [
                     'tenant_id' => $tenantId,
                     'count' => $cacheKeysInvalidated,
                     'correlation_id' => $event->correlationId,
@@ -140,10 +140,10 @@ final class HeatmapUpdateListener implements ShouldQueue
             $pattern = "heatmap:click:tenant:{$tenantId}:*";
             
             // Using Laravel cache tags if available
-            Cache::tags(['heatmap', "tenant:{$tenantId}", 'click'])
+            $this->cache->tags(['heatmap', "tenant:{$tenantId}", 'click'])
                 ->flush();
 
-            Log::channel('audit')->debug('Invalidated click-heatmap cache', [
+            $this->log->channel('audit')->debug('Invalidated click-heatmap cache', [
                 'tenant_id' => $tenantId,
                 'correlation_id' => $event->correlationId,
             ]);
@@ -151,7 +151,7 @@ final class HeatmapUpdateListener implements ShouldQueue
 
         // Invalidate generic heatmap cache
         $genericKey = "heatmap:all:tenant:{$tenantId}";
-        Cache::forget($genericKey);
+        $this->cache->forget($genericKey);
         $cacheKeysInvalidated++;
     }
 
@@ -170,9 +170,9 @@ final class HeatmapUpdateListener implements ShouldQueue
         $cacheKey = "heatmap:last_modified:tenant:{$event->tenantId}:type:{$event->heatmapType}";
 
         // Store with 24-hour TTL
-        Cache::put($cacheKey, $timestamp, 86400);
+        $this->cache->put($cacheKey, $timestamp, 86400);
 
-        Log::channel('audit')->debug('Updated heatmap last-modified timestamp', [
+        $this->log->channel('audit')->debug('Updated heatmap last-modified timestamp', [
             'cache_key' => $cacheKey,
             'timestamp' => $timestamp,
             'correlation_id' => $event->correlationId,
@@ -191,7 +191,7 @@ final class HeatmapUpdateListener implements ShouldQueue
             ? count($event->data['points']) 
             : count($event->data['clicks'] ?? []);
 
-        Log::channel('audit')->info('Heatmap updated', [
+        $this->log->channel('audit')->info('Heatmap updated', [
             'event_type' => 'heatmap.update',
             'heatmap_type' => $event->heatmapType,
             'tenant_id' => $event->tenantId,
@@ -218,16 +218,16 @@ final class HeatmapUpdateListener implements ShouldQueue
         try {
             // Increment update counter
             $counterKey = "heatmap:update_count:tenant:{$event->tenantId}:type:{$event->heatmapType}";
-            Cache::increment($counterKey);
-            Cache::expire($counterKey, 3600); // 1-hour expiry
+            $this->cache->increment($counterKey);
+            $this->cache->expire($counterKey, 3600); // 1-hour expiry
 
             // Track updates per minute for rate limiting detection
             $minuteKey = "heatmap:updates:minute:tenant:{$event->tenantId}:"
                 . \now()->format('Y-m-d H:i');
-            Cache::increment($minuteKey);
-            Cache::expire($minuteKey, 60);
+            $this->cache->increment($minuteKey);
+            $this->cache->expire($minuteKey, 60);
 
-            Log::channel('audit')->debug('Heatmap update metrics recorded', [
+            $this->log->channel('audit')->debug('Heatmap update metrics recorded', [
                 'tenant_id' => $event->tenantId,
                 'heatmap_type' => $event->heatmapType,
                 'correlation_id' => $event->correlationId,
@@ -235,7 +235,7 @@ final class HeatmapUpdateListener implements ShouldQueue
 
         } catch (\Exception $e) {
             // Don't fail the listener if metrics recording fails
-            Log::channel('audit')->warning('Failed to record heatmap update metrics', [
+            $this->log->channel('audit')->warning('Failed to record heatmap update metrics', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $event->correlationId,
             ]);
@@ -253,7 +253,7 @@ final class HeatmapUpdateListener implements ShouldQueue
      */
     public function failed(HeatmapUpdateEvent $event, \Exception $exception): void
     {
-        Log::channel('audit')->critical('HeatmapUpdateListener permanently failed', [
+        $this->log->channel('audit')->critical('HeatmapUpdateListener permanently failed', [
             'event_type' => 'heatmap.update',
             'tenant_id' => $event->tenantId,
             'heatmap_type' => $event->heatmapType,

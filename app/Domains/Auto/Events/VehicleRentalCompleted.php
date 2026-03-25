@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Auto\Events;
@@ -10,7 +12,16 @@ use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-final class VehicleRentalCompleted implements ShouldBroadcast
+final /**
+ * VehicleRentalCompleted
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class VehicleRentalCompleted implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -19,7 +30,7 @@ final class VehicleRentalCompleted implements ShouldBroadcast
         public readonly int $finalMileage,
         public readonly string $correlationId
     ) {
-        Log::channel('audit')->info('VehicleRentalCompleted event dispatched', [
+        $this->log->channel('audit')->info('VehicleRentalCompleted event dispatched', [
             'correlation_id' => $this->correlationId,
             'rental_id' => $this->rental->id,
             'final_mileage' => $this->finalMileage,

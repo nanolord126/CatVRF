@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -10,21 +12,30 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
-final class HandleMasterRatingUpdatedListener implements ShouldQueue
+final /**
+ * HandleMasterRatingUpdatedListener
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class HandleMasterRatingUpdatedListener implements ShouldQueue
 {
     public function handle(MasterRatingUpdated $event): void
     {
         $master = $event->master;
 
         // Invalidate master rating cache
-        Cache::forget("master_rating:{$master->id}");
+        $this->cache->forget("master_rating:{$master->id}");
 
         // Trigger salon rating recalculation
         if ($master->salon_id) {
             RecalculateSalonRatingJob::dispatch($event->correlationId);
         }
 
-        Log::channel('audit')->info('MasterRatingUpdated event handled', [
+        $this->log->channel('audit')->info('MasterRatingUpdated event handled', [
             'master_id' => $master->id,
             'old_rating' => $event->oldRating,
             'new_rating' => $event->newRating,

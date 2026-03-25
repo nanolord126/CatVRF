@@ -25,7 +25,7 @@ final class TenantCRMOnly
 
         // Customer users cannot access CRM
         if ($user->role === Role::Customer) {
-            Log::channel('audit')->warning('Customer attempted CRM access', [
+            $this->log->channel('audit')->warning('Customer attempted CRM access', [
                 'user_id' => $user->id,
                 'ip' => $request->ip(),
                 'path' => $request->path(),
@@ -45,7 +45,7 @@ final class TenantCRMOnly
             ->exists();
 
         if (!$hasTenantAccess) {
-            Log::channel('audit')->warning('User without tenant access attempted CRM', [
+            $this->log->channel('audit')->warning('User without tenant access attempted CRM', [
                 'user_id' => $user->id,
                 'role' => $user->role->value,
                 'ip' => $request->ip(),

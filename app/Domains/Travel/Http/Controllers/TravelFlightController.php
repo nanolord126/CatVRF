@@ -97,7 +97,7 @@ final class TravelFlightController extends Controller
             ]);
 
             $validated = $request->all();
-            $flight = DB::transaction(function () use ($validated, $correlationId) {
+            $flight = $this->db->transaction(function () use ($validated, $correlationId) {
                 return TravelFlight::create([
                     'tenant_id' => tenant()->id,
                     'airline' => ($validated['airline'] ?? null),
@@ -117,7 +117,7 @@ final class TravelFlightController extends Controller
                 ]);
             });
 
-            Log::channel('audit')->info('Flight created', [
+            $this->log->channel('audit')->info('Flight created', [
                 'flight_id' => $flight->id,
                 'flight_number' => $flight->flight_number,
                 'correlation_id' => $correlationId,
@@ -148,7 +148,7 @@ final class TravelFlightController extends Controller
             $this->authorize('update', $flight);
 
             $validated = $request->all();
-            $flight = DB::transaction(function () use ($validated, $flight, $correlationId) {
+            $flight = $this->db->transaction(function () use ($validated, $flight, $correlationId) {
                 $flight->update([
                     'available_seats' => ($validated['available_seats'] ?? $flight->available_seats),
                     'price' => ($validated['price'] ?? $flight->price),
@@ -183,11 +183,11 @@ final class TravelFlightController extends Controller
 
             $this->authorize('delete', $flight);
 
-            DB::transaction(function () use ($flight) {
+            $this->db->transaction(function () use ($flight) {
                 $flight->delete();
             });
 
-            Log::channel('audit')->info('Flight deleted', [
+            $this->log->channel('audit')->info('Flight deleted', [
                 'flight_id' => $flight->id,
                 'correlation_id' => $correlationId,
             ]);

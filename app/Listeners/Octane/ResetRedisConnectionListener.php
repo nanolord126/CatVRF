@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Listeners\Octane;
@@ -5,7 +7,16 @@ namespace App\Listeners\Octane;
 use Laravel\Octane\Events\RequestHandled;
 use Illuminate\Support\Facades\Redis;
 
-final class ResetRedisConnectionListener
+final /**
+ * ResetRedisConnectionListener
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class ResetRedisConnectionListener
 {
     public function handle(RequestHandled $event): void
     {

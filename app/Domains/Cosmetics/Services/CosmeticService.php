@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Cosmetics\Services;
@@ -10,7 +12,16 @@ use App\Domains\Cosmetics\Models\CosmeticOrder;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 
-final class CosmeticService
+final /**
+ * CosmeticService
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class CosmeticService
 {
     public function __construct(
         private readonly FraudControlService $fraudControlService,
@@ -29,7 +40,7 @@ final class CosmeticService
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($productId, $quantity, $userId, $tenantId) {
+$this->db->transaction(function () use ($productId, $quantity, $userId, $tenantId) {
             $product = CosmeticProduct::lockForUpdate()->find($productId);
             
             if (!$product || $product->stock < $quantity) {
@@ -47,7 +58,7 @@ DB::transaction(function () use ($productId, $quantity, $userId, $tenantId) {
                 'status' => 'pending',
             ]);
 
-            Log::channel('audit')->info('Cosmetic order created', [
+            $this->log->channel('audit')->info('Cosmetic order created', [
                 'correlation_id' => $this->correlationId,
                 'product_id' => $productId,
             ]);

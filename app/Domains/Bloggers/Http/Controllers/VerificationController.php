@@ -61,7 +61,7 @@ final class VerificationController extends Controller
             $documentPaths[] = $path;
         }
 
-        DB::transaction(function () use ($profile, $documentPaths) {
+        $this->db->transaction(function () use ($profile, $documentPaths) {
             $profile->update([
                 'verification_status' => 'pending',
                 'verification_documents' => array_merge(
@@ -70,7 +70,7 @@ final class VerificationController extends Controller
                 ),
             ]);
 
-            Log::channel('audit')->info('Blogger submitted verification documents', [
+            $this->log->channel('audit')->info('Blogger submitted verification documents', [
                 'blogger_id' => $profile->id,
                 'correlation_id' => request()->header('X-Correlation-ID') ?? \Str::uuid(),
                 'document_count' => count($documentPaths),
@@ -141,7 +141,7 @@ final class VerificationController extends Controller
             ], 422);
         }
 
-        DB::transaction(function () use ($profile, $validated) {
+        $this->db->transaction(function () use ($profile, $validated) {
             $documentPaths = [];
             if ($request->hasFile('documents')) {
                 foreach ($request->file('documents') as $document) {
@@ -158,7 +158,7 @@ final class VerificationController extends Controller
                 ),
             ]);
 
-            Log::channel('audit')->info('Blogger appealed rejection', [
+            $this->log->channel('audit')->info('Blogger appealed rejection', [
                 'blogger_id' => $profile->id,
                 'correlation_id' => request()->header('X-Correlation-ID') ?? \Str::uuid(),
                 'message' => $validated['message'],

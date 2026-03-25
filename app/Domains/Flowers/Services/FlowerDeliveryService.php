@@ -34,7 +34,7 @@ final class FlowerDeliveryService
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($orderId, $courierName, $courierPhone, $correlationId) {
+$this->db->transaction(function () use ($orderId, $courierName, $courierPhone, $correlationId) {
             $order = FlowerOrder::query()
                 ->where('id', $orderId)
                 ->lockForUpdate()
@@ -53,7 +53,7 @@ DB::transaction(function () use ($orderId, $courierName, $courierPhone, $correla
 
             $order->update(['status' => 'ready']);
 
-            Log::channel('audit')->info('Flower delivery assigned', [
+            $this->log->channel('audit')->info('Flower delivery assigned', [
                 'delivery_id' => $delivery->id,
                 'order_id' => $order->id,
                 'courier_name' => $courierName,
@@ -80,7 +80,7 @@ DB::transaction(function () use ($orderId, $courierName, $courierPhone, $correla
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($deliveryId, $status, $location, $correlationId) {
+$this->db->transaction(function () use ($deliveryId, $status, $location, $correlationId) {
             $delivery = FlowerDelivery::query()
                 ->where('id', $deliveryId)
                 ->lockForUpdate()
@@ -102,7 +102,7 @@ DB::transaction(function () use ($deliveryId, $status, $location, $correlationId
                 FlowerDeliveryCompleted::dispatch($delivery, $correlationId);
             }
 
-            Log::channel('audit')->info('Flower delivery status updated', [
+            $this->log->channel('audit')->info('Flower delivery status updated', [
                 'delivery_id' => $delivery->id,
                 'status' => $status,
                 'correlation_id' => $correlationId,
@@ -115,7 +115,7 @@ DB::transaction(function () use ($deliveryId, $status, $location, $correlationId
     public function trackDelivery(int $deliveryId): FlowerDelivery
     {
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Flowers', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in Flowers', ['correlation_id' => $correlationId]);
 
         return FlowerDelivery::query()
             ->where('id', $deliveryId)

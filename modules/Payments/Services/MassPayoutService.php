@@ -46,7 +46,7 @@ final readonly class MassPayoutService
                 throw new Exception("Превышен дневной лимит: {$maxPayoutPerDay}");
             }
 
-            Log::channel('audit')->info('Инициирование массовой выплаты', [
+            $this->log->channel('audit')->info('Инициирование массовой выплаты', [
                 'batch_id' => '',
                 'count' => count($payouts),
                 'total_amount' => $totalAmount,
@@ -56,7 +56,7 @@ final readonly class MassPayoutService
             // Создаём записи платежей
             $batchId = 'batch_' . uniqid();
 
-            DB::transaction(function () use ($payouts, $batchId, $correlationId) {
+            $this->db->transaction(function () use ($payouts, $batchId, $correlationId) {
                 foreach ($payouts as $payout) {
                     // Fraud check
                     $this->fraudControlService->checkPayout(
@@ -84,7 +84,7 @@ final readonly class MassPayoutService
                 'status' => 'pending',
             ];
         } catch (Exception $e) {
-            Log::channel('audit')->error('Ошибка при инициировании массовой выплаты', [
+            $this->log->channel('audit')->error('Ошибка при инициировании массовой выплаты', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'correlation_id' => $correlationId,
@@ -111,7 +111,7 @@ final readonly class MassPayoutService
         try {
             $payment = PaymentTransaction::findOrFail($paymentId);
 
-            Log::channel('audit')->info('Выполнение выплаты', [
+            $this->log->channel('audit')->info('Выполнение выплаты', [
                 'payment_id' => $paymentId,
                 'gateway' => $gateway,
                 'amount' => $payment->amount,
@@ -130,7 +130,7 @@ final readonly class MassPayoutService
                 throw new \Exception('Payout failed: ' . ($result['error'] ?? 'Unknown error'));
             }
 
-            DB::transaction(function () use ($payment, $gateway, $result) {
+            $this->db->transaction(function () use ($payment, $gateway, $result) {
                 $payment->update([
                     'status' => 'captured',
                     'gateway' => $gateway,
@@ -138,14 +138,14 @@ final readonly class MassPayoutService
                 ]);
             });
 
-            Log::channel('audit')->info('Выплата выполнена', [
+            $this->log->channel('audit')->info('Выплата выполнена', [
                 'payment_id' => $paymentId,
                 'correlation_id' => $correlationId,
             ]);
 
             return true;
         } catch (Exception $e) {
-            Log::channel('audit')->error('Ошибка при выполнении выплаты', [
+            $this->log->channel('audit')->error('Ошибка при выполнении выплаты', [
                 'payment_id' => $paymentId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

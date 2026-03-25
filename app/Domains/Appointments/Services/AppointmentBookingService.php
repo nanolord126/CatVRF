@@ -28,7 +28,7 @@ final class AppointmentBookingService
      */
     public function createAppointment(array $data): Appointment
     {
-        Log::channel('audit')->info('Attempting to create appointment', [
+        $this->log->channel('audit')->info('Attempting to create appointment', [
             'correlation_id' => $this->correlationId,
             'client_id' => $data['client_id'] ?? null,
             'bookable_type' => $data['bookable_type'] ?? null,
@@ -43,7 +43,7 @@ final class AppointmentBookingService
             'correlation_id' => $this->correlationId,
         ]);
 
-        return DB::transaction(function () use ($data) {
+        return $this->db->transaction(function () use ($data) {
             // 2. Проверка пересечений (Overlap detection)
             $start = Carbon::parse($data['datetime_start']);
             $end = Carbon::parse($data['datetime_end']);
@@ -61,7 +61,7 @@ final class AppointmentBookingService
                 })->exists();
 
             if ($overlap) {
-                Log::channel('audit')->warning('Appointment overlap detected', [
+                $this->log->channel('audit')->warning('Appointment overlap detected', [
                     'correlation_id' => $this->correlationId,
                     'bookable_id' => $data['bookable_id'],
                 ]);
@@ -76,7 +76,7 @@ final class AppointmentBookingService
                 'payment_status' => 'unpaid',
             ]));
 
-            Log::channel('audit')->info('Appointment created successfully', [
+            $this->log->channel('audit')->info('Appointment created successfully', [
                 'appointment_id' => $appointment->id,
                 'correlation_id' => $this->correlationId,
             ]);
@@ -90,7 +90,7 @@ final class AppointmentBookingService
      */
     public function confirmAppointment(int $id): bool
     {
-        return DB::transaction(function () use ($id) {
+        return $this->db->transaction(function () use ($id) {
             $appointment = Appointment::findOrFail($id);
             
             if ($appointment->status !== 'pending') {
@@ -102,7 +102,7 @@ final class AppointmentBookingService
                 'correlation_id' => $this->correlationId,
             ]);
 
-            Log::channel('audit')->info('Appointment confirmed', [
+            $this->log->channel('audit')->info('Appointment confirmed', [
                 'appointment_id' => $id,
                 'correlation_id' => $this->correlationId,
             ]);
@@ -116,7 +116,7 @@ final class AppointmentBookingService
      */
     public function completeAppointment(int $id): bool
     {
-        return DB::transaction(function () use ($id) {
+        return $this->db->transaction(function () use ($id) {
             $appointment = Appointment::findOrFail($id);
             
             if ($appointment->status === 'cancelled' || $appointment->status === 'completed') {
@@ -131,7 +131,7 @@ final class AppointmentBookingService
             // Здесь в будущем можно вызвать InventoryManagementService::deduct() 
             // для списания расходников на основе типа услуги.
 
-            Log::channel('audit')->info('Appointment completed', [
+            $this->log->channel('audit')->info('Appointment completed', [
                 'appointment_id' => $id,
                 'correlation_id' => $this->correlationId,
             ]);
@@ -145,7 +145,7 @@ final class AppointmentBookingService
      */
     public function cancelAppointment(int $id, string $reason = ''): bool
     {
-        return DB::transaction(function () use ($id, $reason) {
+        return $this->db->transaction(function () use ($id, $reason) {
             $appointment = Appointment::findOrFail($id);
             
             if ($appointment->status === 'completed') {
@@ -158,7 +158,7 @@ final class AppointmentBookingService
                 'correlation_id' => $this->correlationId,
             ]);
 
-            Log::channel('audit')->info('Appointment cancelled', [
+            $this->log->channel('audit')->info('Appointment cancelled', [
                 'appointment_id' => $id,
                 'reason' => $reason,
                 'correlation_id' => $this->correlationId,

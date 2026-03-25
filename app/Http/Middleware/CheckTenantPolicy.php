@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Http\Middleware;
@@ -7,7 +9,16 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Symfony\Component\HttpFoundation\Response;
 
-final class CheckTenantPolicy
+final /**
+ * CheckTenantPolicy
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class CheckTenantPolicy
 {
     /**
      * Handle an incoming request.
@@ -21,7 +32,7 @@ final class CheckTenantPolicy
         }
 
         // Check tenant access
-        if (! Gate::check('view-tenant')) {
+        if (! $this->gate->check('view-tenant')) {
             return response()->json(['error' => 'Forbidden - No tenant access'], 403);
         }
 

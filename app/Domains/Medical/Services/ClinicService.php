@@ -43,7 +43,7 @@ final class ClinicService
         }
         RateLimiter::hit("medical:booking:{$userId}", 3600);
 
-        return DB::transaction(function () use ($userId, $doctorId, $serviceId, $dateTime, $correlationId) {
+        return $this->db->transaction(function () use ($userId, $doctorId, $serviceId, $dateTime, $correlationId) {
             $doctor = Doctor::findOrFail($doctorId);
             $service = MedicalService::where("doctor_id", $doctorId)->findOrFail($serviceId);
             $clinic = Clinic::findOrFail($doctor->clinic_id);
@@ -58,7 +58,7 @@ final class ClinicService
             ]);
 
             if ($fraud["decision"] === "block") {
-                Log::channel("audit")->error("Medical: Security block", ["user_id" => $userId, "score" => $fraud["score"], "doctor_id" => $doctorId]);
+                $this->log->channel("audit")->error("Medical: Security block", ["user_id" => $userId, "score" => $fraud["score"], "doctor_id" => $doctorId]);
                 throw new \RuntimeException("Запись отклонена службой безопасности.", 403);
             }
 
@@ -90,7 +90,7 @@ final class ClinicService
                 }
             }
 
-            Log::channel("audit")->info("Medical: appointment created", ["appointment_id" => $appointment->id, "corr" => $correlationId]);
+            $this->log->channel("audit")->info("Medical: appointment created", ["appointment_id" => $appointment->id, "corr" => $correlationId]);
 
             return $appointment;
         });
@@ -104,7 +104,7 @@ final class ClinicService
         $correlationId = $correlationId ?: (string) Str::uuid();
         $appointment = MedicalAppointment::findOrFail($appointmentId);
 
-        DB::transaction(function () use ($appointment, $results, $prescription, $correlationId) {
+        $this->db->transaction(function () use ($appointment, $results, $prescription, $correlationId) {
             $appointment->update(["status" => "completed", "doctor_notes" => $results["notes"]]);
 
             // Списание расходников из инвентаря
@@ -131,7 +131,7 @@ final class ClinicService
                 "correlation_id" => $correlationId
             ]);
 
-            Log::channel("audit")->info("Medical: appointment finished", ["appointment_id" => $appointment->id]);
+            $this->log->channel("audit")->info("Medical: appointment finished", ["appointment_id" => $appointment->id]);
         });
     }
 }

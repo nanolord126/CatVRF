@@ -1,5 +1,29 @@
 <?php declare(strict_types=1);
-namespace App\Domains\DigitalTransformation\Models;
+namespace App\Domai
+
+/**
+ * TransformationInitiative
+ * 
+ * Производитель: CatVRF Platform
+ * Версия: 1.0.0
+ * 
+ * Примеры использования:
+ * 
+ * ```php
+ * // Базовое использование
+ * $instance = new TransformationInitiative();
+ * ```
+ * 
+ * Требования:
+ * - Laravel 10+
+ * - PHP 8.2+
+ * - Все методы должны быть явно типизированы
+ * 
+ * @author CatVRF
+ * @package namespace App\Domains\DigitalTransformation\Models
+ * @see https://github.com/iyegorovskyi_clemny/CatVRF
+ */
+ns\DigitalTransformation\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;

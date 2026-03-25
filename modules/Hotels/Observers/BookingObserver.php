@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 namespace Modules\Hotels\Observers;
@@ -7,6 +9,15 @@ use Modules\Staff\Models\StaffTask;
 use Modules\Hotels\Models\Booking;
 use Illuminate\Support\Str;
 
+/**
+ * BookingObserver
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
 class BookingObserver
 {
     /**
@@ -32,7 +43,7 @@ class BookingObserver
 
             // Логируем автоматизацию для аудита
             // Используем модель AuditLog (создана ранее)
-            \App\Models\AuditLog::create([
+            \App\Models\Audit$this->log->create([
                 'user_id' => 0, // 0 for System Action
                 'action' => 'AUTO_TASK_GENERATION',
                 'resource_id' => $booking->id,

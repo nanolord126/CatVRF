@@ -34,7 +34,7 @@ final readonly class TransportationService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-DB::transaction(function () use (
+$this->db->transaction(function () use (
                 $transportation,
                 $seatsRequired,
                 $correlationId,
@@ -47,7 +47,7 @@ DB::transaction(function () use (
 
                 $transportation->decrement('available_count', $seatsRequired);
 
-                Log::channel('audit')->info('Transportation booked', [
+                $this->log->channel('audit')->info('Transportation booked', [
                     'transportation_id' => $transportation->id,
                     'type' => $transportation->type,
                     'seats_booked' => $seatsRequired,
@@ -62,7 +62,7 @@ DB::transaction(function () use (
                 return $transportation->refresh();
             });
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Transportation booking failed', [
+            $this->log->channel('audit')->error('Transportation booking failed', [
                 'transportation_id' => $transportation->id,
                 'seats_required' => $seatsRequired,
                 'error' => $e->getMessage(),
@@ -92,7 +92,7 @@ DB::transaction(function () use (
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-DB::transaction(function () use (
+$this->db->transaction(function () use (
                 $transportation,
                 $seatsToRelease,
                 $correlationId,
@@ -107,7 +107,7 @@ DB::transaction(function () use (
 
                 $transportation->increment('available_count', $seatsToRelease);
 
-                Log::channel('audit')->info('Transportation spaces released', [
+                $this->log->channel('audit')->info('Transportation spaces released', [
                     'transportation_id' => $transportation->id,
                     'type' => $transportation->type,
                     'spaces_released' => $seatsToRelease,
@@ -119,7 +119,7 @@ DB::transaction(function () use (
                 return $transportation->refresh();
             });
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Transportation space release failed', [
+            $this->log->channel('audit')->error('Transportation space release failed', [
                 'transportation_id' => $transportation->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -9,6 +11,15 @@ use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
+/**
+ * ReviewSubmitted
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
 class ReviewSubmitted
 {
 	use Dispatchable, InteractsWithSockets, SerializesModels;
@@ -16,5 +27,13 @@ class ReviewSubmitted
 	public function __construct(
 		public readonly PhotoReview $review,
 		public readonly string $correlationId
-	) {}
+	) {
+    /**
+     * Инициализировать класс
+     */
+    public function __construct()
+    {
+        // TODO: инициализация
+    }
+}
 }

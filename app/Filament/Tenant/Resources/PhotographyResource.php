@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources;
@@ -10,6 +12,15 @@ use Filament\Forms\Form;
 use App\Domains\Photography\Models\B2BPhotoOrder;
 use Illuminate\Database\Eloquent\Builder;
 
+/**
+ * PhotographyResource
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
 class PhotographyResource extends Resource
 {
     protected static ?string $model = B2BPhotoOrder::class;

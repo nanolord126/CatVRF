@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 namespace Modules\Analytics\Services;
@@ -6,8 +8,19 @@ use Modules\Geo\Models\GeoZone;
 use App\Models\User;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * GeoFencingService
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
 class GeoFencingService
 {
+    // Dependencies injected via constructor
+    // Add private readonly properties here
     /**
      * Вызывается при обновлении местоположения пользователя.
      */
@@ -32,7 +45,7 @@ class GeoFencingService
 
     private function triggerZoneOffer(User $user, GeoZone $zone, string $correlationId): void
     {
-        Log::info("GeoFencing trigger for User {$user->id} in Zone {$zone->name}");
+        $this->log->info("GeoFencing trigger for User {$user->id} in Zone {$zone->name}");
         // Отправка оффера...
     }
 }

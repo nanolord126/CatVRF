@@ -31,7 +31,7 @@ final class FlowerReviewController
                     'success' => false,
                     'message' => 'Unauthorized',
                     'correlation_id' => $correlationId,
-                ], Response::HTTP_FORBIDDEN);
+                ], $this->response->HTTP_FORBIDDEN);
             }
 
             $validated = $request->validate([
@@ -41,7 +41,7 @@ final class FlowerReviewController
                 'comment' => 'nullable|string|max:1000',
             ]);
 
-            $review = DB::transaction(function () use ($order, $validated, $correlationId) {
+            $review = $this->db->transaction(function () use ($order, $validated, $correlationId) {
                 $overallRating = round(
                     ($validated['quality_rating'] + $validated['delivery_rating'] + $validated['freshness_rating']) / 3,
                     1
@@ -61,7 +61,7 @@ final class FlowerReviewController
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Flower review created', [
+                $this->log->channel('audit')->info('Flower review created', [
                     'review_id' => $review->id,
                     'order_id' => $order->id,
                     'correlation_id' => $correlationId,
@@ -74,9 +74,9 @@ final class FlowerReviewController
                 'success' => true,
                 'data' => $review,
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_CREATED);
+            ], $this->response->HTTP_CREATED);
         } catch (\Exception $exception) {
-            Log::channel('audit')->error('Review creation failed', [
+            $this->log->channel('audit')->error('Review creation failed', [
                 'error' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -85,7 +85,7 @@ final class FlowerReviewController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -110,7 +110,7 @@ final class FlowerReviewController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -127,7 +127,7 @@ final class FlowerReviewController
                     'success' => false,
                     'message' => 'Unauthorized',
                     'correlation_id' => $correlationId,
-                ], Response::HTTP_FORBIDDEN);
+                ], $this->response->HTTP_FORBIDDEN);
             }
 
             $validated = $request->validate([
@@ -137,10 +137,10 @@ final class FlowerReviewController
                 'comment' => 'nullable|string|max:1000',
             ]);
 
-            $review = DB::transaction(function () use ($review, $validated, $correlationId) {
+            $review = $this->db->transaction(function () use ($review, $validated, $correlationId) {
                 $review->update([...$validated, 'correlation_id' => $correlationId]);
 
-                Log::channel('audit')->info('Flower review updated', [
+                $this->log->channel('audit')->info('Flower review updated', [
                     'review_id' => $review->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -158,7 +158,7 @@ final class FlowerReviewController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -175,13 +175,13 @@ final class FlowerReviewController
                     'success' => false,
                     'message' => 'Unauthorized',
                     'correlation_id' => $correlationId,
-                ], Response::HTTP_FORBIDDEN);
+                ], $this->response->HTTP_FORBIDDEN);
             }
 
-            DB::transaction(function () use ($review, $correlationId) {
+            $this->db->transaction(function () use ($review, $correlationId) {
                 $review->delete();
 
-                Log::channel('audit')->info('Flower review deleted', [
+                $this->log->channel('audit')->info('Flower review deleted', [
                     'review_id' => $review->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -197,7 +197,7 @@ final class FlowerReviewController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 }

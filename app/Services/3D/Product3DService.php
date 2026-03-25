@@ -16,14 +16,14 @@ final class Product3DService
         $fileName = "{$vertical}-{$productId}-" . Str::uuid()->toString() . '.' . pathinfo($filePath, PATHINFO_EXTENSION);
         $storagePath = "'.self::STORAGE_PATH.'/{$vertical}/{$fileName}";
 
-        Storage::disk('public')->put($storagePath, file_get_contents($filePath));
+        $this->storage->disk('public')->put($storagePath, file_get_contents($filePath));
 
         return [
             'id' => Str::uuid()->toString(),
             'product_id' => $productId,
             'vertical' => $vertical,
             'path' => $storagePath,
-            'url' => Storage::disk('public')->url($storagePath),
+            'url' => $this->storage->disk('public')->url($storagePath),
             'format' => pathinfo($filePath, PATHINFO_EXTENSION),
             'size' => filesize($filePath),
             'uploaded_at' => now(),
@@ -44,7 +44,7 @@ final class Product3DService
 
     public function getProduct3DModel(int $productId): array
     {
-        $record = DB::table('product_3d_models')
+        $record = $this->db->table('product_3d_models')
             ->where('product_id', $productId)
             ->first();
 
@@ -56,7 +56,7 @@ final class Product3DService
             'id' => $record->id,
             'product_id' => $record->product_id,
             'path' => $record->path,
-            'url' => Storage::url($record->path),
+            'url' => $this->storage->url($record->path),
             'format' => $record->format,
             'size' => $record->size,
             'uploaded_at' => $record->uploaded_at,

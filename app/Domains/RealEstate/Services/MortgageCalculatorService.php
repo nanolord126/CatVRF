@@ -37,7 +37,7 @@ final class MortgageCalculatorService
             $totalPayment = $monthlyPayment * $loanTermMonths;
             $totalInterest = $totalPayment - $loanAmount;
 
-            Log::channel('audit')->info('Mortgage calculated', [
+            $this->log->channel('audit')->info('Mortgage calculated', [
                 'property_price' => $propertyPrice,
                 'loan_amount' => $loanAmount,
                 'monthly_payment' => $monthlyPayment,
@@ -54,7 +54,7 @@ final class MortgageCalculatorService
                 'loan_term_months' => $loanTermMonths,
             ];
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Mortgage calculation failed', [
+            $this->log->channel('audit')->error('Mortgage calculation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);

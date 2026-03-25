@@ -17,12 +17,12 @@ final readonly class SessionService
 	public function createSession(array $data): PhotoSession
 	{
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Photography', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in Photography', ['correlation_id' => $correlationId]);
 
-		return DB::transaction(function () use ($data) {
+		return $this->db->transaction(function () use ($data) {
 			$correlationId = $data['correlation_id'] ?? Str::uuid()->toString();
 
-			$session = PhotoSession::create([
+			$session = Photo$this->session->create([
 				'uuid' => Str::uuid(),
 				'tenant_id' => $data['tenant_id'],
 				'photo_studio_id' => $data['photo_studio_id'],
@@ -38,7 +38,7 @@ final readonly class SessionService
 				'correlation_id' => $correlationId,
 			]);
 
-			Log::channel('audit')->info('Photography: Session created', [
+			$this->log->channel('audit')->info('Photography: Session created', [
 				'session_id' => $session->id,
 				'tenant_id' => $session->tenant_id,
 				'amount' => $data['total_amount'],
@@ -52,12 +52,12 @@ final readonly class SessionService
 	public function updateSessionStatus(PhotoSession $session, string $status): PhotoSession
 	{
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Photography', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in Photography', ['correlation_id' => $correlationId]);
 
-		return DB::transaction(function () use ($session, $status) {
+		return $this->db->transaction(function () use ($session, $status) {
 			$session->update(['status' => $status]);
 
-			Log::channel('audit')->info('Photography: Session status updated', [
+			$this->log->channel('audit')->info('Photography: Session status updated', [
 				'session_id' => $session->id,
 				'status' => $status,
 				'correlation_id' => $session->correlation_id,
@@ -70,12 +70,12 @@ final readonly class SessionService
 	public function cancelSession(PhotoSession $session): void
 	{
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Photography', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in Photography', ['correlation_id' => $correlationId]);
 
-		DB::transaction(function () use ($session) {
+		$this->db->transaction(function () use ($session) {
 			$session->update(['status' => 'cancelled']);
 
-			Log::channel('audit')->info('Photography: Session cancelled', [
+			$this->log->channel('audit')->info('Photography: Session cancelled', [
 				'session_id' => $session->id,
 				'correlation_id' => $session->correlation_id,
 			]);

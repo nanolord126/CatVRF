@@ -38,7 +38,7 @@ final class PromoController extends Controller
             );
 
             if (!$rateLimitPassed) {
-                Log::channel('fraud_alert')->warning('Promo apply rate limit exceeded', [
+                $this->log->channel('fraud_alert')->warning('Promo apply rate limit exceeded', [
                     'correlation_id' => $correlationId,
                     'user_id' => $request->user()?->id,
                 ]);
@@ -59,7 +59,7 @@ final class PromoController extends Controller
             );
 
             if ($fraudResult['decision'] === 'block') {
-                Log::channel('fraud_alert')->warning('Promo apply blocked by fraud control', [
+                $this->log->channel('fraud_alert')->warning('Promo apply blocked by fraud control', [
                     'correlation_id' => $correlationId,
                     'user_id' => $request->user()?->id,
                     'score' => $fraudResult['score'],
@@ -77,7 +77,7 @@ final class PromoController extends Controller
                 'tenant_id' => 'required|integer',
             ]);
 
-            Log::channel('audit')->info('Promo apply attempt', [
+            $this->log->channel('audit')->info('Promo apply attempt', [
                 'correlation_id' => $correlationId,
                 'user_id'    => $request->user()?->id,
                 'tenant_id'  => $request->input('tenant_id'),
@@ -92,7 +92,7 @@ final class PromoController extends Controller
                 amount: (int) $request->input('amount'),
             );
 
-            Log::channel('audit')->info('Promo apply result', [
+            $this->log->channel('audit')->info('Promo apply result', [
                 'correlation_id' => $correlationId,
                 'success'        => $result['success'] ?? false,
                 'discount'       => $result['discount'] ?? 0,
@@ -119,7 +119,7 @@ final class PromoController extends Controller
                 'correlation_id' => $correlationId,
             ], 422);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Promo apply failed', [
+            $this->log->channel('audit')->error('Promo apply failed', [
                 'correlation_id' => $correlationId,
                 'error'          => $e->getMessage(),
                 'trace'          => $e->getTraceAsString(),
@@ -160,7 +160,7 @@ final class PromoController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Promo index failed', [
+            $this->log->channel('audit')->error('Promo index failed', [
                 'correlation_id' => $correlationId,
                 'error'          => $e->getMessage(),
                 'trace'          => $e->getTraceAsString(),

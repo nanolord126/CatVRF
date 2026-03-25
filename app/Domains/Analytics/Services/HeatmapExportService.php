@@ -99,7 +99,7 @@ final class HeatmapExportService
             $filename = $this->generateFilename('geo-heatmap', 'png', $tenantId);
             $storagePath = "{$this->storagePath}/{$tenantId}/{$filename}";
 
-            Log::channel('audit')->info('Starting geo-heatmap PNG export', [
+            $this->log->channel('audit')->info('Starting geo-heatmap PNG export', [
                 'tenant_id' => $tenantId,
                 'filename' => $filename,
                 'metadata' => $metadata,
@@ -118,19 +118,19 @@ final class HeatmapExportService
             }
 
             // Store file
-            Storage::disk($this->disk)->put(
+            $this->storage->disk($this->disk)->put(
                 $storagePath,
                 $pngContent,
                 ['visibility' => 'private'] // Private visibility for security
             );
 
             // Generate signed URL (expires in 24 hours)
-            $url = Storage::disk($this->disk)->temporaryUrl(
+            $url = $this->storage->disk($this->disk)->temporaryUrl(
                 $storagePath,
                 \now()->addSeconds($this->fileTtl)
             );
 
-            Log::channel('audit')->info('Geo-heatmap PNG export completed', [
+            $this->log->channel('audit')->info('Geo-heatmap PNG export completed', [
                 'tenant_id' => $tenantId,
                 'filename' => $filename,
                 'file_size' => $fileSize,
@@ -149,7 +149,7 @@ final class HeatmapExportService
             ];
 
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Geo-heatmap PNG export failed', [
+            $this->log->channel('audit')->error('Geo-heatmap PNG export failed', [
                 'tenant_id' => $tenantId,
                 'error_message' => $e->getMessage(),
                 'error_trace' => $e->getTraceAsString(),
@@ -197,7 +197,7 @@ final class HeatmapExportService
             $filename = $this->generateFilename('geo-heatmap-report', 'pdf', $tenantId);
             $storagePath = "{$this->storagePath}/{$tenantId}/{$filename}";
 
-            Log::channel('audit')->info('Starting geo-heatmap PDF export', [
+            $this->log->channel('audit')->info('Starting geo-heatmap PDF export', [
                 'tenant_id' => $tenantId,
                 'filename' => $filename,
                 'metadata_keys' => array_keys($metadata),
@@ -216,19 +216,19 @@ final class HeatmapExportService
             }
 
             // Store file
-            Storage::disk($this->disk)->put(
+            $this->storage->disk($this->disk)->put(
                 $storagePath,
                 $pdfContent,
                 ['visibility' => 'private']
             );
 
             // Generate signed URL
-            $url = Storage::disk($this->disk)->temporaryUrl(
+            $url = $this->storage->disk($this->disk)->temporaryUrl(
                 $storagePath,
                 \now()->addSeconds($this->fileTtl)
             );
 
-            Log::channel('audit')->info('Geo-heatmap PDF export completed', [
+            $this->log->channel('audit')->info('Geo-heatmap PDF export completed', [
                 'tenant_id' => $tenantId,
                 'filename' => $filename,
                 'file_size' => $fileSize,
@@ -247,7 +247,7 @@ final class HeatmapExportService
             ];
 
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Geo-heatmap PDF export failed', [
+            $this->log->channel('audit')->error('Geo-heatmap PDF export failed', [
                 'tenant_id' => $tenantId,
                 'error_message' => $e->getMessage(),
                 'error_trace' => $e->getTraceAsString(),
@@ -293,7 +293,7 @@ final class HeatmapExportService
             $filename = $this->generateFilename('click-heatmap', 'png', $tenantId);
             $storagePath = "{$this->storagePath}/{$tenantId}/{$filename}";
 
-            Log::channel('audit')->info('Starting click-heatmap PNG export', [
+            $this->log->channel('audit')->info('Starting click-heatmap PNG export', [
                 'tenant_id' => $tenantId,
                 'filename' => $filename,
                 'correlation_id' => $correlationId,
@@ -308,19 +308,19 @@ final class HeatmapExportService
             }
 
             // Store file
-            Storage::disk($this->disk)->put(
+            $this->storage->disk($this->disk)->put(
                 $storagePath,
                 $pngData,
                 ['visibility' => 'private']
             );
 
             // Generate signed URL
-            $url = Storage::disk($this->disk)->temporaryUrl(
+            $url = $this->storage->disk($this->disk)->temporaryUrl(
                 $storagePath,
                 \now()->addSeconds($this->fileTtl)
             );
 
-            Log::channel('audit')->info('Click-heatmap PNG export completed', [
+            $this->log->channel('audit')->info('Click-heatmap PNG export completed', [
                 'tenant_id' => $tenantId,
                 'filename' => $filename,
                 'file_size' => $fileSize,
@@ -338,7 +338,7 @@ final class HeatmapExportService
             ];
 
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Click-heatmap PNG export failed', [
+            $this->log->channel('audit')->error('Click-heatmap PNG export failed', [
                 'tenant_id' => $tenantId,
                 'error_message' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -387,7 +387,7 @@ final class HeatmapExportService
             $filename = $this->generateFilename('click-heatmap-report', 'pdf', $tenantId);
             $storagePath = "{$this->storagePath}/{$tenantId}/{$filename}";
 
-            Log::channel('audit')->info('Starting click-heatmap PDF export', [
+            $this->log->channel('audit')->info('Starting click-heatmap PDF export', [
                 'tenant_id' => $tenantId,
                 'filename' => $filename,
                 'correlation_id' => $correlationId,
@@ -405,19 +405,19 @@ final class HeatmapExportService
             }
 
             // Store file
-            Storage::disk($this->disk)->put(
+            $this->storage->disk($this->disk)->put(
                 $storagePath,
                 $pdfContent,
                 ['visibility' => 'private']
             );
 
             // Generate signed URL
-            $url = Storage::disk($this->disk)->temporaryUrl(
+            $url = $this->storage->disk($this->disk)->temporaryUrl(
                 $storagePath,
                 \now()->addSeconds($this->fileTtl)
             );
 
-            Log::channel('audit')->info('Click-heatmap PDF export completed', [
+            $this->log->channel('audit')->info('Click-heatmap PDF export completed', [
                 'tenant_id' => $tenantId,
                 'filename' => $filename,
                 'file_size' => $fileSize,
@@ -435,7 +435,7 @@ final class HeatmapExportService
             ];
 
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Click-heatmap PDF export failed', [
+            $this->log->channel('audit')->error('Click-heatmap PDF export failed', [
                 'tenant_id' => $tenantId,
                 'error_message' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -469,12 +469,10 @@ final class HeatmapExportService
         // $png = Browsershot::html($html)->png();
         //
         // For now, return placeholder
-        Log::channel('audit')->debug('Converting HTML to PNG', [
+        $this->log->channel('audit')->debug('Converting HTML to PNG', [
             'html_length' => \strlen($html),
             'options' => $options,
         ]);
-
-        // TODO: Implement with Browsershot or Puppeteer
         throw new \RuntimeException(
             'HTML to PNG conversion not yet implemented. Install Browsershot: composer require spatie/browsershot'
         );
@@ -503,12 +501,10 @@ final class HeatmapExportService
         // $pdfContent = $dompdf->output();
         //
         // For now, return placeholder
-        Log::channel('audit')->debug('Converting HTML to PDF', [
+        $this->log->channel('audit')->debug('Converting HTML to PDF', [
             'html_length' => \strlen($html),
             'metadata' => $metadata,
         ]);
-
-        // TODO: Implement with DOMPDF
         throw new \RuntimeException(
             'HTML to PDF conversion not yet implemented. Install DOMPDF: composer require dompdf/dompdf'
         );
@@ -526,7 +522,6 @@ final class HeatmapExportService
     private function createPdfWithImage(string $imageData, array $metadata): string
     {
         // Placeholder for PDF creation with embedded image
-        // TODO: Implement with DOMPDF
         throw new \RuntimeException(
             'PDF creation with image embedding not yet implemented. Install DOMPDF: composer require dompdf/dompdf'
         );
@@ -589,7 +584,7 @@ final class HeatmapExportService
      */
     public function getStorageDisk()
     {
-        return Storage::disk($this->disk);
+        return $this->storage->disk($this->disk);
     }
 
     /**

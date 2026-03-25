@@ -25,7 +25,7 @@ final class BookingController
 
         try {
 
-            $booking = DB::transaction(function () use ($classId, $correlationId) {
+            $booking = $this->db->transaction(function () use ($classId, $correlationId) {
                 return $this->bookingService->createBooking(
                     $classId,
                     auth()->id(),
@@ -41,7 +41,7 @@ final class BookingController
 
             return response()->json(['success' => true, 'data' => $booking, 'correlation_id' => $correlationId], 201);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Booking creation failed', ['error' => $e->getMessage()]);
+            $this->log->channel('audit')->error('Booking creation failed', ['error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => 'Booking failed'], 500);
         }
     }
@@ -78,7 +78,7 @@ final class BookingController
             $this->authorize('cancel', $booking);
 
             $correlationId = Str::uuid()->toString();
-            DB::transaction(fn() => $this->bookingService->cancelBooking($booking, 'User cancelled', $correlationId));
+            $this->db->transaction(fn() => $this->bookingService->cancelBooking($booking, 'User cancelled', $correlationId));
 
             return response()->json(['success' => true, 'message' => 'Booking cancelled', 'correlation_id' => $correlationId]);
         } catch (\Throwable $e) {

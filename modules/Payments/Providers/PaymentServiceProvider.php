@@ -2,6 +2,30 @@
 
 declare(strict_types=1);
 
+
+
+/**
+ * PaymentServiceProvider
+ * 
+ * Производитель: CatVRF Platform
+ * Версия: 1.0.0
+ * 
+ * Примеры использования:
+ * 
+ * ```php
+ * // Базовое использование
+ * $instance = new PaymentServiceProvider();
+ * ```
+ * 
+ * Требования:
+ * - Laravel 10+
+ * - PHP 8.2+
+ * - Все методы должны быть явно типизированы
+ * 
+ * @author CatVRF
+ * @package namespace Modules\Payments\Providers
+ * @see https://github.com/iyegorovskyi_clemny/CatVRF
+ */
 namespace Modules\Payments\Providers;
 
 use Illuminate\Support\ServiceProvider;
@@ -11,6 +35,12 @@ use Modules\Payments\Gateways\TinkoffGateway;
 
 final class PaymentServiceProvider extends ServiceProvider
 {
+    /**
+     * Выполнить операцию
+     * 
+     * @return mixed
+     * @throws \Exception
+     */
     public function register(): void
     {
         $this->app->singleton(PaymentGatewayInterface::class, function ($app) {
@@ -33,6 +63,12 @@ final class PaymentServiceProvider extends ServiceProvider
         });
     }
 
+    /**
+     * Выполнить операцию
+     * 
+     * @return mixed
+     * @throws \Exception
+     */
     public function boot(): void
     {
         // Register migrations if they exist

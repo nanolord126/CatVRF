@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -21,7 +23,15 @@ class MessageSent implements ShouldBroadcastNow
     public function __construct(
         public readonly Message $message,
         public readonly string $correlation_id
-    ) {}
+    ) {
+    /**
+     * Инициализировать класс
+     */
+    public function __construct()
+    {
+        // TODO: инициализация
+    }
+}
 
     public function broadcastOn(): array
     {

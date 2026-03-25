@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Auto\Events;
@@ -10,7 +12,16 @@ use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-final class CarWashBookingCompleted implements ShouldBroadcast
+final /**
+ * CarWashBookingCompleted
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class CarWashBookingCompleted implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -18,7 +29,7 @@ final class CarWashBookingCompleted implements ShouldBroadcast
         public readonly CarWashBooking $booking,
         public readonly string $correlationId
     ) {
-        Log::channel('audit')->info('CarWashBookingCompleted event dispatched', [
+        $this->log->channel('audit')->info('CarWashBookingCompleted event dispatched', [
             'correlation_id' => $this->correlationId,
             'booking_id' => $this->booking->id,
         ]);

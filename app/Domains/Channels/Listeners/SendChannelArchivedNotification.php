@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Channels\Listeners;
@@ -19,7 +21,15 @@ final class SendChannelArchivedNotification implements ShouldQueue
 
     public function __construct(
         private readonly NotificationService $notificationService,
-    ) {}
+    ) {
+    /**
+     * Инициализировать класс
+     */
+    public function __construct()
+    {
+        // TODO: инициализация
+    }
+}
 
     public function handle(ChannelArchived $event): void
     {
@@ -40,7 +50,7 @@ final class SendChannelArchivedNotification implements ShouldQueue
                 tenantId: $channel->tenant_id,
             );
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to send channel archived notification', [
+            $this->log->channel('audit')->error('Failed to send channel archived notification', [
                 'correlation_id' => $event->correlationId,
                 'channel_id'     => $channel->id,
                 'error'          => $e->getMessage(),

@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -7,7 +9,16 @@ namespace App\Filament\Tenant\Resources\Confectionery\Pages;
 use App\Filament\Tenant\Resources\Confectionery\ConfectioneryProductResource;
 use Filament\Resources\Pages\CreateRecord;
 
-final class CreateConfectioneryProduct extends CreateRecord
+final /**
+ * CreateConfectioneryProduct
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class CreateConfectioneryProduct extends CreateRecord
 {
     protected static string $resource = ConfectioneryProductResource::class;
 }

@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Hotels\Policies;
@@ -5,36 +7,45 @@ namespace App\Domains\Hotels\Policies;
 use App\Domains\Hotels\Models\Hotel;
 use Illuminate\Auth\Access\Response;
 
-final class HotelPolicy
+final /**
+ * HotelPolicy
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class HotelPolicy
 {
     public function viewAny(): Response
     {
-        return Response::allow();
+        return $this->response->allow();
     }
 
     public function view(): Response
     {
-        return Response::allow();
+        return $this->response->allow();
     }
 
     public function create(): Response
     {
         return auth()->check() && auth()->user()->can('create_hotels')
-            ? Response::allow()
-            : Response::deny('Not authorized');
+            ? $this->response->allow()
+            : $this->response->deny('Not authorized');
     }
 
     public function update(): Response
     {
         return auth()->check() && (auth()->user()->is_admin || auth()->user()->is_hotel_owner)
-            ? Response::allow()
-            : Response::deny('Not authorized');
+            ? $this->response->allow()
+            : $this->response->deny('Not authorized');
     }
 
     public function delete(): Response
     {
         return auth()->check() && auth()->user()->is_admin
-            ? Response::allow()
-            : Response::deny('Not authorized');
+            ? $this->response->allow()
+            : $this->response->deny('Not authorized');
     }
 }

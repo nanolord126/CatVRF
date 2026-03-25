@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Logistics\Filament\Resources;
@@ -11,7 +13,16 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Table;
 
-final class ShipmentResource extends Resource
+final /**
+ * ShipmentResource
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class ShipmentResource extends Resource
 {
     protected static ?string $model = Shipment::class;
 

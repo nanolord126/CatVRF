@@ -56,7 +56,7 @@ final class PresenceController extends BaseApiV2Controller
                 ]
             );
 
-            Log::channel('audit')->info('Presence tracked', [
+            $this->log->channel('audit')->info('Presence tracked', [
                 'user_id' => auth()->id(),
                 'tenant_id' => $tenantId,
                 'correlation_id' => $correlationId,
@@ -71,7 +71,7 @@ final class PresenceController extends BaseApiV2Controller
                 correlationId: $correlationId
             );
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to track presence', [
+            $this->log->channel('audit')->error('Failed to track presence', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
                 'trace' => $e->getTraceAsString(),
@@ -99,7 +99,7 @@ final class PresenceController extends BaseApiV2Controller
         try {
             $onlineUsers = $this->realtimeService->getOnlineUsers($tenantId);
 
-            Log::channel('audit')->info('Online users retrieved', [
+            $this->log->channel('audit')->info('Online users retrieved', [
                 'tenant_id' => $tenantId,
                 'count' => count($onlineUsers),
                 'correlation_id' => $correlationId,
@@ -114,7 +114,7 @@ final class PresenceController extends BaseApiV2Controller
                 correlationId: $correlationId
             );
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to get online users', [
+            $this->log->channel('audit')->error('Failed to get online users', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -140,7 +140,7 @@ final class PresenceController extends BaseApiV2Controller
         try {
             cache()->forget("presence:user." . auth()->id());
 
-            Log::channel('audit')->info('Presence tracking stopped', [
+            $this->log->channel('audit')->info('Presence tracking stopped', [
                 'user_id' => auth()->id(),
                 'correlation_id' => $correlationId,
             ]);
@@ -151,7 +151,7 @@ final class PresenceController extends BaseApiV2Controller
                 correlationId: $correlationId
             );
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to stop tracking presence', [
+            $this->log->channel('audit')->error('Failed to stop tracking presence', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);

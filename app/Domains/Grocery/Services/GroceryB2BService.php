@@ -37,7 +37,7 @@ final class GroceryB2BService
         }
         RateLimiter::hit("grocery:b2b:order:".$storeId, 3600);
 
-        return DB::transaction(function () use ($storeId, $supplierId, $items, $correlationId) {
+        return $this->db->transaction(function () use ($storeId, $supplierId, $items, $correlationId) {
             $store = GroceryStore::findOrFail($storeId);
             
             // 1. Fraud Check (проверка лимитов и репутации)
@@ -80,7 +80,7 @@ final class GroceryB2BService
                 $correlationId
             );
 
-            Log::channel("audit")->info("Grocery B2B: bulk order created", [
+            $this->log->channel("audit")->info("Grocery B2B: bulk order created", [
                 "order_uuid" => $order->uuid,
                 "store_id" => $storeId,
                 "amount" => $totalAmount
@@ -98,7 +98,7 @@ final class GroceryB2BService
         $correlationId = $correlationId ?: (string) Str::uuid();
         $order = GroceryB2BOrder::with(["store", "supplier"])->findOrFail($orderId);
 
-        DB::transaction(function () use ($order, $qualityReport, $correlationId) {
+        $this->db->transaction(function () use ($order, $qualityReport, $correlationId) {
             if ($order->status !== "pending_delivery") {
                 throw new \RuntimeException("Order #{$order->uuid} cannot be confirmed in current status.");
             }
@@ -146,7 +146,7 @@ final class GroceryB2BService
                 "metadata" => array_merge($order->metadata ?? [], ["quality_report" => $qualityReport])
             ]);
 
-            Log::channel("audit")->info("Grocery B2B: receipt confirmed", [
+            $this->log->channel("audit")->info("Grocery B2B: receipt confirmed", [
                 "order_id" => $order->id,
                 "spoiled" => $spoiledAmount,
                 "payout" => $payout

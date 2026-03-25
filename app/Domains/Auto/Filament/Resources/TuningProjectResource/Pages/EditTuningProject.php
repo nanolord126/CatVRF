@@ -19,7 +19,7 @@ final class EditTuningProject extends EditRecord
         return [
             Actions\DeleteAction::make()
                 ->after(function () {
-                    Log::channel('audit')->info('TuningProject deleted', [
+                    $this->log->channel('audit')->info('TuningProject deleted', [
                         'correlation_id' => $this->record->correlation_id,
                         'project_id' => $this->record->id,
                     ]);
@@ -35,14 +35,14 @@ final class EditTuningProject extends EditRecord
                         ->required(),
                 ])
                 ->action(function (array $data) {
-                    DB::transaction(function () use ($data) {
+                    $this->db->transaction(function () use ($data) {
                         $this->record->update([
                             'status' => 'completed',
                             'completion_date' => now(),
                             'final_price' => $data['final_price'],
                         ]);
                         
-                        Log::channel('audit')->info('TuningProjectCompleted', [
+                        $this->log->channel('audit')->info('TuningProjectCompleted', [
                             'correlation_id' => $this->record->correlation_id,
                             'project_id' => $this->record->id,
                         ]);
@@ -53,7 +53,7 @@ final class EditTuningProject extends EditRecord
                         ));
                     });
 
-                    Notification::make()
+                    $this->notification->make()
                         ->success()
                         ->title('Тюнинг завершён')
                         ->send();
@@ -63,7 +63,7 @@ final class EditTuningProject extends EditRecord
 
     protected function afterSave(): void
     {
-        Log::channel('audit')->info('TuningProject updated', [
+        $this->log->channel('audit')->info('TuningProject updated', [
             'correlation_id' => $this->record->correlation_id,
             'project_id' => $this->record->id,
             'status' => $this->record->status,

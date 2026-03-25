@@ -36,7 +36,8 @@ return new class extends Migration
                 $table->id();
                 $table->uuid('uuid')->unique()->index();
                 $table->foreignId('tenant_id')->constrained()->onDelete('cascade');
-                $table->morphs('mediable'); // Связь с постом или профилем
+                $table->string('mediable_type', 255); // Связь с постом или профилем
+                $table->unsignedBigInteger('mediable_id');
                 $table->string('file_path');
                 $table->string('mime_type');
                 $table->string('processing_status')->default('pending')->index();

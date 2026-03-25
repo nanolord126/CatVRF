@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Livewire\Food;
@@ -5,7 +7,16 @@ namespace App\Livewire\Food;
 use Livewire\Component;
 use Illuminate\View\View;
 
-final class FoodOrderTracker extends Component
+final /**
+ * FoodOrderTracker
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class FoodOrderTracker extends Component
 {
     public string $orderId;
     public string $status = 'pending';

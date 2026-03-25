@@ -21,7 +21,7 @@ final class BooksService
         if (RateLimiter::tooManyAttempts("books:order:".auth()->id(), 20)) throw new \RuntimeException("Too many orders", 429);
         RateLimiter::hit("books:order:".auth()->id(), 3600);
 
-        return DB::transaction(function () use ($items, $correlationId) {
+        return $this->db->transaction(function () use ($items, $correlationId) {
             $total = 0;
             foreach ($items as $item) {
                 $book = Book::findOrFail($item['book_id']);
@@ -30,7 +30,7 @@ final class BooksService
 
             $fraud = $this->fraud->check(['user_id' => auth()->id() ?? 0, 'operation_type' => 'book_order', 'correlation_id' => $correlationId, 'amount' => $total]);
             if ($fraud['decision'] === 'block') {
-                Log::channel('audit')->error('Book order blocked', ['user_id' => auth()->id(), 'score' => $fraud['score'], 'correlation_id' => $correlationId]);
+                $this->log->channel('audit')->error('Book order blocked', ['user_id' => auth()->id(), 'score' => $fraud['score'], 'correlation_id' => $correlationId]);
                 throw new \RuntimeException("Security block", 403);
             }
 
@@ -40,7 +40,7 @@ final class BooksService
                 'payment_status' => 'pending', 'items_json' => $items, 'tags' => ['books' => true],
             ]);
 
-            Log::channel('audit')->info('Book order created', ['order_id' => $order->id, 'total_kopecks' => $total, 'correlation_id' => $correlationId]);
+            $this->log->channel('audit')->info('Book order created', ['order_id' => $order->id, 'total_kopecks' => $total, 'correlation_id' => $correlationId]);
             return $order;
         });
     }
@@ -48,12 +48,12 @@ final class BooksService
     public function completeOrder(int $orderId, string $correlationId = ""): BookOrder
     {
         $correlationId = $correlationId ?: (string) Str::uuid();
-        return DB::transaction(function () use ($orderId, $correlationId) {
+        return $this->db->transaction(function () use ($orderId, $correlationId) {
             $order = BookOrder::findOrFail($orderId);
             if ($order->payment_status !== 'completed') throw new \RuntimeException("Order not paid", 400);
             $order->update(['status' => 'completed', 'correlation_id' => $correlationId]);
             $this->wallet->credit(tenant()->id, $order->payout_kopecks, 'book_payout', ['correlation_id' => $correlationId, 'order_id' => $order->id]);
-            Log::channel('audit')->info('Book order completed', ['order_id' => $order->id, 'correlation_id' => $correlationId]);
+            $this->log->channel('audit')->info('Book order completed', ['order_id' => $order->id, 'correlation_id' => $correlationId]);
             return $order;
         });
     }
@@ -61,14 +61,14 @@ final class BooksService
     public function cancelOrder(int $orderId, string $correlationId = ""): BookOrder
     {
         $correlationId = $correlationId ?: (string) Str::uuid();
-        return DB::transaction(function () use ($orderId, $correlationId) {
+        return $this->db->transaction(function () use ($orderId, $correlationId) {
             $order = BookOrder::findOrFail($orderId);
             if ($order->status === 'completed') throw new \RuntimeException("Cannot cancel completed", 400);
             $order->update(['status' => 'cancelled', 'payment_status' => 'refunded', 'correlation_id' => $correlationId]);
             if ($order->payment_status === 'completed') {
                 $this->wallet->credit(tenant()->id, $order->total_kopecks, 'book_refund', ['correlation_id' => $correlationId, 'order_id' => $order->id]);
             }
-            Log::channel('audit')->info('Book order cancelled', ['order_id' => $order->id, 'correlation_id' => $correlationId]);
+            $this->log->channel('audit')->info('Book order cancelled', ['order_id' => $order->id, 'correlation_id' => $correlationId]);
             return $order;
         });
     }

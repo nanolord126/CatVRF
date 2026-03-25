@@ -42,8 +42,8 @@ final class TimeSeriesHeatmapService
         $cacheKey = "heatmap:geo:timeseries:{$tenantId}:{$vertical}:{$fromDate}:{$toDate}:{$aggregation}:{$metric}";
 
         // Try cache first
-        if ($cached = Cache::get($cacheKey)) {
-            Log::channel('analytics')->info('[TimeSeriesHeatmap] Cache hit', [
+        if ($cached = $this->cache->get($cacheKey)) {
+            $this->log->channel('analytics')->info('[TimeSeriesHeatmap] Cache hit', [
                 'cache_key' => $cacheKey,
                 'correlation_id' => $this->correlationId,
             ]);
@@ -90,9 +90,9 @@ final class TimeSeriesHeatmapService
                 default => 60 * 60, // 1 hour
             };
 
-            Cache::put($cacheKey, $result, $ttl);
+            $this->cache->put($cacheKey, $result, $ttl);
 
-            Log::channel('audit')->info('[TimeSeriesHeatmap] Geo heatmap generated', [
+            $this->log->channel('audit')->info('[TimeSeriesHeatmap] Geo heatmap generated', [
                 'tenant_id' => $tenantId,
                 'vertical' => $vertical,
                 'aggregation' => $aggregation,
@@ -103,7 +103,7 @@ final class TimeSeriesHeatmapService
 
             return $result;
         } catch (Exception $e) {
-            Log::channel('error')->error('[TimeSeriesHeatmap] Geo heatmap generation failed', [
+            $this->log->channel('error')->error('[TimeSeriesHeatmap] Geo heatmap generation failed', [
                 'error' => $e->getMessage(),
                 'tenant_id' => $tenantId,
                 'vertical' => $vertical,
@@ -129,8 +129,8 @@ final class TimeSeriesHeatmapService
         $cacheKey = "heatmap:click:timeseries:{$tenantId}:{$vertical}:" . md5($pageUrl) . ":{$fromDate}:{$toDate}:{$aggregation}";
 
         // Try cache first
-        if ($cached = Cache::get($cacheKey)) {
-            Log::channel('analytics')->info('[TimeSeriesHeatmap] Cache hit (click)', [
+        if ($cached = $this->cache->get($cacheKey)) {
+            $this->log->channel('analytics')->info('[TimeSeriesHeatmap] Cache hit (click)', [
                 'cache_key' => substr($cacheKey, 0, 50) . '...',
                 'correlation_id' => $this->correlationId,
             ]);
@@ -171,9 +171,9 @@ final class TimeSeriesHeatmapService
                 default => 60 * 60,
             };
 
-            Cache::put($cacheKey, $result, $ttl);
+            $this->cache->put($cacheKey, $result, $ttl);
 
-            Log::channel('audit')->info('[TimeSeriesHeatmap] Click heatmap generated', [
+            $this->log->channel('audit')->info('[TimeSeriesHeatmap] Click heatmap generated', [
                 'tenant_id' => $tenantId,
                 'vertical' => $vertical,
                 'page_url' => substr($pageUrl, 0, 100),
@@ -184,7 +184,7 @@ final class TimeSeriesHeatmapService
 
             return $result;
         } catch (Exception $e) {
-            Log::channel('error')->error('[TimeSeriesHeatmap] Click heatmap generation failed', [
+            $this->log->channel('error')->error('[TimeSeriesHeatmap] Click heatmap generation failed', [
                 'error' => $e->getMessage(),
                 'tenant_id' => $tenantId,
                 'vertical' => $vertical,
@@ -243,9 +243,9 @@ final class TimeSeriesHeatmapService
     public function invalidateCache(int $tenantId, string $vertical = '*'): void
     {
         $pattern = "heatmap:*:{$tenantId}:{$vertical}*";
-        Cache::tags(['heatmap', "tenant:{$tenantId}"])->flush();
+        $this->cache->tags(['heatmap', "tenant:{$tenantId}"])->flush();
 
-        Log::channel('audit')->info('[TimeSeriesHeatmap] Cache invalidated', [
+        $this->log->channel('audit')->info('[TimeSeriesHeatmap] Cache invalidated', [
             'tenant_id' => $tenantId,
             'vertical' => $vertical,
             'correlation_id' => $this->correlationId,

@@ -20,7 +20,7 @@ final class PetBoardingService
 
     public function createBoardingReservation(array $data): PetBoarding
     {
-        Log::channel('audit')->info('PetBoardingService: Creating boarding reservation', [
+        $this->log->channel('audit')->info('PetBoardingService: Creating boarding reservation', [
             'correlation_id' => $data['correlation_id'] ?? Str::uuid(),
             'pet_clinic_id' => $data['pet_clinic_id'],
             'tenant_id' => filament()->getTenant()->id,
@@ -34,7 +34,7 @@ final class PetBoardingService
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(fn () => PetBoarding::create([
+$this->db->transaction(fn () => PetBoarding::create([
             'uuid' => Str::uuid(),
             'correlation_id' => $data['correlation_id'] ?? Str::uuid(),
             'tenant_id' => filament()->getTenant()->id,
@@ -55,7 +55,7 @@ DB::transaction(fn () => PetBoarding::create([
     {
         $reservation = PetBoarding::findOrFail($reservationId);
 
-        Log::channel('audit')->info('PetBoardingService: Confirming boarding reservation', [
+        $this->log->channel('audit')->info('PetBoardingService: Confirming boarding reservation', [
             'correlation_id' => $reservation->correlation_id,
             'reservation_id' => $reservationId,
         ]);
@@ -68,7 +68,7 @@ DB::transaction(fn () => PetBoarding::create([
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($reservation) {
+$this->db->transaction(function () use ($reservation) {
             $reservation->update(['status' => 'confirmed']);
             return true;
         });
@@ -78,7 +78,7 @@ DB::transaction(function () use ($reservation) {
     {
         $reservation = PetBoarding::findOrFail($reservationId);
 
-        Log::channel('audit')->info('PetBoardingService: Pet check-in', [
+        $this->log->channel('audit')->info('PetBoardingService: Pet check-in', [
             'correlation_id' => $reservation->correlation_id,
             'reservation_id' => $reservationId,
         ]);
@@ -91,7 +91,7 @@ DB::transaction(function () use ($reservation) {
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($reservation) {
+$this->db->transaction(function () use ($reservation) {
             $reservation->update([
                 'status' => 'checked_in',
                 'actual_check_in' => now(),
@@ -104,7 +104,7 @@ DB::transaction(function () use ($reservation) {
     {
         $reservation = PetBoarding::findOrFail($reservationId);
 
-        Log::channel('audit')->info('PetBoardingService: Pet check-out', [
+        $this->log->channel('audit')->info('PetBoardingService: Pet check-out', [
             'correlation_id' => $reservation->correlation_id,
             'reservation_id' => $reservationId,
         ]);
@@ -117,7 +117,7 @@ DB::transaction(function () use ($reservation) {
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($reservation, $notes) {
+$this->db->transaction(function () use ($reservation, $notes) {
             $reservation->update([
                 'status' => 'completed',
                 'actual_check_out' => now(),
@@ -162,7 +162,7 @@ DB::transaction(function () use ($reservation, $notes) {
     {
         $reservation = PetBoarding::findOrFail($reservationId);
 
-        Log::channel('audit')->info('PetBoardingService: Cancelling boarding reservation', [
+        $this->log->channel('audit')->info('PetBoardingService: Cancelling boarding reservation', [
             'correlation_id' => $reservation->correlation_id,
             'reservation_id' => $reservationId,
             'reason' => $reason,
@@ -176,7 +176,7 @@ DB::transaction(function () use ($reservation, $notes) {
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($reservation, $reason) {
+$this->db->transaction(function () use ($reservation, $reason) {
             $reservation->update([
                 'status' => 'cancelled',
                 'cancellation_reason' => $reason,

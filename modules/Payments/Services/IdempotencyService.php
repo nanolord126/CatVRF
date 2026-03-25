@@ -34,7 +34,7 @@ final readonly class IdempotencyService
         string $correlationId = '',
     ): array {
         try {
-            Log::channel('audit')->info('Проверка идемпотентности', [
+            $this->log->channel('audit')->info('Проверка идемпотентности', [
                 'operation_id' => $operationId,
                 'merchant_id' => $merchantId,
                 'correlation_id' => $correlationId,
@@ -50,7 +50,7 @@ final readonly class IdempotencyService
             if ($existing) {
                 // Проверка соответствия хеша
                 if ($existing->payload_hash !== $payloadHash) {
-                    Log::channel('audit')->warning('Идемпотентный конфликт: разные payload', [
+                    $this->log->channel('audit')->warning('Идемпотентный конфликт: разные payload', [
                         'operation_id' => $operationId,
                         'stored_hash' => $existing->payload_hash,
                         'current_hash' => $payloadHash,
@@ -69,7 +69,7 @@ final readonly class IdempotencyService
             }
 
             // Создаём новую запись идемпотентности
-            DB::transaction(function () use ($operationId, $merchantId, $payloadHash, $expiresInSeconds, $correlationId) {
+            $this->db->transaction(function () use ($operationId, $merchantId, $payloadHash, $expiresInSeconds, $correlationId) {
                 PaymentIdempotencyRecord::create([
                     'operation_id' => $operationId,
                     'merchant_id' => $merchantId,
@@ -86,7 +86,7 @@ final readonly class IdempotencyService
                 'hashedPayload' => $payloadHash,
             ];
         } catch (Exception $e) {
-            Log::channel('audit')->error('Ошибка при проверке идемпотентности', [
+            $this->log->channel('audit')->error('Ошибка при проверке идемпотентности', [
                 'operation_id' => $operationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -114,7 +114,7 @@ final readonly class IdempotencyService
         string $correlationId = '',
     ): bool {
         try {
-            DB::transaction(function () use ($operationId, $merchantId, $responseData) {
+            $this->db->transaction(function () use ($operationId, $merchantId, $responseData) {
                 PaymentIdempotencyRecord::where('operation_id', $operationId)
                     ->where('merchant_id', $merchantId)
                     ->update([
@@ -123,7 +123,7 @@ final readonly class IdempotencyService
                     ]);
             });
 
-            Log::channel('audit')->info('Результат операции сохранён', [
+            $this->log->channel('audit')->info('Результат операции сохранён', [
                 'operation_id' => $operationId,
                 'merchant_id' => $merchantId,
                 'correlation_id' => $correlationId,
@@ -131,7 +131,7 @@ final readonly class IdempotencyService
 
             return true;
         } catch (Exception $e) {
-            Log::channel('audit')->error('Ошибка при сохранении результата операции', [
+            $this->log->channel('audit')->error('Ошибка при сохранении результата операции', [
                 'operation_id' => $operationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

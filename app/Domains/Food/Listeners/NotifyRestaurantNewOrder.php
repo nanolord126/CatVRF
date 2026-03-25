@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Food\Listeners;
@@ -5,12 +7,21 @@ namespace App\Domains\Food\Listeners;
 use App\Domains\Food\Events\OrderCreated;
 use Illuminate\Support\Facades\Log;
 
-final class NotifyRestaurantNewOrder
+final /**
+ * NotifyRestaurantNewOrder
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class NotifyRestaurantNewOrder
 {
     public function handle(OrderCreated $event): void
     {
         try {
-            Log::channel('audit')->info('Restaurant notified of new order', [
+            $this->log->channel('audit')->info('Restaurant notified of new order', [
                 'order_id' => $event->orderId,
                 'restaurant_id' => $event->restaurantId,
                 'client_id' => $event->clientId,
@@ -20,7 +31,7 @@ final class NotifyRestaurantNewOrder
             ]);
             // Notification::send($restaurant, new NewOrderNotification($event));
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Failed to notify restaurant', [
+            $this->log->channel('audit')->error('Failed to notify restaurant', [
                 'correlation_id' => $event->correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

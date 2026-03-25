@@ -31,7 +31,7 @@ final class HRService
         // Fraud Check: лимит на количество активных вакансий в зависимости от тарифа (через сервис)
         FraudControlService::check($this->correlationId);
 
-        return DB::transaction(function () use ($data, $tenantId) {
+        return $this->db->transaction(function () use ($data, $tenantId) {
             $vacancy = JobVacancy::create([
                 'tenant_id' => $tenantId,
                 'business_group_id' => $data['business_group_id'] ?? null,
@@ -45,7 +45,7 @@ final class HRService
                 'status' => 'open', // По умолчанию открываем а не драфт
             ]);
 
-            Log::channel('audit')->info('Job vacancy created', [
+            $this->log->channel('audit')->info('Job vacancy created', [
                 'vacancy_id' => $vacancy->id,
                 'tenant_id' => $tenantId,
                 'correlation_id' => $this->correlationId,
@@ -63,7 +63,7 @@ final class HRService
         // 1. Fraud Check (защита от спама откликами)
         FraudControlService::check($this->correlationId);
 
-        return DB::transaction(function () use ($vacancyId, $userId, $data) {
+        return $this->db->transaction(function () use ($vacancyId, $userId, $data) {
             $vacancy = JobVacancy::findOrFail($vacancyId);
             
             if ($vacancy->status !== 'open') {
@@ -79,7 +79,7 @@ final class HRService
                 'correlation_id' => $this->correlationId,
             ]);
 
-            Log::channel('audit')->info('Job application submitted', [
+            $this->log->channel('audit')->info('Job application submitted', [
                 'application_id' => $application->id,
                 'vacancy_id' => $vacancyId,
                 'user_id' => $userId,

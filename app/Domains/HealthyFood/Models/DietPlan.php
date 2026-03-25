@@ -1,6 +1,30 @@
 <?php declare(strict_types=1);
 
-namespace App\Domains\HealthyFood\Models;
+namespa
+
+/**
+ * DietPlan
+ * 
+ * Производитель: CatVRF Platform
+ * Версия: 1.0.0
+ * 
+ * Примеры использования:
+ * 
+ * ```php
+ * // Базовое использование
+ * $instance = new DietPlan();
+ * ```
+ * 
+ * Требования:
+ * - Laravel 10+
+ * - PHP 8.2+
+ * - Все методы должны быть явно типизированы
+ * 
+ * @author CatVRF
+ * @package namespace App\Domains\HealthyFood\Models
+ * @see https://github.com/iyegorovskyi_clemny/CatVRF
+ */
+ce App\Domains\HealthyFood\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -30,6 +54,12 @@ final class DietPlan extends Model
         'ends_at'        => 'date',
     ];
 
+    /**
+     * Выполнить операцию
+     * 
+     * @return mixed
+     * @throws \Exception
+     */
     public function subscriptions(): HasMany
     {
         return $this->hasMany(MealSubscription::class, 'diet_plan_id');

@@ -16,7 +16,7 @@ final readonly class OrderService
     public function getUserOrders(int $userId): Collection
     {
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
 
         return FashionRetailOrder::where('user_id', $userId)
             ->with('shop', 'returns')
@@ -27,7 +27,7 @@ final readonly class OrderService
     public function getShopOrders(int $shopId): Collection
     {
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
 
         return FashionRetailOrder::where('shop_id', $shopId)
             ->with('user')
@@ -38,7 +38,7 @@ final readonly class OrderService
     public function getByStatus(string $status): Collection
     {
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
 
         return FashionRetailOrder::where('status', $status)
             ->with('shop', 'user')
@@ -49,7 +49,7 @@ final readonly class OrderService
     public function calculateTotal(array $items): float
     {
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
 
         return collect($items)->sum(function ($item) {
             return ($item['price'] ?? 0) * ($item['quantity'] ?? 1);
@@ -59,7 +59,7 @@ final readonly class OrderService
     public function calculateCommission(float $total): float
     {
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
 
         return $total * 0.15; // 15% комиссия для FashionRetail
     }
@@ -67,9 +67,9 @@ final readonly class OrderService
     public function updateStatus(int $orderId, string $status, string $correlationId): void
     {
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
 
-        DB::transaction(function () use ($orderId, $status, $correlationId) {
+        $this->db->transaction(function () use ($orderId, $status, $correlationId) {
             $order = FashionRetailOrder::lockForUpdate()->findOrFail($orderId);
 
             $order->update([
@@ -77,7 +77,7 @@ final readonly class OrderService
                 'correlation_id' => $correlationId,
             ]);
 
-            Log::channel('audit')->info('FashionRetail order status updated', [
+            $this->log->channel('audit')->info('FashionRetail order status updated', [
                 'order_id' => $orderId,
                 'status' => $status,
                 'correlation_id' => $correlationId,
@@ -88,9 +88,9 @@ final readonly class OrderService
     public function cancelOrder(int $orderId, string $correlationId): void
     {
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
 
-        DB::transaction(function () use ($orderId, $correlationId) {
+        $this->db->transaction(function () use ($orderId, $correlationId) {
             $order = FashionRetailOrder::lockForUpdate()->findOrFail($orderId);
 
             if (in_array($order->status, ['pending', 'confirmed'])) {
@@ -99,7 +99,7 @@ final readonly class OrderService
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('FashionRetail order cancelled', [
+                $this->log->channel('audit')->info('FashionRetail order cancelled', [
                     'order_id' => $orderId,
                     'correlation_id' => $correlationId,
                 ]);

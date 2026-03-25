@@ -48,7 +48,7 @@ final class HotelPropertyController
 
             return response()->json(['data' => $property], 201);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Property creation failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage()]);
+            $this->log->channel('audit')->error('Property creation failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage()]);
 
             return response()->json(['error' => 'Failed to create property'], 422);
         }
@@ -63,7 +63,7 @@ final class HotelPropertyController
 
         try {
             $property->update($request->only(['name', 'address', 'star_rating']));
-            Log::channel('audit')->info('Property updated', ['correlation_id' => $correlationId, 'property_id' => $property->id]);
+            $this->log->channel('audit')->info('Property updated', ['correlation_id' => $correlationId, 'property_id' => $property->id]);
 
             return response()->json(['data' => $property]);
         } catch (\Exception $e) {
@@ -80,7 +80,7 @@ final class HotelPropertyController
 
         try {
             $property->delete();
-            Log::channel('audit')->info('Property deleted', ['correlation_id' => $correlationId, 'property_id' => $property->id]);
+            $this->log->channel('audit')->info('Property deleted', ['correlation_id' => $correlationId, 'property_id' => $property->id]);
 
             return response()->json(null, 204);
         } catch (\Exception $e) {

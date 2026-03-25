@@ -42,7 +42,7 @@ final class CosmeticProductController
 
             return response()->json(['success' => true, 'data' => $products, 'correlation_id' => $correlationId]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Cosmetics: index error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+            $this->log->channel('audit')->error('Cosmetics: index error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
             return response()->json(['success' => false, 'message' => 'Ошибка загрузки', 'correlation_id' => $correlationId], 500);
         }
     }
@@ -73,7 +73,7 @@ final class CosmeticProductController
 
             return response()->json(['success' => true, 'data' => $result, 'correlation_id' => $correlationId]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Cosmetics: tryOn error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+            $this->log->channel('audit')->error('Cosmetics: tryOn error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
             return response()->json(['success' => false, 'message' => 'Ошибка AR-примерки', 'correlation_id' => $correlationId], 500);
         }
     }
@@ -101,7 +101,7 @@ final class CosmeticProductController
                 'shade'            => 'nullable|string',
             ]);
 
-            $order = DB::transaction(function () use ($validated, $userId, $correlationId): CosmeticOrder {
+            $order = $this->db->transaction(function () use ($validated, $userId, $correlationId): CosmeticOrder {
                 $product = CosmeticProduct::findOrFail($validated['product_id']);
                 $order   = CosmeticOrder::create([
                     'uuid'             => Str::uuid(),
@@ -116,7 +116,7 @@ final class CosmeticProductController
                     'correlation_id'   => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Cosmetics: Order created', [
+                $this->log->channel('audit')->info('Cosmetics: Order created', [
                     'order_id'       => $order->id,
                     'product_id'     => $validated['product_id'],
                     'user_id'        => $userId,
@@ -130,7 +130,7 @@ final class CosmeticProductController
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Cosmetics: order error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+            $this->log->channel('audit')->error('Cosmetics: order error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
             return response()->json(['success' => false, 'message' => 'Ошибка заказа', 'correlation_id' => $correlationId], 500);
         }
     }

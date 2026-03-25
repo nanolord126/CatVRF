@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Hotels\Listeners;
@@ -8,18 +10,27 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
-final class RefundBookingCommissionListener implements ShouldQueue
+final /**
+ * RefundBookingCommissionListener
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class RefundBookingCommissionListener implements ShouldQueue
 {
     public function handle(BookingCancelled $event): void
     {
         try {
-            Log::channel('audit')->info('Refunding booking commission', [
+            $this->log->channel('audit')->info('Refunding booking commission', [
                 'booking_id' => $event->booking->id,
                 'correlation_id' => $event->correlationId,
                 'reason' => $event->reason,
             ]);
 
-            DB::transaction(function () use ($event) {
+            $this->db->transaction(function () use ($event) {
                 $hotel = $event->booking->hotel;
                 
                 // Refund 14% commission to hotel balance
@@ -30,13 +41,13 @@ final class RefundBookingCommissionListener implements ShouldQueue
                     $wallet->save();
                 }
 
-                Log::channel('audit')->info('Booking commission refunded', [
+                $this->log->channel('audit')->info('Booking commission refunded', [
                     'booking_id' => $event->booking->id,
                     'correlation_id' => $event->correlationId,
                 ]);
             });
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to refund booking commission', [
+            $this->log->channel('audit')->error('Failed to refund booking commission', [
                 'booking_id' => $event->booking->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $event->correlationId,

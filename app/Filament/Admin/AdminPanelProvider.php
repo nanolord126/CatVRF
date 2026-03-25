@@ -34,9 +34,9 @@ final class AdminPanelProvider extends PanelProvider
             ])
             ->middleware([
                 \Illuminate\Session\Middleware\EncryptCookies::class,
-                \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
-                \Illuminate\Session\Middleware\StartSession::class,
-                \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+                \Illuminate\Cookie\Middleware\AddQueuedCookiesTo$this->response->class,
+                \Illuminate\Session\Middleware\Start$this->session->class,
+                \Illuminate\View\Middleware\ShareErrorsFrom$this->session->class,
                 \Illuminate\Routing\Middleware\SubstituteBindings::class,
                 \Illuminate\Auth\Middleware\Authorize::class,
             ])

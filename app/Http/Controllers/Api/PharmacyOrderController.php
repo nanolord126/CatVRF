@@ -33,7 +33,7 @@ final class PharmacyOrderController extends BaseApiController
 
             return $this->successResponse($orders);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Pharmacy orders list error', ['error' => $e->getMessage()]);
+            $this->log->channel('audit')->error('Pharmacy orders list error', ['error' => $e->getMessage()]);
             return $this->errorResponse('Failed to fetch orders', 500);
         }
     }
@@ -55,11 +55,11 @@ final class PharmacyOrderController extends BaseApiController
                 correlationId: $correlationId,
             );
 
-            Log::channel('audit')->info('Pharmacy order created', ['order_id' => $order->id]);
+            $this->log->channel('audit')->info('Pharmacy order created', ['order_id' => $order->id]);
 
             return $this->successResponse($order, 'Order created successfully', 201);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Pharmacy order creation failed', ['error' => $e->getMessage()]);
+            $this->log->channel('audit')->error('Pharmacy order creation failed', ['error' => $e->getMessage()]);
             return $this->errorResponse('Failed to create order: ' . $e->getMessage(), 400);
         }
     }
@@ -77,11 +77,11 @@ final class PharmacyOrderController extends BaseApiController
                 correlationId: $correlationId,
             );
 
-            Log::channel('audit')->info('Prescription verified', ['prescription_id' => $request->integer('prescription_id')]);
+            $this->log->channel('audit')->info('Prescription verified', ['prescription_id' => $request->integer('prescription_id')]);
 
             return $this->successResponse($prescription, 'Prescription verified');
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Prescription verification failed', ['error' => $e->getMessage()]);
+            $this->log->channel('audit')->error('Prescription verification failed', ['error' => $e->getMessage()]);
             return $this->errorResponse('Failed to verify prescription: ' . $e->getMessage(), 400);
         }
     }

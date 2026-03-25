@@ -37,7 +37,7 @@ final class RecommendationMLService
     {
         $cacheKey = $this->getCacheKey($userId, $vertical, $context);
         
-        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($userId, $vertical, $context) {
+        return $this->cache->remember($cacheKey, self::CACHE_TTL, function () use ($userId, $vertical, $context) {
             try {
                 // Получаем рекомендации из каждого источника
                 $behaviorRecs = $this->getRecommendationsByBehavior($userId, $vertical);
@@ -62,7 +62,7 @@ final class RecommendationMLService
                     ->values();
 
             } catch (\Throwable $e) {
-                Log::channel('analytics_errors')->error('Failed to generate recommendations', [
+                $this->log->channel('analytics_errors')->error('Failed to generate recommendations', [
                     'user_id' => $userId,
                     'vertical' => $vertical,
                     'error' => $e->getMessage()
@@ -83,13 +83,13 @@ final class RecommendationMLService
     private function getRecommendationsByBehavior(int $userId, ?string $vertical = null): Collection
     {
         // Получаем категории, которые смотрел пользователь
-        $viewedCategories = DB::table('user_views')
+        $viewedCategories = $this->db->table('user_views')
             ->where('user_id', $userId)
             ->distinct('product_category_id')
             ->pluck('product_category_id')
             ->toArray();
 
-        $query = DB::table('products')
+        $query = $this->db->table('products')
             ->whereIn('category_id', $viewedCategories ?? [])
             ->where('status', 'active');
 
@@ -136,7 +136,7 @@ final class RecommendationMLService
     private function getRecommendationsByGeo(int $userId, ?string $vertical = null): Collection
     {
         // Получаем локацию пользователя
-        $userLocation = DB::table('users')
+        $userLocation = $this->db->table('users')
             ->where('id', $userId)
             ->select('latitude', 'longitude', 'city')
             ->first();
@@ -147,7 +147,7 @@ final class RecommendationMLService
 
         $radiusKm = 5; // Поиск в радиусе 5 км
 
-        $query = DB::table('products')
+        $query = $this->db->table('products')
             ->where('status', 'active')
             ->whereRaw("
                 (6371 * acos(
@@ -156,7 +156,7 @@ final class RecommendationMLService
                     sin(radians(?)) * sin(radians(latitude))
                 )) < ?
             ", [$userLocation->latitude, $userLocation->longitude, $userLocation->latitude, $radiusKm])
-            ->select('id', DB::raw('AVG(rating) as rating'), DB::raw('COUNT(*) as popularity'));
+            ->select('id', $this->db->raw('AVG(rating) as rating'), $this->db->raw('COUNT(*) as popularity'));
 
         if ($vertical) {
             $query->where('vertical', $vertical);
@@ -187,12 +187,12 @@ final class RecommendationMLService
     {
         // Этот метод требует наличия embedding модели (например, OpenAI)
         
-        $userEmbedding = Cache::get("user_embedding:{$userId}");
+        $userEmbedding = $this->cache->get("user_embedding:{$userId}");
         if (!$userEmbedding) {
             return collect();
         }
 
-        $query = DB::table('product_embeddings')
+        $query = $this->db->table('product_embeddings')
             ->select('product_id')
             ->whereRaw('cosine_similarity(?, embeddings) > 0.75', [$userEmbedding]);
 
@@ -225,7 +225,7 @@ final class RecommendationMLService
      */
     private function getRecommendationsByBusinessRules(int $userId, ?string $vertical = null): Collection
     {
-        $query = DB::table('products')
+        $query = $this->db->table('products')
             ->where('status', 'active')
             ->select('id', 'boost_score', 'is_promoted');
 

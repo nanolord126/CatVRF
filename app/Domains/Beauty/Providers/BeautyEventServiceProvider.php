@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -22,7 +24,16 @@ use App\Domains\Beauty\Listeners\HandleSalonVerifiedListener;
 use App\Domains\Beauty\Listeners\HandleServiceCreatedListener;
 use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
 
-final class BeautyEventServiceProvider extends ServiceProvider
+final /**
+ * BeautyEventServiceProvider
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class BeautyEventServiceProvider extends ServiceProvider
 {
     protected $listen = [
         AppointmentCompleted::class => [

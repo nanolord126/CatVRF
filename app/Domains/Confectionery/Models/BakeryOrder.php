@@ -1,6 +1,30 @@
 <?php declare(strict_types=1);
 
-namespace App\Domains\Confectionery\Models;
+namespace
+
+/**
+ * BakeryOrder
+ * 
+ * Производитель: CatVRF Platform
+ * Версия: 1.0.0
+ * 
+ * Примеры использования:
+ * 
+ * ```php
+ * // Базовое использование
+ * $instance = new BakeryOrder();
+ * ```
+ * 
+ * Требования:
+ * - Laravel 10+
+ * - PHP 8.2+
+ * - Все методы должны быть явно типизированы
+ * 
+ * @author CatVRF
+ * @package namespace App\Domains\Confectionery\Models
+ * @see https://github.com/iyegorovskyi_clemny/CatVRF
+ */
+ App\Domains\Confectionery\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;

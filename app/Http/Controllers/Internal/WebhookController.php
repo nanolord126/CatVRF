@@ -50,7 +50,7 @@ final class WebhookController extends Controller
             $payload = $request->getContent();
             $data = json_decode($payload, true) ?? (array) $request->input();
 
-            Log::channel('audit')->info('Webhook received', [
+            $this->log->channel('audit')->info('Webhook received', [
                 'provider' => $provider,
                 'correlation_id' => $correlationId,
                 'ip' => $request->ip(),
@@ -59,7 +59,7 @@ final class WebhookController extends Controller
 
             // КАНОН 2026: Проверить подпись вебхука
             if (!$this->signatureService->verify($provider, $payload, $request->headers->all())) {
-                Log::channel('fraud_alert')->warning('Invalid webhook signature', [
+                $this->log->channel('fraud_alert')->warning('Invalid webhook signature', [
                     'provider' => $provider,
                     'ip' => $request->ip(),
                     'correlation_id' => $correlationId,
@@ -73,7 +73,7 @@ final class WebhookController extends Controller
 
             // Проверить IP (дополнительная защита)
             if (!$this->signatureService->isIpWhitelisted($provider, $request->ip())) {
-                Log::channel('fraud_alert')->warning('Webhook from non-whitelisted IP', [
+                $this->log->channel('fraud_alert')->warning('Webhook from non-whitelisted IP', [
                     'provider' => $provider,
                     'ip' => $request->ip(),
                     'correlation_id' => $correlationId,
@@ -95,7 +95,7 @@ final class WebhookController extends Controller
             )->first();
 
             if (!$payment) {
-                Log::channel('audit')->warning('Webhook payment not found', [
+                $this->log->channel('audit')->warning('Webhook payment not found', [
                     'provider' => $provider,
                     'provider_payment_id' => $paymentInfo['provider_payment_id'],
                     'correlation_id' => $correlationId,
@@ -128,7 +128,7 @@ final class WebhookController extends Controller
                 }
             });
 
-            Log::channel('audit')->info('Webhook processed successfully', [
+            $this->log->channel('audit')->info('Webhook processed successfully', [
                 'provider' => $provider,
                 'payment_id' => $payment->id,
                 'new_status' => $paymentInfo['status'],
@@ -149,7 +149,7 @@ final class WebhookController extends Controller
             ], $e->getCode());
 
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Webhook processing error', [
+            $this->log->channel('audit')->error('Webhook processing error', [
                 'provider' => $provider,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

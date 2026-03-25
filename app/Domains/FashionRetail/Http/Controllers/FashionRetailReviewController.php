@@ -26,7 +26,7 @@ final class FashionRetailReviewController
                 ->paginate(20);
 
             $correlationId = Str::uuid()->toString();
-            Log::channel('audit')->info('FashionRetail reviews listed', [
+            $this->log->channel('audit')->info('FashionRetail reviews listed', [
                 'product_id' => $productId,
                 'count' => $reviews->count(),
                 'correlation_id' => $correlationId,
@@ -39,7 +39,7 @@ final class FashionRetailReviewController
             ]);
         } catch (\Throwable $e) {
             $correlationId = Str::uuid()->toString();
-            Log::error('FashionRetail review listing failed', [
+            $this->log->error('FashionRetail review listing failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -58,7 +58,7 @@ final class FashionRetailReviewController
         $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
-            $review = DB::transaction(function () use ($productId, $correlationId) {
+            $review = $this->db->transaction(function () use ($productId, $correlationId) {
                 return FashionRetailReview::create([
                     'uuid' => Str::uuid(),
                     'product_id' => $productId,
@@ -73,7 +73,7 @@ final class FashionRetailReviewController
                 ]);
             });
 
-            Log::channel('audit')->info('FashionRetail review created', [
+            $this->log->channel('audit')->info('FashionRetail review created', [
                 'review_id' => $review->id,
                 'product_id' => $productId,
                 'user_id' => auth()->id(),
@@ -87,7 +87,7 @@ final class FashionRetailReviewController
             ], 201);
         } catch (\Throwable $e) {
             $correlationId = Str::uuid()->toString();
-            Log::error('FashionRetail review creation failed', [
+            $this->log->error('FashionRetail review creation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -116,12 +116,12 @@ final class FashionRetailReviewController
                 ], 403);
             }
 
-            DB::transaction(function () use ($review, $correlationId) {
+            $this->db->transaction(function () use ($review, $correlationId) {
                 $review->update(['status' => 'deleted', 'correlation_id' => $correlationId]);
                 $review->delete();
             });
 
-            Log::channel('audit')->info('FashionRetail review deleted', [
+            $this->log->channel('audit')->info('FashionRetail review deleted', [
                 'review_id' => $reviewId,
                 'correlation_id' => $correlationId,
             ]);
@@ -133,7 +133,7 @@ final class FashionRetailReviewController
             ]);
         } catch (\Throwable $e) {
             $correlationId = Str::uuid()->toString();
-            Log::error('FashionRetail review deletion failed', [
+            $this->log->error('FashionRetail review deletion failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);

@@ -53,7 +53,7 @@ final class PaymentService
     {
         $correlationId = $correlationId ?? Str::uuid()->toString();
 
-        return DB::transaction(function () use ($order, $correlationId): array {
+        return $this->db->transaction(function () use ($order, $correlationId): array {
             try {
                 $amount = (int) (($order->total_amount ?? $order->subtotal ?? 0) * 100); // В копейках
 
@@ -61,7 +61,7 @@ final class PaymentService
                 try {
                     $this->rateLimiter->checkPaymentInit($order->user_id);
                 } catch (\Exception $e) {
-                    Log::channel('audit')->warning('Payment rate limit exceeded', [
+                    $this->log->channel('audit')->warning('Payment rate limit exceeded', [
                         'user_id' => $order->user_id,
                         'correlation_id' => $correlationId,
                     ]);
@@ -76,7 +76,7 @@ final class PaymentService
                 ]);
 
                 if (!$fraudCheck['allowed']) {
-                    Log::channel('audit')->warning('Payment blocked by fraud control', [
+                    $this->log->channel('audit')->warning('Payment blocked by fraud control', [
                         'user_id' => $order->user_id,
                         'amount' => $amount,
                         'reason' => $fraudCheck['reason'],
@@ -100,7 +100,7 @@ final class PaymentService
                 // Проверить, не был ли уже обработан такой платёж
                 $duplicate = $this->idempotency->check($idempotencyKey, $payloadHash);
                 if ($duplicate) {
-                    Log::channel('audit')->info('Idempotent payment request (duplicate detected)', [
+                    $this->log->channel('audit')->info('Idempotent payment request (duplicate detected)', [
                         'order_id' => $order->id,
                         'idempotency_key' => $idempotencyKey,
                         'correlation_id' => $correlationId,
@@ -195,7 +195,7 @@ final class PaymentService
                 $this->idempotency->record($idempotencyKey, $payloadHash, $response, minutes: 10080); // 7 дней
 
                 // Логирование
-                Log::channel('audit')->info('Payment initiated', [
+                $this->log->channel('audit')->info('Payment initiated', [
                     'payment_id' => $payment->id,
                     'order_id' => $order->id,
                     'amount' => $amount,
@@ -213,7 +213,7 @@ final class PaymentService
                     'correlation_id' => $correlationId,
                 ];
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Payment initialization failed', [
+                $this->log->channel('audit')->error('Payment initialization failed', [
                     'order_id' => $order->id,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId,
@@ -247,7 +247,7 @@ final class PaymentService
                 ->first();
 
             if (!$transaction) {
-                Log::warning('Payment transaction not found in webhook', [
+                $this->log->warning('Payment transaction not found in webhook', [
                     'provider_payment_id' => $data['provider_payment_id'] ?? null,
                     'correlation_id' => $correlationId,
                 ]);
@@ -257,7 +257,7 @@ final class PaymentService
 
             // Проверка идемпотентности
             if ($transaction->status === PaymentTransaction::STATUS_CAPTURED) {
-                Log::info('Payment already captured, skipping duplicate webhook', [
+                $this->log->info('Payment already captured, skipping duplicate webhook', [
                     'transaction_id' => $transaction->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -284,13 +284,13 @@ final class PaymentService
                 try {
                     $this->fiscal->sendReceipt($transaction, $correlationId);
                 } catch (Throwable $e) {
-                    Log::warning('Fiscal receipt sending failed', [
+                    $this->log->warning('Fiscal receipt sending failed', [
                         'transaction_id' => $transaction->id,
                         'error' => $e->getMessage(),
                     ]);
                 }
 
-                Log::channel('audit')->info('Payment captured via webhook', [
+                $this->log->channel('audit')->info('Payment captured via webhook', [
                     'transaction_id' => $transaction->id,
                     'amount' => $transaction->amount,
                     'correlation_id' => $correlationId,
@@ -306,14 +306,14 @@ final class PaymentService
                 // Обновить статус
                 $transaction->markFailed($data['error_message'] ?? 'Payment failed', $data['error_code'] ?? '');
 
-                Log::warning('Payment failed via webhook', [
+                $this->log->warning('Payment failed via webhook', [
                     'transaction_id' => $transaction->id,
                     'error_message' => $data['error_message'],
                     'correlation_id' => $correlationId,
                 ]);
             }
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Webhook handling failed', [
+            $this->log->channel('audit')->error('Webhook handling failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
                 'trace' => $e->getTraceAsString(),
@@ -333,14 +333,14 @@ final class PaymentService
         try {
             // Отправка уведомления по Email, Push-уведомления, SMS
             if ($tx->user) {
-                Log::channel('payments')->info('Customer notified about payment', [
+                $this->log->channel('payments')->info('Customer notified about payment', [
                     'user_id' => $tx->user_id,
                     'transaction_id' => $tx->id,
                     'amount' => $tx->amount,
                 ]);
             }
         } catch (Throwable $e) {
-            Log::warning('Failed to notify customer', [
+            $this->log->warning('Failed to notify customer', [
                 'user_id' => $tx->user_id ?? null,
                 'error' => $e->getMessage(),
             ]);
@@ -399,7 +399,7 @@ final class PaymentService
     private function distributeFunds(PaymentTransaction $tx): void
     {
         // Atomicity: All splits must succeed or none should be committed
-        DB::transaction(function() use ($tx) {
+        $this->db->transaction(function() use ($tx) {
             foreach ($tx->splits as $userId => $amount) {
                 $user = \App\Models\User::find($userId);
                 if ($user) {
@@ -426,7 +426,7 @@ final class PaymentService
                 'metadata' => $metadata,
             ]);
 
-            Log::channel('payments')->info('Payment by token processed successfully', [
+            $this->log->channel('payments')->info('Payment by token processed successfully', [
                 'transaction_id' => $tx->id,
                 'amount' => $amount,
             ]);
@@ -437,7 +437,7 @@ final class PaymentService
                 'amount' => $amount,
             ];
         } catch (Throwable $e) {
-            Log::error('Payment by token failed', [
+            $this->log->error('Payment by token failed', [
                 'amount' => $amount,
                 'error' => $e->getMessage(),
             ]);
@@ -475,7 +475,7 @@ final class PaymentService
                 'metadata' => array_merge($metadata, ['splits' => $splits]),
             ]);
 
-            Log::channel('payments')->info('Split payment initialized', [
+            $this->log->channel('payments')->info('Split payment initialized', [
                 'transaction_id' => $tx->id,
                 'amount' => $amount,
                 'split_count' => count($splits),
@@ -489,7 +489,7 @@ final class PaymentService
             $splits = $payment->metadata['splits'] ?? [];
             
             // Логирование распределения
-            Log::channel('audit')->info('Distributing payment funds', [
+            $this->log->channel('audit')->info('Distributing payment funds', [
                 'payment_id' => $payment->id,
                 'splits' => $splits,
                 'correlation_id' => $correlationId,
@@ -498,7 +498,7 @@ final class PaymentService
             // Реальное распределение будет в зависимости от типа заказа
             // Здесь плейсхолдер для демонстрации
         } catch (Throwable $e) {
-            Log::error('Fund distribution failed', [
+            $this->log->error('Fund distribution failed', [
                 'payment_id' => $payment->id,
                 'error' => $e->getMessage(),
             ]);
@@ -523,7 +523,7 @@ final class PaymentService
      */
     private function checkIdempotency(string $idempotencyKey, string $operation): ?array
     {
-        $record = DB::table('payment_idempotency_records')
+        $record = $this->db->table('payment_idempotency_records')
             ->where('idempotency_key', $idempotencyKey)
             ->where('operation', $operation)
             ->where('expires_at', '>', now())
@@ -548,7 +548,7 @@ final class PaymentService
         string $status,
         array $responseData
     ): void {
-        DB::table('payment_idempotency_records')->insertOrIgnore([
+        $this->db->table('payment_idempotency_records')->insertOrIgnore([
             'idempotency_key' => $idempotencyKey,
             'tenant_id' => auth()->user()->tenant_id ?? 'system',
             'operation' => $operation,

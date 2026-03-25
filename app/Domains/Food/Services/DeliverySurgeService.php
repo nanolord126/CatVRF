@@ -26,9 +26,9 @@ final class DeliverySurgeService
 
         $cacheKey = "delivery_surge:zone:{$zoneId}";
         
-        $multiplier = Cache::get($cacheKey, 1.0);
+        $multiplier = $this->cache->get($cacheKey, 1.0);
         
-        Log::channel('audit')->info('Delivery surge multiplier retrieved', [
+        $this->log->channel('audit')->info('Delivery surge multiplier retrieved', [
             'zone_id' => $zoneId,
             'multiplier' => $multiplier,
             'correlation_id' => $correlationId,
@@ -47,18 +47,18 @@ final class DeliverySurgeService
         $results = [];
 
         try {
-            DB::transaction(function () use (&$results, $correlationId) {
+            $this->db->transaction(function () use (&$results, $correlationId) {
                 $zones = DeliveryZone::all();
 
                 foreach ($zones as $zone) {
                     $demandFactor = $this->calculateDemandFactor($zone->id);
                     $multiplier = max(1.0, min(2.5, 1.0 + ($demandFactor * 1.5)));
 
-                    Cache::put("delivery_surge:zone:{$zone->id}", $multiplier, self::SURGE_CACHE_TTL);
+                    $this->cache->put("delivery_surge:zone:{$zone->id}", $multiplier, self::SURGE_CACHE_TTL);
 
                     $results[$zone->id] = $multiplier;
 
-                    Log::channel('audit')->info('Delivery surge recalculated', [
+                    $this->log->channel('audit')->info('Delivery surge recalculated', [
                         'zone_id' => $zone->id,
                         'demand_factor' => $demandFactor,
                         'multiplier' => $multiplier,
@@ -67,7 +67,7 @@ final class DeliverySurgeService
                 }
             });
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Delivery surge recalculation failed', [
+            $this->log->channel('audit')->error('Delivery surge recalculation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
                 'trace' => $e->getTraceAsString(),
@@ -83,7 +83,7 @@ final class DeliverySurgeService
      */
     private function calculateDemandFactor(string $zoneId): float
     {
-        $orderCount5Min = DB::table('restaurant_orders')
+        $orderCount5Min = $this->db->table('restaurant_orders')
             ->where('delivery_zone_id', $zoneId)
             ->where('created_at', '>=', Carbon::now()->subMinutes(5))
             ->where('status', 'pending')

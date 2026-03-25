@@ -1,6 +1,30 @@
 <?php declare(strict_types=1);
 
-namespace App\Domains\Furniture\Models;
+names
+
+/**
+ * FurnitureOrder
+ * 
+ * Производитель: CatVRF Platform
+ * Версия: 1.0.0
+ * 
+ * Примеры использования:
+ * 
+ * ```php
+ * // Базовое использование
+ * $instance = new FurnitureOrder();
+ * ```
+ * 
+ * Требования:
+ * - Laravel 10+
+ * - PHP 8.2+
+ * - Все методы должны быть явно типизированы
+ * 
+ * @author CatVRF
+ * @package namespace App\Domains\Furniture\Models
+ * @see https://github.com/iyegorovskyi_clemny/CatVRF
+ */
+pace App\Domains\Furniture\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -26,21 +50,45 @@ final class FurnitureOrder extends Model
         'tags'          => 'json',
     ];
 
+    /**
+     * Выполнить операцию
+     * 
+     * @return mixed
+     * @throws \Exception
+     */
     public function item(): BelongsTo
     {
         return $this->belongsTo(FurnitureItem::class, 'item_id');
     }
 
+    /**
+     * Выполнить операцию
+     * 
+     * @return mixed
+     * @throws \Exception
+     */
     public function isPending(): bool
     {
         return $this->status === 'pending';
     }
 
+    /**
+     * Выполнить операцию
+     * 
+     * @return mixed
+     * @throws \Exception
+     */
     public function isDelivered(): bool
     {
         return $this->status === 'delivered';
     }
 
+    /**
+     * Выполнить операцию
+     * 
+     * @return mixed
+     * @throws \Exception
+     */
     public function isAssembled(): bool
     {
         return $this->status === 'assembled';

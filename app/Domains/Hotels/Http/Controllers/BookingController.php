@@ -82,7 +82,7 @@ final class BookingController extends Controller
                 correlationId: $correlationId,
             );
 
-            Log::channel('audit')->info('Hotel booking created', [
+            $this->log->channel('audit')->info('Hotel booking created', [
                 'correlation_id' => $correlationId,
                 'booking_id' => $booking->id ?? null,
                 'hotel_id' => $data['hotel_id'],
@@ -121,7 +121,7 @@ final class BookingController extends Controller
             $before = $booking->booking_status;
             $booking->update($data);
 
-            Log::channel('audit')->info('Hotel booking updated', [
+            $this->log->channel('audit')->info('Hotel booking updated', [
                 'correlation_id' => $correlationId,
                 'booking_id' => $booking->id,
                 'user_id' => auth()->id(),
@@ -157,7 +157,7 @@ final class BookingController extends Controller
                 correlationId: $correlationId,
             );
 
-            Log::channel('audit')->info('Hotel booking cancelled', [
+            $this->log->channel('audit')->info('Hotel booking cancelled', [
                 'correlation_id' => $correlationId,
                 'booking_id' => $booking->id,
                 'user_id' => auth()->id(),

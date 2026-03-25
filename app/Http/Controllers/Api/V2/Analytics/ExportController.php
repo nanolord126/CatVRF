@@ -70,7 +70,7 @@ final class ExportController extends Controller
                 'correlation_id' => (string)$correlationId,
             ], 201);
         } catch (\Exception $e) {
-            \Log::error('Create export error', ['exception' => $e]);
+            \$this->log->error('Create export error', ['exception' => $e]);
             return response()->json([
                 'error' => $e->getMessage(),
                 'correlation_id' => (string)$correlationId,
@@ -101,7 +101,7 @@ final class ExportController extends Controller
                 'correlation_id' => (string)$correlationId,
             ]);
         } catch (\Exception $e) {
-            \Log::error('Get export history error', ['exception' => $e]);
+            \$this->log->error('Get export history error', ['exception' => $e]);
             return response()->json([
                 'error' => $e->getMessage(),
                 'correlation_id' => (string)$correlationId,
@@ -139,7 +139,7 @@ final class ExportController extends Controller
                 'correlation_id' => (string)$correlationId,
             ]);
         } catch (\Exception $e) {
-            \Log::error('Get segments error', ['exception' => $e]);
+            \$this->log->error('Get segments error', ['exception' => $e]);
             return response()->json([
                 'error' => $e->getMessage(),
                 'correlation_id' => (string)$correlationId,
@@ -172,7 +172,7 @@ final class ExportController extends Controller
                 'correlation_id' => (string)$correlationId,
             ]);
         } catch (\Exception $e) {
-            \Log::error('Compare segments error', ['exception' => $e]);
+            \$this->log->error('Compare segments error', ['exception' => $e]);
             return response()->json([
                 'error' => $e->getMessage(),
                 'correlation_id' => (string)$correlationId,

@@ -35,7 +35,7 @@ final class B2BService
         }
         RateLimiter::hit("pharmacy:b2b:".$pharmacyId, 3600);
 
-        return DB::transaction(function () use ($pharmacyId, $supplierId, $items, $correlationId) {
+        return $this->db->transaction(function () use ($pharmacyId, $supplierId, $items, $correlationId) {
             $pharmacy = Pharmacy::findOrFail($pharmacyId);
             $supplier = PharmacySupplier::findOrFail($supplierId);
 
@@ -81,7 +81,7 @@ final class B2BService
                 $correlationId
             );
 
-            Log::channel("audit")->info("Pharmacy B2B: order initiated", [
+            $this->log->channel("audit")->info("Pharmacy B2B: order initiated", [
                 "order_uuid" => $order->uuid,
                 "pharmacy" => $pharmacyId,
                 "supplier" => $supplierId
@@ -99,7 +99,7 @@ final class B2BService
         $correlationId = $correlationId ?: (string) Str::uuid();
         $order = B2BOrder::with(["pharmacy", "supplier"])->findOrFail($orderId);
 
-        DB::transaction(function () use ($order, $receivedCodes, $correlationId) {
+        $this->db->transaction(function () use ($order, $receivedCodes, $correlationId) {
             // Имитация интеграции с ГИС МТ (Честный ЗНАК)
             foreach ($receivedCodes as $code) {
                 if (!Str::startsWith($code, "01") || strlen($code) < 20) {
@@ -115,7 +115,7 @@ final class B2BService
 
             $order->update(["status" => "completed", "completed_at" => now()]);
 
-            Log::channel("audit")->info("Pharmacy B2B: execution completed with GIS MT verification", [
+            $this->log->channel("audit")->info("Pharmacy B2B: execution completed with GIS MT verification", [
                 "order_id" => $orderId,
                 "codes_count" => count($receivedCodes)
             ]);

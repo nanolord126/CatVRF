@@ -48,9 +48,9 @@ final class CustomMetricService
         $cacheKey = $this->buildGeoCacheKey($tenantId, $vertical, $fromDate, $toDate, $metricType, $aggregation);
         
         // Проверить кэш
-        $cached = Cache::get($cacheKey);
+        $cached = $this->cache->get($cacheKey);
         if ($cached) {
-            Log::channel('analytics')->debug('Geo custom metric cache hit', [
+            $this->log->channel('analytics')->debug('Geo custom metric cache hit', [
                 'correlation_id' => $this->correlationId,
                 'metric_type' => $metricType,
             ]);
@@ -96,9 +96,9 @@ final class CustomMetricService
                 default => 3600,
             };
 
-            Cache::put($cacheKey, $response, $ttl);
+            $this->cache->put($cacheKey, $response, $ttl);
 
-            Log::channel('analytics')->info('Geo custom metric calculated', [
+            $this->log->channel('analytics')->info('Geo custom metric calculated', [
                 'correlation_id' => $this->correlationId,
                 'tenant_id' => $tenantId,
                 'metric_type' => $metricType,
@@ -107,7 +107,7 @@ final class CustomMetricService
 
             return $response;
         } catch (\Exception $e) {
-            Log::channel('error')->error('Geo custom metric calculation failed', [
+            $this->log->channel('error')->error('Geo custom metric calculation failed', [
                 'correlation_id' => $this->correlationId,
                 'metric_type' => $metricType,
                 'message' => $e->getMessage(),
@@ -146,9 +146,9 @@ final class CustomMetricService
         $cacheKey = $this->buildClickCacheKey($tenantId, $vertical, $pageUrl, $fromDate, $toDate, $metricType, $aggregation);
         
         // Проверить кэш
-        $cached = Cache::get($cacheKey);
+        $cached = $this->cache->get($cacheKey);
         if ($cached) {
-            Log::channel('analytics')->debug('Click custom metric cache hit', [
+            $this->log->channel('analytics')->debug('Click custom metric cache hit', [
                 'correlation_id' => $this->correlationId,
                 'metric_type' => $metricType,
             ]);
@@ -192,9 +192,9 @@ final class CustomMetricService
                 default => 3600,
             };
 
-            Cache::put($cacheKey, $response, $ttl);
+            $this->cache->put($cacheKey, $response, $ttl);
 
-            Log::channel('analytics')->info('Click custom metric calculated', [
+            $this->log->channel('analytics')->info('Click custom metric calculated', [
                 'correlation_id' => $this->correlationId,
                 'tenant_id' => $tenantId,
                 'metric_type' => $metricType,
@@ -203,7 +203,7 @@ final class CustomMetricService
 
             return $response;
         } catch (\Exception $e) {
-            Log::channel('error')->error('Click custom metric calculation failed', [
+            $this->log->channel('error')->error('Click custom metric calculation failed', [
                 'correlation_id' => $this->correlationId,
                 'metric_type' => $metricType,
                 'message' => $e->getMessage(),
@@ -539,9 +539,9 @@ final class CustomMetricService
      */
     public function invalidateCache(int $tenantId): void
     {
-        Cache::tags(['custom_metric', "tenant:{$tenantId}"])->flush();
+        $this->cache->tags(['custom_metric', "tenant:{$tenantId}"])->flush();
         
-        Log::channel('analytics')->info('Custom metric cache invalidated', [
+        $this->log->channel('analytics')->info('Custom metric cache invalidated', [
             'correlation_id' => $this->correlationId,
             'tenant_id' => $tenantId,
         ]);

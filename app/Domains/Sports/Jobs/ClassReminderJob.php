@@ -29,11 +29,11 @@ final class ClassReminderJob implements ShouldQueue
     public function handle(): void
     {
         try {
-            Log::channel('audit')->info('Running class reminder job', [
+            $this->log->channel('audit')->info('Running class reminder job', [
                 'correlation_id' => $this->correlationId,
             ]);
 
-            $classes = \App\Domains\Sports\Models\ClassSession::where('starts_at', '>=', now())
+            $classes = \App\Domains\Sports\Models\Class$this->session->where('starts_at', '>=', now())
                 ->where('starts_at', '<=', now()->addHours(24))
                 ->where('is_active', true)
                 ->get();
@@ -49,7 +49,7 @@ final class ClassReminderJob implements ShouldQueue
                         try {
                             $booking->member->notify(new ClassReminderNotification($class));
                         } catch (Throwable $e) {
-                            Log::channel('audit')->error('Failed to send class reminder', [
+                            $this->log->channel('audit')->error('Failed to send class reminder', [
                                 'booking_id' => $booking->id,
                                 'class_id' => $class->id,
                                 'error' => $e->getMessage(),
@@ -57,24 +57,24 @@ final class ClassReminderJob implements ShouldQueue
                         }
                     }
 
-                    Log::channel('audit')->info('Class reminders sent', [
+                    $this->log->channel('audit')->info('Class reminders sent', [
                         'class_id' => $class->id,
                         'booking_count' => $bookings->count(),
                     ]);
                 } catch (Throwable $e) {
-                    Log::channel('audit')->error('Failed to send class reminders', [
+                    $this->log->channel('audit')->error('Failed to send class reminders', [
                         'class_id' => $class->id,
                         'error' => $e->getMessage(),
                     ]);
                 }
             }
 
-            Log::channel('audit')->info('Class reminder job completed', [
+            $this->log->channel('audit')->info('Class reminder job completed', [
                 'classes_count' => $classes->count(),
                 'correlation_id' => $this->correlationId,
             ]);
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Class reminder job failed', [
+            $this->log->channel('audit')->error('Class reminder job failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $this->correlationId,
             ]);

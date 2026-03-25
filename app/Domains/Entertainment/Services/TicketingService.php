@@ -30,7 +30,7 @@ final class TicketingService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-DB::transaction(function () use ($booking, $correlationId) {
+$this->db->transaction(function () use ($booking, $correlationId) {
                 for ($i = 1; $i <= $booking->number_of_seats; $i++) {
                     $ticket = TicketSale::create([
                         'tenant_id' => $booking->tenant_id,
@@ -46,14 +46,14 @@ DB::transaction(function () use ($booking, $correlationId) {
                     event(new TicketSold($ticket, $correlationId));
                 }
 
-                Log::channel('audit')->info('Tickets generated', [
+                $this->log->channel('audit')->info('Tickets generated', [
                     'booking_id' => $booking->id,
                     'ticket_count' => $booking->number_of_seats,
                     'correlation_id' => $correlationId,
                 ]);
             });
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to generate tickets', [
+            $this->log->channel('audit')->error('Failed to generate tickets', [
                 'booking_id' => $booking->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -75,7 +75,7 @@ DB::transaction(function () use ($booking, $correlationId) {
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-DB::transaction(function () use ($booking, $correlationId) {
+$this->db->transaction(function () use ($booking, $correlationId) {
                 TicketSale::where('booking_id', $booking->id)
                     ->update([
                         'status' => 'refunded',
@@ -83,13 +83,13 @@ DB::transaction(function () use ($booking, $correlationId) {
                         'correlation_id' => $correlationId,
                     ]);
 
-                Log::channel('audit')->info('Tickets refunded', [
+                $this->log->channel('audit')->info('Tickets refunded', [
                     'booking_id' => $booking->id,
                     'correlation_id' => $correlationId,
                 ]);
             });
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to refund tickets', [
+            $this->log->channel('audit')->error('Failed to refund tickets', [
                 'booking_id' => $booking->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

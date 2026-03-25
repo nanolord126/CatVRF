@@ -30,8 +30,8 @@ final class PhotographyService
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($data, $clientId, $tenantId) {
-        $session = PhotoSession::create([
+$this->db->transaction(function () use ($data, $clientId, $tenantId) {
+        $session = Photo$this->session->create([
             'tenant_id' => $tenantId,
             'uuid' => Str::uuid(),
             'correlation_id' => $this->correlationId,
@@ -43,7 +43,7 @@ DB::transaction(function () use ($data, $clientId, $tenantId) {
             'status' => 'pending',
         ]);
 
-        Log::channel('audit')->info('Photo session booked', [
+        $this->log->channel('audit')->info('Photo session booked', [
             'correlation_id' => $this->correlationId,
             'session_id' => $session->id,
         ]);
@@ -65,7 +65,7 @@ DB::transaction(function () use ($data, $clientId, $tenantId) {
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($callback) {
+$this->db->transaction(function () use ($callback) {
             return $callback();
         });
     }

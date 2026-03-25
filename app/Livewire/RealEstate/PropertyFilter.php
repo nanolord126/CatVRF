@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Livewire\RealEstate;
@@ -5,7 +7,16 @@ namespace App\Livewire\RealEstate;
 use Livewire\Component;
 use Illuminate\View\View;
 
-final class PropertyFilter extends Component
+final /**
+ * PropertyFilter
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class PropertyFilter extends Component
 {
     public string $propertyType = '';
     public int $priceMin = 0;

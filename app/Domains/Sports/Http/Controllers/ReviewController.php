@@ -54,7 +54,7 @@ final class ReviewController
 
             $correlationId = Str::uuid()->toString();
 
-            $review = DB::transaction(fn() => $this->reviewService->createReview(
+            $review = $this->db->transaction(fn() => $this->reviewService->createReview(
                 $studioId,
                 null,
                 auth()->id(),
@@ -67,7 +67,7 @@ final class ReviewController
                 $correlationId
             ));
 
-            Log::channel('audit')->info('Sports studio review created', [
+            $this->log->channel('audit')->info('Sports studio review created', [
                 'correlation_id' => $correlationId,
                 'review_id'      => $review->id ?? null,
                 'studio_id'      => $studioId,
@@ -92,7 +92,7 @@ final class ReviewController
 
             $correlationId = Str::uuid()->toString();
 
-            $review = DB::transaction(fn() => $this->reviewService->createReview(
+            $review = $this->db->transaction(fn() => $this->reviewService->createReview(
                 null,
                 $trainerId,
                 auth()->id(),

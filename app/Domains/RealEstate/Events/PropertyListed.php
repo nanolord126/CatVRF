@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Events;
@@ -16,5 +18,13 @@ final class PropertyListed
     public function __construct(
         public readonly mixed $listing, // RentalListing | SaleListing
         public readonly string $correlationId,
-    ) {}
+    ) {
+    /**
+     * Инициализировать класс
+     */
+    public function __construct()
+    {
+        // TODO: инициализация
+    }
+}
 }

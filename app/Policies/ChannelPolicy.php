@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -8,7 +10,16 @@ use App\Models\User;
 use App\Domains\Channels\Models\BusinessChannel;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
-final class ChannelPolicy
+final /**
+ * ChannelPolicy
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class ChannelPolicy
 {
     use HandlesAuthorization;
 

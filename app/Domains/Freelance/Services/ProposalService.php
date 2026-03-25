@@ -34,7 +34,7 @@ final class ProposalService
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($jobId, $freelancerId, $data, $correlationId) {
+$this->db->transaction(function () use ($jobId, $freelancerId, $data, $correlationId) {
             $job = FreelanceJob::findOrFail($jobId);
 
             $proposal = FreelanceProposal::create([
@@ -51,7 +51,7 @@ DB::transaction(function () use ($jobId, $freelancerId, $data, $correlationId) {
 
             $job->increment('proposals_count');
 
-            Log::channel('audit')->info('Freelance proposal submitted', [
+            $this->log->channel('audit')->info('Freelance proposal submitted', [
                 'proposal_id' => $proposal->id,
                 'job_id' => $jobId,
                 'freelancer_id' => $freelancerId,
@@ -78,7 +78,7 @@ DB::transaction(function () use ($jobId, $freelancerId, $data, $correlationId) {
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($proposalId, $correlationId) {
+$this->db->transaction(function () use ($proposalId, $correlationId) {
             $proposal = FreelanceProposal::with(['job', 'freelancer'])->findOrFail($proposalId);
 
             $proposal->update(['status' => 'accepted', 'responded_at' => now()]);
@@ -100,7 +100,7 @@ DB::transaction(function () use ($proposalId, $correlationId) {
 
             ProposalAccepted::dispatch($proposal, $correlationId);
 
-            Log::channel('audit')->info('Freelance proposal accepted and contract created', [
+            $this->log->channel('audit')->info('Freelance proposal accepted and contract created', [
                 'proposal_id' => $proposalId,
                 'contract_id' => $contract->id,
                 'freelancer_id' => $proposal->freelancer_id,
@@ -128,11 +128,11 @@ DB::transaction(function () use ($proposalId, $correlationId) {
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($proposalId, $reason, $correlationId) {
+$this->db->transaction(function () use ($proposalId, $reason, $correlationId) {
             $proposal = FreelanceProposal::findOrFail($proposalId);
             $proposal->update(['status' => 'rejected', 'responded_at' => now()]);
 
-            Log::channel('audit')->info('Freelance proposal rejected', [
+            $this->log->channel('audit')->info('Freelance proposal rejected', [
                 'proposal_id' => $proposalId,
                 'reason' => $reason,
                 'correlation_id' => $correlationId,
@@ -154,11 +154,11 @@ DB::transaction(function () use ($proposalId, $reason, $correlationId) {
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($proposalId, $correlationId) {
+$this->db->transaction(function () use ($proposalId, $correlationId) {
             $proposal = FreelanceProposal::findOrFail($proposalId);
             $proposal->update(['status' => 'cancelled']);
 
-            Log::channel('audit')->info('Freelance proposal withdrawn', [
+            $this->log->channel('audit')->info('Freelance proposal withdrawn', [
                 'proposal_id' => $proposalId,
                 'correlation_id' => $correlationId,
             ]);

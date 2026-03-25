@@ -32,8 +32,8 @@ final class BeautySalonService
             $correlationId
         );
 
-        return DB::transaction(function () use ($data, $tenantId, $correlationId) {
-            Log::channel('audit')->info('Creating beauty salon', [
+        return $this->db->transaction(function () use ($data, $tenantId, $correlationId) {
+            $this->log->channel('audit')->info('Creating beauty salon', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
                 'salon_name' => $data['name'],
@@ -67,8 +67,8 @@ final class BeautySalonService
             $correlationId
         );
 
-        return DB::transaction(function () use ($salon, $data, $correlationId) {
-            Log::channel('audit')->info('Updating beauty salon', [
+        return $this->db->transaction(function () use ($salon, $data, $correlationId) {
+            $this->log->channel('audit')->info('Updating beauty salon', [
                 'correlation_id' => $correlationId,
                 'salon_id' => $salon->id,
             ]);
@@ -115,8 +115,8 @@ final class BeautySalonService
             $correlationId
         );
 
-        return DB::transaction(function () use ($salon, $correlationId) {
-            Log::channel('audit')->info('Deactivating beauty salon', [
+        return $this->db->transaction(function () use ($salon, $correlationId) {
+            $this->log->channel('audit')->info('Deactivating beauty salon', [
                 'correlation_id' => $correlationId,
                 'salon_id' => $salon->id,
             ]);

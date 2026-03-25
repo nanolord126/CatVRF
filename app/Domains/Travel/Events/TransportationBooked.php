@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Travel\Events;
@@ -9,7 +11,16 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-final class TransportationBooked implements ShouldBroadcast
+final /**
+ * TransportationBooked
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class TransportationBooked implements ShouldBroadcast
 {
     use Dispatchable;
     use InteractsWithSockets;
@@ -18,7 +29,15 @@ final class TransportationBooked implements ShouldBroadcast
     public function __construct(
         public TravelTransportation $transportation,
         public string $correlationId,
-    ) {}
+    ) {
+    /**
+     * Инициализировать класс
+     */
+    public function __construct()
+    {
+        // TODO: инициализация
+    }
+}
 
     public function broadcastOn(): array
     {

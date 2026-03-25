@@ -41,7 +41,7 @@ final class RealtimeService
 
             cache()->put($key, $payload, 3600); // 1 hour TTL
 
-            Log::channel('audit')->info('User presence tracked', [
+            $this->log->channel('audit')->info('User presence tracked', [
                 'user_id' => $userId,
                 'tenant_id' => $tenantId,
                 'correlation_id' => $correlationId,
@@ -49,7 +49,7 @@ final class RealtimeService
 
             return true;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to track presence', [
+            $this->log->channel('audit')->error('Failed to track presence', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -98,7 +98,7 @@ final class RealtimeService
                 'timestamp' => now(),
             ], 300); // 5 minute TTL
 
-            Log::channel('audit')->info('Broadcast sent', [
+            $this->log->channel('audit')->info('Broadcast sent', [
                 'channel' => $channel,
                 'event' => $event,
                 'correlation_id' => $correlationId,
@@ -106,7 +106,7 @@ final class RealtimeService
 
             return true;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Broadcast failed', [
+            $this->log->channel('audit')->error('Broadcast failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -126,7 +126,7 @@ final class RealtimeService
         $key = "subscription:user.{$userId}:{$channel}";
         cache()->put($key, true, 3600);
 
-        Log::channel('audit')->info('User subscribed to channel', [
+        $this->log->channel('audit')->info('User subscribed to channel', [
             'user_id' => $userId,
             'channel' => $channel,
         ]);
@@ -145,7 +145,7 @@ final class RealtimeService
         $key = "subscription:user.{$userId}:{$channel}";
         cache()->forget($key);
 
-        Log::channel('audit')->info('User unsubscribed from channel', [
+        $this->log->channel('audit')->info('User unsubscribed from channel', [
             'user_id' => $userId,
             'channel' => $channel,
         ]);

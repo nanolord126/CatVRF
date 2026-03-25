@@ -27,7 +27,7 @@ class FraudMLService
                 ->first();
 
             if (!$model) {
-                Log::warning('No active fraud detection model found');
+                $this->log->warning('No active fraud detection model found');
                 return 0;
             }
 
@@ -51,7 +51,7 @@ class FraudMLService
                 ],
             ]);
 
-            Log::info('ML prediction made', [
+            $this->log->info('ML prediction made', [
                 'user_id' => $userId,
                 'score' => $score,
                 'model_version' => $model->version,
@@ -59,7 +59,7 @@ class FraudMLService
 
             return $score;
         } catch (Exception $e) {
-            Log::error('ML fraud prediction failed', ['error' => $e->getMessage(), 'user_id' => $userId]);
+            $this->log->error('ML fraud prediction failed', ['error' => $e->getMessage(), 'user_id' => $userId]);
             return 0;
         }
     }
@@ -71,7 +71,7 @@ class FraudMLService
     {
         // Получить историю пользователя
         $userHistory = PaymentTransaction::where('user_id', $userId)
-            ->select(DB::raw('COUNT(*) as tx_count, SUM(amount) as total_amount'))
+            ->select($this->db->raw('COUNT(*) as tx_count, SUM(amount) as total_amount'))
             ->whereDate('created_at', Carbon::now())
             ->first();
 
@@ -146,7 +146,7 @@ class FraudMLService
     public function trainNewModel(int $trainingDays = 90): MLModelVersion
     {
         try {
-            Log::info('Starting ML model training', ['training_days' => $trainingDays]);
+            $this->log->info('Starting ML model training', ['training_days' => $trainingDays]);
 
             // Получить данные для обучения
             $transactions = PaymentTransaction::where('status', '!=', 'failed')
@@ -186,7 +186,7 @@ class FraudMLService
                 'correlation_id' => \Illuminate\Support\Str::uuid()->toString(),
             ]);
 
-            Log::info('ML model training completed', [
+            $this->log->info('ML model training completed', [
                 'model_id' => $model->id,
                 'version' => $model->version,
                 'accuracy' => $model->accuracy,
@@ -194,7 +194,7 @@ class FraudMLService
 
             return $model;
         } catch (Exception $e) {
-            Log::error('ML model training failed', ['error' => $e->getMessage()]);
+            $this->log->error('ML model training failed', ['error' => $e->getMessage()]);
             throw $e;
         }
     }
@@ -210,7 +210,7 @@ class FraudMLService
                 throw new Exception("Prediction {$predictionId} not found");
             }
 
-            Log::info('ML model feedback received', [
+            $this->log->info('ML model feedback received', [
                 'prediction_id' => $predictionId,
                 'was_fraud' => $wasFraud,
                 'predicted_fraud' => $prediction->is_fraud,
@@ -220,7 +220,7 @@ class FraudMLService
             $this->recordFeedback($prediction, $wasFraud);
             
             // Если накопилось достаточно feedback'а, инициировать переобучение
-            $feedbackCount = DB::table('fraud_ml_feedback')
+            $feedbackCount = $this->db->table('fraud_ml_feedback')
                 ->where('model_version_id', $prediction->model_version_id)
                 ->where('processed_at', null)
                 ->count();
@@ -228,13 +228,13 @@ class FraudMLService
             if ($feedbackCount >= 1000) { // После каждых 1000 feedback'ов переобучить
                 \App\Jobs\Finances\Security\TrainFraudModelJob::dispatch($prediction->model_version_id);
                 
-                Log::info('Fraud model retraining scheduled', [
+                $this->log->info('Fraud model retraining scheduled', [
                     'model_version_id' => $prediction->model_version_id,
                     'feedback_count' => $feedbackCount,
                 ]);
             }
         } catch (Exception $e) {
-            Log::error('Failed to update ML model with feedback', ['error' => $e->getMessage()]);
+            $this->log->error('Failed to update ML model with feedback', ['error' => $e->getMessage()]);
         }
     }
 
@@ -243,7 +243,7 @@ class FraudMLService
      */
     private function recordFeedback($prediction, bool $wasFraud): void
     {
-        DB::table('fraud_ml_feedback')->insert([
+        $this->db->table('fraud_ml_feedback')->insert([
             'prediction_id' => $prediction->id,
             'model_version_id' => $prediction->model_version_id,
             'actual_is_fraud' => $wasFraud,

@@ -34,7 +34,7 @@ final class FreelanceService
             'status' => 'open',
         ]);
 
-        Log::channel('audit')->info('Freelance job posted', [
+        $this->log->channel('audit')->info('Freelance job posted', [
             'correlation_id' => $this->correlationId,
             'job_id' => $job->id,
         ]);
@@ -57,7 +57,7 @@ final class FreelanceService
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($callback) {
+$this->db->transaction(function () use ($callback) {
             return $callback();
         });
     }

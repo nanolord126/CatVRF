@@ -31,7 +31,7 @@ class GlobalPerformanceGuardian
         $this->correlationId = Str::uuid();
 
         try {
-            Log::channel('performance')->info('GlobalPerformanceGuardian: audit started', [
+            $this->log->channel('performance')->info('GlobalPerformanceGuardian: audit started', [
                 'correlation_id' => $this->correlationId,
             ]);
 
@@ -46,7 +46,7 @@ class GlobalPerformanceGuardian
             ];
 
             // Логирование результатов
-            Log::channel('performance')->info('GlobalPerformanceGuardian: audit completed', [
+            $this->log->channel('performance')->info('GlobalPerformanceGuardian: audit completed', [
                 'correlation_id' => $this->correlationId,
                 'database_risk' => $results['database']['risk'],
                 'session_status' => $results['sessions']['status'],
@@ -55,7 +55,7 @@ class GlobalPerformanceGuardian
 
             return $results;
         } catch (Throwable $e) {
-            Log::error('GlobalPerformanceGuardian: audit failed', [
+            $this->log->error('GlobalPerformanceGuardian: audit failed', [
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -68,7 +68,7 @@ class GlobalPerformanceGuardian
     {
         try {
             $connections = 0;
-            $result = DB::select("SHOW STATUS WHERE Variable_name = 'Threads_connected'");
+            $result = $this->db->select("SHOW STATUS WHERE Variable_name = 'Threads_connected'");
             if (!empty($result)) {
                 $connections = $result[0]->Value ?? 0;
             }
@@ -81,7 +81,7 @@ class GlobalPerformanceGuardian
                 'recommendation' => 'Используйте PDO Persistent Connections или PgBouncer для Postgres.',
             ];
         } catch (Throwable $e) {
-            Log::warning('GlobalPerformanceGuardian: DB audit failed', [
+            $this->log->warning('GlobalPerformanceGuardian: DB audit failed', [
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -106,7 +106,7 @@ class GlobalPerformanceGuardian
                 'recommendation' => $driver !== 'redis' ? 'Используйте Redis для session driver' : 'Оптимально',
             ];
         } catch (Throwable $e) {
-            Log::warning('GlobalPerformanceGuardian: session audit failed', [
+            $this->log->warning('GlobalPerformanceGuardian: session audit failed', [
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -126,7 +126,7 @@ class GlobalPerformanceGuardian
                 'recommendation' => !$isScalable ? 'При 5000+ RPM используйте облачное хранилище (S3/Minio)' : 'Оптимально для высоконагруженных систем',
             ];
         } catch (Throwable $e) {
-            Log::warning('GlobalPerformanceGuardian: media audit failed', [
+            $this->log->warning('GlobalPerformanceGuardian: media audit failed', [
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -150,7 +150,7 @@ class GlobalPerformanceGuardian
                 'recommendation' => $latencyMs > 50 ? 'Оптимизируйте схему переключения' : 'Оптимально',
             ];
         } catch (Throwable $e) {
-            Log::warning('GlobalPerformanceGuardian: tenancy audit failed', [
+            $this->log->warning('GlobalPerformanceGuardian: tenancy audit failed', [
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -175,7 +175,7 @@ class GlobalPerformanceGuardian
                 'risk' => 'OPTIMAL',
             ];
         } catch (Throwable $e) {
-            Log::warning('GlobalPerformanceGuardian: Redis audit failed', [
+            $this->log->warning('GlobalPerformanceGuardian: Redis audit failed', [
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
             ]);

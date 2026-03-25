@@ -36,7 +36,7 @@ final class JewelryService
         }
         RateLimiter::hit("jewelry:purchase:".$userId, 3600);
 
-        return DB::transaction(function () use ($itemId, $userId, $tenantId, $correlationId) {
+        return $this->db->transaction(function () use ($itemId, $userId, $tenantId, $correlationId) {
             $item = JewelryItem::where("tenant_id", $tenantId)->findOrFail($itemId);
 
             // 1. Проверка ПОД/ФТ (ФЗ-115) для дорогих изделий (>600к)
@@ -83,7 +83,7 @@ final class JewelryService
                 $correlationId
             );
 
-            Log::channel("audit")->info("Jewelry: purchase initiated (Escrow)", [
+            $this->log->channel("audit")->info("Jewelry: purchase initiated (Escrow)", [
                 "order_uuid" => $order->uuid,
                 "user_id" => $userId,
                 "item_id" => $itemId
@@ -101,7 +101,7 @@ final class JewelryService
         $correlationId = $correlationId ?: (string) Str::uuid();
         $order = JewelryOrder::with(["jewelryItem", "user"])->findOrFail($orderId);
 
-        DB::transaction(function () use ($order, $correlationId) {
+        $this->db->transaction(function () use ($order, $correlationId) {
             if ($order->status !== "awaiting_delivery") {
                 throw new \RuntimeException("Order cannot be fulfilled in status: {$order->status}");
             }
@@ -117,7 +117,7 @@ final class JewelryService
 
             $order->update(["status" => "completed", "completed_at" => now()]);
 
-            Log::channel("audit")->info("Jewelry: order fulfilled and paid", [
+            $this->log->channel("audit")->info("Jewelry: order fulfilled and paid", [
                 "order_id" => $orderId,
                 "payout" => $payout
             ]);

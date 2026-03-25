@@ -102,7 +102,7 @@ final class HeatmapController extends Controller
             // Verify tenant authorization
             $this->authorizeForTenant($validated['tenant_id']);
 
-            Log::channel('audit')->info('Geo-heatmap data requested', [
+            $this->log->channel('audit')->info('Geo-heatmap data requested', [
                 'tenant_id' => $validated['tenant_id'],
                 'vertical' => $validated['vertical'] ?? null,
                 'activity_type' => $validated['activity_type'] ?? null,
@@ -127,7 +127,7 @@ final class HeatmapController extends Controller
             ]);
 
         } catch (ValidationException $e) {
-            Log::channel('audit')->warning('Geo-heatmap validation failed', [
+            $this->log->channel('audit')->warning('Geo-heatmap validation failed', [
                 'errors' => $e->errors(),
                 'correlation_id' => $correlationId,
             ]);
@@ -139,7 +139,7 @@ final class HeatmapController extends Controller
             ], 422);
 
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Geo-heatmap generation failed', [
+            $this->log->channel('audit')->error('Geo-heatmap generation failed', [
                 'error_message' => $e->getMessage(),
                 'error_trace' => $e->getTraceAsString(),
                 'correlation_id' => $correlationId,
@@ -198,7 +198,7 @@ final class HeatmapController extends Controller
 
             $this->authorizeForTenant($validated['tenant_id']);
 
-            Log::channel('audit')->info('Click-heatmap data requested', [
+            $this->log->channel('audit')->info('Click-heatmap data requested', [
                 'tenant_id' => $validated['tenant_id'],
                 'page_url' => $validated['page_url'],
                 'device_type' => $validated['device_type'] ?? null,
@@ -222,7 +222,7 @@ final class HeatmapController extends Controller
             ]);
 
         } catch (ValidationException $e) {
-            Log::channel('audit')->warning('Click-heatmap validation failed', [
+            $this->log->channel('audit')->warning('Click-heatmap validation failed', [
                 'errors' => $e->errors(),
                 'correlation_id' => $correlationId,
             ]);
@@ -234,7 +234,7 @@ final class HeatmapController extends Controller
             ], 422);
 
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Click-heatmap generation failed', [
+            $this->log->channel('audit')->error('Click-heatmap generation failed', [
                 'error_message' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -286,7 +286,7 @@ final class HeatmapController extends Controller
 
             $this->authorizeForTenant($validated['tenant_id']);
 
-            Log::channel('audit')->info('Page screenshot requested', [
+            $this->log->channel('audit')->info('Page screenshot requested', [
                 'tenant_id' => $validated['tenant_id'],
                 'page_url' => $validated['page_url'],
                 'correlation_id' => $correlationId,
@@ -311,7 +311,7 @@ final class HeatmapController extends Controller
             ], 422);
 
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Screenshot capture failed', [
+            $this->log->channel('audit')->error('Screenshot capture failed', [
                 'error_message' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -349,7 +349,7 @@ final class HeatmapController extends Controller
 
             $this->authorizeForTenant($validated['tenant_id']);
 
-            Log::channel('audit')->info('Geo-heatmap PNG export requested', [
+            $this->log->channel('audit')->info('Geo-heatmap PNG export requested', [
                 'tenant_id' => $validated['tenant_id'],
                 'html_length' => \strlen($validated['heatmap_html']),
                 'correlation_id' => $correlationId,
@@ -368,7 +368,7 @@ final class HeatmapController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Geo-heatmap PNG export failed', [
+            $this->log->channel('audit')->error('Geo-heatmap PNG export failed', [
                 'error_message' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -531,7 +531,7 @@ final class HeatmapController extends Controller
         // Verify tenant isolation
         $userTenantId = \filament()->getTenant()->id;
         if ($userTenantId !== $tenantId) {
-            Log::channel('audit')->warning('Unauthorized tenant access attempt', [
+            $this->log->channel('audit')->warning('Unauthorized tenant access attempt', [
                 'user_tenant_id' => $userTenantId,
                 'requested_tenant_id' => $tenantId,
             ]);

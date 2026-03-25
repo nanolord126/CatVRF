@@ -26,7 +26,7 @@ final class FashionRetailProductController
                 ->paginate(20);
 
             $correlationId = Str::uuid()->toString();
-            Log::channel('audit')->info('FashionRetail products listed', [
+            $this->log->channel('audit')->info('FashionRetail products listed', [
                 'count' => $products->count(),
                 'correlation_id' => $correlationId,
             ]);
@@ -38,7 +38,7 @@ final class FashionRetailProductController
             ]);
         } catch (\Throwable $e) {
             $correlationId = Str::uuid()->toString();
-            Log::error('FashionRetail product listing failed', [
+            $this->log->error('FashionRetail product listing failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -76,7 +76,7 @@ final class FashionRetailProductController
         $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
-            $product = DB::transaction(function () use ($correlationId) {
+            $product = $this->db->transaction(function () use ($correlationId) {
                 return FashionRetailProduct::create([
                     'uuid' => Str::uuid(),
                     'tenant_id' => tenant('id'),
@@ -101,7 +101,7 @@ final class FashionRetailProductController
                 ]);
             });
 
-            Log::channel('audit')->info('FashionRetail product created', [
+            $this->log->channel('audit')->info('FashionRetail product created', [
                 'product_id' => $product->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -113,7 +113,7 @@ final class FashionRetailProductController
             ], 201);
         } catch (\Throwable $e) {
             $correlationId = Str::uuid()->toString();
-            Log::error('FashionRetail product creation failed', [
+            $this->log->error('FashionRetail product creation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -134,7 +134,7 @@ final class FashionRetailProductController
         try {
             $product = FashionRetailProduct::findOrFail($id);
 
-            DB::transaction(function () use ($product, $correlationId) {
+            $this->db->transaction(function () use ($product, $correlationId) {
                 $product->update([
                     'name' => request('name', $product->name),
                     'description' => request('description', $product->description),
@@ -146,7 +146,7 @@ final class FashionRetailProductController
                 ]);
             });
 
-            Log::channel('audit')->info('FashionRetail product updated', [
+            $this->log->channel('audit')->info('FashionRetail product updated', [
                 'product_id' => $id,
                 'correlation_id' => $correlationId,
             ]);
@@ -158,7 +158,7 @@ final class FashionRetailProductController
             ]);
         } catch (\Throwable $e) {
             $correlationId = Str::uuid()->toString();
-            Log::error('FashionRetail product update failed', [
+            $this->log->error('FashionRetail product update failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -179,12 +179,12 @@ final class FashionRetailProductController
         try {
             $product = FashionRetailProduct::findOrFail($id);
 
-            DB::transaction(function () use ($product, $correlationId) {
+            $this->db->transaction(function () use ($product, $correlationId) {
                 $product->update(['status' => 'deleted', 'correlation_id' => $correlationId]);
                 $product->delete();
             });
 
-            Log::channel('audit')->info('FashionRetail product deleted', [
+            $this->log->channel('audit')->info('FashionRetail product deleted', [
                 'product_id' => $id,
                 'correlation_id' => $correlationId,
             ]);
@@ -196,7 +196,7 @@ final class FashionRetailProductController
             ]);
         } catch (\Throwable $e) {
             $correlationId = Str::uuid()->toString();
-            Log::error('FashionRetail product deletion failed', [
+            $this->log->error('FashionRetail product deletion failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);

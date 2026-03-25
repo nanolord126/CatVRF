@@ -1,5 +1,29 @@
 <?php declare(strict_types=1);
-namespace App\Domains\Travel\Models;
+name
+
+/**
+ * Tour
+ * 
+ * Производитель: CatVRF Platform
+ * Версия: 1.0.0
+ * 
+ * Примеры использования:
+ * 
+ * ```php
+ * // Базовое использование
+ * $instance = new Tour();
+ * ```
+ * 
+ * Требования:
+ * - Laravel 10+
+ * - PHP 8.2+
+ * - Все методы должны быть явно типизированы
+ * 
+ * @author CatVRF
+ * @package namespace App\Domains\Travel\Models
+ * @see https://github.com/iyegorovskyi_clemny/CatVRF
+ */
+space App\Domains\Travel\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;

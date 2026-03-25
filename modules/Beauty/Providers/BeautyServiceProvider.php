@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 namespace Modules\Beauty\Providers;
@@ -9,6 +11,15 @@ use Modules\Beauty\Services\BookingService;
 use Modules\Beauty\Services\PaymentService;
 use Modules\Payments\Gateways\TinkoffGateway;
 
+/**
+ * BeautyServiceProvider
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
 class BeautyServiceProvider extends ServiceProvider
 {
     public function register(): void

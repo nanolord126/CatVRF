@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -7,7 +9,16 @@ namespace App\Domains\Tickets\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use App\Services\FraudControlService;
 
-final class PurchaseTicketRequest extends FormRequest
+final /**
+ * PurchaseTicketRequest
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class PurchaseTicketRequest extends FormRequest
 {
     public function authorize(): bool
     {

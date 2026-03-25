@@ -3,152 +3,277 @@
 namespace App\Services\Payment;
 
 use App\Models\PaymentTransaction;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
+use App\Services\Fraud\FraudControlService;
+use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Log\LogManager;
+use Illuminate\Support\Str;
 use Exception;
 
+/**
+ * FiscalService
+ *
+ * Fiscalization по 54-ФЗ (передача чеков в налоговую систему через ОФД).
+ * Вызывается ТОЛЬКО после успешного capture платежа, когда деньги точно списаны.
+ *
+ * Поддерживаемые ОФД:
+ * - Yandex Kassa API
+ * - Tinkoff API
+ * - Собственный провайдер
+ *
+ * @final
+ */
 final readonly class FiscalService
 {
+    public function __construct(
+        private readonly PendingRequest $http,
+        private readonly LogManager $log,
+        private readonly FraudControlService $fraud,
+    ) {}
+
     /**
-     * Передать чек в ОФД (54-ФЗ fiscalization)
+     * Fiscalize платёж в ОФД (54-ФЗ)
      *
-     * Вызывается ТОЛЬКО после успешного capture платежа,
-     * когда деньги точно списаны со счёта.
+     * ВАЖНО: Вызывается ТОЛЬКО после успешного capture!
+     * Если fiscalization не удалась, она логируется, но не блокирует платёж
+     * (платёж уже списан со счёта, поэтому должна быть фискальная справка)
+     *
+     * @param PaymentTransaction $payment
+     * @param string|null $correlationId
+     * @return bool
+     *
+     * @throws \App\Exceptions\FraudException
      */
-    public function fiscalize(PaymentTransaction $payment): void
+    public function fiscalize(PaymentTransaction $payment, ?string $correlationId = null): bool
     {
+        $correlationId ??= Str::uuid()->toString();
+
         try {
-            // Проверка: платёж должен быть CAPTURED
+            // 1. FRAUD CHECK
+            $this->fraud->check([
+                'operation_type' => 'fiscal_transmission',
+                'amount' => $payment->amount,
+                'user_id' => $payment->user_id,
+                'payment_id' => $payment->id,
+                'correlation_id' => $correlationId,
+            ]);
+
+            // 2. AUDIT: Начало fiscalization
+            $this->log->channel('audit')->info('Fiscal transmission started', [
+                'correlation_id' => $correlationId,
+                'payment_id' => $payment->id,
+                'amount' => $payment->amount,
+                'status' => $payment->status,
+            ]);
+
+            // 3. ПРОВЕРКА СТАТУСА: платёж должен быть CAPTURED
             if ($payment->status !== PaymentTransaction::STATUS_CAPTURED) {
                 throw new Exception(
-                    "Cannot fiscalize payment with status: {$payment->status}"
+                    "Cannot fiscalize payment with status: {$payment->status}. Expected: captured"
                 );
             }
 
-            // Получить данные заказа (assumption: metadata содержит items)
+            // 4. ПОЛУЧИТЬ ДАННЫЕ ЗАКАЗА
             $items = $payment->metadata['items'] ?? [];
             if (empty($items)) {
-                Log::channel('audit')->warning('Fiscal: no items to fiscalize', [
+                $this->log->channel('audit')->warning('Fiscal: no items to fiscalize', [
+                    'correlation_id' => $correlationId,
                     'payment_id' => $payment->id,
-                    'correlation_id' => $payment->correlation_id,
                 ]);
-                return;
+                return false;
             }
 
-            // Подготовить чек для ОФД
-            $checkData = [
-                'external_id' => "payment_{$payment->id}_{$payment->correlation_id}",
-                'receipt' => [
-                    'client' => [
-                        'email' => $payment->metadata['customer_email'] ?? null,
-                        'phone' => $payment->metadata['customer_phone'] ?? null,
-                    ],
-                    'company' => [
-                        'email' => config('fiscal.company_email', 'company@example.com'),
-                        'inn' => config('fiscal.company_inn', ''),
-                        'payment_address' => config('fiscal.payment_address', ''),
-                    ],
-                    'items' => $this->prepareItems($items),
-                    'payments' => [
-                        [
-                            'type' => 1, // 1 = наличные, 2 = электронные
-                            'sum' => $payment->amount,
-                        ],
-                    ],
-                    'total' => $payment->amount,
-                ],
-            ];
+            // 5. ПОДГОТОВИТЬ ЧЕК
+            $checkData = $this->prepareCheckData($payment, $items, $correlationId);
 
-            // Отправить в ОФД API (Yandex Kassa, Tinkoff, или собственный)
-            $this->sendToOFD($checkData, $payment);
+            // 6. ОТПРАВИТЬ В ОФД
+            $result = $this->sendToOFD($checkData, $payment, $correlationId);
 
-            Log::channel('audit')->info('Payment fiscalized', [
-                'payment_id' => $payment->id,
-                'amount' => $payment->amount,
-                'correlation_id' => $payment->correlation_id,
-            ]);
+            if ($result) {
+                $this->log->channel('audit')->info('Fiscal transmission succeeded', [
+                    'correlation_id' => $correlationId,
+                    'payment_id' => $payment->id,
+                    'fiscal_number' => $checkData['external_id'] ?? null,
+                ]);
+            }
+
+            return $result;
 
         } catch (Exception $e) {
-            Log::channel('audit')->error('Fiscal error', [
+            $this->log->channel('audit')->error('Fiscal transmission failed', [
+                'correlation_id' => $correlationId,
                 'payment_id' => $payment->id,
+                'amount' => $payment->amount,
                 'error' => $e->getMessage(),
-                'correlation_id' => $payment->correlation_id,
+                'trace' => $e->getTraceAsString(),
             ]);
 
-            // Не выбрасываем исключение — fiscalization не должна блокировать платёж
-            // Но логируем для последующей обработки
+            // Не выбрасываем исключение — платёж уже списан,
+            // fiscalization будет повторена в фоновом Job (RetryFailedFiscalization)
+            return false;
         }
     }
 
     /**
+     * Подготовить данные чека для ОФД
+     *
+     * @param PaymentTransaction $payment
+     * @param array $items
+     * @param string $correlationId
+     * @return array
+     */
+    private function prepareCheckData(PaymentTransaction $payment, array $items, string $correlationId): array
+    {
+        return [
+            'external_id' => "payment_{$payment->id}_{$correlationId}",
+            'correlation_id' => $correlationId,
+            'receipt' => [
+                'client' => [
+                    'email' => $payment->metadata['customer_email'] ?? null,
+                    'phone' => $payment->metadata['customer_phone'] ?? null,
+                ],
+                'company' => [
+                    'email' => config('fiscal.company_email', 'company@example.com'),
+                    'inn' => config('fiscal.company_inn', ''),
+                    'payment_address' => config('fiscal.payment_address', ''),
+                ],
+                'items' => $this->prepareItems($items),
+                'payments' => [
+                    [
+                        'type' => 2,  // 2 = электронные деньги (card / e-wallet)
+                        'sum' => $payment->amount,
+                    ],
+                ],
+                'total' => $payment->amount,
+            ],
+        ];
+    }
+
+    /**
      * Подготовить список товаров для ОФД
+     *
+     * @param array $items
+     * @return array
      */
     private function prepareItems(array $items): array
     {
         return array_map(function (array $item) {
             return [
-                'name' => $item['name'] ?? 'Unknown',
+                'name' => $item['name'] ?? 'Unknown Item',
                 'price' => intval($item['price'] ?? 0),
                 'quantity' => floatval($item['quantity'] ?? 1),
                 'amount' => intval($item['amount'] ?? 0),
-                'vat_type' => $item['vat_type'] ?? 1, // 1 = 20%, 2 = 10%, etc.
+                'vat_type' => $item['vat_type'] ?? 1,  // 1 = 20%, 2 = 10%, etc.
             ];
         }, $items);
     }
 
     /**
-     * Отправить чек в ОФД (заглушка)
+     * Отправить чек в ОФД
      *
-     * В production нужна интеграция с:
-     * - Yandex Kassa OFD API
-     * - Tinkoff OFD API
-     * - Или собственный ОФД провайдер
+     * @param array $checkData
+     * @param PaymentTransaction $payment
+     * @param string $correlationId
+     * @return bool
+     *
+     * @throws Exception
      */
-    private function sendToOFD(array $checkData, PaymentTransaction $payment): void
+    private function sendToOFD(array $checkData, PaymentTransaction $payment, string $correlationId): bool
     {
-        $ofdProvider = config('fiscal.provider', 'yandex'); // 'yandex', 'tinkoff', 'custom'
+        $ofdProvider = config('fiscal.provider', 'yandex');
 
-        match ($ofdProvider) {
-            'yandex' => $this->sendToYandexKassaOFD($checkData),
-            'tinkoff' => $this->sendToTinkoffOFD($checkData),
-            'custom' => $this->sendToCustomOFD($checkData),
+        return match ($ofdProvider) {
+            'yandex' => $this->sendToYandexKassaOFD($checkData, $correlationId),
+            'tinkoff' => $this->sendToTinkoffOFD($checkData, $correlationId),
+            'custom' => $this->sendToCustomOFD($checkData, $correlationId),
             default => throw new Exception("Unknown OFD provider: {$ofdProvider}"),
         };
     }
 
     /**
      * Отправить в Yandex Kassa OFD API
+     *
+     * @param array $checkData
+     * @param string $correlationId
+     * @return bool
+     *
+     * @throws Exception
      */
-    private function sendToYandexKassaOFD(array $checkData): void
+    private function sendToYandexKassaOFD(array $checkData, string $correlationId): bool
     {
         $apiKey = config('fiscal.yandex_api_key', '');
         if (!$apiKey) {
             throw new Exception('Yandex Kassa OFD API key not configured');
         }
 
-        // Пример: POST https://api.yandex.com/receipts
-        $response = Http::withHeader('Authorization', "Bearer {$apiKey}")
-            ->post('https://api.yandex.com/receipts', $checkData);
+        try {
+            $response = $this->http
+                ->withHeader('Authorization', "Bearer {$apiKey}")
+                ->withHeader('X-Correlation-ID', $correlationId)
+                ->post('https://api.yandex.com/receipts', $checkData);
 
-        if (!$response->successful()) {
-            throw new Exception(
-                "Yandex OFD error: {$response->status()} - {$response->body()}"
-            );
+            if (!$response->successful()) {
+                throw new Exception(
+                    "Yandex OFD error: {$response->status()} - {$response->body()}"
+                );
+            }
+
+            return true;
+        } catch (Exception $e) {
+            throw new Exception("Failed to send to Yandex Kassa OFD: {$e->getMessage()}");
         }
     }
 
     /**
      * Отправить в Tinkoff OFD API
+     *
+     * @param array $checkData
+     * @param string $correlationId
+     * @return bool
+     *
+     * @throws Exception
      */
-    private function sendToTinkoffOFD(array $checkData): void
+    private function sendToTinkoffOFD(array $checkData, string $correlationId): bool
     {
-        // Аналогично Yandex, но с Tinkoff API
+        $apiKey = config('fiscal.tinkoff_api_key', '');
+        $apiPassword = config('fiscal.tinkoff_api_password', '');
+
+        if (!$apiKey || !$apiPassword) {
+            throw new Exception('Tinkoff OFD credentials not configured');
+        }
+
+        try {
+            $response = $this->http
+                ->withBasicAuth($apiKey, $apiPassword)
+                ->withHeader('X-Correlation-ID', $correlationId)
+                ->post('https://api.tinkoff.ru/ofd/receipts', $checkData);
+
+            if (!$response->successful()) {
+                throw new Exception(
+                    "Tinkoff OFD error: {$response->status()} - {$response->body()}"
+                );
+            }
+
+            return true;
+        } catch (Exception $e) {
+            throw new Exception("Failed to send to Tinkoff OFD: {$e->getMessage()}");
+        }
     }
 
     /**
      * Отправить в custom OFD провайдер
+     *
+     * @param array $checkData
+     * @param string $correlationId
+     * @return bool
      */
-    private function sendToCustomOFD(array $checkData): void
+    private function sendToCustomOFD(array $checkData, string $correlationId): bool
     {
+        // Заглушка для кастомного провайдера
+        // Имплементируется в подклассах или конкретных реализациях
+        $this->log->channel('audit')->info('Custom OFD provider not implemented', [
+            'correlation_id' => $correlationId,
+        ]);
+
+        return false;
     }
 }

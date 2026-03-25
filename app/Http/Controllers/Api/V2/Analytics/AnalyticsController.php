@@ -55,7 +55,7 @@ final class AnalyticsController extends Controller
                 'correlation_id' => (string)$correlationId,
             ]);
         } catch (\Exception $e) {
-            \Log::error('Analytics metrics error', ['exception' => $e]);
+            \$this->log->error('Analytics metrics error', ['exception' => $e]);
             return response()->json([
                 'error' => $e->getMessage(),
                 'correlation_id' => (string)$correlationId,
@@ -81,7 +81,7 @@ final class AnalyticsController extends Controller
                 'correlation_id' => (string)$correlationId,
             ]);
         } catch (\Exception $e) {
-            \Log::error('Analytics KPIs error', ['exception' => $e]);
+            \$this->log->error('Analytics KPIs error', ['exception' => $e]);
             return response()->json([
                 'error' => $e->getMessage(),
                 'correlation_id' => (string)$correlationId,
@@ -114,7 +114,7 @@ final class AnalyticsController extends Controller
                 'correlation_id' => (string)$correlationId,
             ]);
         } catch (\Exception $e) {
-            \Log::error('Analytics forecast error', ['exception' => $e]);
+            \$this->log->error('Analytics forecast error', ['exception' => $e]);
             return response()->json([
                 'error' => $e->getMessage(),
                 'correlation_id' => (string)$correlationId,
@@ -146,7 +146,7 @@ final class AnalyticsController extends Controller
                 'correlation_id' => (string)$correlationId,
             ]);
         } catch (\Exception $e) {
-            \Log::error('Analytics report error', ['exception' => $e]);
+            \$this->log->error('Analytics report error', ['exception' => $e]);
             return response()->json([
                 'error' => $e->getMessage(),
                 'correlation_id' => (string)$correlationId,
@@ -179,7 +179,7 @@ final class AnalyticsController extends Controller
                 'correlation_id' => (string)$correlationId,
             ]);
         } catch (\Exception $e) {
-            \Log::error('Analytics comparison error', ['exception' => $e]);
+            \$this->log->error('Analytics comparison error', ['exception' => $e]);
             return response()->json([
                 'error' => $e->getMessage(),
                 'correlation_id' => (string)$correlationId,

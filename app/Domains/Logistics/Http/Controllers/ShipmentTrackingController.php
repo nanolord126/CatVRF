@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Logistics\Http\Controllers;
@@ -6,7 +8,16 @@ use App\Domains\Logistics\Models\ShipmentTracking;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Str;
 
-final class ShipmentTrackingController
+final /**
+ * ShipmentTrackingController
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class ShipmentTrackingController
 {
     public function getHistory(int $shipmentId): JsonResponse
     {

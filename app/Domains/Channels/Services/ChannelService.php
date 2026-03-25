@@ -48,7 +48,7 @@ final class ChannelService
             throw new \RuntimeException('Создание канала заблокировано системой безопасности.');
         }
 
-        return DB::transaction(function () use ($tenantId, $name, $description, $avatarUrl, $coverUrl, $correlationId): BusinessChannel {
+        return $this->db->transaction(function () use ($tenantId, $name, $description, $avatarUrl, $coverUrl, $correlationId): BusinessChannel {
 
             // Проверка лимита: 1 канал на тенант
             $existing = BusinessChannel::withoutGlobalScopes()
@@ -77,7 +77,7 @@ final class ChannelService
                 'tags'           => ['created_at_event' => now()->toIso8601String()],
             ]);
 
-            Log::channel('audit')->info('BusinessChannel created', [
+            $this->log->channel('audit')->info('BusinessChannel created', [
                 'correlation_id' => $correlationId,
                 'tenant_id'      => $tenantId,
                 'channel_id'     => $channel->id,
@@ -105,13 +105,13 @@ final class ChannelService
             $data['slug'] = $this->generateUniqueSlug($data['name'], $channel->id);
         }
 
-        DB::transaction(function () use ($channel, $data, $correlationId): void {
+        $this->db->transaction(function () use ($channel, $data, $correlationId): void {
             $channel->update($data);
 
-            Cache::forget("channel:{$channel->id}");
-            Cache::forget("channel_slug:{$channel->slug}");
+            $this->cache->forget("channel:{$channel->id}");
+            $this->cache->forget("channel_slug:{$channel->slug}");
 
-            Log::channel('audit')->info('BusinessChannel updated', [
+            $this->log->channel('audit')->info('BusinessChannel updated', [
                 'correlation_id' => $correlationId,
                 'tenant_id'      => $channel->tenant_id,
                 'channel_id'     => $channel->id,
@@ -136,15 +136,15 @@ final class ChannelService
             return;
         }
 
-        DB::transaction(function () use ($channel, $reason, $correlationId): void {
+        $this->db->transaction(function () use ($channel, $reason, $correlationId): void {
             $channel->update([
                 'status'      => 'archived',
                 'archived_at' => now(),
             ]);
 
-            Cache::forget("channel:{$channel->id}");
+            $this->cache->forget("channel:{$channel->id}");
 
-            Log::channel('audit')->info('BusinessChannel archived', [
+            $this->log->channel('audit')->info('BusinessChannel archived', [
                 'correlation_id' => $correlationId,
                 'tenant_id'      => $channel->tenant_id,
                 'channel_id'     => $channel->id,
@@ -163,13 +163,13 @@ final class ChannelService
     {
         $correlationId = $correlationId ?: Str::uuid()->toString();
 
-        DB::transaction(function () use ($channel, $correlationId): void {
+        $this->db->transaction(function () use ($channel, $correlationId): void {
             $channel->update([
                 'status'      => 'active',
                 'archived_at' => null,
             ]);
 
-            Log::channel('audit')->info('BusinessChannel restored from archive', [
+            $this->log->channel('audit')->info('BusinessChannel restored from archive', [
                 'correlation_id' => $correlationId,
                 'tenant_id'      => $channel->tenant_id,
                 'channel_id'     => $channel->id,
@@ -182,7 +182,7 @@ final class ChannelService
      */
     public function getChannelForTenant(string $tenantId): ?BusinessChannel
     {
-        return Cache::remember(
+        return $this->cache->remember(
             "channel_tenant:{$tenantId}",
             config('channels.cache.post_ttl', 300),
             fn () => BusinessChannel::withoutGlobalScopes()
@@ -200,7 +200,7 @@ final class ChannelService
     {
         $count = $channel->subscribers()->count();
         $channel->update(['subscribers_count' => $count]);
-        Cache::put("channel_subs:{$channel->id}", $count, config('channels.cache.subs_ttl', 300));
+        $this->cache->put("channel_subs:{$channel->id}", $count, config('channels.cache.subs_ttl', 300));
     }
 
     /**

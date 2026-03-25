@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 namespace Modules\Analytics\Services;
@@ -7,11 +9,22 @@ use Modules\Analytics\Models\BehavioralEvent;
 use Modules\Analytics\Models\CustomerSegment;
 use App\Models\User;
 
+/**
+ * InterestMappingService
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
 class InterestMappingService
 {
+    // Dependencies injected via constructor
+    // Add private readonly properties here
     public function mapUserInterests(User $user): void
     {
-        $interactions = BehavioralEvent::where('user_id', $user->id)
+        $interactions = Behavioral$this->event->where('user_id', $user->id)
             ->where('event_type', 'view')
             ->pluck('payload')
             ->map(fn($p) => $p['category'] ?? $p['name'] ?? '')

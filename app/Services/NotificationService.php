@@ -32,7 +32,7 @@ final readonly class NotificationService
         $correlationId = $correlationId ?: (string) Str::uuid()->toString();
 
         try {
-            Log::channel('audit')->info('Notification send initiated', [
+            $this->log->channel('audit')->info('Notification send initiated', [
                 'recipient_id' => $recipientId,
                 'type' => $type,
                 'correlation_id' => $correlationId,
@@ -56,7 +56,7 @@ final readonly class NotificationService
                 try {
                     // Mail::to($user->email)->queue(new NotificationMailable($notification));
                 } catch (Throwable $e) {
-                    Log::channel('audit')->warning('Email send failed', [
+                    $this->log->channel('audit')->warning('Email send failed', [
                         'user_id' => $recipientId,
                         'error' => $e->getMessage(),
                         'correlation_id' => $correlationId,
@@ -69,7 +69,7 @@ final readonly class NotificationService
                 try {
                     // SmsService::send($user->phone, $data['sms_text'] ?? '');
                 } catch (Throwable $e) {
-                    Log::channel('audit')->warning('SMS send failed', [
+                    $this->log->channel('audit')->warning('SMS send failed', [
                         'user_id' => $recipientId,
                         'error' => $e->getMessage(),
                         'correlation_id' => $correlationId,
@@ -82,7 +82,7 @@ final readonly class NotificationService
                 try {
                     // FirebaseService::send($user, $notification);
                 } catch (Throwable $e) {
-                    Log::channel('audit')->warning('Push send failed', [
+                    $this->log->channel('audit')->warning('Push send failed', [
                         'user_id' => $recipientId,
                         'error' => $e->getMessage(),
                         'correlation_id' => $correlationId,
@@ -90,7 +90,7 @@ final readonly class NotificationService
                 }
             }
 
-            Log::channel('audit')->info('Notification queued successfully', [
+            $this->log->channel('audit')->info('Notification queued successfully', [
                 'notification_id' => $notification->id,
                 'recipient_id' => $recipientId,
                 'type' => $type,
@@ -99,7 +99,7 @@ final readonly class NotificationService
 
             return true;
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Notification send failed', [
+            $this->log->channel('audit')->error('Notification send failed', [
                 'recipient_id' => $recipientId,
                 'type' => $type,
                 'error' => $e->getMessage(),
@@ -124,7 +124,7 @@ final readonly class NotificationService
         $correlationId = $correlationId ?: (string) Str::uuid()->toString();
 
         try {
-            Log::channel('audit')->info('Daily report sending', [
+            $this->log->channel('audit')->info('Daily report sending', [
                 'tenant_id' => $tenantId,
                 'correlation_id' => $correlationId,
             ]);
@@ -135,14 +135,14 @@ final readonly class NotificationService
             // Отправка на email
             $this->send($tenantId, 'daily_report', $metrics, $correlationId);
 
-            Log::channel('audit')->info('Daily report sent successfully', [
+            $this->log->channel('audit')->info('Daily report sent successfully', [
                 'tenant_id' => $tenantId,
                 'correlation_id' => $correlationId,
             ]);
 
             return true;
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Daily report send failed', [
+            $this->log->channel('audit')->error('Daily report send failed', [
                 'tenant_id' => $tenantId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -166,7 +166,7 @@ final readonly class NotificationService
         $correlationId = $correlationId ?: (string) Str::uuid()->toString();
 
         try {
-            Log::channel('audit')->info('Weekly report sending', [
+            $this->log->channel('audit')->info('Weekly report sending', [
                 'tenant_id' => $tenantId,
                 'correlation_id' => $correlationId,
             ]);
@@ -177,14 +177,14 @@ final readonly class NotificationService
             // Отправка на email
             $this->send($tenantId, 'weekly_report', $metrics, $correlationId);
 
-            Log::channel('audit')->info('Weekly report sent successfully', [
+            $this->log->channel('audit')->info('Weekly report sent successfully', [
                 'tenant_id' => $tenantId,
                 'correlation_id' => $correlationId,
             ]);
 
             return true;
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Weekly report send failed', [
+            $this->log->channel('audit')->error('Weekly report send failed', [
                 'tenant_id' => $tenantId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

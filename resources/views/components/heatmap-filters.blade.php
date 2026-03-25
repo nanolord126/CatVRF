@@ -520,8 +520,7 @@
                 
                 // Mark as active
                 document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
-            });
+                this.classList.a});
         });
 
         // "All" checkbox behavior

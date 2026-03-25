@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Policies;
@@ -23,21 +25,21 @@ final class PropertyPolicy
     public function create($user): Response
     {
         return $user?->can('create_property')
-            ? Response::allow()
-            : Response::deny('Нет прав');
+            ? $this->response->allow()
+            : $this->response->deny('Нет прав');
     }
 
     public function update($user, $property): Response
     {
         return $property->owner_id === $user->id || $user?->is_admin
-            ? Response::allow()
-            : Response::deny('Нет прав');
+            ? $this->response->allow()
+            : $this->response->deny('Нет прав');
     }
 
     public function delete($user, $property): Response
     {
         return $user?->is_admin
-            ? Response::allow()
-            : Response::deny('Только админ');
+            ? $this->response->allow()
+            : $this->response->deny('Только админ');
     }
 }

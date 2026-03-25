@@ -1,6 +1,30 @@
 <?php declare(strict_types=1);
 
-namespace App\Domains\Cosmetics\Models;
+names
+
+/**
+ * CosmeticOrder
+ * 
+ * Производитель: CatVRF Platform
+ * Версия: 1.0.0
+ * 
+ * Примеры использования:
+ * 
+ * ```php
+ * // Базовое использование
+ * $instance = new CosmeticOrder();
+ * ```
+ * 
+ * Требования:
+ * - Laravel 10+
+ * - PHP 8.2+
+ * - Все методы должны быть явно типизированы
+ * 
+ * @author CatVRF
+ * @package namespace App\Domains\Cosmetics\Models
+ * @see https://github.com/iyegorovskyi_clemny/CatVRF
+ */
+pace App\Domains\Cosmetics\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -21,6 +45,12 @@ final class CosmeticOrder extends Model
         'meta' => 'json',
     ];
 
+    /**
+     * Выполнить операцию
+     * 
+     * @return mixed
+     * @throws \Exception
+     */
     public function product()
     {
         return $this->belongsTo(CosmeticProduct::class);

@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -11,7 +13,16 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 
-final class GroceryStoreResource extends Resource
+final /**
+ * GroceryStoreResource
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class GroceryStoreResource extends Resource
 {
     protected static ?string $model = GroceryStore::class;
     protected static ?string $navigationIcon = 'heroicon-o-shopping-cart';

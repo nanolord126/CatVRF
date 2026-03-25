@@ -1,57 +1,75 @@
 <?php declare(strict_types=1);
 
-use App\Domains\Food\Http\Controllers\RestaurantController;
-use App\Domains\Food\Http\Controllers\RestaurantOrderController;
-use App\Domains\Food\Http\Controllers\DeliveryOrderController;
-use App\Domains\Food\Http\Controllers\DishController;
+use App\Http\Controllers\Api\V1\Food\OrderController;
 use Illuminate\Support\Facades\Route;
 
 /**
- * Food & Delivery API Routes
- * Production 2026.
+ * Food & Delivery API Routes v1
+ * Production 2026.03.24
  */
 
-Route::middleware(['api', 'tenant'])->prefix('api/food')->group(function () {
-    // ========== Restaurants (Public) ==========
-    Route::get('restaurants', [RestaurantController::class, 'index'])->name('restaurants.index');
-    Route::get('restaurants/{restaurant}', [RestaurantController::class, 'show'])->name('restaurants.show');
-    Route::get('restaurants/{restaurant}/menu', [RestaurantController::class, 'getMenu'])->name('restaurants.menu');
+// ===== PUBLIC ENDPOINTS (No Auth) =====
+Route::middleware(['api', 'throttle:60,1'])->prefix('api/v1/food')->group(function () {
+    // Restaurants
+    Route::get('restaurants', [OrderController::class, 'listRestaurants'])
+        ->name('api.food.restaurants.list');
+    
+    Route::get('restaurants/{restaurant}', [OrderController::class, 'showRestaurant'])
+        ->name('api.food.restaurants.show');
+    
+    Route::get('restaurants/{restaurant}/menu', [OrderController::class, 'getMenu'])
+        ->name('api.food.restaurants.menu');
+    
+    // Dishes
+    Route::get('dishes', [OrderController::class, 'listDishes'])
+        ->name('api.food.dishes.list');
+    
+    Route::get('dishes/{dish}', [OrderController::class, 'showDish'])
+        ->name('api.food.dishes.show');
+});
 
-    // ========== Dishes (Menu) ==========
-    Route::get('dishes', [DishController::class, 'index'])->name('dishes.index');
-    Route::get('dishes/{dish}', [DishController::class, 'show'])->name('dishes.show');
-
-    // ========== Restaurant Orders (Auth) ==========
-    Route::middleware('auth')->group(function () {
-        Route::apiResource('orders', RestaurantOrderController::class);
-        Route::post('orders/{order}/cancel', [RestaurantOrderController::class, 'cancel'])->name('orders.cancel');
-        Route::post('orders/{order}/confirm-payment', [RestaurantOrderController::class, 'confirmPayment'])->name('orders.confirm-payment');
-        Route::get('orders/{order}/status', [RestaurantOrderController::class, 'status'])->name('orders.status');
-    });
-
+// ===== AUTHENTICATED ENDPOINTS (Auth) =====
+Route::middleware(['api', 'auth:sanctum', 'tenant', 'throttle:60,1'])->prefix('api/v1/food')->group(function () {
+    // Orders
+    Route::post('/orders', [OrderController::class, 'store'])
+        ->name('api.food.orders.store')
+        ->middleware('throttle:50,1');
+    
+    Route::get('/orders/{order}', [OrderController::class, 'show'])
+        ->name('api.food.orders.show');
+    
+    Route::post('/orders/{order}/ready', [OrderController::class, 'ready'])
+        ->name('api.food.orders.ready')
+        ->middleware('throttle:30,1');
+    
+    Route::post('/orders/{order}/complete', [OrderController::class, 'complete'])
+        ->name('api.food.orders.complete')
+        ->middleware('throttle:30,1');
+    
+    Route::get('/orders', [OrderController::class, 'listUserOrders'])
+        ->name('api.food.orders.list');
+    
     // ========== Delivery Orders (Auth) ==========
-    Route::middleware('auth')->group(function () {
-        Route::get('deliveries', [DeliveryOrderController::class, 'index'])->name('deliveries.index');
-        Route::get('deliveries/{delivery}', [DeliveryOrderController::class, 'show'])->name('deliveries.show');
-        Route::post('deliveries/{delivery}/start', [DeliveryOrderController::class, 'start'])->name('deliveries.start');
-        Route::get('deliveries/{delivery}/track', [DeliveryOrderController::class, 'track'])->name('deliveries.track');
-    });
+    Route::get('deliveries', [DeliveryOrderController::class, 'index'])->name('deliveries.index');
+    Route::get('deliveries/{delivery}', [DeliveryOrderController::class, 'show'])->name('deliveries.show');
+    Route::post('deliveries/{delivery}/start', [DeliveryOrderController::class, 'start'])->name('deliveries.start');
+    Route::get('deliveries/{delivery}/track', [DeliveryOrderController::class, 'track'])->name('deliveries.track');
+});
 
-    // ========== KDS (Kitchen Display System - Staff Only) ==========
-    Route::middleware(['auth', 'staff'])->group(function () {
-        Route::get('kds/orders', [RestaurantOrderController::class, 'kdsOrders'])->name('kds.orders');
-        Route::post('kds/orders/{order}/mark-ready', [RestaurantOrderController::class, 'markReady'])->name('kds.mark-ready');
-        Route::post('kds/orders/{order}/mark-picked', [RestaurantOrderController::class, 'markPicked'])->name('kds.mark-picked');
-    });
+// ===== STAFF ENDPOINTS (Auth + Staff) =====
+Route::middleware(['api', 'auth:sanctum', 'tenant', 'staff', 'throttle:100,1'])->prefix('api/v1/food')->group(function () {
+    // ========== KDS (Kitchen Display System) ==========
+    Route::get('kds/orders', [RestaurantOrderController::class, 'kdsOrders'])->name('kds.orders');
+    Route::post('kds/orders/{order}/mark-ready', [RestaurantOrderController::class, 'markReady'])->name('kds.mark-ready');
+    Route::post('kds/orders/{order}/mark-picked', [RestaurantOrderController::class, 'markPicked'])->name('kds.mark-picked');
+    
+    // ========== Management ==========
+    Route::apiResource('dishes', DishController::class)->except('index', 'show');
+    Route::apiResource('consumables', 'App\Domains\Food\Http\Controllers\ConsumableController');
+});
 
-    // ========== Management (Staff/Admin) ==========
-    Route::middleware(['auth', 'staff'])->group(function () {
-        Route::apiResource('dishes', DishController::class)->except('index', 'show');
-        Route::apiResource('consumables', 'App\Domains\Food\Http\Controllers\ConsumableController');
-    });
-
-    // ========== Admin Panel (Admin Only) ==========
-    Route::middleware(['auth', 'admin'])->group(function () {
-        Route::apiResource('restaurants', RestaurantController::class)->except('index', 'show');
-    });
+// ===== ADMIN ENDPOINTS (Auth + Admin) =====
+Route::middleware(['api', 'auth:sanctum', 'tenant', 'admin', 'throttle:100,1'])->prefix('api/v1/food')->group(function () {
+    // ========== Admin Panel ==========
+    Route::apiResource('restaurants', RestaurantController::class)->except('index', 'show');
 });

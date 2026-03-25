@@ -22,7 +22,7 @@ final class PricingService
 
 
         try {
-            Log::channel('audit')->info('Calculating room price', [
+            $this->log->channel('audit')->info('Calculating room price', [
                 'room_type_id' => $roomTypeId,
                 'check_in_date' => $checkInDate,
                 'check_out_date' => $checkOutDate,
@@ -59,7 +59,7 @@ final class PricingService
                 $totalPrice += $nightPrice;
             }
 
-            Log::channel('audit')->info('Room price calculated', [
+            $this->log->channel('audit')->info('Room price calculated', [
                 'room_type_id' => $roomTypeId,
                 'total_price' => $totalPrice,
                 'correlation_id' => $correlationId,
@@ -67,7 +67,7 @@ final class PricingService
 
             return $totalPrice;
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Price calculation failed', [
+            $this->log->channel('audit')->error('Price calculation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -84,7 +84,7 @@ final class PricingService
 
 
         try {
-            Log::channel('audit')->info('Getting available rooms', [
+            $this->log->channel('audit')->info('Getting available rooms', [
                 'hotel_id' => $hotelId,
                 'check_in_date' => $checkInDate,
                 'correlation_id' => $correlationId,
@@ -104,14 +104,14 @@ final class PricingService
                 ->filter(fn ($rt) => $rt->inventory->count() > 0)
                 ->toArray();
 
-            Log::channel('audit')->info('Available rooms found', [
+            $this->log->channel('audit')->info('Available rooms found', [
                 'count' => count($roomTypes),
                 'correlation_id' => $correlationId,
             ]);
 
             return $roomTypes;
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to get available rooms', [
+            $this->log->channel('audit')->error('Failed to get available rooms', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -150,7 +150,7 @@ final class PricingService
 
             return $multiplier;
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to apply seasonal multiplier', [
+            $this->log->channel('audit')->error('Failed to apply seasonal multiplier', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);

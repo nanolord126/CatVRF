@@ -46,7 +46,7 @@ final class FraudDetectionController extends Controller
                 correlationId: $correlationId
             );
 
-            Log::channel('audit')->info('Payment fraud scored', [
+            $this->log->channel('audit')->info('Payment fraud scored', [
                 'user_id' => auth()->id(),
                 'correlation_id' => $correlationId,
                 'score' => $result['score'],
@@ -66,7 +66,7 @@ final class FraudDetectionController extends Controller
             ]);
 
         } catch (\Throwable $e) {
-            Log::channel('analytics_errors')->error('Fraud scoring failed', [
+            $this->log->channel('analytics_errors')->error('Fraud scoring failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
@@ -91,7 +91,7 @@ final class FraudDetectionController extends Controller
         $correlationId = Str::uuid()->toString();
 
         try {
-            $fraudAttempts = \DB::table('fraud_attempts')
+            $fraudAttempts = \$this->db->table('fraud_attempts')
                 ->where('user_id', auth()->id())
                 ->where('created_at', '>=', now()->subDays(30))
                 ->orderByDesc('created_at')
@@ -109,7 +109,7 @@ final class FraudDetectionController extends Controller
             ]);
 
         } catch (\Throwable $e) {
-            Log::channel('analytics_errors')->error('Failed to fetch fraud history', [
+            $this->log->channel('analytics_errors')->error('Failed to fetch fraud history', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage()
             ]);

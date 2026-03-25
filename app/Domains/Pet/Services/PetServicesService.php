@@ -23,9 +23,9 @@ final class PetServicesService
     {
 
 
-        return DB::transaction(function () use ($data) {
+        return $this->db->transaction(function () use ($data) {
             $clinic = $this->clinicModel->create($data);
-            Log::channel('audit')->info('Ветклиника создана', [
+            $this->log->channel('audit')->info('Ветклиника создана', [
                 'clinic_id' => $clinic->id,
                 'correlation_id' => $data['correlation_id'] ?? null,
             ]);
@@ -37,9 +37,9 @@ final class PetServicesService
     {
 
 
-        return DB::transaction(function () use ($data) {
+        return $this->db->transaction(function () use ($data) {
             $appointment = PetAppointment::create($data);
-            Log::channel('audit')->info('Запись на груминг', [
+            $this->log->channel('audit')->info('Запись на груминг', [
                 'appointment_id' => $appointment->id,
                 'correlation_id' => $data['correlation_id'] ?? null,
             ]);
@@ -62,10 +62,10 @@ final class PetServicesService
     {
 
 
-        return DB::transaction(function () use ($appointmentId) {
+        return $this->db->transaction(function () use ($appointmentId) {
             $appointment = PetAppointment::findOrFail($appointmentId);
             $appointment->update(['status' => 'completed']);
-            Log::channel('audit')->info('Груминг завершён', ['appointment_id' => $appointmentId]);
+            $this->log->channel('audit')->info('Груминг завершён', ['appointment_id' => $appointmentId]);
             return true;
         });
     }
@@ -82,8 +82,8 @@ final class PetServicesService
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-        DB::transaction(function () use ($petId, $medicationData) {
-            Log::channel('audit')->info('Лекарство записано', [
+        $this->db->transaction(function () use ($petId, $medicationData) {
+            $this->log->channel('audit')->info('Лекарство записано', [
                 'pet_id' => $petId,
                 'medication' => $medicationData,
             ]);

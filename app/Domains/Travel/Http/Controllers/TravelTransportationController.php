@@ -91,7 +91,7 @@ final class TravelTransportationController extends Controller
             ]);
 
             $validated = $request->all();
-            $transportation = DB::transaction(function () use ($validated, $correlationId) {
+            $transportation = $this->db->transaction(function () use ($validated, $correlationId) {
                 return TravelTransportation::create([
                     'tenant_id' => tenant()->id,
                     'type' => ($validated['type'] ?? null),
@@ -111,7 +111,7 @@ final class TravelTransportationController extends Controller
                 ]);
             });
 
-            Log::channel('audit')->info('Transportation created', [
+            $this->log->channel('audit')->info('Transportation created', [
                 'transportation_id' => $transportation->id,
                 'type' => $transportation->type,
                 'correlation_id' => $correlationId,
@@ -142,7 +142,7 @@ final class TravelTransportationController extends Controller
             $this->authorize('update', $transportation);
 
             $validated = $request->all();
-            $transportation = DB::transaction(function () use ($validated, $transportation, $correlationId) {
+            $transportation = $this->db->transaction(function () use ($validated, $transportation, $correlationId) {
                 $transportation->update([
                     'price' => ($validated['price'] ?? $transportation->price),
                     'status' => ($validated['status'] ?? $transportation->status),
@@ -177,11 +177,11 @@ final class TravelTransportationController extends Controller
 
             $this->authorize('delete', $transportation);
 
-            DB::transaction(function () use ($transportation) {
+            $this->db->transaction(function () use ($transportation) {
                 $transportation->delete();
             });
 
-            Log::channel('audit')->info('Transportation deleted', [
+            $this->log->channel('audit')->info('Transportation deleted', [
                 'transportation_id' => $transportation->id,
                 'correlation_id' => $correlationId,
             ]);

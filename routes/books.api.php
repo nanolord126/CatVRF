@@ -1,17 +1,3 @@
-<?php
-
-declare(strict_types=1);
-
-use App\Domains\Books\Http\Controllers\BookController;
+<?php declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
-
-Route::middleware(['api', 'tenant'])->prefix('books')->group(function (): void {
-    Route::get('/',         [BookController::class, 'index']);
-    Route::get('{id}',      [BookController::class, 'show']);
-
-    Route::middleware('auth')->group(function (): void {
-        Route::get('recommendations',  [BookController::class, 'recommendations']);
-        Route::post('orders',          [BookController::class, 'order']);
-        Route::get('my-orders',        [BookController::class, 'myOrders']);
-    });
-});
+Route::middleware(['api'])->prefix('api/v1/books')->group(function() { Route::get('/', fn() => response()->json(['message' => 'books API'])); });

@@ -20,7 +20,7 @@ final class RefundShipmentCommissionListener implements ShouldQueue
         }
 
         try {
-            DB::transaction(function () use ($event) {
+            $this->db->transaction(function () use ($event) {
                 $wallet = \App\Models\Wallet::where('tenant_id', $event->shipment->tenant_id)
                     ->lockForUpdate()
                     ->first();
@@ -41,7 +41,7 @@ final class RefundShipmentCommissionListener implements ShouldQueue
                     'correlation_id' => $event->correlationId,
                 ]);
 
-                Log::channel('audit')->info('Shipment commission refunded', [
+                $this->log->channel('audit')->info('Shipment commission refunded', [
                     'shipment_id' => $event->shipment->id,
                     'tenant_id' => $event->shipment->tenant_id,
                     'customer_id' => $event->shipment->customer_id,
@@ -50,7 +50,7 @@ final class RefundShipmentCommissionListener implements ShouldQueue
                 ]);
             });
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to refund shipment commission', [
+            $this->log->channel('audit')->error('Failed to refund shipment commission', [
                 'shipment_id' => $event->shipment->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

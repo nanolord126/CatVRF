@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Auto\Filament\Resources\CarWashBookingResource\Pages;
@@ -22,7 +24,7 @@ final class ViewCarWashBooking extends ViewRecord
 
             Actions\DeleteAction::make()
                 ->after(function () {
-                    Log::channel('audit')->info('Car wash booking deleted from view page', [
+                    $this->log->channel('audit')->info('Car wash booking deleted from view page', [
                         'correlation_id' => $this->record->correlation_id,
                         'booking_id' => $this->record->id,
                         'user_id' => auth()->id(),
@@ -33,7 +35,7 @@ final class ViewCarWashBooking extends ViewRecord
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
-        Log::channel('audit')->info('Car wash booking viewed', [
+        $this->log->channel('audit')->info('Car wash booking viewed', [
             'correlation_id' => $this->record->correlation_id,
             'booking_id' => $this->record->id,
             'wash_type' => $this->record->wash_type,

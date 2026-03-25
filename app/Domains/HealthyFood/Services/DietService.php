@@ -35,7 +35,7 @@ final class DietService
     {
         $correlationId = $correlationId ?: (string) Str::uuid();
 
-        return DB::transaction(function () use ($userId, $goals, $correlationId) {
+        return $this->db->transaction(function () use ($userId, $goals, $correlationId) {
             // 1. Интеграция с рекомендательной системой для подбора оптимальных блюд
             $recommendedItems = $this->recommender->getForUser(userId: $userId, vertical: "healthy_food");
 
@@ -48,7 +48,7 @@ final class DietService
                 "tags" => ["keto", "high_protein", "personal"]
             ]);
 
-            Log::channel("audit")->info("Healthy: plan created", ["user" => $userId, "plan_id" => $plan->id]);
+            $this->log->channel("audit")->info("Healthy: plan created", ["user" => $userId, "plan_id" => $plan->id]);
 
             return $plan;
         });
@@ -61,7 +61,7 @@ final class DietService
     {
         $correlationId = $correlationId ?: (string) Str::uuid();
 
-        return DB::transaction(function () use ($planId, $days, $correlationId) {
+        return $this->db->transaction(function () use ($planId, $days, $correlationId) {
             $plan = DietPlan::findOrFail($planId);
             
             // 2. Fraud Check - защита от накрутки подписок
@@ -91,7 +91,7 @@ final class DietService
                 sourceId: $subscription->id
             );
 
-            Log::channel("audit")->info("Healthy: subscription active", ["sub_id" => $subscription->id]);
+            $this->log->channel("audit")->info("Healthy: subscription active", ["sub_id" => $subscription->id]);
 
             return $subscription;
         });
@@ -105,7 +105,7 @@ final class DietService
         $correlationId = $correlationId ?: (string) Str::uuid();
         $sub = DietSubscription::with("plan")->findOrFail($subId);
 
-        DB::transaction(function () use ($sub, $correlationId) {
+        $this->db->transaction(function () use ($sub, $correlationId) {
             // 4. Списание остатков
             $this->inventory->deductStock(
                 itemId: 0, 
@@ -128,7 +128,7 @@ final class DietService
                 correlationId: $correlationId
             );
 
-            Log::channel("audit")->info("Healthy: payment released", ["sub_id" => $sub->id, "payout" => $payout]);
+            $this->log->channel("audit")->info("Healthy: payment released", ["sub_id" => $sub->id, "payout" => $payout]);
         });
     }
 }

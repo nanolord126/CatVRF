@@ -1,9 +1,20 @@
+declare(strict_types=1);
+
 <?php
 declare(strict_types=1);
 
 namespace App\Http\Requests;
 
-final class ReferralClaimRequest extends BaseApiRequest
+final /**
+ * ReferralClaimRequest
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class ReferralClaimRequest extends BaseApiRequest
 {
     public function authorize(): bool
     {
@@ -19,7 +30,7 @@ final class ReferralClaimRequest extends BaseApiRequest
                 $correlationId,
             );
             if ($fraudResult['decision'] === 'block') {
-                \Illuminate\Support\Facades\Log::channel('fraud_alert')->warning('FormRequest blocked', [
+                \Illuminate\Support\Facades\$this->log->channel('fraud_alert')->warning('FormRequest blocked', [
                     'class'          => __CLASS__,
                     'correlation_id' => $correlationId,
                     'score'          => $fraudResult['score'],

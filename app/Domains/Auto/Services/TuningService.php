@@ -18,7 +18,7 @@ final class TuningService
     {
         $correlationId = Str::uuid()->toString();
 
-        Log::channel('audit')->info('Creating tuning project', [
+        $this->log->channel('audit')->info('Creating tuning project', [
             'correlation_id' => $correlationId,
             'tenant_id' => tenant()->id,
         ]);
@@ -29,7 +29,7 @@ final class TuningService
                 'amount' => $data['estimated_price'] ?? 0,
             ]);
 
-            $project = DB::transaction(function () use ($data, $correlationId) {
+            $project = $this->db->transaction(function () use ($data, $correlationId) {
                 return TuningProject::create([
                     ...$data,
                     'tenant_id' => tenant()->id,
@@ -39,14 +39,14 @@ final class TuningService
                 ]);
             });
 
-            Log::channel('audit')->info('Tuning project created', [
+            $this->log->channel('audit')->info('Tuning project created', [
                 'correlation_id' => $correlationId,
                 'project_id' => $project->id,
             ]);
 
             return $project;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Tuning project creation failed', [
+            $this->log->channel('audit')->error('Tuning project creation failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -63,7 +63,7 @@ final class TuningService
         try {
             $project = TuningProject::findOrFail($projectId);
 
-            DB::transaction(function () use ($project, $status, $completedStages) {
+            $this->db->transaction(function () use ($project, $status, $completedStages) {
                 $updateData = ['status' => $status];
 
                 if ($completedStages !== null) {
@@ -77,7 +77,7 @@ final class TuningService
                 $project->update($updateData);
             });
 
-            Log::channel('audit')->info('Tuning project progress updated', [
+            $this->log->channel('audit')->info('Tuning project progress updated', [
                 'correlation_id' => $correlationId,
                 'project_id' => $projectId,
                 'status' => $status,
@@ -85,7 +85,7 @@ final class TuningService
 
             return $project->fresh();
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Tuning project update failed', [
+            $this->log->channel('audit')->error('Tuning project update failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);

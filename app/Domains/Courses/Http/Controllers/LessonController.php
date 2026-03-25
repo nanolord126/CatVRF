@@ -29,7 +29,7 @@ final class LessonController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to list lessons', [
+            \$this->log->channel('audit')->error('Failed to list lessons', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -51,7 +51,7 @@ final class LessonController
         );
 
         if ($fraudResult['decision'] === 'block') {
-            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+            $this->log->channel('fraud_alert')->warning('Operation blocked by fraud control', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'score'          => $fraudResult['score'],
@@ -91,7 +91,7 @@ final class LessonController
                 'correlation_id' => $correlationId,
             ]);
 
-            \Log::channel('audit')->info('Lesson created', [
+            \$this->log->channel('audit')->info('Lesson created', [
                 'lesson_id' => $lesson->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -102,7 +102,7 @@ final class LessonController
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to create lesson', [
+            \$this->log->channel('audit')->error('Failed to create lesson', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -124,7 +124,7 @@ final class LessonController
         );
 
         if ($fraudResult['decision'] === 'block') {
-            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+            $this->log->channel('fraud_alert')->warning('Operation blocked by fraud control', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'score'          => $fraudResult['score'],
@@ -152,7 +152,7 @@ final class LessonController
             $correlationId = Str::uuid()->toString();
             $lesson->update($validated + ['correlation_id' => $correlationId]);
 
-            \Log::channel('audit')->info('Lesson updated', [
+            \$this->log->channel('audit')->info('Lesson updated', [
                 'lesson_id' => $lesson->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -163,7 +163,7 @@ final class LessonController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to update lesson', [
+            \$this->log->channel('audit')->error('Failed to update lesson', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -182,7 +182,7 @@ final class LessonController
             $correlationId = Str::uuid()->toString();
             $lesson->delete();
 
-            \Log::channel('audit')->info('Lesson deleted', [
+            \$this->log->channel('audit')->info('Lesson deleted', [
                 'lesson_id' => $id,
                 'correlation_id' => $correlationId,
             ]);
@@ -193,7 +193,7 @@ final class LessonController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to delete lesson', [
+            \$this->log->channel('audit')->error('Failed to delete lesson', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -234,7 +234,7 @@ final class LessonController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to update lesson progress', [
+            \$this->log->channel('audit')->error('Failed to update lesson progress', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([

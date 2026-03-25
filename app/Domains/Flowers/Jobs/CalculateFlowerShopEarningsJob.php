@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Flowers\Jobs;
@@ -8,7 +10,16 @@ use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-final class CalculateFlowerShopEarningsJob implements ShouldQueue
+final /**
+ * CalculateFlowerShopEarningsJob
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class CalculateFlowerShopEarningsJob implements ShouldQueue
 {
     use Queueable;
 
@@ -17,7 +28,7 @@ final class CalculateFlowerShopEarningsJob implements ShouldQueue
     public function handle(): void
     {
         try {
-            DB::transaction(function () {
+            $this->db->transaction(function () {
                 $shops = FlowerShop::query()
                     ->where('is_active', true)
                     ->get();
@@ -33,7 +44,7 @@ final class CalculateFlowerShopEarningsJob implements ShouldQueue
                     $totalCommission = $completedOrders->sum('commission_amount');
                     $earnings = $totalEarnings - $totalCommission;
 
-                    Log::channel('audit')->info('Flower shop earnings calculated', [
+                    $this->log->channel('audit')->info('Flower shop earnings calculated', [
                         'shop_id' => $shop->id,
                         'orders_count' => $completedOrders->count(),
                         'earnings' => $earnings,
@@ -42,7 +53,7 @@ final class CalculateFlowerShopEarningsJob implements ShouldQueue
                 }
             });
         } catch (\Exception $exception) {
-            Log::channel('audit')->error('Flower shop earnings calculation failed', [
+            $this->log->channel('audit')->error('Flower shop earnings calculation failed', [
                 'error' => $exception->getMessage(),
             ]);
             throw $exception;

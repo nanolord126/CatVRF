@@ -20,7 +20,7 @@ final class ProductController
     /**
      * Add product to stream
      */
-    public function add(AddProductRequest $request, string $roomId): JsonResponse
+    public function a: JsonResponse
     {
         try {
             $correlationId = (string) Str::uuid();
@@ -39,7 +39,7 @@ final class ProductController
                 correlationId: $correlationId,
             );
 
-            Log::channel('audit')->info('Product added to stream', [
+            $this->log->channel('audit')->info('Product added to stream', [
                 'correlation_id' => $correlationId,
                 'stream_id' => $stream->id,
                 'product_id' => $product->id,
@@ -50,7 +50,7 @@ final class ProductController
                 'data' => $product,
             ], 201);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Add product failed', [
+            $this->log->channel('audit')->error('Add product failed', [
                 'error' => $e->getMessage(),
             ]);
 
@@ -81,7 +81,7 @@ final class ProductController
                 correlationId: $correlationId,
             );
 
-            Log::channel('audit')->info('Product pinned', [
+            $this->log->channel('audit')->info('Product pinned', [
                 'correlation_id' => $correlationId,
                 'stream_id' => $stream->id,
                 'product_id' => $product->id,
@@ -93,7 +93,7 @@ final class ProductController
                 'data' => $product,
             ]);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Pin product failed', [
+            $this->log->channel('audit')->error('Pin product failed', [
                 'error' => $e->getMessage(),
             ]);
 
@@ -124,7 +124,7 @@ final class ProductController
                 correlationId: $correlationId,
             );
 
-            Log::channel('audit')->info('Product unpinned', [
+            $this->log->channel('audit')->info('Product unpinned', [
                 'correlation_id' => $correlationId,
                 'stream_id' => $stream->id,
                 'product_id' => $product->id,
@@ -135,7 +135,7 @@ final class ProductController
                 'data' => $product,
             ]);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Unpin product failed', [
+            $this->log->channel('audit')->error('Unpin product failed', [
                 'error' => $e->getMessage(),
             ]);
 

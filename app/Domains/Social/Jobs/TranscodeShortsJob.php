@@ -33,7 +33,7 @@ final class TranscodeShortsJob implements ShouldQueue
 
     public function handle(): void
     {
-        Log::channel('audit')->info('Transcoding started', [
+        $this->log->channel('audit')->info('Transcoding started', [
             'post_id' => $this->post->id,
             'correlation_id' => $this->correlationId,
         ]);
@@ -42,7 +42,7 @@ final class TranscodeShortsJob implements ShouldQueue
 
         try {
             $ffmpeg = FFMpeg::create();
-            $video = $ffmpeg->open(Storage::disk('s3')->path($this->post->media_url));
+            $video = $ffmpeg->open($this->storage->disk('s3')->path($this->post->media_url));
 
             $outputPath = 'shorts/' . $this->post->uuid . '_transcoded.mp4';
 
@@ -53,21 +53,21 @@ final class TranscodeShortsJob implements ShouldQueue
             $video->filters()->resize(new \FFMpeg\Coordinate\Dimension(720, 1280))->synchronize();
             
             // Сохранение (в реальности используем временный файл, потом загружаем в S3)
-            $video->save($format, Storage::disk('s3')->path($outputPath));
+            $video->save($format, $this->storage->disk('s3')->path($outputPath));
 
             $this->post->update([
                 'media_url' => $outputPath,
                 'transcoding_status' => 'completed',
             ]);
 
-            Log::channel('audit')->info('Transcoding completed', [
+            $this->log->channel('audit')->info('Transcoding completed', [
                 'post_id' => $this->post->id,
                 'correlation_id' => $this->correlationId,
             ]);
 
         } catch (\Exception $e) {
             $this->post->update(['transcoding_status' => 'failed']);
-            Log::error('Transcoding error: ' . $e->getMessage(), [
+            $this->log->error('Transcoding error: ' . $e->getMessage(), [
                 'post_id' => $this->post->id,
                 'correlation_id' => $this->correlationId,
             ]);

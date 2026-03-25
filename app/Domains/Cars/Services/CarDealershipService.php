@@ -26,13 +26,13 @@ final class CarDealershipService
      */
     public function placeOrder(int $carId, int $clientId, int $amount): CarOrder
     {
-        Log::channel('audit')->info('Attempting to place car order', [
+        $this->log->channel('audit')->info('Attempting to place car order', [
             'car_id' => $carId,
             'client_id' => $clientId,
             'correlation_id' => $this->correlationId
         ]);
 
-        return DB::transaction(function () use ($carId, $clientId, $amount) {
+        return $this->db->transaction(function () use ($carId, $clientId, $amount) {
             // 1. Поиск авто с блокировкой
             $car = Car::lockForUpdate()->findOrFail($carId);
 
@@ -64,7 +64,7 @@ final class CarDealershipService
                 'correlation_id' => $this->correlationId
             ]);
 
-            Log::channel('audit')->info('Car order placed successfully', [
+            $this->log->channel('audit')->info('Car order placed successfully', [
                 'order_id' => $order->id,
                 'correlation_id' => $this->correlationId
             ]);

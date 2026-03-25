@@ -36,7 +36,7 @@ final class TaxiDriverController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to fetch drivers', [
+            $this->log->channel('audit')->error('Failed to fetch drivers', [
                 'error' => $e->getMessage(),
             ]);
 
@@ -59,7 +59,7 @@ final class TaxiDriverController
         );
 
         if ($fraudResult['decision'] === 'block') {
-            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+            $this->log->channel('fraud_alert')->warning('Operation blocked by fraud control', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'score'          => $fraudResult['score'],
@@ -80,7 +80,7 @@ final class TaxiDriverController
             ]);
 
             $validated = $request->all();
-            $driver = DB::transaction(function () use ($validated, $correlationId) {
+            $driver = $this->db->transaction(function () use ($validated, $correlationId) {
                 $driver = TaxiDriver::create([
                     'tenant_id' => tenant('id'),
                     'user_id' => ($validated['user_id'] ?? null),
@@ -91,7 +91,7 @@ final class TaxiDriverController
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Driver created', [
+                $this->log->channel('audit')->info('Driver created', [
                     'driver_id' => $driver->id,
                     'user_id' => $driver->user_id,
                     'correlation_id' => $correlationId,
@@ -106,7 +106,7 @@ final class TaxiDriverController
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to create driver', [
+            $this->log->channel('audit')->error('Failed to create driver', [
                 'error' => $e->getMessage(),
             ]);
 
@@ -176,7 +176,7 @@ final class TaxiDriverController
 
             $driver->update(['is_active' => false]);
 
-            Log::channel('audit')->info('Driver deactivated', [
+            $this->log->channel('audit')->info('Driver deactivated', [
                 'driver_id' => $driver->id,
             ]);
 
@@ -199,7 +199,7 @@ final class TaxiDriverController
 
             $driver->update(['is_active' => true]);
 
-            Log::channel('audit')->info('Driver activated', [
+            $this->log->channel('audit')->info('Driver activated', [
                 'driver_id' => $driver->id,
             ]);
 

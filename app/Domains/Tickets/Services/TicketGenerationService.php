@@ -26,7 +26,7 @@ final class TicketGenerationService
 
 
         try {
-            Log::channel('audit')->info('Generating tickets', [
+            $this->log->channel('audit')->info('Generating tickets', [
                 'event_id' => $eventId,
                 'ticket_type_id' => $ticketTypeId,
                 'quantity' => $quantity,
@@ -43,7 +43,7 @@ final class TicketGenerationService
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
 
-            $tickets = DB::transaction(function () use ($eventId, $ticketTypeId, $quantity, $buyerId, $correlationId) {
+            $tickets = $this->db->transaction(function () use ($eventId, $ticketTypeId, $quantity, $buyerId, $correlationId) {
                 $ticketType = TicketType::findOrFail($ticketTypeId);
                 $generatedTickets = [];
 
@@ -70,14 +70,14 @@ final class TicketGenerationService
                 return $generatedTickets;
             });
 
-            Log::channel('audit')->info('Tickets generated', [
+            $this->log->channel('audit')->info('Tickets generated', [
                 'count' => count($tickets),
                 'correlation_id' => $correlationId,
             ]);
 
             return $tickets;
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to generate tickets', [
+            $this->log->channel('audit')->error('Failed to generate tickets', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -90,7 +90,7 @@ final class TicketGenerationService
 
 
         try {
-            Log::channel('audit')->info('Checking in ticket', [
+            $this->log->channel('audit')->info('Checking in ticket', [
                 'qr_code' => $qrCode,
                 'correlation_id' => $correlationId,
             ]);
@@ -113,14 +113,14 @@ final class TicketGenerationService
                 'correlation_id' => $correlationId,
             ]);
 
-            Log::channel('audit')->info('Ticket checked in', [
+            $this->log->channel('audit')->info('Ticket checked in', [
                 'ticket_id' => $ticket->id,
                 'correlation_id' => $correlationId,
             ]);
 
             return $ticket;
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to checkin ticket', [
+            $this->log->channel('audit')->error('Failed to checkin ticket', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);

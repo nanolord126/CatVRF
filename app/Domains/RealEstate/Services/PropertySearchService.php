@@ -17,7 +17,7 @@ final class PropertySearchService
 
 
         try {
-            Log::channel('audit')->info('Searching properties', [
+            $this->log->channel('audit')->info('Searching properties', [
                 'filters' => $filters,
                 'correlation_id' => $correlationId,
             ]);
@@ -47,14 +47,14 @@ final class PropertySearchService
             $results = $query->with(['rentalListing', 'saleListing', 'images'])
                 ->paginate($filters['per_page'] ?? 20);
 
-            Log::channel('audit')->info('Properties found', [
+            $this->log->channel('audit')->info('Properties found', [
                 'count' => $results->count(),
                 'correlation_id' => $correlationId,
             ]);
 
             return $results;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Property search failed', [
+            $this->log->channel('audit')->error('Property search failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);

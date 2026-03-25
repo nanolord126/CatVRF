@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Jewelry\Models;
@@ -5,7 +7,16 @@ namespace App\Domains\Jewelry\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-final class Jewelry3DModel extends Model
+final /**
+ * Jewelry3DModel
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class Jewelry3DModel extends Model
 {
     protected $table = '3d_models';
 

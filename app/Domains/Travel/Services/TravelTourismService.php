@@ -31,9 +31,9 @@ final class TravelTourismService
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($data) {
+$this->db->transaction(function () use ($data) {
             $tour = $this->tourModel->create($data);
-            Log::channel('audit')->info('Тур создан', [
+            $this->log->channel('audit')->info('Тур создан', [
                 'tour_id' => $tour->id,
                 'correlation_id' => $data['correlation_id'] ?? null,
             ]);
@@ -53,9 +53,9 @@ DB::transaction(function () use ($data) {
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($data) {
+$this->db->transaction(function () use ($data) {
             $booking = $this->bookingModel->create($data);
-            Log::channel('audit')->info('Тур забронирован', [
+            $this->log->channel('audit')->info('Тур забронирован', [
                 'booking_id' => $booking->id,
                 'correlation_id' => $data['correlation_id'] ?? null,
             ]);
@@ -87,10 +87,10 @@ DB::transaction(function () use ($data) {
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($bookingId) {
+$this->db->transaction(function () use ($bookingId) {
             $booking = $this->bookingModel->findOrFail($bookingId);
             $booking->update(['status' => 'completed']);
-            Log::channel('audit')->info('Тур завершён', ['booking_id' => $bookingId]);
+            $this->log->channel('audit')->info('Тур завершён', ['booking_id' => $bookingId]);
             return true;
         });
     }
@@ -107,10 +107,10 @@ DB::transaction(function () use ($bookingId) {
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($bookingId, $reason) {
+$this->db->transaction(function () use ($bookingId, $reason) {
             $booking = $this->bookingModel->findOrFail($bookingId);
             $booking->update(['status' => 'cancelled', 'cancellation_reason' => $reason]);
-            Log::channel('audit')->warning('Бронь отменена', [
+            $this->log->channel('audit')->warning('Бронь отменена', [
                 'booking_id' => $bookingId,
                 'reason' => $reason,
             ]);

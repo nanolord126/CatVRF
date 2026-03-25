@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Hotels\Listeners;
@@ -8,18 +10,27 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
-final class DeductBookingCommissionListener implements ShouldQueue
+final /**
+ * DeductBookingCommissionListener
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class DeductBookingCommissionListener implements ShouldQueue
 {
     public function handle(BookingCreated $event): void
     {
         try {
-            Log::channel('audit')->info('Deducting booking commission', [
+            $this->log->channel('audit')->info('Deducting booking commission', [
                 'booking_id' => $event->booking->id,
                 'correlation_id' => $event->correlationId,
                 'amount' => $event->booking->commission_price,
             ]);
 
-            DB::transaction(function () use ($event) {
+            $this->db->transaction(function () use ($event) {
                 $hotel = $event->booking->hotel;
                 
                 // Deduct 14% commission from hotel balance
@@ -30,13 +41,13 @@ final class DeductBookingCommissionListener implements ShouldQueue
                     $wallet->save();
                 }
 
-                Log::channel('audit')->info('Booking commission deducted', [
+                $this->log->channel('audit')->info('Booking commission deducted', [
                     'booking_id' => $event->booking->id,
                     'correlation_id' => $event->correlationId,
                 ]);
             });
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to deduct booking commission', [
+            $this->log->channel('audit')->error('Failed to deduct booking commission', [
                 'booking_id' => $event->booking->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $event->correlationId,

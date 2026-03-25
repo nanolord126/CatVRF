@@ -1,6 +1,30 @@
 <?php declare(strict_types=1);
 
-namespace App\Domains\Gifts\Models;
+n
+
+/**
+ * GiftOrder
+ * 
+ * Производитель: CatVRF Platform
+ * Версия: 1.0.0
+ * 
+ * Примеры использования:
+ * 
+ * ```php
+ * // Базовое использование
+ * $instance = new GiftOrder();
+ * ```
+ * 
+ * Требования:
+ * - Laravel 10+
+ * - PHP 8.2+
+ * - Все методы должны быть явно типизированы
+ * 
+ * @author CatVRF
+ * @package namespace App\Domains\Gifts\Models
+ * @see https://github.com/iyegorovskyi_clemny/CatVRF
+ */
+amespace App\Domains\Gifts\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;

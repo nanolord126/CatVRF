@@ -29,7 +29,7 @@ final class EnrollmentController
         );
 
         if ($fraudResult['decision'] === 'block') {
-            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+            $this->log->channel('fraud_alert')->warning('Operation blocked by fraud control', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'score'          => $fraudResult['score'],
@@ -60,7 +60,7 @@ final class EnrollmentController
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to enroll student', [
+            \$this->log->channel('audit')->error('Failed to enroll student', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -84,7 +84,7 @@ final class EnrollmentController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to show enrollment', [
+            \$this->log->channel('audit')->error('Failed to show enrollment', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -107,7 +107,7 @@ final class EnrollmentController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to list enrollments', [
+            \$this->log->channel('audit')->error('Failed to list enrollments', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -129,7 +129,7 @@ final class EnrollmentController
         );
 
         if ($fraudResult['decision'] === 'block') {
-            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+            $this->log->channel('fraud_alert')->warning('Operation blocked by fraud control', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'score'          => $fraudResult['score'],
@@ -166,7 +166,7 @@ final class EnrollmentController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to update enrollment', [
+            \$this->log->channel('audit')->error('Failed to update enrollment', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -199,7 +199,7 @@ final class EnrollmentController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to drop enrollment', [
+            \$this->log->channel('audit')->error('Failed to drop enrollment', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -226,7 +226,7 @@ final class EnrollmentController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to get enrollment progress', [
+            \$this->log->channel('audit')->error('Failed to get enrollment progress', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -252,7 +252,7 @@ final class EnrollmentController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to list course students', [
+            \$this->log->channel('audit')->error('Failed to list course students', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([

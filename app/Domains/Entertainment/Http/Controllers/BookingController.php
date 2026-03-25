@@ -29,7 +29,7 @@ final class BookingController
         );
 
         if ($fraudResult['decision'] === 'block') {
-            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+            $this->log->channel('fraud_alert')->warning('Operation blocked by fraud control', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'score'          => $fraudResult['score'],
@@ -44,7 +44,7 @@ final class BookingController
         try {
             $correlationId = Str::uuid()->toString();
 
-            DB::transaction(function () use ($correlationId) {
+            $this->db->transaction(function () use ($correlationId) {
                 $booking = $this->bookingService->createBooking(
                     request('venue_id'),
                     request('event_schedule_id'),
@@ -58,7 +58,7 @@ final class BookingController
 
             return response()->json(['success' => true, 'data' => null, 'correlation_id' => $correlationId], 201);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to create booking', ['error' => $e->getMessage()]);
+            $this->log->channel('audit')->error('Failed to create booking', ['error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 400);
         }
     }
@@ -100,7 +100,7 @@ final class BookingController
         );
 
         if ($fraudResult['decision'] === 'block') {
-            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+            $this->log->channel('fraud_alert')->warning('Operation blocked by fraud control', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'score'          => $fraudResult['score'],
@@ -116,9 +116,9 @@ final class BookingController
             $booking = Booking::findOrFail($id);
             $correlationId = Str::uuid()->toString();
 
-            DB::transaction(function () use ($booking, $correlationId) {
+            $this->db->transaction(function () use ($booking, $correlationId) {
                 $booking->update(['correlation_id' => $correlationId]);
-                Log::channel('audit')->info('Booking updated', ['booking_id' => $id, 'correlation_id' => $correlationId]);
+                $this->log->channel('audit')->info('Booking updated', ['booking_id' => $id, 'correlation_id' => $correlationId]);
             });
 
             return response()->json(['success' => true, 'data' => $booking, 'correlation_id' => $correlationId]);
@@ -135,7 +135,7 @@ final class BookingController
 
             $this->authorize('cancel', $booking);
 
-            DB::transaction(function () use ($booking, $correlationId) {
+            $this->db->transaction(function () use ($booking, $correlationId) {
                 $this->bookingService->cancelBooking($booking, request('reason'), $correlationId);
                 $this->ticketingService->refundTickets($booking, $correlationId);
             });
@@ -152,9 +152,9 @@ final class BookingController
             $booking = Booking::findOrFail($id);
             $correlationId = Str::uuid()->toString();
 
-            DB::transaction(function () use ($booking, $correlationId) {
+            $this->db->transaction(function () use ($booking, $correlationId) {
                 $booking->update(['status' => 'confirmed', 'correlation_id' => $correlationId]);
-                Log::channel('audit')->info('Booking confirmed', ['booking_id' => $id, 'correlation_id' => $correlationId]);
+                $this->log->channel('audit')->info('Booking confirmed', ['booking_id' => $id, 'correlation_id' => $correlationId]);
             });
 
             return response()->json(['success' => true, 'data' => $booking, 'correlation_id' => $correlationId]);
@@ -169,9 +169,9 @@ final class BookingController
             $booking = Booking::findOrFail($id);
             $correlationId = Str::uuid()->toString();
 
-            DB::transaction(function () use ($booking, $correlationId) {
+            $this->db->transaction(function () use ($booking, $correlationId) {
                 $booking->update(['status' => 'completed', 'correlation_id' => $correlationId]);
-                Log::channel('audit')->info('Booking completed', ['booking_id' => $id, 'correlation_id' => $correlationId]);
+                $this->log->channel('audit')->info('Booking completed', ['booking_id' => $id, 'correlation_id' => $correlationId]);
             });
 
             return response()->json(['success' => true, 'data' => null, 'correlation_id' => $correlationId]);

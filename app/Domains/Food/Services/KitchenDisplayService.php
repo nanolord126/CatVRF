@@ -29,7 +29,7 @@ final class KitchenDisplayService
 
 
         try {
-            Log::channel('audit')->info('Creating KDS order', [
+            $this->log->channel('audit')->info('Creating KDS order', [
                 'order_id' => $order->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -42,7 +42,7 @@ final class KitchenDisplayService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-DB::transaction(function () use ($order, $correlationId) {
+$this->db->transaction(function () use ($order, $correlationId) {
                 $kdsOrder = KDSOrder::create([
                     'tenant_id' => $order->tenant_id,
                     'restaurant_order_id' => $order->id,
@@ -52,7 +52,7 @@ DB::transaction(function () use ($order, $correlationId) {
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('KDS order created', [
+                $this->log->channel('audit')->info('KDS order created', [
                     'kds_id' => $kdsOrder->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -60,7 +60,7 @@ DB::transaction(function () use ($order, $correlationId) {
                 return $kdsOrder;
             });
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('KDS order creation failed', [
+            $this->log->channel('audit')->error('KDS order creation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -104,13 +104,13 @@ DB::transaction(function () use ($order, $correlationId) {
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-DB::transaction(function () use ($kdsOrder, $correlationId) {
+$this->db->transaction(function () use ($kdsOrder, $correlationId) {
                 $kdsOrder->update([
                     'status' => 'ready',
                     'ready_at' => now(),
                 ]);
 
-                Log::channel('audit')->info('KDS order marked as ready', [
+                $this->log->channel('audit')->info('KDS order marked as ready', [
                     'kds_id' => $kdsOrder->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -118,7 +118,7 @@ DB::transaction(function () use ($kdsOrder, $correlationId) {
                 return true;
             });
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('KDS mark ready failed', [
+            $this->log->channel('audit')->error('KDS mark ready failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);

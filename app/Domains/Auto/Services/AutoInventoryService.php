@@ -30,7 +30,7 @@ final class AutoInventoryService
         );
 
         if ($fraudResult['decision'] === 'block') {
-            Log::channel('fraud_alert')->warning('Parts reservation blocked', [
+            $this->log->channel('fraud_alert')->warning('Parts reservation blocked', [
                 'correlation_id' => $correlationId,
                 'order_id' => $orderId,
                 'score' => $fraudResult['score'],
@@ -48,7 +48,7 @@ final class AutoInventoryService
 
                     $part->increment('hold_stock', $quantity);
 
-                    Log::channel('audit')->info('Parts reserved', [
+                    $this->log->channel('audit')->info('Parts reserved', [
                         'order_id' => $orderId,
                         'part_id' => $partId,
                         'quantity' => $quantity,
@@ -59,7 +59,7 @@ final class AutoInventoryService
 
             return true;
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Parts reservation failed', [
+            $this->log->channel('audit')->error('Parts reservation failed', [
                 'order_id' => $orderId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -84,7 +84,7 @@ final class AutoInventoryService
         );
 
         if ($fraudResult['decision'] === 'block') {
-            Log::channel('fraud_alert')->warning('Parts deduction blocked', [
+            $this->log->channel('fraud_alert')->warning('Parts deduction blocked', [
                 'correlation_id' => $correlationId,
                 'order_id' => $orderId,
                 'score' => $fraudResult['score'],
@@ -93,14 +93,14 @@ final class AutoInventoryService
         }
 
         try {
-            DB::transaction(function () use ($orderId, $parts, $correlationId) {
+            $this->db->transaction(function () use ($orderId, $parts, $correlationId) {
                 foreach ($parts as $partId => $quantity) {
                     $part = AutoPart::lockForUpdate()->findOrFail($partId);
 
                     $part->decrement('current_stock', $quantity);
                     $part->decrement('hold_stock', $quantity);
 
-                    Log::channel('audit')->info('Parts deducted', [
+                    $this->log->channel('audit')->info('Parts deducted', [
                         'order_id' => $orderId,
                         'part_id' => $partId,
                         'quantity' => $quantity,
@@ -112,7 +112,7 @@ final class AutoInventoryService
 
             return true;
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Parts deduction failed', [
+            $this->log->channel('audit')->error('Parts deduction failed', [
                 'order_id' => $orderId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -137,7 +137,7 @@ final class AutoInventoryService
         );
 
         if ($fraudResult['decision'] === 'block') {
-            Log::channel('fraud_alert')->warning('Parts release blocked', [
+            $this->log->channel('fraud_alert')->warning('Parts release blocked', [
                 'correlation_id' => $correlationId,
                 'order_id' => $orderId,
                 'score' => $fraudResult['score'],
@@ -146,12 +146,12 @@ final class AutoInventoryService
         }
 
         try {
-            DB::transaction(function () use ($orderId, $parts, $correlationId) {
+            $this->db->transaction(function () use ($orderId, $parts, $correlationId) {
                 foreach ($parts as $partId => $quantity) {
                     $part = AutoPart::lockForUpdate()->findOrFail($partId);
                     $part->decrement('hold_stock', $quantity);
 
-                    Log::channel('audit')->info('Parts released', [
+                    $this->log->channel('audit')->info('Parts released', [
                         'order_id' => $orderId,
                         'part_id' => $partId,
                         'quantity' => $quantity,
@@ -162,7 +162,7 @@ final class AutoInventoryService
 
             return true;
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Parts release failed', [
+            $this->log->channel('audit')->error('Parts release failed', [
                 'order_id' => $orderId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

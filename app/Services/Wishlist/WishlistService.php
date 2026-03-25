@@ -18,9 +18,9 @@ final class WishlistService
         $correlationId = Str::uuid()->toString();
 
         try {
-            return DB::transaction(function () use ($userId, $itemType, $itemId, $metadata, $correlationId) {
+            return $this->db->transaction(function () use ($userId, $itemType, $itemId, $metadata, $correlationId) {
                 // Check if item already in wishlist
-                $existing = DB::table('wishlist_items')
+                $existing = $this->db->table('wishlist_items')
                     ->where('user_id', $userId)
                     ->where('item_type', $itemType)
                     ->where('item_id', $itemId)
@@ -35,7 +35,7 @@ final class WishlistService
                 }
 
                 // Add to wishlist
-                DB::table('wishlist_items')->insert([
+                $this->db->table('wishlist_items')->insert([
                     'user_id' => $userId,
                     'item_type' => $itemType,
                     'item_id' => $itemId,
@@ -48,7 +48,7 @@ final class WishlistService
                 // Clear user cache
                 $this->invalidateUserCache($userId);
 
-                Log::channel('audit')->info('Wishlist: item added', [
+                $this->log->channel('audit')->info('Wishlist: item added', [
                     'user_id' => $userId,
                     'item_type' => $itemType,
                     'item_id' => $itemId,
@@ -62,7 +62,7 @@ final class WishlistService
                 ];
             });
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Wishlist: add error', [
+            $this->log->channel('audit')->error('Wishlist: add error', [
                 'user_id' => $userId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -80,8 +80,8 @@ final class WishlistService
         $correlationId = Str::uuid()->toString();
 
         try {
-            return DB::transaction(function () use ($userId, $itemType, $itemId, $correlationId) {
-                $deleted = DB::table('wishlist_items')
+            return $this->db->transaction(function () use ($userId, $itemType, $itemId, $correlationId) {
+                $deleted = $this->db->table('wishlist_items')
                     ->where('user_id', $userId)
                     ->where('item_type', $itemType)
                     ->where('item_id', $itemId)
@@ -90,7 +90,7 @@ final class WishlistService
                 if ($deleted) {
                     $this->invalidateUserCache($userId);
 
-                    Log::channel('audit')->info('Wishlist: item removed', [
+                    $this->log->channel('audit')->info('Wishlist: item removed', [
                         'user_id' => $userId,
                         'item_type' => $itemType,
                         'item_id' => $itemId,
@@ -101,7 +101,7 @@ final class WishlistService
                 return (bool) $deleted;
             });
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Wishlist: remove error', [
+            $this->log->channel('audit')->error('Wishlist: remove error', [
                 'user_id' => $userId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -118,7 +118,7 @@ final class WishlistService
      */
     public function getWishlist(int $userId): array
     {
-        return DB::table('wishlist_items')
+        return $this->db->table('wishlist_items')
             ->where('user_id', $userId)
             ->orderByDesc('created_at')
             ->get()
@@ -131,7 +131,7 @@ final class WishlistService
      */
     public function getProductWishlistCount(string $itemType, int $itemId): int
     {
-        return (int) DB::table('wishlist_items')
+        return (int) $this->db->table('wishlist_items')
             ->where('item_type', $itemType)
             ->where('item_id', $itemId)
             ->count();
@@ -142,7 +142,7 @@ final class WishlistService
      */
     public function getUserWishlist(int $userId, ?string $itemType = null): Collection
     {
-        $query = DB::table('wishlist_items')
+        $query = $this->db->table('wishlist_items')
             ->where('user_id', $userId);
 
         if ($itemType) {
@@ -157,7 +157,7 @@ final class WishlistService
      */
     public function hasItem(int $userId, string $itemType, int $itemId): bool
     {
-        return DB::table('wishlist_items')
+        return $this->db->table('wishlist_items')
             ->where('user_id', $userId)
             ->where('item_type', $itemType)
             ->where('item_id', $itemId)
@@ -169,7 +169,7 @@ final class WishlistService
      */
     public function getWishlistCount(int $userId, ?string $itemType = null): int
     {
-        $query = DB::table('wishlist_items')
+        $query = $this->db->table('wishlist_items')
             ->where('user_id', $userId);
 
         if ($itemType) {
@@ -187,7 +187,7 @@ final class WishlistService
         $shareToken = Str::random(32);
         $correlationId = Str::uuid()->toString();
 
-        DB::table('wishlist_shares')->insert([
+        $this->db->table('wishlist_shares')->insert([
             'user_id' => $userId,
             'item_type' => $itemType,
             'share_token' => $shareToken,
@@ -196,7 +196,7 @@ final class WishlistService
             'updated_at' => now(),
         ]);
 
-        Log::channel('audit')->info('Wishlist: shared', [
+        $this->log->channel('audit')->info('Wishlist: shared', [
             'user_id' => $userId,
             'item_type' => $itemType,
             'share_token' => $shareToken,
@@ -211,7 +211,7 @@ final class WishlistService
      */
     public function getSharedWishlist(string $shareToken): Collection
     {
-        $share = DB::table('wishlist_shares')
+        $share = $this->db->table('wishlist_shares')
             ->where('share_token', $shareToken)
             ->first();
 
@@ -221,7 +221,7 @@ final class WishlistService
             );
         }
 
-        $query = DB::table('wishlist_items')
+        $query = $this->db->table('wishlist_items')
             ->where('user_id', $share->user_id);
 
         if ($share->item_type) {
@@ -236,6 +236,6 @@ final class WishlistService
      */
     private function invalidateUserCache(int $userId): void
     {
-        \Illuminate\Support\Facades\Cache::forget("wishlist:user:$userId");
+        \Illuminate\Support\Facades\$this->cache->forget("wishlist:user:$userId");
     }
 }

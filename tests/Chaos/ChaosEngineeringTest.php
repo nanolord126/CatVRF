@@ -138,8 +138,6 @@ it('test graceful degradation when db connection pool exhausted', function () {
     // Early requests should succeed
     $successCount = count(array_filter($responses, fn ($s) => $s === 200));
     expect($successCount)->toBeGreaterThan($maxConnections - 2);
-
-    // Later requests should get 503 (Service Unavailable)
     $lastResponses = array_slice($responses, -5);
     $unavailableCount = count(array_filter($lastResponses, fn ($s) => $s === 503));
     expect($unavailableCount)->toBeGreaterThan(0);

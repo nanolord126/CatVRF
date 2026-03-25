@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -13,6 +15,15 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * UpdateSessionStatusJob
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
 class UpdateSessionStatusJob implements ShouldQueue
 {
 	use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
@@ -24,22 +35,30 @@ class UpdateSessionStatusJob implements ShouldQueue
 		public readonly ?PhotoSession $session = null,
 		public readonly string $newStatus = '',
 		public readonly string $correlationId = '',
-	) {}
+	) {
+    /**
+     * Инициализировать класс
+     */
+    public function __construct()
+    {
+        // TODO: инициализация
+    }
+}
 
 	public function handle(): void
 	{
 		try {
-			DB::transaction(function () {
+			$this->db->transaction(function () {
 				$this->session->update(['status' => $this->newStatus]);
 
-				Log::channel('audit')->info('Photography: Session status auto-updated', [
+				$this->log->channel('audit')->info('Photography: Session status auto-updated', [
 					'session_id' => $this->session->id,
 					'new_status' => $this->newStatus,
 					'correlation_id' => $this->correlationId,
 				]);
 			});
 		} catch (\Exception $e) {
-			Log::channel('audit')->error('Photography: Session status update failed', [
+			$this->log->channel('audit')->error('Photography: Session status update failed', [
 				'session_id' => $this->session->id,
 				'error' => $e->getMessage(),
 				'correlation_id' => $this->correlationId,

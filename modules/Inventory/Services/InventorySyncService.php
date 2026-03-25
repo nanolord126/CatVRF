@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 namespace Modules\Inventory\Services;
@@ -13,6 +15,8 @@ use Illuminate\Support\Facades\Log;
  */
 class InventorySyncService
 {
+    // Dependencies injected via constructor
+    // Add private readonly properties here
     /**
      * Списание товара со склада при продаже.
      * 
@@ -25,7 +29,7 @@ class InventorySyncService
     {
         $correlationId = request()->header('X-Correlation-ID', bin2hex(random_bytes(16)));
 
-        DB::transaction(function () use ($productId, $quantity, $referenceType, $referenceId, $correlationId) {
+        $this->db->transaction(function () use ($productId, $quantity, $referenceType, $referenceId, $correlationId) {
             $product = Product::findOrFail($productId);
 
             // Атомарное уменьшение остатка (database level)
@@ -46,7 +50,7 @@ class InventorySyncService
 
             // Low stock check (Канон 2026: Уведомления)
             if ($product->stock <= $product->min_stock) {
-                Log::warning("Inventory Alert: Product '{$product->name}' (SKU: {$product->sku}) is below minimum threshold.", [
+                $this->log->warning("Inventory Alert: Product '{$product->name}' (SKU: {$product->sku}) is below minimum threshold.", [
                     'current_stock' => $product->stock,
                     'min_stock' => $product->min_stock,
                     'tenant_id' => tenant('id')

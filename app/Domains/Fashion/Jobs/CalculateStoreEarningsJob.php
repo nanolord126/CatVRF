@@ -35,13 +35,13 @@ final class CalculateStoreEarningsJob implements ShouldQueue
                     }
                 });
 
-            Log::channel('audit')->info('Fashion store earnings calculated', [
+            $this->log->channel('audit')->info('Fashion store earnings calculated', [
                 'month' => $currentMonth,
                 'year' => $currentYear,
                 'correlation_id' => $this->correlationId,
             ]);
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to calculate fashion store earnings', [
+            $this->log->channel('audit')->error('Failed to calculate fashion store earnings', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $this->correlationId,
             ]);
@@ -64,7 +64,7 @@ final class CalculateStoreEarningsJob implements ShouldQueue
         $totalCommission = $deliveredOrders->sum('commission_amount');
         $storeEarnings = $totalRevenue - $totalCommission;
 
-        Log::channel('audit')->info('Fashion store earnings calculated', [
+        $this->log->channel('audit')->info('Fashion store earnings calculated', [
             'store_id' => $store->id,
             'month' => $month,
             'year' => $year,

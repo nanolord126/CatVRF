@@ -43,7 +43,7 @@ final class ConstructionMaterialService
                 'correlation_id' => $correlationId,
             ]);
 
-            return DB::transaction(function () use ($materialId, $quantity, $deliveryAddress, $correlationId, $userId, $tenantId) {
+            return $this->db->transaction(function () use ($materialId, $quantity, $deliveryAddress, $correlationId, $userId, $tenantId) {
                 // Lock material for update
                 $material = ConstructionMaterial::lockForUpdate()->find($materialId);
 
@@ -79,7 +79,7 @@ final class ConstructionMaterialService
                 ]);
 
                 // Log audit
-                Log::channel('audit')->info('Construction material order created', [
+                $this->log->channel('audit')->info('Construction material order created', [
                     'correlation_id' => $correlationId,
                     'order_id' => $order->id,
                     'material_id' => $materialId,
@@ -89,12 +89,12 @@ final class ConstructionMaterialService
                 ]);
 
                 // Invalidate cache
-                Cache::forget('material:' . $materialId);
+                $this->cache->forget('material:' . $materialId);
 
                 return $order;
             });
         } catch (Exception $e) {
-            Log::channel('error')->error('Material order failed', [
+            $this->log->channel('error')->error('Material order failed', [
                 'correlation_id' => $correlationId,
                 'material_id' => $materialId,
                 'error' => $e->getMessage(),
@@ -119,12 +119,12 @@ final class ConstructionMaterialService
                 'delivery_date' => now(),
             ]);
 
-            Log::channel('audit')->info('Material order delivered', [
+            $this->log->channel('audit')->info('Material order delivered', [
                 'correlation_id' => $correlationId,
                 'order_id' => $order->id,
             ]);
         } catch (Exception $e) {
-            Log::channel('error')->error('Delivery failed', [
+            $this->log->channel('error')->error('Delivery failed', [
                 'correlation_id' => $correlationId,
                 'order_id' => $order->id,
                 'error' => $e->getMessage(),
@@ -143,7 +143,7 @@ final class ConstructionMaterialService
         $correlationId = $order->correlation_id ?? Str::uuid()->toString();
 
         try {
-            DB::transaction(function () use ($order) {
+            $this->db->transaction(function () use ($order) {
                 $material = $order->material;
 
                 if ($material) {
@@ -154,15 +154,15 @@ final class ConstructionMaterialService
 
                 $order->update(['status' => 'cancelled']);
 
-                Cache::forget('material:' . $order->material_id);
+                $this->cache->forget('material:' . $order->material_id);
             });
 
-            Log::channel('audit')->info('Material order cancelled', [
+            $this->log->channel('audit')->info('Material order cancelled', [
                 'correlation_id' => $correlationId,
                 'order_id' => $order->id,
             ]);
         } catch (Exception $e) {
-            Log::channel('error')->error('Cancellation failed', [
+            $this->log->channel('error')->error('Cancellation failed', [
                 'correlation_id' => $correlationId,
                 'order_id' => $order->id,
                 'error' => $e->getMessage(),
@@ -178,7 +178,7 @@ final class ConstructionMaterialService
 
 
 
-        return ConstructionMaterial::where('current_stock', '<=', DB::raw('min_stock_threshold'))
+        return ConstructionMaterial::where('current_stock', '<=', $this->db->raw('min_stock_threshold'))
             ->get();
     }
 

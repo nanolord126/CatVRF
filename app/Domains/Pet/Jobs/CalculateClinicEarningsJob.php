@@ -31,14 +31,14 @@ final class CalculateClinicEarningsJob implements ShouldQueue
             $clinic = PetClinic::find($this->clinicId);
 
             if (!$clinic) {
-                Log::warning('Pet clinic not found', [
+                $this->log->warning('Pet clinic not found', [
                     'clinic_id' => $this->clinicId,
                     'correlation_id' => $this->correlationId,
                 ]);
                 return;
             }
 
-            DB::transaction(function () use ($clinic) {
+            $this->db->transaction(function () use ($clinic) {
                 // Calculate appointment earnings
                 $appointmentEarnings = $clinic->appointments()
                     ->whereMonth('created_at', $this->month->month)
@@ -72,7 +72,7 @@ final class CalculateClinicEarningsJob implements ShouldQueue
                     ],
                 ]);
 
-                Log::channel('audit')->info('Pet clinic earnings calculated', [
+                $this->log->channel('audit')->info('Pet clinic earnings calculated', [
                     'clinic_id' => $clinic->id,
                     'month' => $this->month->format('Y-m'),
                     'appointment_earnings' => $appointmentEarnings,
@@ -82,7 +82,7 @@ final class CalculateClinicEarningsJob implements ShouldQueue
                 ]);
             });
         } catch (\Throwable $e) {
-            Log::error('Failed to calculate clinic earnings', [
+            $this->log->error('Failed to calculate clinic earnings', [
                 'clinic_id' => $this->clinicId,
                 'month' => $this->month->format('Y-m'),
                 'correlation_id' => $this->correlationId,

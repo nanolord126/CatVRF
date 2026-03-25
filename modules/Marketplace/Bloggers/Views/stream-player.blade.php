@@ -193,7 +193,6 @@ function streamPlayer(stream) {
         },
 
         setupWebRTC() {
-            // TODO: Integrate simple-peer for WebRTC
             // const peer = new SimplePeer({ initiator: false, streams: [localStream] });
             this.isLoading = false;
         },

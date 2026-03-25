@@ -33,7 +33,7 @@ final class ReviewService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-            DB::transaction(function () use ($contractorId, $reviewerId, $rating, $title, $content, $jobId, $correlationId) {
+            $this->db->transaction(function () use ($contractorId, $reviewerId, $rating, $title, $content, $jobId, $correlationId) {
                 if ($rating < 1 || $rating > 5) {
                     throw new \InvalidArgumentException('Rating must be between 1 and 5');
                 }
@@ -59,7 +59,7 @@ final class ReviewService
 
                 ReviewSubmitted::dispatch($review, $correlationId);
 
-                \Log::channel('audit')->info('Review submitted', [
+                \$this->log->channel('audit')->info('Review submitted', [
                     'review_id' => $review->id,
                     'contractor_id' => $contractorId,
                     'rating' => $rating,
@@ -69,7 +69,7 @@ final class ReviewService
                 return $review;
             });
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to create review', ['error' => $e->getMessage()]);
+            \$this->log->channel('audit')->error('Failed to create review', ['error' => $e->getMessage()]);
             throw $e;
         }
     }
@@ -92,7 +92,7 @@ final class ReviewService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-            DB::transaction(function () use ($review, $rating, $title, $content, $correlationId) {
+            $this->db->transaction(function () use ($review, $rating, $title, $content, $correlationId) {
                 $review->update([
                     'rating' => $rating,
                     'title' => $title,
@@ -107,7 +107,7 @@ final class ReviewService
                 return $review;
             });
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to update review', ['error' => $e->getMessage()]);
+            \$this->log->channel('audit')->error('Failed to update review', ['error' => $e->getMessage()]);
             throw $e;
         }
     }

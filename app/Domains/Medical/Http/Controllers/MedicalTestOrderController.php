@@ -44,7 +44,7 @@ final class MedicalTestOrderController
         try {
 
             $validated = $request->all();
-            $testOrder = DB::transaction(function () use ($validated, $correlationId) {
+            $testOrder = $this->db->transaction(function () use ($validated, $correlationId) {
                 return $this->testOrderService->createTestOrder(
                     tenantId: auth()->user()->tenant_id,
                     appointmentId: ($validated['appointment_id'] ?? null),
@@ -62,7 +62,7 @@ final class MedicalTestOrderController
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (Throwable $e) {
-            Log::error('Failed to create test order', ['error' => $e->getMessage()]);
+            $this->log->error('Failed to create test order', ['error' => $e->getMessage()]);
             return response()->json(['success' => false, 'error' => 'Failed to create test order'], 500);
         }
     }
@@ -91,7 +91,7 @@ final class MedicalTestOrderController
 
             $testOrder->update(['status' => 'cancelled']);
 
-            Log::channel('audit')->info('Test order cancelled', ['test_order_id' => $testOrder->id]);
+            $this->log->channel('audit')->info('Test order cancelled', ['test_order_id' => $testOrder->id]);
 
             return response()->json(['success' => true, 'data' => $testOrder]);
         } catch (Throwable $e) {

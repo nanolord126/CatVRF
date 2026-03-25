@@ -22,10 +22,10 @@ final class TourBookingService
 
 
         try {
-            $bookingId = DB::transaction(function () use ($tourId, $userId, $personCount, $startDate, $correlationId) {
-                $tour = DB::table('travel_tours')->findOrFail($tourId);
+            $bookingId = $this->db->transaction(function () use ($tourId, $userId, $personCount, $startDate, $correlationId) {
+                $tour = $this->db->table('travel_tours')->findOrFail($tourId);
 
-                $bookingId = DB::table('travel_bookings')->insertGetId([
+                $bookingId = $this->db->table('travel_bookings')->insertGetId([
                     'tour_id' => $tourId,
                     'user_id' => $userId,
                     'person_count' => $personCount,
@@ -36,7 +36,7 @@ final class TourBookingService
                     'created_at' => now(),
                 ]);
 
-                Log::channel('audit')->info('Tour booked', [
+                $this->log->channel('audit')->info('Tour booked', [
                     'booking_id' => $bookingId,
                     'tour_id' => $tourId,
                     'persons' => $personCount,
@@ -48,7 +48,7 @@ final class TourBookingService
 
             return $bookingId;
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Tour booking failed', [
+            $this->log->channel('audit')->error('Tour booking failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
                 'trace' => $e->getTraceAsString(),

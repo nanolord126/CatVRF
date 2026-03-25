@@ -24,7 +24,7 @@ final class AutoCheckOutJob implements ShouldQueue
     public function handle(): void
     {
         try {
-            Log::channel('audit')->info('Auto check-out processing', [
+            $this->log->channel('audit')->info('Auto check-out processing', [
                 'booking_id' => $this->booking->id,
                 'correlation_id' => $this->correlationId,
             ]);
@@ -36,13 +36,13 @@ final class AutoCheckOutJob implements ShouldQueue
                     'checked_out_at' => now(),
                 ]);
 
-                Log::channel('audit')->info('Booking auto-checked-out', [
+                $this->log->channel('audit')->info('Booking auto-checked-out', [
                     'booking_id' => $this->booking->id,
                     'correlation_id' => $this->correlationId,
                 ]);
             }
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Auto check-out failed', [
+            $this->log->channel('audit')->error('Auto check-out failed', [
                 'booking_id' => $this->booking->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $this->correlationId,

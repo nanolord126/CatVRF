@@ -28,7 +28,7 @@ final class CertificateController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to show certificate', [
+            \$this->log->channel('audit')->error('Failed to show certificate', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -52,7 +52,7 @@ final class CertificateController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to list my certificates', [
+            \$this->log->channel('audit')->error('Failed to list my certificates', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -75,7 +75,7 @@ final class CertificateController
                 ], 400);
             }
 
-            \Log::channel('audit')->info('Certificate downloaded', [
+            \$this->log->channel('audit')->info('Certificate downloaded', [
                 'certificate_id' => $certificate->id,
             ]);
 
@@ -88,7 +88,7 @@ final class CertificateController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to download certificate', [
+            \$this->log->channel('audit')->error('Failed to download certificate', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -122,7 +122,7 @@ final class CertificateController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to verify certificate', [
+            \$this->log->channel('audit')->error('Failed to verify certificate', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([

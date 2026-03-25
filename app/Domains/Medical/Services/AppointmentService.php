@@ -31,7 +31,7 @@ final class AppointmentService
         try {
             $this->fraudService->check(0, 'create_appointment', 0, null, null, $correlationId);
 
-            return DB::transaction(function () use (
+            return $this->db->transaction(function () use (
                 $tenantId,
                 $clinicId,
                 $doctorId,
@@ -60,7 +60,7 @@ final class AppointmentService
 
                 AppointmentBooked::dispatch($appointment, $correlationId);
 
-                Log::channel('audit')->info('Medical appointment created', [
+                $this->log->channel('audit')->info('Medical appointment created', [
                     'appointment_id' => $appointment->id,
                     'doctor_id' => $doctorId,
                     'patient_id' => $patientId,
@@ -72,7 +72,7 @@ final class AppointmentService
                 return $appointment;
             });
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to create appointment', [
+            $this->log->channel('audit')->error('Failed to create appointment', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -88,7 +88,7 @@ final class AppointmentService
         $correlationId ??= Str::uuid()->toString();
 
         try {
-            return DB::transaction(function () use ($appointment, $diagnosis, $correlationId) {
+            return $this->db->transaction(function () use ($appointment, $diagnosis, $correlationId) {
                 $appointment->update([
                     'status' => 'completed',
                     'completed_at' => now(),
@@ -98,7 +98,7 @@ final class AppointmentService
 
                 AppointmentCompleted::dispatch($appointment, $correlationId);
 
-                Log::channel('audit')->info('Medical appointment completed', [
+                $this->log->channel('audit')->info('Medical appointment completed', [
                     'appointment_id' => $appointment->id,
                     'doctor_id' => $appointment->doctor_id,
                     'patient_id' => $appointment->patient_id,
@@ -108,7 +108,7 @@ final class AppointmentService
                 return $appointment;
             });
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to complete appointment', [
+            $this->log->channel('audit')->error('Failed to complete appointment', [
                 'appointment_id' => $appointment->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -125,7 +125,7 @@ final class AppointmentService
         $correlationId ??= Str::uuid()->toString();
 
         try {
-            return DB::transaction(function () use ($appointment, $reason, $correlationId) {
+            return $this->db->transaction(function () use ($appointment, $reason, $correlationId) {
                 $appointment->update([
                     'status' => 'cancelled',
                     'cancelled_at' => now(),
@@ -133,7 +133,7 @@ final class AppointmentService
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Medical appointment cancelled', [
+                $this->log->channel('audit')->info('Medical appointment cancelled', [
                     'appointment_id' => $appointment->id,
                     'reason' => $reason,
                     'correlation_id' => $correlationId,
@@ -142,7 +142,7 @@ final class AppointmentService
                 return $appointment;
             });
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to cancel appointment', [
+            $this->log->channel('audit')->error('Failed to cancel appointment', [
                 'appointment_id' => $appointment->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

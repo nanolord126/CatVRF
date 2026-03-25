@@ -46,7 +46,7 @@ final class PaymentController extends Controller
                 );
             } catch (\Exception $e) {
                 // Fraud blocks
-                Log::channel('fraud_alert')->error('Payment blocked by Fraud Control', [
+                $this->log->channel('fraud_alert')->error('Payment blocked by Fraud Control', [
                     'user_id' => $request->user()->id,
                     'amount' => $request->input('amount'),
                     'correlation_id' => $correlationId,
@@ -55,7 +55,7 @@ final class PaymentController extends Controller
             }
 
             $validated = $request->all();
-            $payment = DB::transaction(function () use ($validated, $correlationId) {
+            $payment = $this->db->transaction(function () use ($validated, $correlationId) {
                 return $this->paymentService->initPayment(
                     tenantId: ($validated['tenant_id'] ?? null),
                     userId: $request->user()->id,
@@ -67,7 +67,7 @@ final class PaymentController extends Controller
                 );
             });
 
-            Log::channel('audit')->info('Payment initiated successfully', [
+            $this->log->channel('audit')->info('Payment initiated successfully', [
                 'payment_id' => $payment->id,
                 'amount' => $payment->amount,
                 'user_id' => $request->user()->id,
@@ -85,7 +85,7 @@ final class PaymentController extends Controller
             ], 201);
 
         } catch (DuplicatePaymentException $e) {
-            Log::channel('audit')->warning('Duplicate payment detected', [
+            $this->log->channel('audit')->warning('Duplicate payment detected', [
                 'user_id' => $request->user()->id ?? null,
                 'correlation_id' => $correlationId,
             ]);
@@ -105,7 +105,7 @@ final class PaymentController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Payment creation failed', [
+            $this->log->channel('audit')->error('Payment creation failed', [
                 'error' => $e->getMessage(),
                 'user_id' => $request->user()->id ?? null,
                 'correlation_id' => $correlationId,

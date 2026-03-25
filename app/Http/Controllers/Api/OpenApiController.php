@@ -214,4 +214,177 @@ final class OpenApiController extends Controller
             'specUrl' => route('api.openapi.spec'),
         ]);
     }
+
+    /**
+     * Postman коллекция
+     */
+    public function postman(): \Illuminate\Http\Response
+    {
+        $collection = [
+            'info' => [
+                'name' => 'CatVRF Marketplace API',
+                'description' => 'Production-ready API для управления платежами, кошельком, промо и рефералами',
+                'version' => '1.0.0',
+                'schema' => 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json',
+            ],
+            'item' => [
+                // Payments
+                [
+                    'name' => 'Payments',
+                    'item' => [
+                        [
+                            'name' => 'Initialize Payment',
+                            'request' => [
+                                'method' => 'POST',
+                                'header' => [
+                                    ['key' => 'Authorization', 'value' => 'Bearer {{token}}'],
+                                    ['key' => 'X-Correlation-ID', 'value' => '{{correlation_id}}'],
+                                ],
+                                'url' => [
+                                    'raw' => '{{base_url}}/api/v1/payments',
+                                    'protocol' => 'https',
+                                    'host' => ['{{base_url}}'],
+                                    'path' => ['api', 'v1', 'payments'],
+                                ],
+                                'body' => [
+                                    'mode' => 'raw',
+                                    'raw' => json_encode([
+                                        'order_id' => 123,
+                                        'amount' => 50000,
+                                        'currency' => 'RUB',
+                                        'description' => 'Order payment',
+                                    ]),
+                                ],
+                            ],
+                        ],
+                        [
+                            'name' => 'Get Payment Status',
+                            'request' => [
+                                'method' => 'GET',
+                                'header' => [
+                                    ['key' => 'Authorization', 'value' => 'Bearer {{token}}'],
+                                ],
+                                'url' => [
+                                    'raw' => '{{base_url}}/api/v1/payments/{{payment_id}}',
+                                    'host' => ['{{base_url}}'],
+                                    'path' => ['api', 'v1', 'payments', '{{payment_id}}'],
+                                ],
+                            ],
+                        ],
+                        [
+                            'name' => 'Refund Payment',
+                            'request' => [
+                                'method' => 'POST',
+                                'header' => [
+                                    ['key' => 'Authorization', 'value' => 'Bearer {{token}}'],
+                                ],
+                                'url' => [
+                                    'raw' => '{{base_url}}/api/v1/payments/{{payment_id}}/refund',
+                                    'host' => ['{{base_url}}'],
+                                    'path' => ['api', 'v1', 'payments', '{{payment_id}}', 'refund'],
+                                ],
+                                'body' => [
+                                    'mode' => 'raw',
+                                    'raw' => json_encode(['amount' => 50000]),
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+                // Wallets
+                [
+                    'name' => 'Wallets',
+                    'item' => [
+                        [
+                            'name' => 'Get Wallet Balance',
+                            'request' => [
+                                'method' => 'GET',
+                                'header' => [
+                                    ['key' => 'Authorization', 'value' => 'Bearer {{token}}'],
+                                ],
+                                'url' => [
+                                    'raw' => '{{base_url}}/api/v1/wallets',
+                                    'host' => ['{{base_url}}'],
+                                    'path' => ['api', 'v1', 'wallets'],
+                                ],
+                            ],
+                        ],
+                        [
+                            'name' => 'Deposit to Wallet',
+                            'request' => [
+                                'method' => 'POST',
+                                'header' => [
+                                    ['key' => 'Authorization', 'value' => 'Bearer {{token}}'],
+                                ],
+                                'url' => [
+                                    'raw' => '{{base_url}}/api/v1/wallets/{{wallet_id}}/deposit',
+                                    'host' => ['{{base_url}}'],
+                                    'path' => ['api', 'v1', 'wallets', '{{wallet_id}}', 'deposit'],
+                                ],
+                                'body' => [
+                                    'mode' => 'raw',
+                                    'raw' => json_encode(['amount' => 100000]),
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+                // Promo
+                [
+                    'name' => 'Promo',
+                    'item' => [
+                        [
+                            'name' => 'Apply Promo Code',
+                            'request' => [
+                                'method' => 'POST',
+                                'header' => [
+                                    ['key' => 'Authorization', 'value' => 'Bearer {{token}}'],
+                                ],
+                                'url' => [
+                                    'raw' => '{{base_url}}/api/v1/promos/apply',
+                                    'host' => ['{{base_url}}'],
+                                    'path' => ['api', 'v1', 'promos', 'apply'],
+                                ],
+                                'body' => [
+                                    'mode' => 'raw',
+                                    'raw' => json_encode(['code' => 'PROMO2024', 'amount' => 50000]),
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+                // Search
+                [
+                    'name' => 'Search',
+                    'item' => [
+                        [
+                            'name' => 'Global Search',
+                            'request' => [
+                                'method' => 'GET',
+                                'header' => [],
+                                'url' => [
+                                    'raw' => '{{base_url}}/api/v1/search?q=салон красоты&vertical=beauty',
+                                    'host' => ['{{base_url}}'],
+                                    'path' => ['api', 'v1', 'search'],
+                                    'query' => [
+                                        ['key' => 'q', 'value' => 'салон красоты'],
+                                        ['key' => 'vertical', 'value' => 'beauty'],
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+            'variable' => [
+                ['key' => 'base_url', 'value' => env('API_URL', 'https://api.catvrf.ru')],
+                ['key' => 'token', 'value' => ''],
+                ['key' => 'correlation_id', 'value' => ''],
+            ],
+        ];
+
+        return response()
+            ->json($collection)
+            ->header('Content-Disposition', 'attachment; filename="CatVRF-Marketplace-API.postman_collection.json"');
+    }
 }

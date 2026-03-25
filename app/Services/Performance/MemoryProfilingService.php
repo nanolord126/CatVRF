@@ -42,7 +42,7 @@ final class MemoryProfilingService
 
         self::$snapshots[$label] = $snapshot;
 
-        Log::channel('performance')->debug('Memory snapshot taken', $snapshot);
+        $this->log->channel('performance')->debug('Memory snapshot taken', $snapshot);
 
         return $snapshot;
     }
@@ -105,7 +105,7 @@ final class MemoryProfilingService
             'memory_change_percent' => $comparison['memory_diff_percent'] ?? 0,
         ];
 
-        Log::channel('performance')->info('Code profiling completed', [
+        $this->log->channel('performance')->info('Code profiling completed', [
             'label' => $label,
             'duration_ms' => self::$profileData[$label]['duration_ms'],
             'memory_change' => self::$profileData[$label]['memory_change'],

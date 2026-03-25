@@ -29,7 +29,7 @@ final class LogisticsService
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($data, $userId, $tenantId) {
+$this->db->transaction(function () use ($data, $userId, $tenantId) {
         $order = DeliveryOrder::create([
             'tenant_id' => $tenantId,
             'uuid' => Str::uuid(),
@@ -40,7 +40,7 @@ DB::transaction(function () use ($data, $userId, $tenantId) {
             'price' => $data['price'] ?? 0,
         ]);
 
-        Log::channel('audit')->info('Delivery order created', [
+        $this->log->channel('audit')->info('Delivery order created', [
             'correlation_id' => $this->correlationId,
             'order_id' => $order->id,
         ]);
@@ -64,7 +64,7 @@ DB::transaction(function () use ($data, $userId, $tenantId) {
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($callback) {
+$this->db->transaction(function () use ($callback) {
             return $callback();
         });
     }

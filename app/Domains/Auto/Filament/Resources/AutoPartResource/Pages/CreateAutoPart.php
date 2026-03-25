@@ -33,7 +33,7 @@ final class CreateAutoPart extends CreateRecord
         ]);
 
         if (!$fraudCheck['allowed']) {
-            Notification::make()
+            $this->notification->make()
                 ->title('Подозрение на мошенничество')
                 ->body($fraudCheck['reason'] ?? 'Операция заблокирована')
                 ->danger()
@@ -42,7 +42,7 @@ final class CreateAutoPart extends CreateRecord
             $this->halt();
         }
 
-        Log::channel('audit')->info('Creating auto part', [
+        $this->log->channel('audit')->info('Creating auto part', [
             'correlation_id' => $correlationId,
             'tenant_id' => filament()->getTenant()->id,
             'user_id' => auth()->id(),
@@ -54,21 +54,21 @@ final class CreateAutoPart extends CreateRecord
 
     protected function afterCreate(): void
     {
-        DB::transaction(function () {
+        $this->db->transaction(function () {
             // Событие создания запчасти
             event(new AutoPartCreated(
                 $this->record,
                 $this->record->correlation_id
             ));
 
-            Log::channel('audit')->info('Auto part created successfully', [
+            $this->log->channel('audit')->info('Auto part created successfully', [
                 'correlation_id' => $this->record->correlation_id,
                 'part_id' => $this->record->id,
                 'sku' => $this->record->sku,
                 'tenant_id' => filament()->getTenant()->id,
             ]);
 
-            Notification::make()
+            $this->notification->make()
                 ->title('Запчасть создана')
                 ->body("SKU: {$this->record->sku}, остаток: {$this->record->current_stock} шт")
                 ->success()

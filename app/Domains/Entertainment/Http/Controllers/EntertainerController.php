@@ -39,7 +39,7 @@ final class EntertainerController
     public function getEvents(int $id): JsonResponse
     {
         try {
-            $events = \App\Domains\Entertainment\Models\EntertainmentEvent::where('entertainer_id', $id)
+            $events = \App\Domains\Entertainment\Models\Entertainment$this->event->where('entertainer_id', $id)
                 ->where('status', '!=', 'cancelled')
                 ->paginate(20);
 
@@ -54,7 +54,7 @@ final class EntertainerController
         try {
             $correlationId = Str::uuid()->toString();
 
-            DB::transaction(function () use ($correlationId) {
+            $this->db->transaction(function () use ($correlationId) {
                 $entertainer = Entertainer::create([
                     'tenant_id' => tenant('id'),
                     'user_id' => auth()->id(),
@@ -68,7 +68,7 @@ final class EntertainerController
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Entertainer registered', [
+                $this->log->channel('audit')->info('Entertainer registered', [
                     'entertainer_id' => $entertainer->id,
                     'user_id' => auth()->id(),
                     'correlation_id' => $correlationId,
@@ -101,14 +101,14 @@ final class EntertainerController
             $entertainer = Entertainer::where('user_id', auth()->id())->firstOrFail();
             $correlationId = Str::uuid()->toString();
 
-            DB::transaction(function () use ($entertainer, $correlationId) {
+            $this->db->transaction(function () use ($entertainer, $correlationId) {
                 $entertainer->update([
                     'full_name' => request('full_name', $entertainer->full_name),
                     'bio' => request('bio', $entertainer->bio),
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Entertainer profile updated', [
+                $this->log->channel('audit')->info('Entertainer profile updated', [
                     'entertainer_id' => $entertainer->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -138,7 +138,7 @@ final class EntertainerController
             $entertainer = Entertainer::where('user_id', auth()->id())->firstOrFail();
             $correlationId = Str::uuid()->toString();
 
-            DB::transaction(function () use ($entertainer, $correlationId) {
+            $this->db->transaction(function () use ($entertainer, $correlationId) {
                 $entertainer->schedules()->delete();
 
                 foreach (request('schedules', []) as $schedule) {
@@ -153,7 +153,7 @@ final class EntertainerController
                     ]);
                 }
 
-                Log::channel('audit')->info('Entertainer schedule updated', [
+                $this->log->channel('audit')->info('Entertainer schedule updated', [
                     'entertainer_id' => $entertainer->id,
                     'correlation_id' => $correlationId,
                 ]);

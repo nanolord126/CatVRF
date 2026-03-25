@@ -49,7 +49,7 @@ final class UserActivityService
                 'user_agent' => request()->userAgent(),
             ], 3600); // Keep for 1 hour
 
-            Log::channel('audit')->info('User activity recorded', [
+            $this->log->channel('audit')->info('User activity recorded', [
                 'user_id' => $userId,
                 'activity' => $activity,
                 'tenant_id' => $tenantId,
@@ -57,7 +57,7 @@ final class UserActivityService
 
             return true;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to record activity', [
+            $this->log->channel('audit')->error('Failed to record activity', [
                 'error' => $e->getMessage(),
             ]);
 
@@ -109,7 +109,7 @@ final class UserActivityService
                 'updated_at' => now()->toIso8601String(),
             ], 86400); // Keep for 24 hours
 
-            Log::channel('audit')->info('User status updated', [
+            $this->log->channel('audit')->info('User status updated', [
                 'user_id' => $userId,
                 'status' => $status,
                 'tenant_id' => $tenantId,
@@ -117,7 +117,7 @@ final class UserActivityService
 
             return true;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to update user status', [
+            $this->log->channel('audit')->error('Failed to update user status', [
                 'error' => $e->getMessage(),
             ]);
 
@@ -159,7 +159,7 @@ final class UserActivityService
 
             return true;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to track page view', [
+            $this->log->channel('audit')->error('Failed to track page view', [
                 'error' => $e->getMessage(),
             ]);
 

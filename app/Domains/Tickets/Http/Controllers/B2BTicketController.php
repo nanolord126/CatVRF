@@ -33,11 +33,11 @@ final class B2BTicketController
         $fraudResult   = $this->fraudControlService->check(auth()->id() ?? 0, 'b2b_ticket_storefront_create', 0, $request->ip(), null, $correlationId);
 
         if ($fraudResult['decision'] === 'block') {
-            Log::channel('fraud_alert')->warning('B2BTicket storefront create blocked', ['correlation_id' => $correlationId, 'user_id' => auth()->id(), 'score' => $fraudResult['score']]);
+            $this->log->channel('fraud_alert')->warning('B2BTicket storefront create blocked', ['correlation_id' => $correlationId, 'user_id' => auth()->id(), 'score' => $fraudResult['score']]);
             return response()->json(['success' => false, 'error' => 'Операция заблокирована.', 'correlation_id' => $correlationId], 403);
         }
 
-        Log::channel('audit')->info('B2BTicket storefront create start', ['correlation_id' => $correlationId, 'user_id' => auth()->id()]);
+        $this->log->channel('audit')->info('B2BTicket storefront create start', ['correlation_id' => $correlationId, 'user_id' => auth()->id()]);
 
         try {
             $this->authorize('createStorefront', B2BTicketStorefront::class);
@@ -51,7 +51,7 @@ final class B2BTicketController
                 'min_order_amount'   => 'integer|min:1000',
             ]);
 
-            DB::transaction(function () use ($validated, $correlationId) {
+            $this->db->transaction(function () use ($validated, $correlationId) {
                 B2BTicketStorefront::create([
                     'uuid'           => Str::uuid(),
                     'tenant_id'      => auth()->user()->tenant_id,
@@ -60,11 +60,11 @@ final class B2BTicketController
                 ]);
             });
 
-            Log::channel('audit')->info('B2BTicket storefront created', ['correlation_id' => $correlationId, 'user_id' => auth()->id()]);
+            $this->log->channel('audit')->info('B2BTicket storefront created', ['correlation_id' => $correlationId, 'user_id' => auth()->id()]);
 
             return response()->json(['success' => true, 'message' => 'Витрина создана', 'correlation_id' => $correlationId], 201);
         } catch (\Exception $e) {
-            Log::error('B2BTicket storefront create failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            $this->log->error('B2BTicket storefront create failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json(['success' => false, 'message' => 'Ошибка при создании витрины', 'correlation_id' => Str::uuid()], 500);
         }
     }
@@ -75,7 +75,7 @@ final class B2BTicketController
         $fraudResult   = $this->fraudControlService->check(auth()->id() ?? 0, 'b2b_ticket_order_create', (int) $request->input('total_amount', 0), $request->ip(), null, $correlationId);
 
         if ($fraudResult['decision'] === 'block') {
-            Log::channel('fraud_alert')->warning('B2BTicket order create blocked', ['correlation_id' => $correlationId, 'user_id' => auth()->id(), 'score' => $fraudResult['score']]);
+            $this->log->channel('fraud_alert')->warning('B2BTicket order create blocked', ['correlation_id' => $correlationId, 'user_id' => auth()->id(), 'score' => $fraudResult['score']]);
             return response()->json(['success' => false, 'error' => 'Операция заблокирована.', 'correlation_id' => $correlationId], 403);
         }
 
@@ -88,7 +88,7 @@ final class B2BTicketController
                 'total_amount'             => 'required|numeric|min:1',
             ]);
 
-            DB::transaction(function () use ($validated, $correlationId) {
+            $this->db->transaction(function () use ($validated, $correlationId) {
                 B2BTicketOrder::create([
                     'uuid'              => Str::uuid(),
                     'tenant_id'         => auth()->user()->tenant_id,
@@ -100,11 +100,11 @@ final class B2BTicketController
                 ]);
             });
 
-            Log::channel('audit')->info('B2BTicket order created', ['correlation_id' => $correlationId, 'user_id' => auth()->id()]);
+            $this->log->channel('audit')->info('B2BTicket order created', ['correlation_id' => $correlationId, 'user_id' => auth()->id()]);
 
             return response()->json(['success' => true, 'message' => 'Заказ создан', 'correlation_id' => $correlationId], 201);
         } catch (\Exception $e) {
-            Log::error('B2BTicket order create failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            $this->log->error('B2BTicket order create failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json(['success' => false, 'message' => 'Ошибка при создании заказа', 'correlation_id' => Str::uuid()], 500);
         }
     }
@@ -128,11 +128,11 @@ final class B2BTicketController
 
             $correlationId = Str::uuid()->toString();
 
-            DB::transaction(function () use ($order, $correlationId) {
+            $this->db->transaction(function () use ($order, $correlationId) {
                 $order->update(['status' => 'approved']);
             });
 
-            Log::channel('audit')->info('B2BTicket order approved', ['correlation_id' => $correlationId, 'user_id' => auth()->id(), 'order_id' => $id]);
+            $this->log->channel('audit')->info('B2BTicket order approved', ['correlation_id' => $correlationId, 'user_id' => auth()->id(), 'order_id' => $id]);
 
             return response()->json(['success' => true, 'message' => 'Заказ одобрен', 'correlation_id' => $correlationId]);
         } catch (\Exception $e) {
@@ -149,11 +149,11 @@ final class B2BTicketController
             $correlationId = Str::uuid()->toString();
             $reason        = $request->get('reason', '');
 
-            DB::transaction(function () use ($order, $reason) {
+            $this->db->transaction(function () use ($order, $reason) {
                 $order->update(['status' => 'rejected', 'notes' => $reason]);
             });
 
-            Log::channel('audit')->info('B2BTicket order rejected', ['correlation_id' => $correlationId, 'user_id' => auth()->id(), 'order_id' => $id, 'reason' => $reason]);
+            $this->log->channel('audit')->info('B2BTicket order rejected', ['correlation_id' => $correlationId, 'user_id' => auth()->id(), 'order_id' => $id, 'reason' => $reason]);
 
             return response()->json(['success' => true, 'message' => 'Заказ отклонен', 'correlation_id' => $correlationId]);
         } catch (\Exception $e) {
@@ -169,11 +169,11 @@ final class B2BTicketController
             $storefront    = B2BTicketStorefront::findOrFail($id);
             $correlationId = Str::uuid()->toString();
 
-            DB::transaction(function () use ($storefront) {
+            $this->db->transaction(function () use ($storefront) {
                 $storefront->update(['is_verified' => true]);
             });
 
-            Log::channel('audit')->info('B2BTicket storefront verified', ['correlation_id' => $correlationId, 'user_id' => auth()->id(), 'storefront_id' => $id]);
+            $this->log->channel('audit')->info('B2BTicket storefront verified', ['correlation_id' => $correlationId, 'user_id' => auth()->id(), 'storefront_id' => $id]);
 
             return response()->json(['success' => true, 'message' => 'Витрина верифицирована', 'correlation_id' => $correlationId]);
         } catch (\Exception $e) {

@@ -27,7 +27,7 @@ final class B2BBeautyController
 				'correlation_id' => Str::uuid(),
 			]);
 		} catch (\Exception $e) {
-			Log::channel('audit')->error('Beauty B2B: Storefronts list failed', ['error' => $e->getMessage()]);
+			$this->log->channel('audit')->error('Beauty B2B: Storefronts list failed', ['error' => $e->getMessage()]);
 			return response()->json(['success' => false, 'message' => 'Ошибка', 'correlation_id' => Str::uuid()], 500);
 		}
 	}
@@ -47,7 +47,7 @@ final class B2BBeautyController
 
 			$correlationId = Str::uuid()->toString();
 
-			DB::transaction(function () use ($validated, $correlationId) {
+			$this->db->transaction(function () use ($validated, $correlationId) {
 				$storefront = B2BBeautyStorefront::create([
 					'uuid' => Str::uuid(),
 					'tenant_id' => auth()->user()->tenant_id,
@@ -59,7 +59,7 @@ final class B2BBeautyController
 					'correlation_id' => $correlationId,
 				]);
 
-				Log::channel('audit')->info('Beauty B2B: Storefront created', [
+				$this->log->channel('audit')->info('Beauty B2B: Storefront created', [
 					'storefront_id' => $storefront->id,
 					'inn' => $validated['inn'],
 					'correlation_id' => $correlationId,
@@ -68,7 +68,7 @@ final class B2BBeautyController
 
 			return response()->json(['success' => true, 'message' => 'Витрина создана', 'correlation_id' => $correlationId], 201);
 		} catch (\Exception $e) {
-			Log::channel('audit')->error('Beauty B2B: Storefront creation failed', ['error' => $e->getMessage()]);
+			$this->log->channel('audit')->error('Beauty B2B: Storefront creation failed', ['error' => $e->getMessage()]);
 			return response()->json(['success' => false, 'message' => 'Ошибка', 'correlation_id' => Str::uuid()], 500);
 		}
 	}
@@ -86,7 +86,7 @@ final class B2BBeautyController
 
 			$correlationId = Str::uuid()->toString();
 
-			DB::transaction(function () use ($validated, $correlationId) {
+			$this->db->transaction(function () use ($validated, $correlationId) {
 				$order = B2BBeautyOrder::create([
 					'uuid' => Str::uuid(),
 					'tenant_id' => auth()->user()->tenant_id,
@@ -101,7 +101,7 @@ final class B2BBeautyController
 					'correlation_id' => $correlationId,
 				]);
 
-				Log::channel('audit')->info('Beauty B2B: Order created', [
+				$this->log->channel('audit')->info('Beauty B2B: Order created', [
 					'order_id' => $order->id,
 					'amount' => $validated['total_amount'],
 					'correlation_id' => $correlationId,
@@ -133,9 +133,9 @@ final class B2BBeautyController
 			$order = B2BBeautyOrder::findOrFail($id);
 			$this->authorize('approveOrder', $order);
 
-			DB::transaction(function () use ($order) {
+			$this->db->transaction(function () use ($order) {
 				$order->update(['status' => 'approved']);
-				Log::channel('audit')->info('Beauty B2B: Order approved', ['order_id' => $order->id, 'correlation_id' => $order->correlation_id]);
+				$this->log->channel('audit')->info('Beauty B2B: Order approved', ['order_id' => $order->id, 'correlation_id' => $order->correlation_id]);
 			});
 
 			return response()->json(['success' => true, 'message' => 'Заказ одобрен', 'correlation_id' => Str::uuid()]);
@@ -152,9 +152,9 @@ final class B2BBeautyController
 
 			$reason = $request->get('reason', 'Причина не указана');
 
-			DB::transaction(function () use ($order, $reason) {
+			$this->db->transaction(function () use ($order, $reason) {
 				$order->update(['status' => 'rejected', 'notes' => $reason]);
-				Log::channel('audit')->info('Beauty B2B: Order rejected', ['order_id' => $order->id, 'correlation_id' => $order->correlation_id]);
+				$this->log->channel('audit')->info('Beauty B2B: Order rejected', ['order_id' => $order->id, 'correlation_id' => $order->correlation_id]);
 			});
 
 			return response()->json(['success' => true, 'message' => 'Заказ отклонен', 'correlation_id' => Str::uuid()]);
@@ -168,10 +168,10 @@ final class B2BBeautyController
 		try {
 			$this->authorize('verifyInn', B2BBeautyStorefront::class);
 
-			DB::transaction(function () use ($id) {
+			$this->db->transaction(function () use ($id) {
 				$storefront = B2BBeautyStorefront::findOrFail($id);
 				$storefront->update(['is_verified' => true]);
-				Log::channel('audit')->info('Beauty B2B: INN verified', ['storefront_id' => $id, 'inn' => $storefront->inn]);
+				$this->log->channel('audit')->info('Beauty B2B: INN verified', ['storefront_id' => $id, 'inn' => $storefront->inn]);
 			});
 
 			return response()->json(['success' => true, 'message' => 'ИНН верифицирован', 'correlation_id' => Str::uuid()]);

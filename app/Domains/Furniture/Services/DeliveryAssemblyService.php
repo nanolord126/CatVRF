@@ -41,7 +41,7 @@ final class DeliveryAssemblyService
         }
         RateLimiter::hit("furniture:order:{$tenantId}", 3600);
 
-        return DB::transaction(function () use ($tenantId, $items, $data, $correlationId) {
+        return $this->db->transaction(function () use ($tenantId, $items, $data, $correlationId) {
             
             // 2. Fraud Check - проверка на аномально крупные заказы или частые смены адреса
             $fraud = $this->fraud->check([
@@ -52,7 +52,7 @@ final class DeliveryAssemblyService
             ]);
 
             if ($fraud["decision"] === "block") {
-                Log::channel("audit")->error("Furniture Security Block", ["tenant_id" => $tenantId, "score" => $fraud["score"]]);
+                $this->log->channel("audit")->error("Furniture Security Block", ["tenant_id" => $tenantId, "score" => $fraud["score"]]);
                 throw new \RuntimeException("Операция заблокирована системой безопасности.", 403);
             }
 
@@ -78,7 +78,7 @@ final class DeliveryAssemblyService
                 );
             }
 
-            Log::channel("audit")->info("Furniture: order created", ["order_id" => $order->id, "corr" => $correlationId]);
+            $this->log->channel("audit")->info("Furniture: order created", ["order_id" => $order->id, "corr" => $correlationId]);
 
             return $order;
         });
@@ -92,13 +92,13 @@ final class DeliveryAssemblyService
         $correlationId = $correlationId ?: (string) Str::uuid();
         $order = FurnitureOrder::findOrFail($orderId);
 
-        DB::transaction(function () use ($order, $correlationId) {
+        $this->db->transaction(function () use ($order, $correlationId) {
             $order->update([
                 "status" => "assembling",
                 "assembly_started_at" => now()
             ]);
 
-            Log::channel("audit")->info("Furniture: assembly started", ["order_id" => $order->id, "corr" => $correlationId]);
+            $this->log->channel("audit")->info("Furniture: assembly started", ["order_id" => $order->id, "corr" => $correlationId]);
         });
     }
 
@@ -110,7 +110,7 @@ final class DeliveryAssemblyService
         $correlationId = $correlationId ?: (string) Str::uuid();
         $order = FurnitureOrder::with("items")->findOrFail($orderId);
 
-        DB::transaction(function () use ($order, $correlationId) {
+        $this->db->transaction(function () use ($order, $correlationId) {
             $order->update([
                 "status" => "completed",
                 "finished_at" => now()
@@ -142,7 +142,7 @@ final class DeliveryAssemblyService
                 correlationId: $correlationId
             );
 
-            Log::channel("audit")->info("Furniture: order completed + payout", ["order_id" => $order->id, "payout" => $payout]);
+            $this->log->channel("audit")->info("Furniture: order completed + payout", ["order_id" => $order->id, "payout" => $payout]);
         });
     }
 }

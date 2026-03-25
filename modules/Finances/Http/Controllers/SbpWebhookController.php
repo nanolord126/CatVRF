@@ -44,7 +44,7 @@ final class SbpWebhookController extends Controller
             $tenantId = $request->header('X-Tenant-Id') ?? $request->input('TerminalKey');
 
             if (!$tenantId) {
-                Log::error('Tenant ID not found in webhook', [
+                $this->log->error('Tenant ID not found in webhook', [
                     'correlation_id' => $this->correlationId,
                     'ip' => $request->ip(),
                 ]);
@@ -53,7 +53,7 @@ final class SbpWebhookController extends Controller
 
             // Валидация подписи вебхука (CRITICAL для безопасности)
             if (!$this->validateWebhookSignature($request)) {
-                Log::warning('Invalid webhook signature - possible attack attempt', [
+                $this->log->warning('Invalid webhook signature - possible attack attempt', [
                     'correlation_id' => $this->correlationId,
                     'tenant_id' => $tenantId,
                     'ip' => $request->ip(),
@@ -63,7 +63,7 @@ final class SbpWebhookController extends Controller
 
             $payload = $request->all();
 
-            Log::channel('payments')->info('SBP Webhook received', [
+            $this->log->channel('payments')->info('SBP Webhook received', [
                 'tenant_id' => $tenantId,
                 'payment_id' => $payload['PaymentId'] ?? null,
                 'status' => $payload['Status'] ?? null,
@@ -73,7 +73,7 @@ final class SbpWebhookController extends Controller
             // Валидация payload перед обработкой
             $validation = $this->validatePayload($payload);
             if (!$validation['valid']) {
-                Log::warning('Invalid webhook payload', [
+                $this->log->warning('Invalid webhook payload', [
                     'correlation_id' => $this->correlationId,
                     'tenant_id' => $tenantId,
                     'errors' => $validation['errors'],
@@ -83,7 +83,7 @@ final class SbpWebhookController extends Controller
 
             // Асинхронная обработка платежа через Job (согласно архитектуре 2026)
             // Job будет обработан из очереди с обработкой ошибок
-            Log::channel('payments')->info('Queuing webhook processing', [
+            $this->log->channel('payments')->info('Queuing webhook processing', [
                 'correlation_id' => $this->correlationId,
                 'tenant_id' => $tenantId,
                 'payment_id' => $payload['PaymentId'] ?? null,
@@ -91,7 +91,7 @@ final class SbpWebhookController extends Controller
 
             return response()->json(['status' => 'OK'], 200);
         } catch (Throwable $e) {
-            Log::error('SBP Webhook receiving failed', [
+            $this->log->error('SBP Webhook receiving failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $this->correlationId,
             ]);
@@ -119,7 +119,7 @@ final class SbpWebhookController extends Controller
         $secret = (string) config('payments.webhook_secret');
 
         if (empty($secret)) {
-            Log::error('Webhook secret not configured', [
+            $this->log->error('Webhook secret not configured', [
                 'correlation_id' => $this->correlationId,
             ]);
             return false;

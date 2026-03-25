@@ -33,7 +33,7 @@ final class PaymentController extends Controller
         $correlationId = Str::uuid();
         
         try {
-            Log::channel('audit')->info('payment.transactions.index.start', [
+            $this->log->channel('audit')->info('payment.transactions.index.start', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => tenant('id'),
                 'user_id' => auth()->id(),
@@ -45,7 +45,7 @@ final class PaymentController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->paginate($perPage);
 
-            Log::channel('audit')->info('payment.transactions.index.success', [
+            $this->log->channel('audit')->info('payment.transactions.index.success', [
                 'correlation_id' => $correlationId,
                 'count' => $transactions->count(),
             ]);
@@ -56,7 +56,7 @@ final class PaymentController extends Controller
                 'correlation_id' => (string) $correlationId,
             ]);
         } catch (Throwable $e) {
-            Log::channel('audit')->critical('payment.transactions.index.error', [
+            $this->log->channel('audit')->critical('payment.transactions.index.error', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -86,7 +86,7 @@ final class PaymentController extends Controller
             ]);
 
             if ($fraudScore > 80) {
-                Log::channel('audit')->warning('payment.init.fraud.blocked', [
+                $this->log->channel('audit')->warning('payment.init.fraud.blocked', [
                     'correlation_id' => $correlationId,
                     'fraud_score' => $fraudScore,
                 ]);
@@ -98,14 +98,14 @@ final class PaymentController extends Controller
                 ], 403);
             }
 
-            Log::channel('audit')->info('payment.init.start', [
+            $this->log->channel('audit')->info('payment.init.start', [
                 'correlation_id' => $correlationId,
                 'amount' => $request->amount,
                 'fraud_score' => $fraudScore,
             ]);
 
             // Инициирование платежа через сервис
-            $transaction = DB::transaction(function () use ($request, $correlationId) {
+            $transaction = $this->db->transaction(function () use ($request, $correlationId) {
                 return $this->paymentService->initPayment(
                     userId: auth()->id(),
                     tenantId: tenant('id'),
@@ -118,7 +118,7 @@ final class PaymentController extends Controller
                 );
             });
 
-            Log::channel('audit')->info('payment.init.success', [
+            $this->log->channel('audit')->info('payment.init.success', [
                 'correlation_id' => $correlationId,
                 'transaction_id' => $transaction->id,
                 'amount' => $transaction->amount,
@@ -130,7 +130,7 @@ final class PaymentController extends Controller
                 'correlation_id' => (string) $correlationId,
             ], 201);
         } catch (Throwable $e) {
-            Log::channel('audit')->critical('payment.init.error', [
+            $this->log->channel('audit')->critical('payment.init.error', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -156,19 +156,19 @@ final class PaymentController extends Controller
                 ->where('user_id', auth()->id())
                 ->findOrFail($request->transaction_id);
 
-            Log::channel('audit')->info('payment.capture.start', [
+            $this->log->channel('audit')->info('payment.capture.start', [
                 'correlation_id' => $correlationId,
                 'transaction_id' => $transaction->id,
             ]);
 
-            $captured = DB::transaction(function () use ($transaction, $correlationId) {
+            $captured = $this->db->transaction(function () use ($transaction, $correlationId) {
                 return $this->paymentService->capturePayment(
                     transaction: $transaction,
                     correlationId: $correlationId,
                 );
             });
 
-            Log::channel('audit')->info('payment.capture.success', [
+            $this->log->channel('audit')->info('payment.capture.success', [
                 'correlation_id' => $correlationId,
                 'transaction_id' => $captured->id,
             ]);
@@ -179,7 +179,7 @@ final class PaymentController extends Controller
                 'correlation_id' => (string) $correlationId,
             ]);
         } catch (Throwable $e) {
-            Log::channel('audit')->critical('payment.capture.error', [
+            $this->log->channel('audit')->critical('payment.capture.error', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -205,12 +205,12 @@ final class PaymentController extends Controller
                 ->where('user_id', auth()->id())
                 ->findOrFail($request->transaction_id);
 
-            Log::channel('audit')->info('payment.refund.start', [
+            $this->log->channel('audit')->info('payment.refund.start', [
                 'correlation_id' => $correlationId,
                 'transaction_id' => $transaction->id,
             ]);
 
-            $refunded = DB::transaction(function () use ($transaction, $correlationId) {
+            $refunded = $this->db->transaction(function () use ($transaction, $correlationId) {
                 return $this->paymentService->refundPayment(
                     transaction: $transaction,
                     reason: $request->reason ?? 'User requested',
@@ -218,7 +218,7 @@ final class PaymentController extends Controller
                 );
             });
 
-            Log::channel('audit')->info('payment.refund.success', [
+            $this->log->channel('audit')->info('payment.refund.success', [
                 'correlation_id' => $correlationId,
                 'transaction_id' => $refunded->id,
             ]);
@@ -229,7 +229,7 @@ final class PaymentController extends Controller
                 'correlation_id' => (string) $correlationId,
             ]);
         } catch (Throwable $e) {
-            Log::channel('audit')->critical('payment.refund.error', [
+            $this->log->channel('audit')->critical('payment.refund.error', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -255,7 +255,7 @@ final class PaymentController extends Controller
                 ->where('user_id', auth()->id())
                 ->findOrFail($request->transaction_id);
 
-            Log::channel('audit')->info('payment.status.check', [
+            $this->log->channel('audit')->info('payment.status.check', [
                 'correlation_id' => $correlationId,
                 'transaction_id' => $transaction->id,
             ]);
@@ -271,7 +271,7 @@ final class PaymentController extends Controller
                 'correlation_id' => (string) $correlationId,
             ]);
         } catch (Throwable $e) {
-            Log::channel('audit')->critical('payment.status.error', [
+            $this->log->channel('audit')->critical('payment.status.error', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);

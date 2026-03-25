@@ -30,7 +30,7 @@ final class TicketGenerationJob implements ShouldQueue
     public function handle(TicketGenerationService $service): void
     {
         try {
-            Log::channel('audit')->info('Starting ticket generation job', [
+            $this->log->channel('audit')->info('Starting ticket generation job', [
                 'sale_id' => $this->ticketSaleId,
                 'correlation_id' => $this->correlationId,
             ]);
@@ -45,12 +45,12 @@ final class TicketGenerationJob implements ShouldQueue
                 $this->correlationId
             );
 
-            Log::channel('audit')->info('Ticket generation completed', [
+            $this->log->channel('audit')->info('Ticket generation completed', [
                 'sale_id' => $this->ticketSaleId,
                 'correlation_id' => $this->correlationId,
             ]);
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Ticket generation failed', [
+            $this->log->channel('audit')->error('Ticket generation failed', [
                 'sale_id' => $this->ticketSaleId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $this->correlationId,

@@ -29,10 +29,10 @@ final class EventService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-DB::transaction(function () use ($venueId, $entertainerId, $name, $description, $eventType, $startDate, $endDate, $totalSeats, $basePrice, $vipPrice, $correlationId) {
+$this->db->transaction(function () use ($venueId, $entertainerId, $name, $description, $eventType, $startDate, $endDate, $totalSeats, $basePrice, $vipPrice, $correlationId) {
                 $venue = EntertainmentVenue::findOrFail($venueId);
 
-                $event = EntertainmentEvent::create([
+                $event = Entertainment$this->event->create([
                     'tenant_id' => tenant('id'),
                     'venue_id' => $venueId,
                     'entertainer_id' => $entertainerId,
@@ -49,7 +49,7 @@ DB::transaction(function () use ($venueId, $entertainerId, $name, $description, 
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Entertainment event created', [
+                $this->log->channel('audit')->info('Entertainment event created', [
                     'event_id' => $event->id,
                     'venue_id' => $venueId,
                     'name' => $name,
@@ -60,7 +60,7 @@ DB::transaction(function () use ($venueId, $entertainerId, $name, $description, 
                 return $event;
             });
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to create event', [
+            $this->log->channel('audit')->error('Failed to create event', [
                 'venue_id' => $venueId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -82,7 +82,7 @@ DB::transaction(function () use ($venueId, $entertainerId, $name, $description, 
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-DB::transaction(function () use ($event, $correlationId) {
+$this->db->transaction(function () use ($event, $correlationId) {
                 $event->update([
                     'status' => 'cancelled',
                     'correlation_id' => $correlationId,
@@ -90,14 +90,14 @@ DB::transaction(function () use ($event, $correlationId) {
 
                 event(new EventCancelled($event, $correlationId));
 
-                Log::channel('audit')->info('Entertainment event cancelled', [
+                $this->log->channel('audit')->info('Entertainment event cancelled', [
                     'event_id' => $event->id,
                     'venue_id' => $event->venue_id,
                     'correlation_id' => $correlationId,
                 ]);
             });
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to cancel event', [
+            $this->log->channel('audit')->error('Failed to cancel event', [
                 'event_id' => $event->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

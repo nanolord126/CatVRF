@@ -29,7 +29,7 @@ final class MaterialService
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($materialId, $quantity, $data, $userId, $tenantId) {
+$this->db->transaction(function () use ($materialId, $quantity, $data, $userId, $tenantId) {
             $material = ConstructionMaterial::lockForUpdate()->find($materialId);
             
             if (!$material || $material->current_stock < $quantity) {
@@ -48,7 +48,7 @@ DB::transaction(function () use ($materialId, $quantity, $data, $userId, $tenant
                 'delivery_address' => $data['address'] ?? '',
             ]);
 
-            Log::channel('audit')->info('Material order created', [
+            $this->log->channel('audit')->info('Material order created', [
                 'correlation_id' => $this->correlationId,
                 'order_id' => $order->id,
                 'material_id' => $materialId,
@@ -67,7 +67,7 @@ DB::transaction(function () use ($materialId, $quantity, $data, $userId, $tenant
 
         $order->update(['status' => 'delivered']);
         
-        Log::channel('audit')->info('Material order delivered', [
+        $this->log->channel('audit')->info('Material order delivered', [
             'correlation_id' => $this->correlationId,
             'order_id' => $order->id,
         ]);

@@ -44,7 +44,7 @@ final class PayoutProcessingJob implements ShouldQueue
     public function handle(): void
     {
         try {
-            Log::channel('audit')->info('Payout processing started', [
+            $this->log->channel('audit')->info('Payout processing started', [
                 'correlation_id' => $this->correlationId,
                 'timestamp' => now()->toIso8601String(),
             ]);
@@ -57,11 +57,11 @@ final class PayoutProcessingJob implements ShouldQueue
                 ->get();
 
             if ($pendingPayouts->isEmpty()) {
-                Log::info('No pending payouts to process');
+                $this->log->info('No pending payouts to process');
                 return;
             }
 
-            Log::info('Processing payouts', [
+            $this->log->info('Processing payouts', [
                 'correlation_id' => $this->correlationId,
                 'count' => $pendingPayouts->count(),
             ]);
@@ -77,7 +77,7 @@ final class PayoutProcessingJob implements ShouldQueue
             }
 
             if (empty($validPayouts)) {
-                Log::warning('All payouts marked as fraudulent', [
+                $this->log->warning('All payouts marked as fraudulent', [
                     'correlation_id' => $this->correlationId,
                 ]);
                 return;
@@ -97,7 +97,7 @@ final class PayoutProcessingJob implements ShouldQueue
                         $successCount++;
                     } catch (\Exception $e) {
                         $failureCount++;
-                        Log::warning('Payout processing failed', [
+                        $this->log->warning('Payout processing failed', [
                             'correlation_id' => $this->correlationId,
                             'payout_id' => $payout->id,
                             'error' => $e->getMessage(),
@@ -109,14 +109,14 @@ final class PayoutProcessingJob implements ShouldQueue
                 }
             }
 
-            Log::channel('audit')->info('Payout processing completed', [
+            $this->log->channel('audit')->info('Payout processing completed', [
                 'correlation_id' => $this->correlationId,
                 'successful' => $successCount,
                 'failed' => $failureCount,
             ]);
 
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Payout processing job failed', [
+            $this->log->channel('audit')->error('Payout processing job failed', [
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -147,7 +147,7 @@ final class PayoutProcessingJob implements ShouldQueue
      */
     private function markAsFraudulent(WithdrawalRequest $payout): void
     {
-        DB::transaction(function () use ($payout) {
+        $this->db->transaction(function () use ($payout) {
             $payout->update([
                 'status' => 'rejected',
                 'rejection_reason' => 'Fraud detection',
@@ -158,7 +158,7 @@ final class PayoutProcessingJob implements ShouldQueue
             // Вернуть деньги на кошелёк
             $payout->wallet->refund($payout->amount, 'Payout rejected due to fraud');
 
-            Log::warning('Payout marked as fraudulent', [
+            $this->log->warning('Payout marked as fraudulent', [
                 'payout_id' => $payout->id,
             ]);
         });
@@ -187,7 +187,7 @@ final class PayoutProcessingJob implements ShouldQueue
      */
     private function processPayout(WithdrawalRequest $payout, string $method): void
     {
-        DB::transaction(function () use ($payout, $method) {
+        $this->db->transaction(function () use ($payout, $method) {
             $payout->update([
                 'status' => 'processing',
                 'processing_started_at' => now(),
@@ -214,7 +214,7 @@ final class PayoutProcessingJob implements ShouldQueue
                 'correlation_id' => $this->correlationId,
             ]);
 
-            Log::info('Payout sent successfully', [
+            $this->log->info('Payout sent successfully', [
                 'payout_id' => $payout->id,
                 'provider_id' => $result->getTransactionId(),
             ]);
@@ -239,7 +239,7 @@ final class PayoutProcessingJob implements ShouldQueue
 
     public function failed(\Exception $exception): void
     {
-        Log::channel('audit')->error('PayoutProcessingJob failed permanently', [
+        $this->log->channel('audit')->error('PayoutProcessingJob failed permanently', [
             'correlation_id' => $this->correlationId,
             'error' => $exception->getMessage(),
         ]);

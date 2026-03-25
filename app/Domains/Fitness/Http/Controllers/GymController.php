@@ -29,7 +29,7 @@ final class GymController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to list gyms', ['error' => $e->getMessage()]);
+            $this->log->channel('audit')->error('Failed to list gyms', ['error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
@@ -72,11 +72,11 @@ final class GymController
                 'correlation_id' => $correlationId,
             ]);
 
-            Log::channel('audit')->info('Gym created', ['gym_id' => $gym->id, 'correlation_id' => $correlationId]);
+            $this->log->channel('audit')->info('Gym created', ['gym_id' => $gym->id, 'correlation_id' => $correlationId]);
 
             return response()->json(['success' => true, 'data' => $gym, 'correlation_id' => $correlationId], 201);
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to create gym', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+            $this->log->channel('audit')->error('Failed to create gym', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
             return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
         }
     }
@@ -91,11 +91,11 @@ final class GymController
 
             $gym->update(array_merge(request()->except(['id', 'tenant_id', 'business_group_id', 'correlation_id']), ['correlation_id' => $correlationId]));
 
-            Log::channel('audit')->info('Gym updated', ['gym_id' => $gym->id, 'correlation_id' => $correlationId]);
+            $this->log->channel('audit')->info('Gym updated', ['gym_id' => $gym->id, 'correlation_id' => $correlationId]);
 
             return response()->json(['success' => true, 'data' => $gym, 'correlation_id' => $correlationId]);
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to update gym', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+            $this->log->channel('audit')->error('Failed to update gym', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
             return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
         }
     }
@@ -109,11 +109,11 @@ final class GymController
 
             $gym->delete();
 
-            Log::channel('audit')->info('Gym deleted', ['gym_id' => $id, 'correlation_id' => $correlationId]);
+            $this->log->channel('audit')->info('Gym deleted', ['gym_id' => $id, 'correlation_id' => $correlationId]);
 
             return response()->json(['success' => true, 'correlation_id' => $correlationId]);
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to delete gym', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+            $this->log->channel('audit')->error('Failed to delete gym', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
             return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
         }
     }

@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Entertainment\Models;
@@ -9,7 +11,16 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-final class Entertainer extends Model
+final /**
+ * Entertainer
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class Entertainer extends Model
 {
     use SoftDeletes;
 
@@ -46,7 +57,7 @@ final class Entertainer extends Model
 
     public function entertainmentEvents(): HasMany
     {
-        return $this->hasMany(EntertainmentEvent::class, 'entertainer_id');
+        return $this->hasMany(Entertainment$this->event->class, 'entertainer_id');
     }
 
     public function schedules(): HasMany

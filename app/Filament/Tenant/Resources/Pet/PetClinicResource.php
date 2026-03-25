@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Pet;
@@ -6,7 +8,16 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Forms;
 
-final class PetClinicResource extends Resource
+final /**
+ * PetClinicResource
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class PetClinicResource extends Resource
 {
     protected static ?string $navigationIcon = 'heroicon-o-heart';
     protected static ?string $navigationGroup = 'Pet';

@@ -52,7 +52,7 @@ final class StatisticsController
                 ],
             ]);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Get blogger stats failed', [
+            $this->log->channel('audit')->error('Get blogger stats failed', [
                 'error' => $e->getMessage(),
             ]);
 

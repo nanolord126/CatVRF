@@ -22,7 +22,7 @@ final class Jewelry3DService
 
 
 
-        Log::channel('audit')->info('Jewelry3DService: Uploading 3D model', [
+        $this->log->channel('audit')->info('Jewelry3DService: Uploading 3D model', [
             'correlation_id' => $data['correlation_id'] ?? Str::uuid(),
             'jewelry_item_id' => $data['jewelry_item_id'],
             'tenant_id' => filament()->getTenant()->id,
@@ -36,26 +36,26 @@ final class Jewelry3DService
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($data) {
+$this->db->transaction(function () use ($data) {
             $modelFile = $data['model_file'];
             $textureFile = $data['texture_file'] ?? null;
             $previewFile = $data['preview_file'] ?? null;
 
-            $modelPath = Storage::disk('public')->putFile('jewelry/3d-models', $modelFile);
-            $texturePath = $textureFile ? Storage::disk('public')->putFile('jewelry/textures', $textureFile) : null;
-            $previewPath = $previewFile ? Storage::disk('public')->putFile('jewelry/previews', $previewFile) : null;
+            $modelPath = $this->storage->disk('public')->putFile('jewelry/3d-models', $modelFile);
+            $texturePath = $textureFile ? $this->storage->disk('public')->putFile('jewelry/textures', $textureFile) : null;
+            $previewPath = $previewFile ? $this->storage->disk('public')->putFile('jewelry/previews', $previewFile) : null;
 
             return Jewelry3DModel::create([
                 'uuid' => Str::uuid(),
                 'correlation_id' => $data['correlation_id'] ?? Str::uuid(),
                 'tenant_id' => filament()->getTenant()->id,
                 'jewelry_item_id' => $data['jewelry_item_id'],
-                'model_url' => Storage::url($modelPath),
-                'texture_url' => $texturePath ? Storage::url($texturePath) : null,
+                'model_url' => $this->storage->url($modelPath),
+                'texture_url' => $texturePath ? $this->storage->url($texturePath) : null,
                 'material_type' => $data['material_type'] ?? 'gold',
                 'dimensions' => $data['dimensions'] ?? [],
                 'weight_grams' => $data['weight_grams'] ?? 0,
-                'preview_image_url' => $previewPath ? Storage::url($previewPath) : null,
+                'preview_image_url' => $previewPath ? $this->storage->url($previewPath) : null,
                 'ar_compatible' => $data['ar_compatible'] ?? true,
                 'vr_compatible' => $data['vr_compatible'] ?? true,
                 'file_size_mb' => $modelFile->getSize() / 1024 / 1024,
@@ -74,7 +74,7 @@ DB::transaction(function () use ($data) {
 
         $model = Jewelry3DModel::findOrFail($modelId);
 
-        Log::channel('audit')->info('Jewelry3DService: Generating AR view', [
+        $this->log->channel('audit')->info('Jewelry3DService: Generating AR view', [
             'model_id' => $modelId,
             'jewelry_item_id' => $model->jewelry_item_id,
         ]);
@@ -98,7 +98,7 @@ DB::transaction(function () use ($data) {
 
         $model = Jewelry3DModel::findOrFail($modelId);
 
-        Log::channel('audit')->info('Jewelry3DService: Generating VR view', [
+        $this->log->channel('audit')->info('Jewelry3DService: Generating VR view', [
             'model_id' => $modelId,
             'jewelry_item_id' => $model->jewelry_item_id,
         ]);
@@ -176,7 +176,7 @@ DB::transaction(function () use ($data) {
 
         $model = Jewelry3DModel::findOrFail($modelId);
 
-        Log::channel('audit')->info('Jewelry3DService: Changing metal type', [
+        $this->log->channel('audit')->info('Jewelry3DService: Changing metal type', [
             'model_id' => $modelId,
             'from' => $model->material_type,
             'to' => $metalType,
@@ -190,7 +190,7 @@ DB::transaction(function () use ($data) {
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($model, $metalType) {
+$this->db->transaction(function () use ($model, $metalType) {
             $model->update(['material_type' => $metalType]);
             return $model;
         });
@@ -204,13 +204,13 @@ DB::transaction(function () use ($model, $metalType) {
 
         $model = Jewelry3DModel::findOrFail($modelId);
 
-        Log::channel('audit')->info('Jewelry3DService: Downloading model', [
+        $this->log->channel('audit')->info('Jewelry3DService: Downloading model', [
             'model_id' => $modelId,
             'format' => $format,
         ]);
 
         // Return download URL
-        return Storage::url($model->model_url) . "?format={$format}";
+        return $this->storage->url($model->model_url) . "?format={$format}";
     }
 
     public function createModelPreview(int $modelId, array $angles = []): array

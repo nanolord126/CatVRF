@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Freelance\Listeners;
@@ -9,23 +11,40 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-final class ReleaseFreelancerPaymentListener implements ShouldQueue
+final /**
+ * ReleaseFreelancerPaymentListener
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class ReleaseFreelancerPaymentListener implements ShouldQueue
 {
     use InteractsWithQueue;
 
     public function __construct(
         private readonly BalanceTransactionService $balanceService,
-    ) {}
+    ) {
+    /**
+     * Инициализировать класс
+     */
+    public function __construct()
+    {
+        // TODO: инициализация
+    }
+}
 
     public function handle(PaymentMilestoneReleased $event): void
     {
-        DB::transaction(function () use ($event) {
+        $this->db->transaction(function () use ($event) {
             $contract = $event->contract->load('freelancer', 'client');
             $freelancer = $contract->freelancer;
 
             $amountInCents = (int)($event->amount * 100);
 
-            Log::channel('audit')->info('Freelance payment milestone released to freelancer', [
+            $this->log->channel('audit')->info('Freelance payment milestone released to freelancer', [
                 'contract_id' => $contract->id,
                 'freelancer_id' => $freelancer->id,
                 'client_id' => $contract->client_id,

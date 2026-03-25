@@ -52,7 +52,7 @@ final class SubscriptionController extends BaseApiV2Controller
                 channel: $channel
             );
 
-            Log::channel('audit')->info('Channel subscription', [
+            $this->log->channel('audit')->info('Channel subscription', [
                 'user_id' => auth()->id(),
                 'channel' => $channel,
                 'action' => 'subscribe',
@@ -68,7 +68,7 @@ final class SubscriptionController extends BaseApiV2Controller
                 correlationId: $correlationId
             );
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Subscription failed', [
+            $this->log->channel('audit')->error('Subscription failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
                 'trace' => $e->getTraceAsString(),
@@ -105,7 +105,7 @@ final class SubscriptionController extends BaseApiV2Controller
                 channel: $channel
             );
 
-            Log::channel('audit')->info('Channel unsubscription', [
+            $this->log->channel('audit')->info('Channel unsubscription', [
                 'user_id' => auth()->id(),
                 'channel' => $channel,
                 'action' => 'unsubscribe',
@@ -121,7 +121,7 @@ final class SubscriptionController extends BaseApiV2Controller
                 correlationId: $correlationId
             );
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Unsubscription failed', [
+            $this->log->channel('audit')->error('Unsubscription failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -157,7 +157,7 @@ final class SubscriptionController extends BaseApiV2Controller
                 // Redis unavailable — return empty list gracefully
             }
 
-            Log::channel('audit')->info('Channels retrieved', [
+            $this->log->channel('audit')->info('Channels retrieved', [
                 'user_id' => $userId,
                 'count' => count($channels),
                 'correlation_id' => $correlationId,
@@ -172,7 +172,7 @@ final class SubscriptionController extends BaseApiV2Controller
                 correlationId: $correlationId
             );
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to retrieve channels', [
+            $this->log->channel('audit')->error('Failed to retrieve channels', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);

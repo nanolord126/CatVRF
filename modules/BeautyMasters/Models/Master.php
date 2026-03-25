@@ -1,9 +1,20 @@
+declare(strict_types=1);
+
 <?php
 
 namespace Modules\BeautyMasters\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * Master
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
 class Master extends Model
 {
     protected $table = 'beauty_masters';

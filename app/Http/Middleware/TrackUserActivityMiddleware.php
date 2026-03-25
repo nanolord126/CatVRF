@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -17,7 +19,15 @@ final class TrackUserActivityMiddleware
 {
     public function __construct(
         private readonly UserActivityService $activityService,
-    ) {}
+    ) {
+    /**
+     * Инициализировать класс
+     */
+    public function __construct()
+    {
+        // TODO: инициализация
+    }
+}
 
     public function handle(Request $request, Closure $next): mixed
     {

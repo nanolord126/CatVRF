@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -8,11 +10,30 @@ use App\Domains\Flowers\Models\FlowerConsumable;
 use App\Services\InventoryManagementService;
 use Illuminate\Support\Facades\Log;
 
-final readonly class ConsumableDeductionService
+final readonly /**
+ * ConsumableDeductionService
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class ConsumableDeductionService
 {
+    // Dependencies injected via constructor
+    // Add private readonly properties here
     public function __construct(
         private InventoryManagementService $inventoryService
-    ) {}
+    ) {
+    /**
+     * Инициализировать класс
+     */
+    public function __construct()
+    {
+        // TODO: инициализация
+    }
+}
 
     public function deductForBouquet(
         int $bouquetId,
@@ -30,7 +51,7 @@ final readonly class ConsumableDeductionService
                 sourceId: $bouquetId
             );
 
-            Log::channel('audit')->info('Consumable deducted', [
+            $this->log->channel('audit')->info('Consumable deducted', [
                 'consumable_id' => $consumable->id,
                 'bouquet_id' => $bouquetId,
                 'correlation_id' => $correlationId,

@@ -33,7 +33,7 @@ final class IdempotencyService
     ): array {
         $payloadHash = $this->generateHash($payload);
 
-        $record = DB::table('payment_idempotency_records')
+        $record = $this->db->table('payment_idempotency_records')
             ->where('operation', $operation)
             ->where('idempotency_key', $idempotencyKey)
             ->where('tenant_id', $tenantId)
@@ -41,13 +41,14 @@ final class IdempotencyService
             ->first();
 
         if (!$record) {
-            // Новая операция — пустой массив означает "продолжай выполнение"
+            // Новая операция — возвращаем пустой массив как сигнал
+            // (это OK для новых операций, не исключение)
             return [];
         }
 
         // Проверить, совпадает ли payload
         if ($record->payload_hash !== $payloadHash) {
-            Log::channel('fraud_alert')->critical('Idempotency payload mismatch detected', [
+            $this->log->channel('fraud_alert')->critical('Idempotency payload mismatch detected', [
                 'operation' => $operation,
                 'idempotency_key' => $idempotencyKey,
                 'tenant_id' => $tenantId,
@@ -62,7 +63,7 @@ final class IdempotencyService
         }
 
         // Payload совпадает - вернуть cached response
-        Log::channel('audit')->info('Idempotency cache hit', [
+        $this->log->channel('audit')->info('Idempotency cache hit', [
             'operation' => $operation,
             'idempotency_key' => $idempotencyKey,
             'tenant_id' => $tenantId,
@@ -94,8 +95,8 @@ final class IdempotencyService
         $payloadHash = $this->generateHash($payload);
 
         try {
-            DB::transaction(function () use ($operation, $idempotencyKey, $tenantId, $payloadHash, $response, $ttlMinutes) {
-                DB::table('payment_idempotency_records')
+            $this->db->transaction(function () use ($operation, $idempotencyKey, $tenantId, $payloadHash, $response, $ttlMinutes) {
+                $this->db->table('payment_idempotency_records')
                     ->insertOrIgnore([
                         'operation' => $operation,
                         'idempotency_key' => $idempotencyKey,
@@ -108,7 +109,7 @@ final class IdempotencyService
                     ]);
             });
 
-            Log::channel('audit')->info('Idempotency record created', [
+            $this->log->channel('audit')->info('Idempotency record created', [
                 'operation' => $operation,
                 'idempotency_key' => $idempotencyKey,
                 'tenant_id' => $tenantId,
@@ -117,7 +118,7 @@ final class IdempotencyService
 
             return true;
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Failed to record idempotency', [
+            $this->log->channel('audit')->error('Failed to record idempotency', [
                 'operation' => $operation,
                 'idempotency_key' => $idempotencyKey,
                 'tenant_id' => $tenantId,
@@ -136,12 +137,12 @@ final class IdempotencyService
      */
     public function cleanup(): int
     {
-        return DB::transaction(function () {
-            $count = DB::table('payment_idempotency_records')
+        return $this->db->transaction(function () {
+            $count = $this->db->table('payment_idempotency_records')
                 ->where('expires_at', '<', now())
                 ->delete();
 
-            Log::channel('audit')->info('Idempotency cleanup completed', [
+            $this->log->channel('audit')->info('Idempotency cleanup completed', [
                 'deleted_records' => $count,
             ]);
 
@@ -179,7 +180,7 @@ final class IdempotencyService
      */
     public function getRecord(string $idempotencyKey, int $tenantId): array
     {
-        $record = DB::table('payment_idempotency_records')
+        $record = $this->db->table('payment_idempotency_records')
             ->where('idempotency_key', $idempotencyKey)
             ->where('tenant_id', $tenantId)
             ->first();

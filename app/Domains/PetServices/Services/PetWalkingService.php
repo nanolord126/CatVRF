@@ -20,7 +20,7 @@ final class PetWalkingService
 
     public function createWalkingBooking(array $data): PetWalking
     {
-        Log::channel('audit')->info('PetWalkingService: Creating walking booking', [
+        $this->log->channel('audit')->info('PetWalkingService: Creating walking booking', [
             'correlation_id' => $data['correlation_id'] ?? Str::uuid(),
             'walker_id' => $data['walker_id'],
             'tenant_id' => filament()->getTenant()->id,
@@ -34,7 +34,7 @@ final class PetWalkingService
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(fn () => PetWalking::create([
+$this->db->transaction(fn () => PetWalking::create([
             'uuid' => Str::uuid(),
             'correlation_id' => $data['correlation_id'] ?? Str::uuid(),
             'tenant_id' => filament()->getTenant()->id,
@@ -55,7 +55,7 @@ DB::transaction(fn () => PetWalking::create([
     {
         $booking = PetWalking::findOrFail($bookingId);
 
-        Log::channel('audit')->info('PetWalkingService: Walker accepted booking', [
+        $this->log->channel('audit')->info('PetWalkingService: Walker accepted booking', [
             'correlation_id' => $booking->correlation_id,
             'booking_id' => $bookingId,
             'walker_id' => $walkerId,
@@ -69,7 +69,7 @@ DB::transaction(fn () => PetWalking::create([
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($booking) {
+$this->db->transaction(function () use ($booking) {
             $booking->update(['status' => 'accepted']);
             return true;
         });
@@ -79,7 +79,7 @@ DB::transaction(function () use ($booking) {
     {
         $booking = PetWalking::findOrFail($bookingId);
 
-        Log::channel('audit')->info('PetWalkingService: Walk started', [
+        $this->log->channel('audit')->info('PetWalkingService: Walk started', [
             'correlation_id' => $booking->correlation_id,
             'booking_id' => $bookingId,
         ]);
@@ -92,7 +92,7 @@ DB::transaction(function () use ($booking) {
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($booking) {
+$this->db->transaction(function () use ($booking) {
             $booking->update([
                 'status' => 'in_progress',
                 'start_time' => now(),
@@ -105,7 +105,7 @@ DB::transaction(function () use ($booking) {
     {
         $booking = PetWalking::findOrFail($bookingId);
 
-        Log::channel('audit')->info('PetWalkingService: Walk completed', [
+        $this->log->channel('audit')->info('PetWalkingService: Walk completed', [
             'correlation_id' => $booking->correlation_id,
             'booking_id' => $bookingId,
         ]);
@@ -118,7 +118,7 @@ DB::transaction(function () use ($booking) {
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($booking, $photoUrls, $notes) {
+$this->db->transaction(function () use ($booking, $photoUrls, $notes) {
             $booking->update([
                 'status' => 'completed',
                 'end_time' => now(),
@@ -153,7 +153,7 @@ DB::transaction(function () use ($booking, $photoUrls, $notes) {
     {
         $booking = PetWalking::findOrFail($bookingId);
 
-        Log::channel('audit')->info('PetWalkingService: Cancelling walking booking', [
+        $this->log->channel('audit')->info('PetWalkingService: Cancelling walking booking', [
             'correlation_id' => $booking->correlation_id,
             'booking_id' => $bookingId,
             'reason' => $reason,
@@ -167,7 +167,7 @@ DB::transaction(function () use ($booking, $photoUrls, $notes) {
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($booking, $reason) {
+$this->db->transaction(function () use ($booking, $reason) {
             $booking->update([
                 'status' => 'cancelled',
                 'cancellation_reason' => $reason,

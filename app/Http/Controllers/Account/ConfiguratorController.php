@@ -54,7 +54,7 @@ final class ConfiguratorController extends Controller
                 'total_weight' => 'required|integer',
             ]);
 
-            $savedConfig = DB::transaction(function () use ($validated, $correlationId) {
+            $savedConfig = $this->db->transaction(function () use ($validated, $correlationId) {
                 return SavedConfiguration::create([
                     'tenant_id' => tenant('id'),
                     'user_id' => auth()->id(),
@@ -68,7 +68,7 @@ final class ConfiguratorController extends Controller
                 ]);
             });
 
-            Log::channel('audit')->info('Configurator project saved', [
+            $this->log->channel('audit')->info('Configurator project saved', [
                 'user_id' => auth()->id(),
                 'project_id' => $savedConfig->id,
                 'correlation_id' => $correlationId,
@@ -81,7 +81,7 @@ final class ConfiguratorController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Failed to save configurator project', [
+            $this->log->error('Failed to save configurator project', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
                 'trace' => $e->getTraceAsString()

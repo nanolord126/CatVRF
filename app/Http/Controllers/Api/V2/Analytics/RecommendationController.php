@@ -50,7 +50,7 @@ final class RecommendationController extends Controller
                 context: $context
             );
 
-            Log::channel('audit')->info('Recommendations fetched', [
+            $this->log->channel('audit')->info('Recommendations fetched', [
                 'user_id' => auth()->id(),
                 'correlation_id' => $correlationId,
                 'vertical' => $vertical,
@@ -68,7 +68,7 @@ final class RecommendationController extends Controller
             ]);
 
         } catch (\Throwable $e) {
-            Log::channel('analytics_errors')->error('Failed to get recommendations', [
+            $this->log->channel('analytics_errors')->error('Failed to get recommendations', [
                 'user_id' => auth()->id(),
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage()
@@ -119,7 +119,7 @@ final class RecommendationController extends Controller
             ]);
 
         } catch (\Throwable $e) {
-            Log::channel('analytics_errors')->error('Failed to get cross-vertical recommendations', [
+            $this->log->channel('analytics_errors')->error('Failed to get cross-vertical recommendations', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage()
             ]);
@@ -143,7 +143,7 @@ final class RecommendationController extends Controller
         $correlationId = $request->get('correlation_id', Str::uuid()->toString());
 
         try {
-            \DB::table('recommendation_logs')->insert([
+            \$this->db->table('recommendation_logs')->insert([
                 'user_id' => auth()->id(),
                 'tenant_id' => auth()->user()->tenant_id,
                 'recommended_item_id' => $request->get('item_id'),
@@ -158,7 +158,7 @@ final class RecommendationController extends Controller
             ]);
 
         } catch (\Throwable $e) {
-            Log::channel('analytics_errors')->error('Failed to track recommendation click', [
+            $this->log->channel('analytics_errors')->error('Failed to track recommendation click', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage()
             ]);

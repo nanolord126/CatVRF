@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -10,7 +12,16 @@ use App\Domains\Beauty\Jobs\ProcessAppointmentPaymentJob;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 
-final class HandleAppointmentCompletedListener implements ShouldQueue
+final /**
+ * HandleAppointmentCompletedListener
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class HandleAppointmentCompletedListener implements ShouldQueue
 {
     public function handle(AppointmentCompleted $event): void
     {
@@ -24,7 +35,7 @@ final class HandleAppointmentCompletedListener implements ShouldQueue
             $event->correlationId
         );
 
-        Log::channel('audit')->info('AppointmentCompleted event handled', [
+        $this->log->channel('audit')->info('AppointmentCompleted event handled', [
             'appointment_id' => $event->appointment->id,
             'correlation_id' => $event->correlationId,
         ]);

@@ -63,7 +63,7 @@ final class ThirdPartyIntegrationService
             'sync_count' => 0,
         ];
 
-        Log::channel('integrations')->info('Service integrated', [
+        $this->log->channel('integrations')->info('Service integrated', [
             'service' => $service,
             'integration_id' => $integration['id'],
         ]);
@@ -100,7 +100,7 @@ final class ThirdPartyIntegrationService
     {
         $startTime = microtime(true);
 
-        Log::channel('integrations')->info('Data sync started', [
+        $this->log->channel('integrations')->info('Data sync started', [
             'integration_id' => $integrationId,
             'data_type' => $dataType,
         ]);
@@ -170,7 +170,7 @@ final class ThirdPartyIntegrationService
                 default => ['status' => 'unknown'],
             };
 
-            Log::channel('integrations')->info('Connection test', [
+            $this->log->channel('integrations')->info('Connection test', [
                 'service' => $service,
                 'status' => $response['status'],
             ]);
@@ -271,7 +271,7 @@ final class ThirdPartyIntegrationService
      */
     public static function disconnect(string $integrationId): void
     {
-        Log::channel('integrations')->info('Integration disconnected', [
+        $this->log->channel('integrations')->info('Integration disconnected', [
             'integration_id' => $integrationId,
         ]);
     }

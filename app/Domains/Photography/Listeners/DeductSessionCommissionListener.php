@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -10,6 +12,15 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * DeductSessionCommissionListener
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
 class DeductSessionCommissionListener implements ShouldQueue
 {
 	use InteractsWithQueue;
@@ -17,10 +28,10 @@ class DeductSessionCommissionListener implements ShouldQueue
 	public function handle(SessionCreated $event): void
 	{
 		try {
-			DB::transaction(function () use ($event) {
+			$this->db->transaction(function () use ($event) {
 				$commission = (int) ($event->session->total_amount * 0.14);
 
-				Log::channel('audit')->info('Photography: Commission deducted', [
+				$this->log->channel('audit')->info('Photography: Commission deducted', [
 					'session_id' => $event->session->id,
 					'tenant_id' => $event->session->tenant_id,
 					'commission_amount' => $commission,
@@ -28,7 +39,7 @@ class DeductSessionCommissionListener implements ShouldQueue
 				]);
 			});
 		} catch (\Exception $e) {
-			Log::channel('audit')->error('Photography: Commission deduction failed', [
+			$this->log->channel('audit')->error('Photography: Commission deduction failed', [
 				'session_id' => $event->session->id,
 				'error' => $e->getMessage(),
 				'correlation_id' => $event->correlationId,

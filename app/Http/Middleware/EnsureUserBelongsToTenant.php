@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Http\Middleware;
@@ -8,7 +10,16 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Facades\Log;
 
-final class EnsureUserBelongsToTenant
+final /**
+ * EnsureUserBelongsToTenant
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class EnsureUserBelongsToTenant
 {
     /**
      * Handle an incoming request.
@@ -34,7 +45,7 @@ final class EnsureUserBelongsToTenant
         if ($tenant) {
             // Check if user has ANY business role in this tenant
             if (!$user->hasRoleInTenant($tenant->id, \App\Enums\Role::businessRoles())) {
-                Log::channel('audit')->warning('Tenant access blocked', [
+                $this->log->channel('audit')->warning('Tenant access blocked', [
                     'user_id' => $user->id,
                     'tenant_id' => $tenant->id,
                     'ip' => $request->ip(),

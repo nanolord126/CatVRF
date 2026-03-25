@@ -30,7 +30,7 @@ final class HealthyFoodDietController extends BaseApiController
 
             return $this->successResponse($diets);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('HealthyFood diets list error', ['error' => $e->getMessage()]);
+            $this->log->channel('audit')->error('HealthyFood diets list error', ['error' => $e->getMessage()]);
             return $this->errorResponse('Failed to fetch diet plans', 500);
         }
     }
@@ -53,7 +53,7 @@ final class HealthyFoodDietController extends BaseApiController
                 correlationId: $correlationId,
             );
 
-            Log::channel('audit')->info('HealthyFood diet plan created', [
+            $this->log->channel('audit')->info('HealthyFood diet plan created', [
                 'diet_id' => $diet->id,
                 'tenant_id' => $tenantId,
                 'correlation_id' => $correlationId,
@@ -61,7 +61,7 @@ final class HealthyFoodDietController extends BaseApiController
 
             return $this->successResponse($diet, 'Diet plan created successfully', 201);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('HealthyFood diet creation failed', ['error' => $e->getMessage()]);
+            $this->log->channel('audit')->error('HealthyFood diet creation failed', ['error' => $e->getMessage()]);
             return $this->errorResponse('Failed to create diet plan: ' . $e->getMessage(), 400);
         }
     }
@@ -82,7 +82,7 @@ final class HealthyFoodDietController extends BaseApiController
                 correlationId: $correlationId,
             );
 
-            Log::channel('audit')->info('HealthyFood subscription created', [
+            $this->log->channel('audit')->info('HealthyFood subscription created', [
                 'subscription_id' => $subscription->id,
                 'diet_id' => $dietId,
                 'correlation_id' => $correlationId,
@@ -90,7 +90,7 @@ final class HealthyFoodDietController extends BaseApiController
 
             return $this->successResponse($subscription, 'Subscription created', 201);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('HealthyFood subscription failed', ['error' => $e->getMessage()]);
+            $this->log->channel('audit')->error('HealthyFood subscription failed', ['error' => $e->getMessage()]);
             return $this->errorResponse('Failed to subscribe: ' . $e->getMessage(), 400);
         }
     }

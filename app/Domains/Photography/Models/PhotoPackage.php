@@ -58,6 +58,6 @@ final class PhotoPackage extends Model
 
 	public function sessions(): HasMany
 	{
-		return $this->hasMany(PhotoSession::class, 'photo_package_id');
+		return $this->hasMany(Photo$this->session->class, 'photo_package_id');
 	}
 }

@@ -30,7 +30,7 @@ final class FlowerProductController
                 ->with('shop')
                 ->paginate(15);
 
-            Log::channel('audit')->info('Flower products listed', [
+            $this->log->channel('audit')->info('Flower products listed', [
                 'count' => $products->count(),
                 'correlation_id' => $correlationId,
             ]);
@@ -41,7 +41,7 @@ final class FlowerProductController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Exception $exception) {
-            Log::channel('audit')->error('Product listing failed', [
+            $this->log->channel('audit')->error('Product listing failed', [
                 'error' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -50,7 +50,7 @@ final class FlowerProductController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -65,7 +65,7 @@ final class FlowerProductController
                 ->with('shop')
                 ->firstOrFail();
 
-            Log::channel('audit')->info('Flower product viewed', [
+            $this->log->channel('audit')->info('Flower product viewed', [
                 'product_id' => $product->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -80,7 +80,7 @@ final class FlowerProductController
                 'success' => false,
                 'message' => 'Product not found',
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_NOT_FOUND);
+            ], $this->response->HTTP_NOT_FOUND);
         }
     }
 
@@ -102,7 +102,7 @@ final class FlowerProductController
                 'success' => false,
                 'message' => 'Shop not found',
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_NOT_FOUND);
+            ], $this->response->HTTP_NOT_FOUND);
         }
     }
 
@@ -119,7 +119,7 @@ final class FlowerProductController
                 ->limit(20)
                 ->get();
 
-            Log::channel('audit')->info('Flower products searched', [
+            $this->log->channel('audit')->info('Flower products searched', [
                 'query' => $query,
                 'results' => $products->count(),
                 'correlation_id' => $correlationId,
@@ -135,7 +135,7 @@ final class FlowerProductController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -159,10 +159,10 @@ final class FlowerProductController
                     'success' => false,
                     'message' => 'Flower shop not found',
                     'correlation_id' => $correlationId,
-                ], Response::HTTP_FORBIDDEN);
+                ], $this->response->HTTP_FORBIDDEN);
             }
 
-            $product = DB::transaction(function () use ($validated, $shop, $correlationId) {
+            $product = $this->db->transaction(function () use ($validated, $shop, $correlationId) {
                 $product = FlowerProduct::query()->create([
                     'tenant_id' => filament()->getTenant()->id,
                     'shop_id' => $shop->id,
@@ -170,7 +170,7 @@ final class FlowerProductController
                     ...$validated,
                 ]);
 
-                Log::channel('audit')->info('Flower product created', [
+                $this->log->channel('audit')->info('Flower product created', [
                     'product_id' => $product->id,
                     'shop_id' => $shop->id,
                     'correlation_id' => $correlationId,
@@ -183,9 +183,9 @@ final class FlowerProductController
                 'success' => true,
                 'data' => $product,
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_CREATED);
+            ], $this->response->HTTP_CREATED);
         } catch (\Exception $exception) {
-            Log::channel('audit')->error('Product creation failed', [
+            $this->log->channel('audit')->error('Product creation failed', [
                 'error' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -194,7 +194,7 @@ final class FlowerProductController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -215,10 +215,10 @@ final class FlowerProductController
                 'stock' => 'integer|min:0',
             ]);
 
-            $product = DB::transaction(function () use ($product, $validated, $correlationId) {
+            $product = $this->db->transaction(function () use ($product, $validated, $correlationId) {
                 $product->update([...$validated, 'correlation_id' => $correlationId]);
 
-                Log::channel('audit')->info('Flower product updated', [
+                $this->log->channel('audit')->info('Flower product updated', [
                     'product_id' => $product->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -236,7 +236,7 @@ final class FlowerProductController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -250,10 +250,10 @@ final class FlowerProductController
             
             $this->authorize('delete', $product);
 
-            DB::transaction(function () use ($product, $correlationId) {
+            $this->db->transaction(function () use ($product, $correlationId) {
                 $product->delete();
 
-                Log::channel('audit')->info('Flower product deleted', [
+                $this->log->channel('audit')->info('Flower product deleted', [
                     'product_id' => $product->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -269,7 +269,7 @@ final class FlowerProductController
                 'success' => false,
                 'message' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], $this->response->HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 }

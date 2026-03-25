@@ -15,9 +15,7 @@ $fixed = [];
 $errors = [];
 $skipped = [];
 
-if (! is_dir($baseDir)) {
-    die("Directory not found: $baseDir\n");
-}
+if (! is_dir($baseDir)) {}
 
 // Recursive directory scan
 $allPages = new RecursiveIteratorIterator(

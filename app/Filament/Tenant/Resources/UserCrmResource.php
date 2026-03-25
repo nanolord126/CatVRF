@@ -155,7 +155,7 @@ final class UserCrmResource extends Resource
                         ->icon('heroicon-o-arrow-down-tray')
                         ->action(function ($records) {
                             $correlationId = (string) \Illuminate\Support\Str::uuid()->toString();
-                            Log::channel('audit')->info('CRM: Export triggered', [
+                            $this->log->channel('audit')->info('CRM: Export triggered', [
                                 'count' => $records->count(),
                                 'tenant_id' => filament()->getTenant()?->id,
                                 'correlation_id' => $correlationId,

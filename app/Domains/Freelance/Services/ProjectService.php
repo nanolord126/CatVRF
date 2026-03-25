@@ -35,8 +35,8 @@ final class ProjectService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-            $projectId = DB::transaction(function () use ($clientId, $freelancerId, $title, $budgetCents, $correlationId) {
-                $projectId = DB::table('freelance_projects')->insertGetId([
+            $projectId = $this->db->transaction(function () use ($clientId, $freelancerId, $title, $budgetCents, $correlationId) {
+                $projectId = $this->db->table('freelance_projects')->insertGetId([
                     'client_id' => $clientId,
                     'freelancer_id' => $freelancerId,
                     'title' => $title,
@@ -46,7 +46,7 @@ final class ProjectService
                     'created_at' => now(),
                 ]);
 
-                Log::channel('audit')->info('Freelance project created', [
+                $this->log->channel('audit')->info('Freelance project created', [
                     'project_id' => $projectId,
                     'client_id' => $clientId,
                     'freelancer_id' => $freelancerId,
@@ -59,7 +59,7 @@ final class ProjectService
 
             return $projectId;
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Freelance project creation failed', [
+            $this->log->channel('audit')->error('Freelance project creation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
                 'trace' => $e->getTraceAsString(),
@@ -84,11 +84,11 @@ final class ProjectService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-            DB::transaction(function () use ($projectId, $correlationId) {
-                $project = DB::table('freelance_projects')->findOrFail($projectId);
+            $this->db->transaction(function () use ($projectId, $correlationId) {
+                $project = $this->db->table('freelance_projects')->findOrFail($projectId);
 
                 // Обновить статус
-                DB::table('freelance_projects')
+                $this->db->table('freelance_projects')
                     ->where('id', $projectId)
                     ->update(['status' => 'completed', 'completed_at' => now()]);
 
@@ -96,7 +96,7 @@ final class ProjectService
                 $commission = intval($project->budget * 0.14);
                 $freelancerPayment = $project->budget - $commission;
 
-                DB::table('freelancer_earnings')->insertGetId([
+                $this->db->table('freelancer_earnings')->insertGetId([
                     'freelancer_id' => $project->freelancer_id,
                     'project_id' => $projectId,
                     'amount' => $freelancerPayment,
@@ -104,7 +104,7 @@ final class ProjectService
                     'created_at' => now(),
                 ]);
 
-                Log::channel('audit')->info('Freelance project completed', [
+                $this->log->channel('audit')->info('Freelance project completed', [
                     'project_id' => $projectId,
                     'freelancer_id' => $project->freelancer_id,
                     'payment' => $freelancerPayment,
@@ -115,7 +115,7 @@ final class ProjectService
 
             return true;
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Freelance project completion failed', [
+            $this->log->channel('audit')->error('Freelance project completion failed', [
                 'project_id' => $projectId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

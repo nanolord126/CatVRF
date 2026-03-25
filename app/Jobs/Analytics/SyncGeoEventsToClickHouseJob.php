@@ -50,7 +50,7 @@ final class SyncGeoEventsToClickHouseJob implements ShouldQueue
 
             $duration = microtime(true) - $startTime;
 
-            Log::channel('audit')->info('[SyncGeoEventsToClickHouse] Sync completed', [
+            $this->log->channel('audit')->info('[SyncGeoEventsToClickHouse] Sync completed', [
                 'correlation_id' => $this->correlationId,
                 'events_synced' => $totalEvents,
                 'duration_seconds' => round($duration, 2),
@@ -69,7 +69,7 @@ final class SyncGeoEventsToClickHouseJob implements ShouldQueue
                 );
             }
         } catch (Exception $e) {
-            Log::channel('error')->error('[SyncGeoEventsToClickHouse] Sync failed', [
+            $this->log->channel('error')->error('[SyncGeoEventsToClickHouse] Sync failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $this->correlationId,
                 'stacktrace' => $e->getTraceAsString(),
@@ -89,12 +89,12 @@ final class SyncGeoEventsToClickHouseJob implements ShouldQueue
             $ids = $chunk->pluck('id')->toArray();
             GeoActivity::whereIn('id', $ids)->update(['synced_to_ch' => true]);
 
-            Log::channel('analytics')->debug('[SyncGeoEventsToClickHouse] Chunk synced', [
+            $this->log->channel('analytics')->debug('[SyncGeoEventsToClickHouse] Chunk synced', [
                 'count' => count($ids),
                 'correlation_id' => $this->correlationId,
             ]);
         } catch (Exception $e) {
-            Log::channel('error')->error('[SyncGeoEventsToClickHouse] Chunk sync failed', [
+            $this->log->channel('error')->error('[SyncGeoEventsToClickHouse] Chunk sync failed', [
                 'error' => $e->getMessage(),
                 'count' => count($chunk),
                 'correlation_id' => $this->correlationId,
@@ -107,7 +107,7 @@ final class SyncGeoEventsToClickHouseJob implements ShouldQueue
 
     public function failed(Exception $exception): void
     {
-        Log::channel('error')->error('[SyncGeoEventsToClickHouse] Job failed permanently', [
+        $this->log->channel('error')->error('[SyncGeoEventsToClickHouse] Job failed permanently', [
             'error' => $exception->getMessage(),
             'correlation_id' => $this->correlationId,
             'attempts' => $this->attempts(),

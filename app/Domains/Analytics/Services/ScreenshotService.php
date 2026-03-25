@@ -112,7 +112,7 @@ final class ScreenshotService
             // Generate cache key
             $cacheKey = $this->generateCacheKey($url, $tenantId);
 
-            Log::channel('audit')->debug('Attempting to retrieve cached screenshot', [
+            $this->log->channel('audit')->debug('Attempting to retrieve cached screenshot', [
                 'url' => $url,
                 'tenant_id' => $tenantId,
                 'cache_key' => $cacheKey,
@@ -120,7 +120,7 @@ final class ScreenshotService
             ]);
 
             // Try to get cached screenshot
-            $cachedScreenshot = Cache::get($cacheKey);
+            $cachedScreenshot = $this->cache->get($cacheKey);
             if ($cachedScreenshot) {
                 return \array_merge($cachedScreenshot, [
                     'cached' => true,
@@ -129,7 +129,7 @@ final class ScreenshotService
             }
 
             // Capture new screenshot
-            Log::channel('audit')->info('Capturing new page screenshot', [
+            $this->log->channel('audit')->info('Capturing new page screenshot', [
                 'url' => $url,
                 'tenant_id' => $tenantId,
                 'timeout_ms' => $this->puppeteerTimeout,
@@ -150,13 +150,13 @@ final class ScreenshotService
                 'captured_at' => \now()->toIso8601String(),
             ];
 
-            Cache::put(
+            $this->cache->put(
                 $cacheKey,
                 $screenshotMetadata,
                 $this->cacheTtl
             );
 
-            Log::channel('audit')->info('Page screenshot captured and cached', [
+            $this->log->channel('audit')->info('Page screenshot captured and cached', [
                 'url' => $url,
                 'tenant_id' => $tenantId,
                 'file_size' => $screenshotData['size'],
@@ -172,7 +172,7 @@ final class ScreenshotService
             ]);
 
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Screenshot capture failed', [
+            $this->log->channel('audit')->error('Screenshot capture failed', [
                 'url' => $url,
                 'tenant_id' => $tenantId,
                 'error_message' => $e->getMessage(),
@@ -203,10 +203,10 @@ final class ScreenshotService
         $correlationId ??= "invalidate-{$this->generateTraceId()}";
         $cacheKey = $this->generateCacheKey($url, $tenantId);
 
-        $wasInCache = Cache::has($cacheKey);
-        Cache::forget($cacheKey);
+        $wasInCache = $this->cache->has($cacheKey);
+        $this->cache->forget($cacheKey);
 
-        Log::channel('audit')->debug('Screenshot cache invalidated', [
+        $this->log->channel('audit')->debug('Screenshot cache invalidated', [
             'url' => $url,
             'tenant_id' => $tenantId,
             'cache_key' => $cacheKey,
@@ -235,16 +235,16 @@ final class ScreenshotService
         // Using cache tags for bulk invalidation
         // Tag format: screenshots:tenant:{id}
         try {
-            Cache::tags([$this->cacheTag, "tenant:{$tenantId}"])->flush();
+            $this->cache->tags([$this->cacheTag, "tenant:{$tenantId}"])->flush();
 
-            Log::channel('audit')->info('All tenant screenshots invalidated', [
+            $this->log->channel('audit')->info('All tenant screenshots invalidated', [
                 'tenant_id' => $tenantId,
                 'correlation_id' => $correlationId,
             ]);
 
             return -1; // Unknown count with tag-based invalidation
         } catch (\Exception $e) {
-            Log::channel('audit')->warning('Failed to invalidate all screenshots', [
+            $this->log->channel('audit')->warning('Failed to invalidate all screenshots', [
                 'tenant_id' => $tenantId,
                 'error_message' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -298,13 +298,11 @@ final class ScreenshotService
         // $result = shell_exec('node resources/scripts/capture-screenshot.js ' . escapeshellarg($url));
         // $data = json_decode($result, true);
 
-        Log::channel('audit')->debug('Capturing screenshot with Puppeteer', [
+        $this->log->channel('audit')->debug('Capturing screenshot with Puppeteer', [
             'url' => $url,
             'viewport' => "{$this->maxWidth}x{$this->maxHeight}",
             'options' => $options,
         ]);
-
-        // TODO: Implement Puppeteer integration via Node.js shell execution
         // OR use Laravel package:
         // - spatie/browsershot (wrapper for Puppeteer)
         // - compose require spatie/browsershot

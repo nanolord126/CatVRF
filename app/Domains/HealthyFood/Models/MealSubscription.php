@@ -1,6 +1,30 @@
 <?php declare(strict_types=1);
 
-namespace App\Domains\HealthyFood\Models;
+namespa
+
+/**
+ * MealSubscription
+ * 
+ * Производитель: CatVRF Platform
+ * Версия: 1.0.0
+ * 
+ * Примеры использования:
+ * 
+ * ```php
+ * // Базовое использование
+ * $instance = new MealSubscription();
+ * ```
+ * 
+ * Требования:
+ * - Laravel 10+
+ * - PHP 8.2+
+ * - Все методы должны быть явно типизированы
+ * 
+ * @author CatVRF
+ * @package namespace App\Domains\HealthyFood\Models
+ * @see https://github.com/iyegorovskyi_clemny/CatVRF
+ */
+ce App\Domains\HealthyFood\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -28,6 +52,12 @@ final class MealSubscription extends Model
         'tags'                => 'json',
     ];
 
+    /**
+     * Выполнить операцию
+     * 
+     * @return mixed
+     * @throws \Exception
+     */
     public function dietPlan(): BelongsTo
     {
         return $this->belongsTo(DietPlan::class, 'diet_plan_id');

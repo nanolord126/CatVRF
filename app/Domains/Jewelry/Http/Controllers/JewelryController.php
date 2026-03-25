@@ -45,7 +45,7 @@ final class JewelryController
 
             return response()->json(['success' => true, 'data' => $items, 'correlation_id' => $correlationId]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Jewelry: index error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+            $this->log->channel('audit')->error('Jewelry: index error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
             return response()->json(['success' => false, 'message' => 'Ошибка загрузки', 'correlation_id' => $correlationId], 500);
         }
     }
@@ -69,7 +69,7 @@ final class JewelryController
             $model3d = $this->jewelry3DService->getModel($item, $correlationId);
             return response()->json(['success' => true, 'data' => $model3d, 'correlation_id' => $correlationId]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Jewelry: 3D view error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+            $this->log->channel('audit')->error('Jewelry: 3D view error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
             return response()->json(['success' => false, 'message' => 'Ошибка 3D-просмотра', 'correlation_id' => $correlationId], 500);
         }
     }
@@ -110,7 +110,7 @@ final class JewelryController
                 'delivery_address' => 'required|string',
             ]);
 
-            $order = DB::transaction(function () use ($validated, $userId, $correlationId): JewelryOrder {
+            $order = $this->db->transaction(function () use ($validated, $userId, $correlationId): JewelryOrder {
                 $item  = JewelryItem::findOrFail($validated['item_id']);
                 $order = JewelryOrder::create([
                     'uuid'             => Str::uuid(),
@@ -126,7 +126,7 @@ final class JewelryController
                     'correlation_id'   => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Jewelry: Order created', [
+                $this->log->channel('audit')->info('Jewelry: Order created', [
                     'order_id'       => $order->id,
                     'item_id'        => $validated['item_id'],
                     'user_id'        => $userId,
@@ -140,7 +140,7 @@ final class JewelryController
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Jewelry: order error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+            $this->log->channel('audit')->error('Jewelry: order error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
             return response()->json(['success' => false, 'message' => 'Ошибка заказа', 'correlation_id' => $correlationId], 500);
         }
     }

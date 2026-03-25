@@ -11,7 +11,7 @@ use Modules\Auto\Models\TaxiRide;
 
 /**
  * TaxiService — управление поездками такси.
- * CANON 2026: DB::transaction, audit-лог, correlation_id.
+ * CANON 2026: $this->db->transaction, audit-лог, correlation_id.
  */
 final class TaxiService
 {
@@ -19,8 +19,8 @@ final class TaxiService
     {
         $correlationId = Str::uuid()->toString();
 
-        return DB::transaction(function () use ($data, $correlationId) {
-            Log::channel('audit')->info('Creating taxi ride', [
+        return $this->db->transaction(function () use ($data, $correlationId) {
+            $this->log->channel('audit')->info('Creating taxi ride', [
                 'correlation_id' => $correlationId,
                 'driver_id'      => $data['driver_id'] ?? null,
                 'passenger_id'   => $data['passenger_id'] ?? null,
@@ -46,8 +46,8 @@ final class TaxiService
     {
         $correlationId = Str::uuid()->toString();
 
-        return DB::transaction(function () use ($ride, $correlationId) {
-            Log::channel('audit')->info('Completing taxi ride', [
+        return $this->db->transaction(function () use ($ride, $correlationId) {
+            $this->log->channel('audit')->info('Completing taxi ride', [
                 'correlation_id' => $correlationId,
                 'ride_id'        => $ride->id,
             ]);

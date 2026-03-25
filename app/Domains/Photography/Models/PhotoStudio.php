@@ -72,7 +72,7 @@ final class PhotoStudio extends Model
 
 	public function sessions(): HasMany
 	{
-		return $this->hasMany(PhotoSession::class, 'photo_studio_id');
+		return $this->hasMany(Photo$this->session->class, 'photo_studio_id');
 	}
 
 	public function products(): HasMany

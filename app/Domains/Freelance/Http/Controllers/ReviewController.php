@@ -24,7 +24,7 @@ final class ReviewController
         try {
 
             $validated = $request->all();
-            return DB::transaction(function () use ($validated, $correlationId) {
+            return $this->db->transaction(function () use ($validated, $correlationId) {
                 $review = FreelanceReview::create([
                     'tenant_id' => tenant()->id,
                     'contract_id' => ($validated['contract_id'] ?? null),
@@ -44,7 +44,7 @@ final class ReviewController
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Freelance review submitted', [
+                $this->log->channel('audit')->info('Freelance review submitted', [
                     'review_id' => $review->id,
                     'contract_id' => ($validated['contract_id'] ?? null),
                     'overall_rating' => ($validated['overall_rating'] ?? null),
@@ -58,7 +58,7 @@ final class ReviewController
                 ], 201);
             });
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Error submitting review', [
+            $this->log->channel('audit')->error('Error submitting review', [
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
             ]);
@@ -84,7 +84,7 @@ final class ReviewController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Error listing freelancer reviews', [
+            $this->log->channel('audit')->error('Error listing freelancer reviews', [
                 'freelancer_id' => $id,
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
@@ -109,7 +109,7 @@ final class ReviewController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Error listing contract reviews', [
+            $this->log->channel('audit')->error('Error listing contract reviews', [
                 'contract_id' => $id,
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
@@ -131,7 +131,7 @@ final class ReviewController
 
             $review->increment('helpful_count');
 
-            Log::channel('audit')->info('Review marked as helpful', [
+            $this->log->channel('audit')->info('Review marked as helpful', [
                 'review_id' => $id,
                 'correlation_id' => $correlationId,
             ]);
@@ -141,7 +141,7 @@ final class ReviewController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Error marking review as helpful', [
+            $this->log->channel('audit')->error('Error marking review as helpful', [
                 'review_id' => $id,
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
@@ -163,7 +163,7 @@ final class ReviewController
 
             $review->increment('unhelpful_count');
 
-            Log::channel('audit')->info('Review marked as unhelpful', [
+            $this->log->channel('audit')->info('Review marked as unhelpful', [
                 'review_id' => $id,
                 'correlation_id' => $correlationId,
             ]);
@@ -173,7 +173,7 @@ final class ReviewController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Error marking review as unhelpful', [
+            $this->log->channel('audit')->error('Error marking review as unhelpful', [
                 'review_id' => $id,
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),

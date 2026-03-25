@@ -40,7 +40,7 @@ final class B2BMedicalController
             
             $c = Str::uuid()->toString();
             
-            DB::transaction(fn() => B2BMedicalStorefront::create([
+            $this->db->transaction(fn() => B2BMedicalStorefront::create([
                 'uuid' => Str::uuid(),
                 'tenant_id' => auth()->user()->tenant_id
             ] + $v + ['correlation_id' => $c]));
@@ -72,7 +72,7 @@ final class B2BMedicalController
             
             $c = Str::uuid()->toString();
             
-            DB::transaction(fn() => B2BMedicalOrder::create([
+            $this->db->transaction(fn() => B2BMedicalOrder::create([
                 'uuid' => Str::uuid(),
                 'tenant_id' => auth()->user()->tenant_id,
                 'order_number' => 'B2B-' . Str::random(8),
@@ -111,7 +111,7 @@ final class B2BMedicalController
             $o = B2BMedicalOrder::findOrFail($id);
             $this->authorize('approveOrder', $o);
             
-            DB::transaction(fn() => $o->update(['status' => 'approved']));
+            $this->db->transaction(fn() => $o->update(['status' => 'approved']));
             
             return response()->json([
                 'success' => true,
@@ -133,7 +133,7 @@ final class B2BMedicalController
             $o = B2BMedicalOrder::findOrFail($id);
             $this->authorize('rejectOrder', $o);
             
-            DB::transaction(fn() => $o->update([
+            $this->db->transaction(fn() => $o->update([
                 'status' => 'rejected',
                 'notes' => $r->get('reason', '')
             ]));
@@ -157,7 +157,7 @@ final class B2BMedicalController
         try {
             $this->authorize('verifyInn', B2BMedicalStorefront::class);
             
-            DB::transaction(fn() => B2BMedicalStorefront::findOrFail($id)
+            $this->db->transaction(fn() => B2BMedicalStorefront::findOrFail($id)
                 ->update(['is_verified' => true]));
             
             return response()->json([

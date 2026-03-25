@@ -38,7 +38,7 @@ final class EditAutoPart extends EditRecord
                         ->rows(3),
                 ])
                 ->action(function (array $data) {
-                    DB::transaction(function () use ($data) {
+                    $this->db->transaction(function () use ($data) {
                         $oldStock = $this->record->current_stock;
                         $this->record->current_stock += (int) $data['quantity'];
                         $this->record->save();
@@ -50,7 +50,7 @@ final class EditAutoPart extends EditRecord
                             $this->record->correlation_id
                         ));
 
-                        Log::channel('audit')->info('Auto part stock updated (restock)', [
+                        $this->log->channel('audit')->info('Auto part stock updated (restock)', [
                             'correlation_id' => $this->record->correlation_id,
                             'part_id' => $this->record->id,
                             'old_stock' => $oldStock,
@@ -60,7 +60,7 @@ final class EditAutoPart extends EditRecord
                             'user_id' => auth()->id(),
                         ]);
 
-                        Notification::make()
+                        $this->notification->make()
                             ->title('Остаток пополнен')
                             ->body("SKU: {$this->record->sku}, новый остаток: {$this->record->current_stock} шт")
                             ->success()
@@ -70,7 +70,7 @@ final class EditAutoPart extends EditRecord
 
             Actions\DeleteAction::make()
                 ->after(function () {
-                    Log::channel('audit')->info('Auto part deleted', [
+                    $this->log->channel('audit')->info('Auto part deleted', [
                         'correlation_id' => $this->record->correlation_id,
                         'part_id' => $this->record->id,
                         'sku' => $this->record->sku,
@@ -82,7 +82,7 @@ final class EditAutoPart extends EditRecord
 
     protected function afterSave(): void
     {
-        Log::channel('audit')->info('Auto part updated', [
+        $this->log->channel('audit')->info('Auto part updated', [
             'correlation_id' => $this->record->correlation_id,
             'part_id' => $this->record->id,
             'sku' => $this->record->sku,

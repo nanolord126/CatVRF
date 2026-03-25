@@ -41,9 +41,9 @@ final class DailyAnalyticsJob implements ShouldQueue
         RecommendationService $recommendationService
     ): void {
         try {
-            DB::transaction(function () use ($forecastService, $recommendationService) {
+            $this->db->transaction(function () use ($forecastService, $recommendationService) {
                 // Recalculate demand forecasts for all items
-                $items = DB::table('products')
+                $items = $this->db->table('products')
                     ->select('id', 'tenant_id')
                     ->where('is_active', true)
                     ->limit(1000)
@@ -57,13 +57,13 @@ final class DailyAnalyticsJob implements ShouldQueue
                             Carbon::now()->addDays(30)
                         );
 
-                        Log::channel('audit')->debug('Demand forecast calculated', [
+                        $this->log->channel('audit')->debug('Demand forecast calculated', [
                             'correlation_id' => $this->correlationId,
                             'item_id' => $item->id,
                             'predicted_demand' => $forecast->predicted_demand,
                         ]);
                     } catch (\Exception $e) {
-                        Log::channel('audit')->warning('Forecast calculation failed for item', [
+                        $this->log->channel('audit')->warning('Forecast calculation failed for item', [
                             'correlation_id' => $this->correlationId,
                             'item_id' => $item->id,
                             'error' => $e->getMessage(),
@@ -74,13 +74,13 @@ final class DailyAnalyticsJob implements ShouldQueue
                 // Recalculate recommendation embeddings
                 $recommendationService->recalculateEmbeddings();
 
-                Log::channel('audit')->info('Daily analytics job completed', [
+                $this->log->channel('audit')->info('Daily analytics job completed', [
                     'correlation_id' => $this->correlationId,
                     'timestamp' => Carbon::now()->toIso8601String(),
                 ]);
             });
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Daily analytics job failed', [
+            $this->log->channel('audit')->error('Daily analytics job failed', [
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

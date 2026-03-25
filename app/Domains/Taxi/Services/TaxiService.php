@@ -32,8 +32,8 @@ final class TaxiService
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($data, $userId, $tenantId, $correlationId) {
-            Log::channel('audit')->info('Creating taxi driver', [
+$this->db->transaction(function () use ($data, $userId, $tenantId, $correlationId) {
+            $this->log->channel('audit')->info('Creating taxi driver', [
                 'correlation_id' => $correlationId,
                 'user_id' => $userId,
             ]);
@@ -62,7 +62,7 @@ DB::transaction(function () use ($data, $userId, $tenantId, $correlationId) {
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($data, $driverId, $correlationId) {
+$this->db->transaction(function () use ($data, $driverId, $correlationId) {
             return TaxiVehicle::create([
                 'driver_id' => $driverId,
                 'brand' => $data['brand'],
@@ -89,8 +89,8 @@ DB::transaction(function () use ($data, $driverId, $correlationId) {
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($data, $driverId, $userId, $correlationId) {
-            Log::channel('audit')->info('Creating taxi ride', [
+$this->db->transaction(function () use ($data, $driverId, $userId, $correlationId) {
+            $this->log->channel('audit')->info('Creating taxi ride', [
                 'correlation_id' => $correlationId,
                 'driver_id' => $driverId,
                 'user_id' => $userId,
@@ -120,8 +120,8 @@ DB::transaction(function () use ($data, $driverId, $userId, $correlationId) {
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($ride, $actualPrice, $correlationId) {
-            Log::channel('audit')->info('Completing taxi ride', [
+$this->db->transaction(function () use ($ride, $actualPrice, $correlationId) {
+            $this->log->channel('audit')->info('Completing taxi ride', [
                 'correlation_id' => $correlationId,
                 'ride_id' => $ride->id,
             ]);

@@ -42,7 +42,7 @@ final class OrderController
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\RuntimeException $e) {
-            \Log::channel('audit')->error('Farm order store error', [
+            \$this->log->channel('audit')->error('Farm order store error', [
                 'error' => $e->getMessage(),
                 'user_id' => auth()->id(),
                 'correlation_id' => $correlationId,
@@ -86,7 +86,7 @@ final class OrderController
                 ],
             ]);
         } catch (\Exception $e) {
-            \Log::channel('audit')->error('Farm order show error', [
+            \$this->log->channel('audit')->error('Farm order show error', [
                 'order_id' => $orderId,
                 'user_id' => auth()->id(),
                 'error' => $e->getMessage(),
@@ -140,7 +140,7 @@ final class OrderController
 
             $updated = $this->service->cancelOrder($orderId, $correlationId);
 
-            \Log::channel('audit')->info('Farm order cancelled via API', [
+            \$this->log->channel('audit')->info('Farm order cancelled via API', [
                 'order_id' => $orderId,
                 'user_id' => auth()->id(),
                 'correlation_id' => $correlationId,
@@ -153,7 +153,7 @@ final class OrderController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Exception $e) {
-            \Log::channel('audit')->error('Farm order cancellation error', [
+            \$this->log->channel('audit')->error('Farm order cancellation error', [
                 'order_id' => $orderId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

@@ -57,7 +57,7 @@ final class RecommendationService
             
             return collect([]); // Пока пусто
         } catch (\Exception $e) {
-            Log::error('AI Recommendation failed: ' . $e->getMessage());
+            $this->log->error('AI Recommendation failed: ' . $e->getMessage());
             return collect([]);
         }
     }
@@ -67,7 +67,7 @@ final class RecommendationService
      */
     public function logView(int $userId, int $postId): void
     {
-        Log::channel('audit')->info('User viewed post', [
+        $this->log->channel('audit')->info('User viewed post', [
             'user_id' => $userId,
             'post_id' => $postId,
             'correlation_id' => $this->correlationId,

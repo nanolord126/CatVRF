@@ -37,7 +37,7 @@ final class ArchiveInactiveChannelsJob implements ShouldQueue
         $threshold        = now()->subDays($inactiveDays);
         $warnThreshold    = now()->subDays($inactiveDays - $warnBeforeDays);
 
-        Log::channel('audit')->info('ArchiveInactiveChannelsJob started', [
+        $this->log->channel('audit')->info('ArchiveInactiveChannelsJob started', [
             'correlation_id' => $correlationId,
             'inactive_days'  => $inactiveDays,
             'threshold'      => $threshold->toIso8601String(),
@@ -65,7 +65,7 @@ final class ArchiveInactiveChannelsJob implements ShouldQueue
                         ));
                         $warnCount++;
                     } catch (\Throwable $e) {
-                        Log::channel('audit')->error('Failed to send archive warning', [
+                        $this->log->channel('audit')->error('Failed to send archive warning', [
                             'correlation_id' => $correlationId,
                             'channel_id'     => $channel->id,
                             'error'          => $e->getMessage(),
@@ -92,7 +92,7 @@ final class ArchiveInactiveChannelsJob implements ShouldQueue
                         );
                         $archivedCount++;
                     } catch (\Throwable $e) {
-                        Log::channel('audit')->error('Failed to archive channel', [
+                        $this->log->channel('audit')->error('Failed to archive channel', [
                             'correlation_id' => $correlationId,
                             'channel_id'     => $channel->id,
                             'error'          => $e->getMessage(),
@@ -102,7 +102,7 @@ final class ArchiveInactiveChannelsJob implements ShouldQueue
                 }
             });
 
-        Log::channel('audit')->info('ArchiveInactiveChannelsJob completed', [
+        $this->log->channel('audit')->info('ArchiveInactiveChannelsJob completed', [
             'correlation_id' => $correlationId,
             'archived'       => $archivedCount,
             'warned'         => $warnCount,

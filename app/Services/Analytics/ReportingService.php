@@ -48,9 +48,9 @@ final class ReportingService
         ];
 
         $cacheKey = "reporting:schedule:{$tenantId}:{$reportType}:{$frequency}";
-        Cache::put($cacheKey, $schedule, self::CACHE_TTL_SCHEDULES);
+        $this->cache->put($cacheKey, $schedule, self::CACHE_TTL_SCHEDULES);
 
-        Log::channel('audit')->info('Report schedule created', [
+        $this->log->channel('audit')->info('Report schedule created', [
             'correlation_id' => $correlationId,
             'tenant_id' => $tenantId,
             'report_type' => $reportType,
@@ -73,7 +73,7 @@ final class ReportingService
         $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
 
         $cacheKey = "reporting:report:{$tenantId}:{$reportType}:{$dateRange}";
-        $cached = Cache::get($cacheKey);
+        $cached = $this->cache->get($cacheKey);
         if ($cached !== null) {
             return $cached;
         }
@@ -88,9 +88,9 @@ final class ReportingService
             'sections' => $this->generateReportSections($tenantId, $reportType),
         ];
 
-        Cache::put($cacheKey, $report, self::CACHE_TTL_REPORTS);
+        $this->cache->put($cacheKey, $report, self::CACHE_TTL_REPORTS);
 
-        Log::channel('audit')->info('Report generated', [
+        $this->log->channel('audit')->info('Report generated', [
             'correlation_id' => $correlationId,
             'tenant_id' => $tenantId,
             'report_type' => $reportType,
@@ -107,7 +107,7 @@ final class ReportingService
         $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
         $cacheKey = "reporting:schedules:{$tenantId}";
 
-        $cached = Cache::get($cacheKey);
+        $cached = $this->cache->get($cacheKey);
         if ($cached !== null) {
             return $cached;
         }
@@ -129,7 +129,7 @@ final class ReportingService
             ],
         ];
 
-        Cache::put($cacheKey, $schedules, self::CACHE_TTL_SCHEDULES);
+        $this->cache->put($cacheKey, $schedules, self::CACHE_TTL_SCHEDULES);
 
         return $schedules;
     }
@@ -156,9 +156,9 @@ final class ReportingService
         ];
 
         $cacheKey = "reporting:schedule:{$reportId}";
-        Cache::put($cacheKey, $schedule, self::CACHE_TTL_SCHEDULES);
+        $this->cache->put($cacheKey, $schedule, self::CACHE_TTL_SCHEDULES);
 
-        Log::channel('audit')->info('Report schedule updated', [
+        $this->log->channel('audit')->info('Report schedule updated', [
             'correlation_id' => $correlationId,
             'report_id' => $reportId,
             'tenant_id' => $tenantId,
@@ -173,9 +173,9 @@ final class ReportingService
     public function deleteReportSchedule(string $reportId, int $tenantId, array $context = []): bool {
         $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
 
-        Cache::forget("reporting:schedule:{$reportId}");
+        $this->cache->forget("reporting:schedule:{$reportId}");
 
-        Log::channel('audit')->info('Report schedule deleted', [
+        $this->log->channel('audit')->info('Report schedule deleted', [
             'correlation_id' => $correlationId,
             'report_id' => $reportId,
             'tenant_id' => $tenantId,
@@ -203,7 +203,7 @@ final class ReportingService
             'correlation_id' => $correlationId,
         ];
 
-        Log::channel('audit')->info('Report queued for sending', [
+        $this->log->channel('audit')->info('Report queued for sending', [
             'correlation_id' => $correlationId,
             'report_id' => $reportId,
             'tenant_id' => $tenantId,

@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -14,6 +16,15 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * CalculateRatingsJob
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
 class CalculateRatingsJob implements ShouldQueue
 {
 	use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
@@ -24,7 +35,7 @@ class CalculateRatingsJob implements ShouldQueue
 	public function handle(): void
 	{
 		try {
-			DB::transaction(function () {
+			$this->db->transaction(function () {
 				$studios = PhotoStudio::all();
 				foreach ($studios as $studio) {
 					$avgRating = $studio->reviews()->avg('rating') ?? 0;
@@ -42,13 +53,13 @@ class CalculateRatingsJob implements ShouldQueue
 					$photographer->update(['rating' => $avgRating]);
 				}
 
-				Log::channel('audit')->info('Photography: Batch ratings calculated', [
+				$this->log->channel('audit')->info('Photography: Batch ratings calculated', [
 					'studios_count' => $studios->count(),
 					'photographers_count' => $photographers->count(),
 				]);
 			});
 		} catch (\Exception $e) {
-			Log::channel('audit')->error('Photography: Ratings calculation failed', [
+			$this->log->channel('audit')->error('Photography: Ratings calculation failed', [
 				'error' => $e->getMessage(),
 			]);
 			throw $e;

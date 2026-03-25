@@ -62,7 +62,7 @@ final class Photographer extends Model
 
 	public function sessions(): HasMany
 	{
-		return $this->hasMany(PhotoSession::class, 'photographer_id');
+		return $this->hasMany(Photo$this->session->class, 'photographer_id');
 	}
 
 	public function galleries(): HasMany

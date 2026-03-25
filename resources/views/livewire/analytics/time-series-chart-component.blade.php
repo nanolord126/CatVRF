@@ -283,13 +283,7 @@
                     
                     // Показать уведомление
                     if (window.notificationQueue) {
-                        window.notificationQueue.add({
-                            type: 'info',
-                            title: 'Данные обновлены',
-                            message: `Синхронизировано ${e.metadata?.events_synced ?? 0} событий`,
-                            icon: '✨',
-                        });
-                    }
+                        window.notificationQueue.a}
                 });
             
             // Слушать синхронизацию клик-событий
@@ -308,13 +302,7 @@
                     
                     // Показать уведомление
                     if (window.notificationQueue) {
-                        window.notificationQueue.add({
-                            type: 'info',
-                            title: 'Данные обновлены',
-                            message: `Синхронизировано ${e.metadata?.events_synced ?? 0} кликов`,
-                            icon: '✨',
-                        });
-                    }
+                        window.notificationQueue.a}
                 });
         @endif
     </script>

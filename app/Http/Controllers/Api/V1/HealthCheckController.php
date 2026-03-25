@@ -30,7 +30,7 @@ final class HealthCheckController extends BaseApiV1Controller
 
         // Check database connectivity
         try {
-            DB::connection()->getPdo();
+            $this->db->connection()->getPdo();
             $components['database'] = ['status' => 'ok', 'checked_at' => $timestamp];
         } catch (\Exception $e) {
             $components['database'] = ['status' => 'error', 'message' => 'Connection failed', 'checked_at' => $timestamp];
@@ -48,8 +48,8 @@ final class HealthCheckController extends BaseApiV1Controller
 
         // Check Cache system
         try {
-            Cache::put('health_check_test', 'ok', 60);
-            $cached = Cache::get('health_check_test');
+            $this->cache->put('health_check_test', 'ok', 60);
+            $cached = $this->cache->get('health_check_test');
             if ($cached === 'ok') {
                 $components['cache'] = ['status' => 'ok', 'checked_at' => $timestamp];
             } else {

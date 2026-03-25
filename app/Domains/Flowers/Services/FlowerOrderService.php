@@ -21,7 +21,7 @@ final class FlowerOrderService
         private readonly FraudControlService $fraudControlService,
     ) {
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Flowers', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in Flowers', ['correlation_id' => $correlationId]);
 }
 
     public function createPublicOrder(
@@ -42,7 +42,7 @@ final class FlowerOrderService
                 correlationId: $correlationId,
             );
 
-            return DB::transaction(function () use ($tenantId, $userId, $shopId, $items, $deliveryData, $correlationId) {
+            return $this->db->transaction(function () use ($tenantId, $userId, $shopId, $items, $deliveryData, $correlationId) {
                 $subtotal = 0;
                 $orderItems = [];
 
@@ -99,7 +99,7 @@ final class FlowerOrderService
                     ]);
                 }
 
-                Log::channel('audit')->info('Flower order created', [
+                $this->log->channel('audit')->info('Flower order created', [
                     'order_id' => $order->id,
                     'user_id' => $userId,
                     'total_amount' => $totalAmount,
@@ -112,7 +112,7 @@ final class FlowerOrderService
                 return $order;
             });
         } catch (\Exception $exception) {
-            Log::channel('audit')->error('Flower order creation failed', [
+            $this->log->channel('audit')->error('Flower order creation failed', [
                 'user_id' => $userId,
                 'error' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
@@ -124,7 +124,7 @@ final class FlowerOrderService
     public function getPublicOrders(int $tenantId, int $userId): Collection
     {
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Flowers', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in Flowers', ['correlation_id' => $correlationId]);
 
         return FlowerOrder::query()
             ->where('tenant_id', $tenantId)
@@ -136,9 +136,9 @@ final class FlowerOrderService
     public function updateOrderStatus(int $orderId, string $status, string $correlationId = ''): FlowerOrder
     {
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Flowers', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in Flowers', ['correlation_id' => $correlationId]);
 
-        return DB::transaction(function () use ($orderId, $status, $correlationId) {
+        return $this->db->transaction(function () use ($orderId, $status, $correlationId) {
             $order = FlowerOrder::query()
                 ->where('id', $orderId)
                 ->lockForUpdate()
@@ -146,7 +146,7 @@ final class FlowerOrderService
 
             $order->update(['status' => $status]);
 
-            Log::channel('audit')->info('Flower order status updated', [
+            $this->log->channel('audit')->info('Flower order status updated', [
                 'order_id' => $order->id,
                 'status' => $status,
                 'correlation_id' => $correlationId,

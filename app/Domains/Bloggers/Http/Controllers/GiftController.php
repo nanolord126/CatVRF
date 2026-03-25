@@ -49,7 +49,7 @@ final class GiftController
                 correlationId: $correlationId,
             );
 
-            Log::channel('audit')->info('NFT gift created', [
+            $this->log->channel('audit')->info('NFT gift created', [
                 'correlation_id' => $correlationId,
                 'gift_id' => $gift->id,
                 'stream_id' => $stream->id,
@@ -64,7 +64,7 @@ final class GiftController
                 'message' => 'NFT gift queued for minting',
             ], 201);
         } catch (\Exception $e) {
-            Log::channel('fraud_alert')->warning('Gift creation failed', [
+            $this->log->channel('fraud_alert')->warning('Gift creation failed', [
                 'error' => $e->getMessage(),
                 'user_id' => auth()->id(),
             ]);
@@ -203,7 +203,7 @@ final class GiftController
                 correlationId: $correlationId,
             );
 
-            Log::channel('audit')->info('NFT gift upgraded', [
+            $this->log->channel('audit')->info('NFT gift upgraded', [
                 'correlation_id' => $correlationId,
                 'gift_id' => $giftId,
                 'user_id' => $userId,
@@ -249,7 +249,7 @@ final class GiftController
                 'correlation_id' => $correlationId,
             ]);
 
-            Log::channel('audit')->info('NFT minting retried', [
+            $this->log->channel('audit')->info('NFT minting retried', [
                 'correlation_id' => $correlationId,
                 'gift_id' => $giftId,
             ]);

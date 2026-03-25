@@ -34,7 +34,7 @@ final class RoleBasedAccess
             ?? session('active_tenant_id');
 
         if (!$tenantId) {
-            Log::channel('audit')->warning('RoleBasedAccess: no tenant context', [
+            $this->log->channel('audit')->warning('RoleBasedAccess: no tenant context', [
                 'user_id' => $user->id,
                 'path' => $request->path(),
             ]);
@@ -54,7 +54,7 @@ final class RoleBasedAccess
         $requiredRoles = array_filter($requiredRoles);
 
         if (empty($requiredRoles)) {
-            Log::channel('audit')->warning('RoleBasedAccess: invalid roles', [
+            $this->log->channel('audit')->warning('RoleBasedAccess: invalid roles', [
                 'user_id' => $user->id,
                 'provided_roles' => $roles,
             ]);
@@ -64,7 +64,7 @@ final class RoleBasedAccess
 
         // Check if user has one of required roles in tenant
         if (!$user->hasRoleInTenant($tenantId, $requiredRoles)) {
-            Log::channel('audit')->warning('RoleBasedAccess: denied', [
+            $this->log->channel('audit')->warning('RoleBasedAccess: denied', [
                 'user_id' => $user->id,
                 'tenant_id' => $tenantId,
                 'required_roles' => array_map(fn($r) => $r->value, $requiredRoles),

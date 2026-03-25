@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -8,7 +10,16 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 use Modules\Auto\Models\TaxiRide;
 
-final class TaxiRideFactory extends Factory
+final /**
+ * TaxiRideFactory
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class TaxiRideFactory extends Factory
 {
     protected $model = TaxiRide::class;
 

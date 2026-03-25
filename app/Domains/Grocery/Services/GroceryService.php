@@ -37,12 +37,12 @@ final class GroceryService
         // 1. Rate Limiting
         $rlKey = "grocery:order:{$userId}";
         if (RateLimiter::tooManyAttempts($rlKey, 5)) {
-            Log::channel("fraud_alert")->warning("Grocery: rate limit hit", ["user_id" => $userId, "correlation_id" => $correlationId]);
+            $this->log->channel("fraud_alert")->warning("Grocery: rate limit hit", ["user_id" => $userId, "correlation_id" => $correlationId]);
             throw new \RuntimeException("Слишком много попыток заказа. Попробуйте позже.", 429);
         }
         RateLimiter::hit($rlKey, 3600);
 
-        return DB::transaction(function () use ($userId, $storeId, $items, $address, $correlationId) {
+        return $this->db->transaction(function () use ($userId, $storeId, $items, $address, $correlationId) {
             $store = GroceryStore::findOrFail($storeId);
             $totalAmountKopecks = 0;
             $processedItems = [];
@@ -75,7 +75,7 @@ final class GroceryService
             ]);
 
             if ($fraud["decision"] === "block") {
-                Log::channel("audit")->warning("Grocery: fraud block", ["user_id" => $userId, "score" => $fraud["score"], "correlation_id" => $correlationId]);
+                $this->log->channel("audit")->warning("Grocery: fraud block", ["user_id" => $userId, "score" => $fraud["score"], "correlation_id" => $correlationId]);
                 throw new \RuntimeException("Заказ заблокирован службой безопасности.", 403);
             }
 
@@ -105,7 +105,7 @@ final class GroceryService
                 );
             }
 
-            Log::channel("audit")->info("Grocery: order created", [
+            $this->log->channel("audit")->info("Grocery: order created", [
                 "order_id" => $order->id,
                 "user_id" => $userId,
                 "total" => $totalAmountKopecks,
@@ -124,7 +124,7 @@ final class GroceryService
         $correlationId = $correlationId ?: (string) Str::uuid();
         $order = GroceryOrder::findOrFail($orderId);
 
-        DB::transaction(function () use ($order, $correlationId) {
+        $this->db->transaction(function () use ($order, $correlationId) {
             $order->lockForUpdate();
             $order->update(["status" => "ready_for_delivery"]);
 
@@ -140,7 +140,7 @@ final class GroceryService
                 );
             }
 
-            Log::channel("audit")->info("Grocery: order finalized", ["order_id" => $order->id, "correlation_id" => $correlationId]);
+            $this->log->channel("audit")->info("Grocery: order finalized", ["order_id" => $order->id, "correlation_id" => $correlationId]);
         });
     }
 
@@ -151,7 +151,7 @@ final class GroceryService
     {
         $correlationId = (string) Str::uuid();
 
-        DB::transaction(function () use ($storeId, $stockData, $correlationId) {
+        $this->db->transaction(function () use ($storeId, $stockData, $correlationId) {
             foreach ($stockData as $data) {
                 $product = GroceryProduct::where("store_id", $storeId)->where("sku", $data["sku"])->first();
                 if ($product) {

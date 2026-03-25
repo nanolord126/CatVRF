@@ -1,5 +1,29 @@
 <?php declare(strict_types=1);
-namespace App\Domains\Insurance\Models;
+namespa
+
+/**
+ * InsurancePolicy
+ * 
+ * Производитель: CatVRF Platform
+ * Версия: 1.0.0
+ * 
+ * Примеры использования:
+ * 
+ * ```php
+ * // Базовое использование
+ * $instance = new InsurancePolicy();
+ * ```
+ * 
+ * Требования:
+ * - Laravel 10+
+ * - PHP 8.2+
+ * - Все методы должны быть явно типизированы
+ * 
+ * @author CatVRF
+ * @package namespace App\Domains\Insurance\Models
+ * @see https://github.com/iyegorovskyi_clemny/CatVRF
+ */
+ce App\Domains\Insurance\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;

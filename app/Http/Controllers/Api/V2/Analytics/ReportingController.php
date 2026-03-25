@@ -57,7 +57,7 @@ final class ReportingController extends Controller
                 'correlation_id' => (string)$correlationId,
             ], 201);
         } catch (\Exception $e) {
-            \Log::error('Schedule report error', ['exception' => $e]);
+            \$this->log->error('Schedule report error', ['exception' => $e]);
             return response()->json([
                 'error' => $e->getMessage(),
                 'correlation_id' => (string)$correlationId,
@@ -83,7 +83,7 @@ final class ReportingController extends Controller
                 'correlation_id' => (string)$correlationId,
             ]);
         } catch (\Exception $e) {
-            \Log::error('Get scheduled reports error', ['exception' => $e]);
+            \$this->log->error('Get scheduled reports error', ['exception' => $e]);
             return response()->json([
                 'error' => $e->getMessage(),
                 'correlation_id' => (string)$correlationId,
@@ -117,7 +117,7 @@ final class ReportingController extends Controller
                 'correlation_id' => (string)$correlationId,
             ]);
         } catch (\Exception $e) {
-            \Log::error('Update report schedule error', ['exception' => $e]);
+            \$this->log->error('Update report schedule error', ['exception' => $e]);
             return response()->json([
                 'error' => $e->getMessage(),
                 'correlation_id' => (string)$correlationId,
@@ -144,7 +144,7 @@ final class ReportingController extends Controller
                 'correlation_id' => (string)$correlationId,
             ]);
         } catch (\Exception $e) {
-            \Log::error('Delete report schedule error', ['exception' => $e]);
+            \$this->log->error('Delete report schedule error', ['exception' => $e]);
             return response()->json([
                 'error' => $e->getMessage(),
                 'correlation_id' => (string)$correlationId,
@@ -193,7 +193,7 @@ final class ReportingController extends Controller
                 'correlation_id' => (string)$correlationId,
             ]);
         } catch (\Exception $e) {
-            \Log::error('Generate report error', ['exception' => $e]);
+            \$this->log->error('Generate report error', ['exception' => $e]);
             return response()->json([
                 'error' => $e->getMessage(),
                 'correlation_id' => (string)$correlationId,

@@ -71,8 +71,8 @@ final class PhotoReviewController
 				'comment' => 'nullable|string|max:1000',
 			]);
 
-			DB::transaction(function () use ($sessionId, $validated, $correlationId) {
-				$session = \App\Domains\Photography\Models\PhotoSession::findOrFail($sessionId);
+			$this->db->transaction(function () use ($sessionId, $validated, $correlationId) {
+				$session = \App\Domains\Photography\Models\Photo$this->session->findOrFail($sessionId);
 
 				$review = PhotoReview::create([
 					'uuid' => Str::uuid(),
@@ -87,7 +87,7 @@ final class PhotoReviewController
 					'correlation_id' => $correlationId,
 				]);
 
-				Log::channel('audit')->info('Photography: Review created', [
+				$this->log->channel('audit')->info('Photography: Review created', [
 					'review_id' => $review->id,
 					'rating' => $validated['rating'],
 					'correlation_id' => $correlationId,
@@ -100,7 +100,7 @@ final class PhotoReviewController
 				'correlation_id' => $correlationId,
 			], 201);
 		} catch (\Exception $e) {
-			Log::channel('audit')->error('Photography: Review creation failed', [
+			$this->log->channel('audit')->error('Photography: Review creation failed', [
 				'error' => $e->getMessage(),
 				'correlation_id' => Str::uuid(),
 			]);
@@ -128,7 +128,7 @@ final class PhotoReviewController
 
 			$review->update($validated);
 
-			Log::channel('audit')->info('Photography: Review updated', [
+			$this->log->channel('audit')->info('Photography: Review updated', [
 				'review_id' => $id,
 				'correlation_id' => Str::uuid(),
 			]);
@@ -158,7 +158,7 @@ final class PhotoReviewController
 
 			$review->delete();
 
-			Log::channel('audit')->info('Photography: Review deleted', [
+			$this->log->channel('audit')->info('Photography: Review deleted', [
 				'review_id' => $id,
 				'correlation_id' => Str::uuid(),
 			]);
@@ -224,10 +224,10 @@ final class PhotoReviewController
 		try {
 			$review = PhotoReview::findOrFail($id);
 
-			DB::transaction(function () use ($review) {
+			$this->db->transaction(function () use ($review) {
 				$review->increment('helpful_count');
 
-				Log::channel('audit')->info('Photography: Review marked helpful', [
+				$this->log->channel('audit')->info('Photography: Review marked helpful', [
 					'review_id' => $review->id,
 					'correlation_id' => Str::uuid(),
 				]);

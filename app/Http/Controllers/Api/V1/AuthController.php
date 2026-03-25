@@ -64,11 +64,11 @@ final class AuthController extends Controller
         try {
 
             // Validate credentials
-            $user = DB::table('users')
+            $user = $this->db->table('users')
                 ->where('email', $request->email)
                 ->first();
 
-            if (!$user || !Hash::check($request->password, $user->password)) {
+            if (!$user || !$this->hash->check($request->password, $user->password)) {
                 return response()->json([
                     'error' => 'Invalid credentials',
                     'correlation_id' => $correlationId,
@@ -82,7 +82,7 @@ final class AuthController extends Controller
                 now()->addDays((int)env('SANCTUM_EXPIRATION_DAYS', 365))
             );
 
-            Log::channel('audit')->info('Token created', [
+            $this->log->channel('audit')->info('Token created', [
                 'user_id' => $user->id,
                 'token_name' => $request->name,
                 'correlation_id' => $correlationId,
@@ -95,7 +95,7 @@ final class AuthController extends Controller
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Token creation failed', [
+            $this->log->channel('audit')->error('Token creation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId ?? (string) Str::uuid()->toString(),
             ]);
@@ -127,7 +127,7 @@ final class AuthController extends Controller
             // Revoke old token
             $oldTokenId = $user->currentAccessToken()->id ?? null;
             if ($oldTokenId) {
-                DB::table('personal_access_tokens')
+                $this->db->table('personal_access_tokens')
                     ->where('id', $oldTokenId)
                     ->update(['revoked' => true]);
             }
@@ -139,7 +139,7 @@ final class AuthController extends Controller
                 now()->addDays((int)env('SANCTUM_EXPIRATION_DAYS', 365))
             );
 
-            Log::channel('audit')->info('Token refreshed', [
+            $this->log->channel('audit')->info('Token refreshed', [
                 'user_id' => $user->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -151,7 +151,7 @@ final class AuthController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Token refresh failed', [
+            $this->log->channel('audit')->error('Token refresh failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId ?? (string) Str::uuid()->toString(),
             ]);
@@ -183,12 +183,12 @@ final class AuthController extends Controller
             }
 
             // Revoke token
-            DB::table('personal_access_tokens')
+            $this->db->table('personal_access_tokens')
                 ->where('id', $tokenId)
                 ->where('tokenable_id', $user->id)
                 ->update(['revoked' => true]);
 
-            Log::channel('audit')->info('Token revoked', [
+            $this->log->channel('audit')->info('Token revoked', [
                 'user_id' => $user->id,
                 'token_id' => $tokenId,
                 'correlation_id' => $correlationId,
@@ -199,7 +199,7 @@ final class AuthController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Token revocation failed', [
+            $this->log->channel('audit')->error('Token revocation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId ?? (string) Str::uuid()->toString(),
             ]);
@@ -227,7 +227,7 @@ final class AuthController extends Controller
             ], 401);
         }
 
-        $tokens = DB::table('personal_access_tokens')
+        $tokens = $this->db->table('personal_access_tokens')
             ->where('tokenable_id', $user->id)
             ->select('id', 'name', 'created_at', 'expires_at', 'revoked')
             ->get();

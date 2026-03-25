@@ -20,7 +20,7 @@ final readonly class WalletService
     {
         $cacheKey = "wallet:balance:tenant:{$tenantId}";
         
-        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($tenantId) {
+        return $this->cache->remember($cacheKey, now()->addMinutes(5), function () use ($tenantId) {
             $wallet = Wallet::where('tenant_id', (string) $tenantId)->firstOrFail();
             return $wallet->current_balance;
         });
@@ -31,10 +31,10 @@ final readonly class WalletService
         int|string $userId = 0,
         int $initialBalance = 0,
     ): Wallet {
-        return DB::transaction(function () use ($tenantId, $initialBalance) {
+        return $this->db->transaction(function () use ($tenantId, $initialBalance) {
             $correlationId = Str::uuid()->toString();
 
-            Log::channel('audit')->info('Wallet created', [
+            $this->log->channel('audit')->info('Wallet created', [
                 'correlation_id' => $correlationId,
                 'tenant_id'      => $tenantId,
                 'initial_balance' => $initialBalance,
@@ -70,7 +70,7 @@ final readonly class WalletService
             return $this->creditByWalletId($walletId, $amount, $type, $sourceId, $correlationId, $reason, $sourceType);
         }
 
-        return DB::transaction(function () use ($tenantId, $amount, $type, $sourceId, $correlationId, $reason, $sourceType) {
+        return $this->db->transaction(function () use ($tenantId, $amount, $type, $sourceId, $correlationId, $reason, $sourceType) {
             $wallet = Wallet::where('tenant_id', (string) $tenantId)->lockForUpdate()->firstOrFail();
 
             // Fraud check перед пополнением
@@ -84,7 +84,7 @@ final readonly class WalletService
             );
 
             if ($fraudResult['decision'] === 'block') {
-                Log::channel('fraud_alert')->warning('Wallet credit blocked by fraud check', [
+                $this->log->channel('fraud_alert')->warning('Wallet credit blocked by fraud check', [
                     'correlation_id' => $correlationId,
                     'tenant_id' => $tenantId,
                     'amount' => $amount,
@@ -97,7 +97,7 @@ final readonly class WalletService
             $balanceBefore = $wallet->current_balance;
             $balanceAfter = $balanceBefore + $amount;
 
-            Log::channel('audit')->info('Wallet credit', [
+            $this->log->channel('audit')->info('Wallet credit', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
                 'amount' => $amount,
@@ -124,7 +124,7 @@ final readonly class WalletService
             $wallet->increment('current_balance', $amount);
 
             // Инвалидация кэша
-            Cache::forget("wallet:balance:tenant:{$tenantId}");
+            $this->cache->forget("wallet:balance:tenant:{$tenantId}");
 
             return $transaction;
         });
@@ -139,7 +139,7 @@ final readonly class WalletService
         ?string $reason,
         ?string $sourceType,
     ): bool {
-        DB::transaction(function () use ($walletId, $amount, $type, $sourceId, $correlationId, $reason, $sourceType) {
+        $this->db->transaction(function () use ($walletId, $amount, $type, $sourceId, $correlationId, $reason, $sourceType) {
             $wallet = Wallet::whereKey($walletId)->lockForUpdate()->firstOrFail();
 
             // Fraud check
@@ -153,7 +153,7 @@ final readonly class WalletService
             );
 
             if ($fraudResult['decision'] === 'block') {
-                Log::channel('fraud_alert')->warning('Wallet credit blocked by fraud check (walletId)', [
+                $this->log->channel('fraud_alert')->warning('Wallet credit blocked by fraud check (walletId)', [
                     'correlation_id' => $correlationId,
                     'wallet_id' => $walletId,
                     'amount' => $amount,
@@ -166,7 +166,7 @@ final readonly class WalletService
             $balanceBefore = $wallet->current_balance;
             $balanceAfter  = $balanceBefore + $amount;
 
-            Log::channel('audit')->info('Wallet credit (by walletId)', [
+            $this->log->channel('audit')->info('Wallet credit (by walletId)', [
                 'correlation_id' => $correlationId,
                 'wallet_id'      => $walletId,
                 'amount'         => $amount,
@@ -193,7 +193,7 @@ final readonly class WalletService
 
             // Инвалидация кэша
             if ($wallet->tenant_id) {
-                Cache::forget("wallet:balance:tenant:{$wallet->tenant_id}");
+                $this->cache->forget("wallet:balance:tenant:{$wallet->tenant_id}");
             }
         });
 
@@ -220,12 +220,12 @@ final readonly class WalletService
             return $this->debitByWalletId($walletId, $amount, $type, $sourceId, $correlationId, $reason, $sourceType);
         }
 
-        return DB::transaction(function () use ($tenantId, $amount, $type, $sourceId, $correlationId, $reason, $sourceType) {
+        return $this->db->transaction(function () use ($tenantId, $amount, $type, $sourceId, $correlationId, $reason, $sourceType) {
             $wallet = Wallet::where('tenant_id', (string) $tenantId)->lockForUpdate()->firstOrFail();
 
             // Проверка доступного баланса
             if ($wallet->current_balance < $amount) {
-                Log::channel('audit')->warning('Insufficient balance', [
+                $this->log->channel('audit')->warning('Insufficient balance', [
                     'correlation_id' => $correlationId,
                     'tenant_id' => $tenantId,
                     'required' => $amount,
@@ -245,7 +245,7 @@ final readonly class WalletService
             );
 
             if ($fraudResult['decision'] === 'block') {
-                Log::channel('fraud_alert')->warning('Wallet debit blocked by fraud check', [
+                $this->log->channel('fraud_alert')->warning('Wallet debit blocked by fraud check', [
                     'correlation_id' => $correlationId,
                     'tenant_id' => $tenantId,
                     'amount' => $amount,
@@ -258,7 +258,7 @@ final readonly class WalletService
             $balanceBefore = $wallet->current_balance;
             $balanceAfter = $balanceBefore - $amount;
 
-            Log::channel('audit')->info('Wallet debit', [
+            $this->log->channel('audit')->info('Wallet debit', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
                 'amount' => $amount,
@@ -285,7 +285,7 @@ final readonly class WalletService
             $wallet->decrement('current_balance', $amount);
 
             // Инвалидация кэша
-            Cache::forget("wallet:balance:tenant:{$tenantId}");
+            $this->cache->forget("wallet:balance:tenant:{$tenantId}");
 
             return $transaction;
         });
@@ -300,11 +300,11 @@ final readonly class WalletService
         ?string $reason,
         ?string $sourceType,
     ): bool {
-        DB::transaction(function () use ($walletId, $amount, $type, $sourceId, $correlationId, $reason, $sourceType) {
+        $this->db->transaction(function () use ($walletId, $amount, $type, $sourceId, $correlationId, $reason, $sourceType) {
             $wallet = Wallet::whereKey($walletId)->lockForUpdate()->firstOrFail();
 
             if ($wallet->current_balance < $amount) {
-                Log::channel('audit')->warning('Insufficient balance (walletId path)', [
+                $this->log->channel('audit')->warning('Insufficient balance (walletId path)', [
                     'correlation_id' => $correlationId,
                     'wallet_id'      => $walletId,
                     'required'       => $amount,
@@ -324,7 +324,7 @@ final readonly class WalletService
             );
 
             if ($fraudResult['decision'] === 'block') {
-                Log::channel('fraud_alert')->warning('Wallet debit blocked by fraud check (walletId)', [
+                $this->log->channel('fraud_alert')->warning('Wallet debit blocked by fraud check (walletId)', [
                     'correlation_id' => $correlationId,
                     'wallet_id'      => $walletId,
                     'amount'         => $amount,
@@ -337,7 +337,7 @@ final readonly class WalletService
             $balanceBefore = $wallet->current_balance;
             $balanceAfter  = $balanceBefore - $amount;
 
-            Log::channel('audit')->info('Wallet debit (by walletId)', [
+            $this->log->channel('audit')->info('Wallet debit (by walletId)', [
                 'correlation_id' => $correlationId,
                 'wallet_id'      => $walletId,
                 'amount'         => $amount,
@@ -364,7 +364,7 @@ final readonly class WalletService
 
             // Инвалидация кэша
             if ($wallet->tenant_id) {
-                Cache::forget("wallet:balance:tenant:{$wallet->tenant_id}");
+                $this->cache->forget("wallet:balance:tenant:{$wallet->tenant_id}");
             }
         });
 
@@ -384,14 +384,14 @@ final readonly class WalletService
 
         $correlationId = $correlationId ?: Str::uuid()->toString();
 
-        DB::transaction(function () use ($tenantId, $walletId, $amount, $reason, $correlationId) {
+        $this->db->transaction(function () use ($tenantId, $walletId, $amount, $reason, $correlationId) {
             $wallet = $walletId > 0
                 ? Wallet::whereKey($walletId)->lockForUpdate()->firstOrFail()
                 : Wallet::where('tenant_id', (string) $tenantId)->lockForUpdate()->firstOrFail();
 
             $available = $wallet->current_balance - $wallet->hold_amount;
             if ($amount > $available) {
-                Log::channel('audit')->warning('Insufficient available balance for hold', [
+                $this->log->channel('audit')->warning('Insufficient available balance for hold', [
                     'correlation_id' => $correlationId,
                     'tenant_id' => $tenantId,
                     'wallet_id' => $walletId,
@@ -401,7 +401,7 @@ final readonly class WalletService
                 throw new \RuntimeException("Cannot hold {$amount}: available balance is {$available}");
             }
 
-            Log::channel('audit')->info('Wallet hold', [
+            $this->log->channel('audit')->info('Wallet hold', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
                 'wallet_id' => $walletId,
@@ -443,13 +443,13 @@ final readonly class WalletService
 
         $correlationId = $correlationId ?: Str::uuid()->toString();
 
-        DB::transaction(function () use ($tenantId, $walletId, $amount, $correlationId) {
+        $this->db->transaction(function () use ($tenantId, $walletId, $amount, $correlationId) {
             $wallet = $walletId > 0
                 ? Wallet::whereKey($walletId)->lockForUpdate()->firstOrFail()
                 : Wallet::where('tenant_id', (string) $tenantId)->lockForUpdate()->firstOrFail();
 
             if ($amount > $wallet->hold_amount) {
-                Log::channel('audit')->warning('Cannot release more than held amount', [
+                $this->log->channel('audit')->warning('Cannot release more than held amount', [
                     'correlation_id' => $correlationId,
                     'tenant_id' => $tenantId,
                     'wallet_id' => $walletId,
@@ -459,7 +459,7 @@ final readonly class WalletService
                 throw new \RuntimeException("Cannot release {$amount}: held amount is {$wallet->hold_amount}");
             }
 
-            Log::channel('audit')->info('Wallet release', [
+            $this->log->channel('audit')->info('Wallet release', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
                 'wallet_id' => $walletId,

@@ -128,8 +128,8 @@ final class AppointmentCalendar extends Component
         $this->loadDayAppointments($date);
 
         $correlationId = (string) Str::uuid()->toString();
-        Log::channel('audit')->info('BeautyCalendar: day selected', [
-            'user_id'        => Auth::id(),
+        $this->log->channel('audit')->info('BeautyCalendar: day selected', [
+            'user_id'        => $this->auth->id(),
             'salon_id'       => $this->salonId,
             'master_id'      => $this->masterId,
             'date'           => $date,

@@ -40,7 +40,7 @@ final class TwoFactorAuthentication
             if (!$knownDevice) {
                 // Новое устройство — требуем 2FA
                 if (!session('two_factor_verified')) {
-                    Log::channel('audit')->warning('Попытка доступа с неверифицированного устройства', [
+                    $this->log->channel('audit')->warning('Попытка доступа с неверифицированного устройства', [
                         'user_id' => $user->id,
                         'device_id' => $deviceId,
                         'correlation_id' => $correlationId,
@@ -68,7 +68,7 @@ final class TwoFactorAuthentication
 
             return $next($request);
         } catch (Exception $e) {
-            Log::channel('audit')->error('Ошибка при проверке 2FA', [
+            $this->log->channel('audit')->error('Ошибка при проверке 2FA', [
                 'user_id' => $user->id ?? null,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Food\Policies;
@@ -25,27 +27,27 @@ final class DishPolicy
     public function create(User $user): Response
     {
         if (!$user->isStaff()) {
-            return Response::deny('Только персонал может создавать блюда');
+            return $this->response->deny('Только персонал может создавать блюда');
         }
 
-        return Response::allow();
+        return $this->response->allow();
     }
 
     public function update(User $user, Dish $dish): Response
     {
         if (!$user->isStaff()) {
-            return Response::deny('Только персонал может редактировать блюда');
+            return $this->response->deny('Только персонал может редактировать блюда');
         }
 
-        return Response::allow();
+        return $this->response->allow();
     }
 
     public function delete(User $user, Dish $dish): Response
     {
         if (!$user->isAdmin()) {
-            return Response::deny('Только администратор может удалять блюда');
+            return $this->response->deny('Только администратор может удалять блюда');
         }
 
-        return Response::allow();
+        return $this->response->allow();
     }
 }

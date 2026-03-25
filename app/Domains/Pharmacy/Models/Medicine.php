@@ -50,6 +50,12 @@ final class Medicine extends Model
      * Глобальный скопинг для тенанта уже в трейте.
      */
      
+    /**
+     * Выполнить операцию
+     * 
+     * @return mixed
+     * @throws \Exception
+     */
     public function pharmacy(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(Pharmacy::class);

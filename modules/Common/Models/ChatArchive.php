@@ -36,7 +36,7 @@ class ChatArchive extends Model
     {
         static::creating(function (ChatArchive $model) {
             $model->correlation_id ??= Str::uuid();
-            $model->tenant_id ??= Auth::guard('tenant')->id();
+            $model->tenant_id ??= $this->auth->guard('tenant')->id();
             $model->is_sanitized ??= false;
             
             // Вычисляем хэш для проверки целостности контента
@@ -44,7 +44,7 @@ class ChatArchive extends Model
                 $model->content_hash = hash('sha256', $model->content);
             }
 
-            Log::channel('chat')->info('ChatArchive creating', [
+            $this->log->channel('chat')->info('ChatArchive creating', [
                 'correlation_id' => $model->correlation_id,
                 'sender_id' => $model->sender_id,
                 'receiver_id' => $model->receiver_id,
@@ -53,11 +53,11 @@ class ChatArchive extends Model
 
         static::created(function (ChatArchive $model) {
             try {
-                AuditLog::create([
+                Audit$this->log->create([
                     'entity_type' => ChatArchive::class,
                     'entity_id' => $model->id,
                     'action' => 'created',
-                    'user_id' => Auth::id(),
+                    'user_id' => $this->auth->id(),
                     'tenant_id' => $model->tenant_id,
                     'correlation_id' => $model->correlation_id,
                     'changes' => [
@@ -73,13 +73,13 @@ class ChatArchive extends Model
                     ],
                 ]);
 
-                Log::channel('chat')->info('ChatArchive created (374-ФЗ compliant)', [
+                $this->log->channel('chat')->info('ChatArchive created (374-ФЗ compliant)', [
                     'correlation_id' => $model->correlation_id,
                     'archive_id' => $model->id,
                     'content_hash' => $model->content_hash,
                 ]);
             } catch (Throwable $e) {
-                Log::error('ChatArchive audit creation failed', [
+                $this->log->error('ChatArchive audit creation failed', [
                     'correlation_id' => $model->correlation_id,
                     'error' => $e->getMessage(),
                 ]);
@@ -89,7 +89,7 @@ class ChatArchive extends Model
         static::updating(function (ChatArchive $model) {
             $model->correlation_id ??= Str::uuid();
             
-            Log::channel('chat')->info('ChatArchive updating', [
+            $this->log->channel('chat')->info('ChatArchive updating', [
                 'correlation_id' => $model->correlation_id,
                 'archive_id' => $model->id,
             ]);
@@ -97,11 +97,11 @@ class ChatArchive extends Model
 
         static::updated(function (ChatArchive $model) {
             try {
-                AuditLog::create([
+                Audit$this->log->create([
                     'entity_type' => ChatArchive::class,
                     'entity_id' => $model->id,
                     'action' => 'updated',
-                    'user_id' => Auth::id(),
+                    'user_id' => $this->auth->id(),
                     'tenant_id' => $model->tenant_id,
                     'correlation_id' => $model->correlation_id,
                     'changes' => $model->getChanges(),
@@ -111,12 +111,12 @@ class ChatArchive extends Model
                     ],
                 ]);
 
-                Log::channel('chat')->info('ChatArchive updated', [
+                $this->log->channel('chat')->info('ChatArchive updated', [
                     'correlation_id' => $model->correlation_id,
                     'archive_id' => $model->id,
                 ]);
             } catch (Throwable $e) {
-                Log::error('ChatArchive audit update failed', [
+                $this->log->error('ChatArchive audit update failed', [
                     'correlation_id' => $model->correlation_id,
                     'error' => $e->getMessage(),
                 ]);
@@ -124,7 +124,7 @@ class ChatArchive extends Model
         });
 
         static::deleting(function (ChatArchive $model) {
-            Log::channel('chat')->warning('ChatArchive deletion attempted', [
+            $this->log->channel('chat')->warning('ChatArchive deletion attempted', [
                 'correlation_id' => $model->correlation_id,
                 'archive_id' => $model->id,
                 'sent_at' => $model->sent_at,

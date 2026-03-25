@@ -1,0 +1,13 @@
+{
+    "timestamp": "2026-03-24 23:53:09",
+    "total_issues": 1,
+    "total_warnings": 2,
+    "tier1_services_checked": 7,
+    "issues": [
+        "Security\\IdempotencyService.php: return [] вместо throw (1 раз)"
+    ],
+    "warnings": [
+        "PromoService.php: No audit logs",
+        "ReferralService.php: No audit logs"
+    ]
+}

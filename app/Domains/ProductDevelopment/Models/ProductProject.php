@@ -1,5 +1,29 @@
 <?php declare(strict_types=1);
-namespace App\Domains\ProductDevelopment\Models;
+namespace App\Do
+
+/**
+ * ProductProject
+ * 
+ * Производитель: CatVRF Platform
+ * Версия: 1.0.0
+ * 
+ * Примеры использования:
+ * 
+ * ```php
+ * // Базовое использование
+ * $instance = new ProductProject();
+ * ```
+ * 
+ * Требования:
+ * - Laravel 10+
+ * - PHP 8.2+
+ * - Все методы должны быть явно типизированы
+ * 
+ * @author CatVRF
+ * @package namespace App\Domains\ProductDevelopment\Models
+ * @see https://github.com/iyegorovskyi_clemny/CatVRF
+ */
+mains\ProductDevelopment\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;

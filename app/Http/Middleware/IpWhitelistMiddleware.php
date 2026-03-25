@@ -14,8 +14,8 @@ final class IpWhitelistMiddleware
      * Проверить, находится ли IP в whitelist.
      *
      * Использование:
-     *   Route::middleware([IpWhitelistMiddleware::class . ':webhook'])
-     *   Route::middleware([IpWhitelistMiddleware::class . ':admin'])
+     *   $this->route->middleware([IpWhitelistMiddleware::class . ':webhook'])
+     *   $this->route->middleware([IpWhitelistMiddleware::class . ':admin'])
      *
      * @param Request $request
      * @param Closure $next
@@ -31,14 +31,14 @@ final class IpWhitelistMiddleware
         $allowedIps = config("security.ip_whitelist.{$whitelist}", []);
         
         if (empty($allowedIps)) {
-            Log::channel('security')->warning('IP whitelist not configured', [
+            $this->log->channel('security')->warning('IP whitelist not configured', [
                 'whitelist' => $whitelist,
             ]);
             return response()->json(['error' => 'IP whitelist not configured'], 500);
         }
         
         if (!$this->isIpWhitelisted($clientIp, $allowedIps)) {
-            Log::channel('fraud_alert')->warning('IP blocked by whitelist', [
+            $this->log->channel('fraud_alert')->warning('IP blocked by whitelist', [
                 'whitelist' => $whitelist,
                 'client_ip' => $clientIp,
                 'endpoint' => $request->path(),
@@ -48,7 +48,7 @@ final class IpWhitelistMiddleware
             return response()->json(['error' => 'IP not whitelisted'], 403);
         }
         
-        Log::channel('audit')->debug('IP whitelisted', [
+        $this->log->channel('audit')->debug('IP whitelisted', [
             'whitelist' => $whitelist,
             'client_ip' => $clientIp,
         ]);

@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Auto\Listeners;
@@ -16,7 +18,7 @@ final class DeductRepairPartsListener implements ShouldQueue
     public function handle(RepairWorkCompleted $event): void
     {
         try {
-            DB::transaction(function () use ($event) {
+            $this->db->transaction(function () use ($event) {
                 $order = $event->order;
                 $service = $order->service;
                 $correlationId = $event->correlationId;
@@ -33,7 +35,7 @@ final class DeductRepairPartsListener implements ShouldQueue
                     $qty = (int) ($part['qty'] ?? 1);
                     $partModel->decrement('current_stock', $qty);
 
-                    Log::channel('audit')->info('Auto part deducted', [
+                    $this->log->channel('audit')->info('Auto part deducted', [
                         'order_id' => $order->id,
                         'part_id' => $partModel->id,
                         'quantity' => $qty,
@@ -46,7 +48,7 @@ final class DeductRepairPartsListener implements ShouldQueue
                 }
             });
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('DeductRepairPartsListener failed', [
+            $this->log->channel('audit')->error('DeductRepairPartsListener failed', [
                 'order_id' => $event->order->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $event->correlationId,

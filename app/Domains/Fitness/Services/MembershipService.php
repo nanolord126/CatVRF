@@ -30,7 +30,7 @@ final readonly class MembershipService
                 default => $startDate->addMonth(),
             };
 
-            $membership = DB::transaction(function () use ($gym, $memberId, $type, $amount, $commissionAmount, $startDate, $expiresAt, $correlationId) {
+            $membership = $this->db->transaction(function () use ($gym, $memberId, $type, $amount, $commissionAmount, $startDate, $expiresAt, $correlationId) {
                 $membership = Membership::create([
                     'tenant_id' => $gym->tenant_id,
                     'gym_id' => $gym->id,
@@ -47,7 +47,7 @@ final readonly class MembershipService
 
                 MembershipCreated::dispatch($membership, $correlationId);
 
-                Log::channel('audit')->info('Membership created', [
+                $this->log->channel('audit')->info('Membership created', [
                     'membership_id' => $membership->id,
                     'gym_id' => $gym->id,
                     'member_id' => $memberId,
@@ -61,7 +61,7 @@ final readonly class MembershipService
 
             return $membership;
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to create membership', [
+            $this->log->channel('audit')->error('Failed to create membership', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -74,7 +74,7 @@ final readonly class MembershipService
 
 
         try {
-            DB::transaction(function () use ($membership, $reason, $correlationId) {
+            $this->db->transaction(function () use ($membership, $reason, $correlationId) {
                 $membership->update([
                     'status' => 'cancelled',
                     'cancellation_reason' => $reason,
@@ -83,14 +83,14 @@ final readonly class MembershipService
 
                 MembershipExpired::dispatch($membership, $correlationId);
 
-                Log::channel('audit')->info('Membership cancelled', [
+                $this->log->channel('audit')->info('Membership cancelled', [
                     'membership_id' => $membership->id,
                     'reason' => $reason,
                     'correlation_id' => $correlationId,
                 ]);
             });
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to cancel membership', [
+            $this->log->channel('audit')->error('Failed to cancel membership', [
                 'membership_id' => $membership->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

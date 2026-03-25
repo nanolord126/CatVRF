@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Sports\Filament\Resources;
@@ -10,7 +12,16 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
-final class ReviewResource extends Resource
+final /**
+ * ReviewResource
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class ReviewResource extends Resource
 {
     protected static ?string $model = Review::class;
     protected static ?string $navigationIcon = 'heroicon-o-star';

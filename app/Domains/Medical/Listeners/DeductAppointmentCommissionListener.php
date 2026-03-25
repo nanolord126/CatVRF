@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Medical\Listeners;
@@ -8,12 +10,21 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
-final class DeductAppointmentCommissionListener implements ShouldQueue
+final /**
+ * DeductAppointmentCommissionListener
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class DeductAppointmentCommissionListener implements ShouldQueue
 {
     public function handle(AppointmentBooked $event): void
     {
         try {
-            DB::transaction(function () use ($event) {
+            $this->db->transaction(function () use ($event) {
                 $appointment = $event->appointment;
                 $commission = $appointment->commission_amount;
 
@@ -34,7 +45,7 @@ final class DeductAppointmentCommissionListener implements ShouldQueue
                     'correlation_id' => $event->correlationId,
                 ]);
 
-                Log::channel('audit')->info('Medical appointment commission deducted', [
+                $this->log->channel('audit')->info('Medical appointment commission deducted', [
                     'appointment_id' => $appointment->id,
                     'doctor_id' => $appointment->doctor_id,
                     'patient_id' => $appointment->patient_id,
@@ -43,7 +54,7 @@ final class DeductAppointmentCommissionListener implements ShouldQueue
                 ]);
             });
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to deduct appointment commission', [
+            $this->log->channel('audit')->error('Failed to deduct appointment commission', [
                 'appointment_id' => $event->appointment->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $event->correlationId,

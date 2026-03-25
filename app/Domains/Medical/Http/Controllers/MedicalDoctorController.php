@@ -94,7 +94,7 @@ final class MedicalDoctorController
                 'correlation_id' => $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
             ]);
 
-            Log::channel('audit')->info('Doctor created', ['doctor_id' => $doctor->id]);
+            $this->log->channel('audit')->info('Doctor created', ['doctor_id' => $doctor->id]);
 
             return response()->json([
                 'success' => true,
@@ -102,7 +102,7 @@ final class MedicalDoctorController
                 'correlation_id' => $request->header('X-Correlation-ID'),
             ], 201);
         } catch (Throwable $e) {
-            Log::error('Failed to create doctor', ['error' => $e->getMessage()]);
+            $this->log->error('Failed to create doctor', ['error' => $e->getMessage()]);
             return response()->json(['success' => false, 'error' => 'Failed to create doctor'], 500);
         }
     }
@@ -138,7 +138,7 @@ final class MedicalDoctorController
                 'correlation_id' => $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
             ]);
 
-            Log::channel('audit')->info('Doctor updated', ['doctor_id' => $doctor->id]);
+            $this->log->channel('audit')->info('Doctor updated', ['doctor_id' => $doctor->id]);
 
             return response()->json(['success' => true, 'data' => $doctor]);
         } catch (Throwable $e) {
@@ -154,7 +154,7 @@ final class MedicalDoctorController
 
             $doctor->update(['is_active' => false]);
 
-            Log::channel('audit')->info('Doctor deactivated', ['doctor_id' => $doctor->id]);
+            $this->log->channel('audit')->info('Doctor deactivated', ['doctor_id' => $doctor->id]);
 
             return response()->json(['success' => true]);
         } catch (Throwable $e) {

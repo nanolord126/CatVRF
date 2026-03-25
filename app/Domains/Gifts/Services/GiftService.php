@@ -36,7 +36,7 @@ final class GiftService
         }
         RateLimiter::hit("gifts:order:".$clientId, 3600);
 
-        return DB::transaction(function () use ($clientId, $gift, $data, $correlationId) {
+        return $this->db->transaction(function () use ($clientId, $gift, $data, $correlationId) {
             $this->fraud->check([
                 "user_id" => $clientId,
                 "operation_type" => "gift_order",
@@ -65,7 +65,7 @@ final class GiftService
                 "tags" => ["vertical:gifts", "delivery_type:surprise"]
             ]);
 
-            Log::channel("audit")->info("Gifts: gift ordered", ["order_uuid" => $order->uuid, "payout" => $payout]);
+            $this->log->channel("audit")->info("Gifts: gift ordered", ["order_uuid" => $order->uuid, "payout" => $payout]);
 
             return $order;
         });
@@ -80,14 +80,14 @@ final class GiftService
         $order = GiftOrder::findOrFail($orderId);
         $wrapping = Wrapping::findOrFail($wrappingId);
 
-        DB::transaction(function () use ($order, $wrapping, $correlationId) {
+        $this->db->transaction(function () use ($order, $wrapping, $correlationId) {
             $order->update(["wrapping_id" => $wrappingId]);
             // Списание доп. стоимости упаковки (упрощенно)
             if ($wrapping->price > 0) {
                $this->wallet->debit($order->client_id, $wrapping->price, "gift_wrapping", "Wrapping for #{$order->uuid}", $correlationId);
                $this->wallet->credit($order->tenant_id, (int)($wrapping->price * 0.86), "gift_wrapping_payout", "Wrapping payout", $correlationId);
             }
-            Log::channel("audit")->info("Gifts: wrapping added to product", ["order_id" => $orderId, "wrapping_id" => $wrappingId]);
+            $this->log->channel("audit")->info("Gifts: wrapping added to product", ["order_id" => $orderId, "wrapping_id" => $wrappingId]);
         });
     }
 
@@ -108,7 +108,7 @@ final class GiftService
 
         $results = $query->limit(10)->get();
 
-        Log::channel("audit")->info("Gifts: search suggestions generated", ["count" => $results->count()]);
+        $this->log->channel("audit")->info("Gifts: search suggestions generated", ["count" => $results->count()]);
 
         return $results->toArray();
     }

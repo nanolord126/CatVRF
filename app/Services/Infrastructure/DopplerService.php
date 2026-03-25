@@ -1,5 +1,4 @@
-<?php
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Services\Infrastructure;
 
@@ -7,24 +6,21 @@ use Illuminate\Support\Facades\Cache;
 
 final class DopplerService
 {
-    private static ?self $instance = null;
-
-    public function boot(): void
-    {
-        // Initialize Doppler secrets if available
-        // For now, use env() which reads .env
-    }
-
+    /**
+     * Get secret from Doppler with 1h cache.
+     */
     public static function get(string $key, mixed $default = null): mixed
     {
-        return env($key, $default);
+        return Cache::remember('doppler:secret:' . $key, 3600, function() use ($key, $default) {
+            return env($key, $default);
+        });
     }
 
-    public static function getInstance(): self
+    /**
+     * Alias for get() to maintain compatibility.
+     */
+    public static function getSecret(string $key, mixed $default = null): mixed
     {
-        if (self::$instance === null) {
-            self::$instance = new self();
-        }
-        return self::$instance;
+        return self::get($key, $default);
     }
 }

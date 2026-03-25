@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources;
@@ -10,6 +12,15 @@ use Filament\Forms\Form;
 use App\Domains\Medical\Models\B2BMedicalOrder;
 use Illuminate\Database\Eloquent\Builder;
 
+/**
+ * MedicalResource
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
 class MedicalResource extends Resource
 {
     protected static ?string $model = B2BMedicalOrder::class;

@@ -50,7 +50,8 @@ return new class extends Migration
         Schema::create('availability_slots', function (Blueprint $table) {
             $table->id();
             $table->foreignId('tenant_id')->constrained()->cascadeOnDelete();
-            $table->morphs('bookable');
+            $table->string('bookable_type', 255);
+            $table->unsignedBigInteger('bookable_id');
             $table->dateTime('start_at')->index();
             $table->dateTime('end_at')->index();
             $table->boolean('is_available')->default(true);

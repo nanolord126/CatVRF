@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 declare(strict_types=1);
 
@@ -7,7 +9,16 @@ use App\Services\Webhook\WebhookSignatureValidator;
 use Closure;
 use Illuminate\Http\Request;
 
-final class ValidateWebhookSignature
+final /**
+ * ValidateWebhookSignature
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class ValidateWebhookSignature
 {
     public function __construct(
         private readonly WebhookSignatureValidator $validator,
@@ -20,7 +31,7 @@ final class ValidateWebhookSignature
         $payload = $request->getContent();
 
         if (!$signature || !$this->validator->validate($provider, $payload, $signature)) {
-            \Illuminate\Support\Facades\Log::channel('webhook_errors')->warning('Invalid webhook signature', [
+            \Illuminate\Support\Facades\$this->log->channel('webhook_errors')->warning('Invalid webhook signature', [
                 'provider' => $provider,
                 'path' => $request->path(),
             ]);

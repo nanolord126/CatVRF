@@ -53,7 +53,7 @@ final class CarWashBookingController
         );
 
         if ($fraudResult['decision'] === 'block') {
-            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+            $this->log->channel('fraud_alert')->warning('Operation blocked by fraud control', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'score'          => $fraudResult['score'],
@@ -75,7 +75,7 @@ final class CarWashBookingController
             ]);
 
             $validated = $request->all();
-            $booking = DB::transaction(function () use ($validated, $correlationId) {
+            $booking = $this->db->transaction(function () use ($validated, $correlationId) {
                 $booking = CarWashBooking::create([
                     'tenant_id' => tenant('id'),
                     'client_id' => ($validated['client_id'] ?? null),
@@ -86,7 +86,7 @@ final class CarWashBookingController
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Car wash booking created', [
+                $this->log->channel('audit')->info('Car wash booking created', [
                     'booking_id' => $booking->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -122,7 +122,7 @@ final class CarWashBookingController
 
             $booking->update(['status' => 'cancelled']);
 
-            Log::channel('audit')->info('Car wash booking cancelled', [
+            $this->log->channel('audit')->info('Car wash booking cancelled', [
                 'booking_id' => $booking->id,
             ]);
 

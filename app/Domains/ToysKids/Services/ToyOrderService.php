@@ -39,7 +39,7 @@ final class ToyOrderService
         }
         RateLimiter::hit("toys:order:{$tenantId}", 3600);
 
-        return DB::transaction(function () use ($tenantId, $items, $isGiftWrapped, $correlationId) {
+        return $this->db->transaction(function () use ($tenantId, $items, $isGiftWrapped, $correlationId) {
             
             // 2. Fraud Check - защита от бонус-хантов через детские разделы
             $fraud = $this->fraud->check([
@@ -49,7 +49,7 @@ final class ToyOrderService
             ]);
 
             if ($fraud["decision"] === "block") {
-                Log::channel("audit")->error("Toys Security Block", ["tenant" => $tenantId, "score" => $fraud["score"]]);
+                $this->log->channel("audit")->error("Toys Security Block", ["tenant" => $tenantId, "score" => $fraud["score"]]);
                 throw new \RuntimeException("Operation blocked by security.", 403);
             }
 
@@ -85,7 +85,7 @@ final class ToyOrderService
                 "correlation_id" => $correlationId
             ]);
 
-            Log::channel("audit")->info("Toys: order created", ["order_id" => $order->id, "total" => $totalPrice]);
+            $this->log->channel("audit")->info("Toys: order created", ["order_id" => $order->id, "total" => $totalPrice]);
 
             return $order;
         });
@@ -99,7 +99,7 @@ final class ToyOrderService
         $correlationId = $correlationId ?: (string) Str::uuid();
         $order = ToyOrder::findOrFail($orderId);
 
-        DB::transaction(function () use ($order, $correlationId) {
+        $this->db->transaction(function () use ($order, $correlationId) {
             // Реализация реальной оплаты (упрощенно через Wallet)
             $this->wallet->debit(
                 userId: $order->client_id,
@@ -133,7 +133,7 @@ final class ToyOrderService
 
             $order->update(["status" => "paid", "paid_at" => now()]);
 
-            Log::channel("audit")->info("Toys: payment processed", ["order_id" => $order->id, "payout" => $payout]);
+            $this->log->channel("audit")->info("Toys: payment processed", ["order_id" => $order->id, "payout" => $payout]);
         });
     }
 }

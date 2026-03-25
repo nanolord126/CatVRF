@@ -22,7 +22,7 @@ final class DeductTransportationCommissionListener implements ShouldQueue
     public function handle(FlightBooked|TransportationBooked $event): void
     {
         try {
-            DB::transaction(function () use ($event) {
+            $this->db->transaction(function () use ($event) {
                 $item = $event->flight ?? $event->transportation;
                 $itemType = $event instanceof FlightBooked ? 'flight' : 'transportation';
 
@@ -53,7 +53,7 @@ final class DeductTransportationCommissionListener implements ShouldQueue
                     'correlation_id' => $event->correlationId,
                 ]);
 
-                Log::channel('audit')->info("Travel {$itemType} commission deducted", [
+                $this->log->channel('audit')->info("Travel {$itemType} commission deducted", [
                     'item_id' => $item->id,
                     'item_type' => $itemType,
                     'agency_id' => $item->agency_id,
@@ -64,7 +64,7 @@ final class DeductTransportationCommissionListener implements ShouldQueue
                 ]);
             });
         } catch (Throwable $e) {
-            Log::channel('audit')->error("Travel {$itemType} commission deduction failed", [
+            $this->log->channel('audit')->error("Travel {$itemType} commission deduction failed", [
                 'item_id' => $event->flight->id ?? $event->transportation->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $event->correlationId,

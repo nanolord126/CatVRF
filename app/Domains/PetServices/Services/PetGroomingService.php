@@ -20,7 +20,7 @@ final class PetGroomingService
 
     public function createGroomingAppointment(array $data): PetGroomingServiceModel
     {
-        Log::channel('audit')->info('PetGroomingService: Creating grooming appointment', [
+        $this->log->channel('audit')->info('PetGroomingService: Creating grooming appointment', [
             'correlation_id' => $data['correlation_id'] ?? Str::uuid(),
             'pet_clinic_id' => $data['pet_clinic_id'],
             'tenant_id' => filament()->getTenant()->id,
@@ -34,7 +34,7 @@ final class PetGroomingService
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(fn () => PetGroomingServiceModel::create([
+$this->db->transaction(fn () => PetGroomingServiceModel::create([
             'uuid' => Str::uuid(),
             'correlation_id' => $data['correlation_id'] ?? Str::uuid(),
             'tenant_id' => filament()->getTenant()->id,
@@ -54,7 +54,7 @@ DB::transaction(fn () => PetGroomingServiceModel::create([
     {
         $appointment = PetGroomingServiceModel::findOrFail($appointmentId);
 
-        Log::channel('audit')->info('PetGroomingService: Confirming grooming appointment', [
+        $this->log->channel('audit')->info('PetGroomingService: Confirming grooming appointment', [
             'correlation_id' => $appointment->correlation_id,
             'appointment_id' => $appointmentId,
         ]);
@@ -67,7 +67,7 @@ DB::transaction(fn () => PetGroomingServiceModel::create([
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($appointment) {
+$this->db->transaction(function () use ($appointment) {
             $appointment->update(['status' => 'confirmed']);
             return true;
         });
@@ -77,7 +77,7 @@ DB::transaction(function () use ($appointment) {
     {
         $appointment = PetGroomingServiceModel::findOrFail($appointmentId);
 
-        Log::channel('audit')->info('PetGroomingService: Completing grooming appointment', [
+        $this->log->channel('audit')->info('PetGroomingService: Completing grooming appointment', [
             'correlation_id' => $appointment->correlation_id,
             'appointment_id' => $appointmentId,
         ]);
@@ -90,7 +90,7 @@ DB::transaction(function () use ($appointment) {
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($appointment, $photoUrls) {
+$this->db->transaction(function () use ($appointment, $photoUrls) {
             $appointment->update([
                 'status' => 'completed',
                 'completed_at' => now(),
@@ -128,7 +128,7 @@ DB::transaction(function () use ($appointment, $photoUrls) {
     {
         $appointment = PetGroomingServiceModel::findOrFail($appointmentId);
 
-        Log::channel('audit')->info('PetGroomingService: Cancelling grooming appointment', [
+        $this->log->channel('audit')->info('PetGroomingService: Cancelling grooming appointment', [
             'correlation_id' => $appointment->correlation_id,
             'appointment_id' => $appointmentId,
             'reason' => $reason,
@@ -142,7 +142,7 @@ DB::transaction(function () use ($appointment, $photoUrls) {
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($appointment, $reason) {
+$this->db->transaction(function () use ($appointment, $reason) {
             $appointment->update([
                 'status' => 'cancelled',
                 'cancellation_reason' => $reason,

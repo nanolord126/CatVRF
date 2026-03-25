@@ -32,10 +32,10 @@ final class PayoutScheduleService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-            DB::transaction(function () use ($bookingId, $amount, $correlationId) {
+            $this->db->transaction(function () use ($bookingId, $amount, $correlationId) {
                 $payoutDate = Carbon::now()->addDays(4);
 
-                DB::table('hotel_payouts')->insert([
+                $this->db->table('hotel_payouts')->insert([
                     'booking_id' => $bookingId,
                     'amount' => $amount,
                     'scheduled_at' => $payoutDate,
@@ -45,7 +45,7 @@ final class PayoutScheduleService
                     'updated_at' => now(),
                 ]);
 
-                Log::channel('audit')->info('Hotel payout scheduled', [
+                $this->log->channel('audit')->info('Hotel payout scheduled', [
                     'booking_id' => $bookingId,
                     'amount' => $amount,
                     'payout_date' => $payoutDate,
@@ -55,7 +55,7 @@ final class PayoutScheduleService
 
             return true;
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Hotel payout scheduling failed', [
+            $this->log->channel('audit')->error('Hotel payout scheduling failed', [
                 'booking_id' => $bookingId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -83,21 +83,21 @@ final class PayoutScheduleService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-            DB::transaction(function () use (&$processed, $correlationId) {
-                $payouts = DB::table('hotel_payouts')
+            $this->db->transaction(function () use (&$processed, $correlationId) {
+                $payouts = $this->db->table('hotel_payouts')
                     ->where('status', 'scheduled')
                     ->where('scheduled_at', '<=', now())
                     ->lockForUpdate()
                     ->get();
 
                 foreach ($payouts as $payout) {
-                    DB::table('hotel_payouts')
+                    $this->db->table('hotel_payouts')
                         ->where('id', $payout->id)
                         ->update(['status' => 'paid', 'paid_at' => now()]);
 
                     $processed++;
 
-                    Log::channel('audit')->info('Hotel payout processed', [
+                    $this->log->channel('audit')->info('Hotel payout processed', [
                         'payout_id' => $payout->id,
                         'booking_id' => $payout->booking_id,
                         'amount' => $payout->amount,
@@ -106,7 +106,7 @@ final class PayoutScheduleService
                 }
             });
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Hotel payout processing failed', [
+            $this->log->channel('audit')->error('Hotel payout processing failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
                 'trace' => $e->getTraceAsString(),

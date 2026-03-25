@@ -38,6 +38,12 @@ final class HotelRoomType extends Model
     /**
      * Отель
      */
+    /**
+     * Выполнить операцию
+     * 
+     * @return mixed
+     * @throws \Exception
+     */
     public function hotel(): BelongsTo
     {
         return $this->belongsTo(Hotel::class, 'hotel_id', 'id');

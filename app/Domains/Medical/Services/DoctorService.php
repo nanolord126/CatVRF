@@ -38,7 +38,7 @@ final class DoctorService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-DB::transaction(function () use (
+$this->db->transaction(function () use (
                 $tenantId,
                 $clinicId,
                 $userId,
@@ -62,7 +62,7 @@ DB::transaction(function () use (
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Medical doctor created', [
+                $this->log->channel('audit')->info('Medical doctor created', [
                     'doctor_id' => $doctor->id,
                     'clinic_id' => $clinicId,
                     'specialization' => $specialization,
@@ -72,7 +72,7 @@ DB::transaction(function () use (
                 return $doctor;
             });
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to create doctor', [
+            $this->log->channel('audit')->error('Failed to create doctor', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -96,10 +96,10 @@ DB::transaction(function () use (
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-DB::transaction(function () use ($doctor, $data, $correlationId) {
+$this->db->transaction(function () use ($doctor, $data, $correlationId) {
                 $doctor->update([...$data, 'correlation_id' => $correlationId]);
 
-                Log::channel('audit')->info('Medical doctor updated', [
+                $this->log->channel('audit')->info('Medical doctor updated', [
                     'doctor_id' => $doctor->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -107,7 +107,7 @@ DB::transaction(function () use ($doctor, $data, $correlationId) {
                 return $doctor;
             });
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to update doctor', [
+            $this->log->channel('audit')->error('Failed to update doctor', [
                 'doctor_id' => $doctor->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

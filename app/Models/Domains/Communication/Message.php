@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 namespace App\Models\Domains\Communication;
 
@@ -5,6 +7,15 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Database\Factories\MessageFactory;
 
+/**
+ * Message
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
 class Message extends Model
 {
     use HasFactory;

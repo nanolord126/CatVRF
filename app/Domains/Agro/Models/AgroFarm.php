@@ -48,6 +48,12 @@ final class AgroFarm extends Model
         });
     }
 
+    /**
+     * Выполнить операцию
+     * 
+     * @return mixed
+     * @throws \Exception
+     */
     public function products(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(AgroProduct::class, 'farm_id');

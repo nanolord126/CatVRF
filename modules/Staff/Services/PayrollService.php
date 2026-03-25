@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 namespace Modules\Staff\Services;
@@ -13,6 +15,8 @@ use Illuminate\Support\Facades\Log;
  */
 class PayrollService
 {
+    // Dependencies injected via constructor
+    // Add private readonly properties here
     /**
      * Выплата зарплаты из кошелька организации.
      */
@@ -20,13 +24,13 @@ class PayrollService
     {
         $correlationId = bin2hex(random_bytes(16));
 
-        DB::transaction(function () use ($slip, $correlationId) {
+        $this->db->transaction(function () use ($slip, $correlationId) {
             $employee = $slip->user;
             $organization = tenant(); // Тенант - владелец кошелька отеля/салона
 
             // Проверка баланса организации
             if ($organization->balance < $slip->net_salary) {
-                 Log::error('Payroll: Insufficient funds in organization wallet.', [
+                 $this->log->error('Payroll: Insufficient funds in organization wallet.', [
                      'tenant' => $organization->id,
                      'amount' => $slip->net_salary
                  ]);
@@ -43,7 +47,7 @@ class PayrollService
 
             $slip->update(['status' => 'paid', 'correlation_id' => $correlationId]);
             
-            Log::info("Payroll OK: Salary released for user #{$employee->id}", [
+            $this->log->info("Payroll OK: Salary released for user #{$employee->id}", [
                 'amount' => $slip->net_salary,
                 'correlation_id' => $correlationId
             ]);

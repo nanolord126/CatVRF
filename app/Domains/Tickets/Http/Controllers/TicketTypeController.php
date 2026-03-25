@@ -29,7 +29,7 @@ final class TicketTypeController extends Controller
                 'correlation_id' => Str::uuid()->toString(),
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to list ticket types', [
+            $this->log->channel('audit')->error('Failed to list ticket types', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -45,7 +45,7 @@ final class TicketTypeController extends Controller
         $this->fraudControlService->check(auth()->id() ?? 0, 'ticket_type_store', 0, request()->ip(), null, $correlationId);
 
         try {
-            $event = Event::findOrFail($eventId);
+            $event = $this->event->findOrFail($eventId);
             $this->authorize('create', TicketType::class);
 
             $validated = request()->validate([
@@ -74,7 +74,7 @@ final class TicketTypeController extends Controller
                 'correlation_id' => $correlationId,
             ]);
 
-            Log::channel('audit')->info('Ticket type created', [
+            $this->log->channel('audit')->info('Ticket type created', [
                 'ticket_type_id' => $ticketType->id,
                 'event_id' => $eventId,
                 'correlation_id' => $correlationId,
@@ -86,7 +86,7 @@ final class TicketTypeController extends Controller
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to create ticket type', [
+            $this->log->channel('audit')->error('Failed to create ticket type', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -113,7 +113,7 @@ final class TicketTypeController extends Controller
 
             $ticketType->update($validated + ['correlation_id' => $correlationId]);
 
-            Log::channel('audit')->info('Ticket type updated', [
+            $this->log->channel('audit')->info('Ticket type updated', [
                 'ticket_type_id' => $ticketType->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -124,7 +124,7 @@ final class TicketTypeController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to update ticket type', [
+            $this->log->channel('audit')->error('Failed to update ticket type', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -143,7 +143,7 @@ final class TicketTypeController extends Controller
             $correlationId = (string) Str::uuid()->toString();
             $ticketType->delete();
 
-            Log::channel('audit')->info('Ticket type deleted', [
+            $this->log->channel('audit')->info('Ticket type deleted', [
                 'ticket_type_id' => $id,
                 'correlation_id' => $correlationId,
             ]);
@@ -154,7 +154,7 @@ final class TicketTypeController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to delete ticket type', [
+            $this->log->channel('audit')->error('Failed to delete ticket type', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([

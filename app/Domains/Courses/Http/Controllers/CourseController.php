@@ -27,7 +27,7 @@ final class CourseController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to list courses', [
+            \$this->log->channel('audit')->error('Failed to list courses', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -49,7 +49,7 @@ final class CourseController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to show course', [
+            \$this->log->channel('audit')->error('Failed to show course', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -71,7 +71,7 @@ final class CourseController
         );
 
         if ($fraudResult['decision'] === 'block') {
-            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+            $this->log->channel('fraud_alert')->warning('Operation blocked by fraud control', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'score'          => $fraudResult['score'],
@@ -113,7 +113,7 @@ final class CourseController
                 'correlation_id' => $correlationId,
             ]);
 
-            \Log::channel('audit')->info('Course created', [
+            \$this->log->channel('audit')->info('Course created', [
                 'course_id' => $course->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -124,7 +124,7 @@ final class CourseController
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to create course', [
+            \$this->log->channel('audit')->error('Failed to create course', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -146,7 +146,7 @@ final class CourseController
         );
 
         if ($fraudResult['decision'] === 'block') {
-            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+            $this->log->channel('fraud_alert')->warning('Operation blocked by fraud control', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'score'          => $fraudResult['score'],
@@ -173,7 +173,7 @@ final class CourseController
             $correlationId = Str::uuid()->toString();
             $course->update($validated + ['correlation_id' => $correlationId]);
 
-            \Log::channel('audit')->info('Course updated', [
+            \$this->log->channel('audit')->info('Course updated', [
                 'course_id' => $course->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -184,7 +184,7 @@ final class CourseController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to update course', [
+            \$this->log->channel('audit')->error('Failed to update course', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -203,7 +203,7 @@ final class CourseController
             $correlationId = Str::uuid()->toString();
             $course->delete();
 
-            \Log::channel('audit')->info('Course deleted', [
+            \$this->log->channel('audit')->info('Course deleted', [
                 'course_id' => $id,
                 'correlation_id' => $correlationId,
             ]);
@@ -214,7 +214,7 @@ final class CourseController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to delete course', [
+            \$this->log->channel('audit')->error('Failed to delete course', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -235,7 +235,7 @@ final class CourseController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to fetch categories', [
+            \$this->log->channel('audit')->error('Failed to fetch categories', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -266,7 +266,7 @@ final class CourseController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to fetch analytics', [
+            \$this->log->channel('audit')->error('Failed to fetch analytics', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([

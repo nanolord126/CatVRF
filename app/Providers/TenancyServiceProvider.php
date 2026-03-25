@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -6,7 +8,16 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 
-final class TenancyServiceProvider extends ServiceProvider
+final /**
+ * TenancyServiceProvider
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class TenancyServiceProvider extends ServiceProvider
 {
     public function register(): void
     {

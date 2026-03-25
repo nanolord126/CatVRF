@@ -16,22 +16,23 @@ final class CreateModels3dTable extends Migration
 
         Schema::create('models_3d', static function (Blueprint $table): void {
             $table->id()->comment('Первичный ключ');
-            $table->uuid()->unique()->indexed()->comment('UUID для публичного доступа');
-            $table->unsignedBigInteger('tenant_id')->indexed()->comment('ID тенанта для изоляции');
-            $table->unsignedBigInteger('business_group_id')->nullable()->indexed()->comment('ID филиала (если применимо)');
-            $table->morphs('modelable')->comment('Polymorphic relation на Product/Service/Vehicle');
+            $table->uuid()->unique()->index()->comment('UUID для публичного доступа');
+            $table->unsignedBigInteger('tenant_id')->index()->comment('ID тенанта для изоляции');
+            $table->unsignedBigInteger('business_group_id')->nullable()->index()->comment('ID филиала (если применимо)');
+            $table->string('modelable_type', 255)->comment('Polymorphic relation type');
+            $table->unsignedBigInteger('modelable_id')->comment('Polymorphic relation ID');
             $table->string('name', 255)->comment('Название 3D модели');
             $table->text('description')->nullable()->comment('Описание модели');
-            $table->string('file_path', 500)->indexed()->comment('Путь к файлу в storage');
+            $table->string('file_path', 500)->index()->comment('Путь к файлу в storage');
             $table->enum('model_type', ['glb', 'gltf', 'obj', 'fbx'])->comment('Тип 3D модели');
             $table->bigInteger('file_size')->comment('Размер файла в байтах (макс 50MB = 52428800)');
-            $table->string('hash', 64)->unique()->indexed()->comment('SHA-256 хеш для дедупликации');
+            $table->string('hash', 64)->unique()->index()->comment('SHA-256 хеш для дедупликации');
             $table->json('metadata')->nullable()->comment('Метаданные: scale, position, rotation, animation settings');
-            $table->enum('status', ['uploading', 'processing', 'malware_scan', 'active', 'rejected', 'deleted'])->default('uploading')->indexed()->comment('Статус обработки модели');
+            $table->enum('status', ['uploading', 'processing', 'malware_scan', 'active', 'rejected', 'deleted'])->default('uploading')->index()->comment('Статус обработки модели');
             $table->text('rejection_reason')->nullable()->comment('Причина отклонения');
             $table->integer('download_count')->default(0)->comment('Количество скачиваний для аналитики');
             $table->integer('view_count')->default(0)->comment('Количество просмотров');
-            $table->string('correlation_id', 36)->nullable()->indexed()->comment('ID для трейсинга операции');
+            $table->string('correlation_id', 36)->nullable()->index()->comment('ID для трейсинга операции');
             $table->json('tags')->nullable()->comment('JSONB теги для фильтрации и аналитики');
             $table->softDeletes()->comment('Мягкое удаление');
             $table->timestamps();

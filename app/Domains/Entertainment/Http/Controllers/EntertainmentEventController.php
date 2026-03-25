@@ -19,7 +19,7 @@ final class EntertainmentEventController
     public function index(): JsonResponse
     {
         try {
-            $events = EntertainmentEvent::query()
+            $events = Entertainment$this->event->query()
                 ->where('status', '!=', 'cancelled')
                 ->with('venue', 'entertainer', 'schedules')
                 ->paginate(20);
@@ -33,7 +33,7 @@ final class EntertainmentEventController
     public function show(int $id): JsonResponse
     {
         try {
-            $event = EntertainmentEvent::with('venue', 'entertainer', 'schedules', 'reviews')->findOrFail($id);
+            $event = Entertainment$this->event->with('venue', 'entertainer', 'schedules', 'reviews')->findOrFail($id);
             return response()->json(['success' => true, 'data' => $event, 'correlation_id' => Str::uuid()]);
         } catch (\Throwable $e) {
             return response()->json(['success' => false, 'message' => 'Event not found', 'correlation_id' => Str::uuid()], 404);
@@ -52,7 +52,7 @@ final class EntertainmentEventController
         );
 
         if ($fraudResult['decision'] === 'block') {
-            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+            $this->log->channel('fraud_alert')->warning('Operation blocked by fraud control', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'score'          => $fraudResult['score'],
@@ -82,7 +82,7 @@ final class EntertainmentEventController
 
             return response()->json(['success' => true, 'data' => $event, 'correlation_id' => $correlationId], 201);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to create event', ['error' => $e->getMessage()]);
+            $this->log->channel('audit')->error('Failed to create event', ['error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 400);
         }
     }
@@ -99,7 +99,7 @@ final class EntertainmentEventController
         );
 
         if ($fraudResult['decision'] === 'block') {
-            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+            $this->log->channel('fraud_alert')->warning('Operation blocked by fraud control', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'score'          => $fraudResult['score'],
@@ -112,17 +112,17 @@ final class EntertainmentEventController
         }
 
         try {
-            $event = EntertainmentEvent::findOrFail($id);
+            $event = Entertainment$this->event->findOrFail($id);
             $correlationId = Str::uuid()->toString();
 
-            DB::transaction(function () use ($event, $correlationId) {
+            $this->db->transaction(function () use ($event, $correlationId) {
                 $event->update([
                     'name' => request('name', $event->name),
                     'description' => request('description', $event->description),
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Event updated', ['event_id' => $id, 'correlation_id' => $correlationId]);
+                $this->log->channel('audit')->info('Event updated', ['event_id' => $id, 'correlation_id' => $correlationId]);
             });
 
             return response()->json(['success' => true, 'data' => $event, 'correlation_id' => $correlationId]);
@@ -134,7 +134,7 @@ final class EntertainmentEventController
     public function cancel(int $id): JsonResponse
     {
         try {
-            $event = EntertainmentEvent::findOrFail($id);
+            $event = Entertainment$this->event->findOrFail($id);
             $correlationId = Str::uuid()->toString();
             $this->eventService->cancelEvent($event, $correlationId);
 
@@ -163,7 +163,7 @@ final class EntertainmentEventController
         try {
             $correlationId = Str::uuid()->toString();
 
-            DB::transaction(function () use ($eventId, $correlationId) {
+            $this->db->transaction(function () use ($eventId, $correlationId) {
                 $schedule = EventSchedule::create([
                     'tenant_id' => tenant('id'),
                     'entertainment_event_id' => $eventId,
@@ -176,7 +176,7 @@ final class EntertainmentEventController
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Event schedule created', ['event_id' => $eventId, 'correlation_id' => $correlationId]);
+                $this->log->channel('audit')->info('Event schedule created', ['event_id' => $eventId, 'correlation_id' => $correlationId]);
             });
 
             return response()->json(['success' => true, 'data' => null, 'correlation_id' => $correlationId], 201);
@@ -191,9 +191,9 @@ final class EntertainmentEventController
             $schedule = EventSchedule::findOrFail($scheduleId);
             $correlationId = Str::uuid()->toString();
 
-            DB::transaction(function () use ($schedule, $correlationId) {
+            $this->db->transaction(function () use ($schedule, $correlationId) {
                 $schedule->update(['correlation_id' => $correlationId]);
-                Log::channel('audit')->info('Schedule updated', ['schedule_id' => $schedule->id, 'correlation_id' => $correlationId]);
+                $this->log->channel('audit')->info('Schedule updated', ['schedule_id' => $schedule->id, 'correlation_id' => $correlationId]);
             });
 
             return response()->json(['success' => true, 'data' => $schedule, 'correlation_id' => $correlationId]);
@@ -208,9 +208,9 @@ final class EntertainmentEventController
             $schedule = EventSchedule::findOrFail($scheduleId);
             $correlationId = Str::uuid()->toString();
 
-            DB::transaction(function () use ($schedule, $correlationId) {
+            $this->db->transaction(function () use ($schedule, $correlationId) {
                 $schedule->update(['is_cancelled' => true, 'correlation_id' => $correlationId]);
-                Log::channel('audit')->info('Schedule cancelled', ['schedule_id' => $scheduleId, 'correlation_id' => $correlationId]);
+                $this->log->channel('audit')->info('Schedule cancelled', ['schedule_id' => $scheduleId, 'correlation_id' => $correlationId]);
             });
 
             return response()->json(['success' => true, 'data' => null, 'correlation_id' => $correlationId]);
@@ -237,7 +237,7 @@ final class EntertainmentEventController
         try {
             $correlationId = Str::uuid()->toString();
 
-            DB::transaction(function () use ($id, $correlationId) {
+            $this->db->transaction(function () use ($id, $correlationId) {
                 \App\Domains\Entertainment\Models\EventReview::create([
                     'tenant_id' => tenant('id'),
                     'entertainment_event_id' => $id,
@@ -248,7 +248,7 @@ final class EntertainmentEventController
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Event review created', ['event_id' => $id, 'correlation_id' => $correlationId]);
+                $this->log->channel('audit')->info('Event review created', ['event_id' => $id, 'correlation_id' => $correlationId]);
             });
 
             return response()->json(['success' => true, 'data' => null, 'correlation_id' => $correlationId], 201);
@@ -260,7 +260,7 @@ final class EntertainmentEventController
     public function analytics(int $eventId): JsonResponse
     {
         try {
-            $event = EntertainmentEvent::findOrFail($eventId);
+            $event = Entertainment$this->event->findOrFail($eventId);
             $bookings = $event->schedules()->sum(function ($schedule) {
                 return $schedule->bookings()->count();
             });

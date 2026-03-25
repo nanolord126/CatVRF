@@ -1,5 +1,29 @@
 <?php declare(strict_types=1);
-namespace App\Domains\ArtisticServices\Models;
+namespace App\
+
+/**
+ * Artist
+ * 
+ * Производитель: CatVRF Platform
+ * Версия: 1.0.0
+ * 
+ * Примеры использования:
+ * 
+ * ```php
+ * // Базовое использование
+ * $instance = new Artist();
+ * ```
+ * 
+ * Требования:
+ * - Laravel 10+
+ * - PHP 8.2+
+ * - Все методы должны быть явно типизированы
+ * 
+ * @author CatVRF
+ * @package namespace App\Domains\ArtisticServices\Models
+ * @see https://github.com/iyegorovskyi_clemny/CatVRF
+ */
+Domains\ArtisticServices\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;

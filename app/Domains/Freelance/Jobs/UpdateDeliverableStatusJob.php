@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Freelance\Jobs;
@@ -10,7 +12,16 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-final class UpdateDeliverableStatusJob implements ShouldQueue
+final /**
+ * UpdateDeliverableStatusJob
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class UpdateDeliverableStatusJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -26,7 +37,7 @@ final class UpdateDeliverableStatusJob implements ShouldQueue
     {
         $deliverable = FreelanceDeliverable::find($this->deliverableId);
         if (!$deliverable) {
-            Log::channel('audit')->warning('Deliverable not found', [
+            $this->log->channel('audit')->warning('Deliverable not found', [
                 'deliverable_id' => $this->deliverableId,
                 'correlation_id' => $this->correlationId,
             ]);
@@ -36,7 +47,7 @@ final class UpdateDeliverableStatusJob implements ShouldQueue
         if ($deliverable->status === 'submitted' && $deliverable->created_at->addDays(7)->isPast()) {
             $deliverable->update(['status' => 'pending']);
             
-            Log::channel('audit')->info('Deliverable status auto-reset to pending after 7 days', [
+            $this->log->channel('audit')->info('Deliverable status auto-reset to pending after 7 days', [
                 'deliverable_id' => $this->deliverableId,
                 'correlation_id' => $this->correlationId,
             ]);

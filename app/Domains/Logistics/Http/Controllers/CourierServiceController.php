@@ -31,7 +31,7 @@ final class CourierServiceController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to fetch couriers', ['error' => $e->getMessage()]);
+            $this->log->channel('audit')->error('Failed to fetch couriers', ['error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
         }
     }
@@ -126,11 +126,11 @@ final class CourierServiceController
         try {
             $correlationId = Str::uuid()->toString();
 
-            DB::transaction(function () use ($shipmentId, $correlationId) {
+            $this->db->transaction(function () use ($shipmentId, $correlationId) {
                 $shipment = \App\Domains\Logistics\Models\Shipment::findOrFail($shipmentId);
                 $shipment->update(['status' => request('status'), 'correlation_id' => $correlationId]);
 
-                Log::channel('audit')->info('Shipment status updated', ['shipment_id' => $shipmentId, 'correlation_id' => $correlationId]);
+                $this->log->channel('audit')->info('Shipment status updated', ['shipment_id' => $shipmentId, 'correlation_id' => $correlationId]);
             });
 
             return response()->json(['success' => true, 'data' => null, 'correlation_id' => $correlationId]);
@@ -163,9 +163,9 @@ final class CourierServiceController
             $courier = CourierService::findOrFail($courierId);
             $correlationId = Str::uuid()->toString();
 
-            DB::transaction(function () use ($courier, $correlationId) {
+            $this->db->transaction(function () use ($courier, $correlationId) {
                 $courier->update(['is_verified' => true, 'correlation_id' => $correlationId]);
-                Log::channel('audit')->info('Courier verified', ['courier_id' => $courier->id, 'correlation_id' => $correlationId]);
+                $this->log->channel('audit')->info('Courier verified', ['courier_id' => $courier->id, 'correlation_id' => $correlationId]);
             });
 
             return response()->json(['success' => true, 'data' => $courier, 'correlation_id' => $correlationId]);
@@ -200,9 +200,9 @@ final class CourierServiceController
             $courier = CourierService::findOrFail($id);
             $correlationId = Str::uuid()->toString();
 
-            DB::transaction(function () use ($courier, $correlationId) {
+            $this->db->transaction(function () use ($courier, $correlationId) {
                 $courier->delete();
-                Log::channel('audit')->info('Courier deleted', ['courier_id' => $id, 'correlation_id' => $correlationId]);
+                $this->log->channel('audit')->info('Courier deleted', ['courier_id' => $id, 'correlation_id' => $correlationId]);
             });
 
             return response()->json(['success' => true, 'data' => null, 'correlation_id' => $correlationId]);

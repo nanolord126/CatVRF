@@ -21,7 +21,7 @@ final class CosmeticsService
         if (RateLimiter::tooManyAttempts("cosmetics:order:".auth()->id(), 15)) throw new \RuntimeException("Too many orders", 429);
         RateLimiter::hit("cosmetics:order:".auth()->id(), 3600);
 
-        return DB::transaction(function () use ($sellerId, $items, $correlationId) {
+        return $this->db->transaction(function () use ($sellerId, $items, $correlationId) {
             $total = 0;
             foreach ($items as $item) {
                 $product = CosmeticProduct::where('id', $item['product_id'])->firstOrFail();
@@ -31,7 +31,7 @@ final class CosmeticsService
 
             $fraud = $this->fraud->check(['user_id' => auth()->id() ?? 0, 'operation_type' => 'cosmetic_order', 'correlation_id' => $correlationId, 'amount' => $total]);
             if ($fraud['decision'] === 'block') {
-                Log::channel('audit')->error('Cosmetic order blocked', ['user_id' => auth()->id(), 'correlation_id' => $correlationId]);
+                $this->log->channel('audit')->error('Cosmetic order blocked', ['user_id' => auth()->id(), 'correlation_id' => $correlationId]);
                 throw new \RuntimeException("Security block", 403);
             }
 
@@ -42,7 +42,7 @@ final class CosmeticsService
                 'tags' => ['cosmetics' => true],
             ]);
 
-            Log::channel('audit')->info('Cosmetic order created', ['order_id' => $order->id, 'correlation_id' => $correlationId]);
+            $this->log->channel('audit')->info('Cosmetic order created', ['order_id' => $order->id, 'correlation_id' => $correlationId]);
             return $order;
         });
     }
@@ -50,7 +50,7 @@ final class CosmeticsService
     public function completeOrder(int $orderId, string $correlationId = ""): CosmeticOrder
     {
         $correlationId = $correlationId ?: (string) Str::uuid();
-        return DB::transaction(function () use ($orderId, $correlationId) {
+        return $this->db->transaction(function () use ($orderId, $correlationId) {
             $order = CosmeticOrder::findOrFail($orderId);
             if ($order->payment_status !== 'completed') throw new \RuntimeException("Order not paid", 400);
             foreach ($order->items_json as $item) {
@@ -58,7 +58,7 @@ final class CosmeticsService
             }
             $order->update(['status' => 'completed', 'correlation_id' => $correlationId]);
             $this->wallet->credit(tenant()->id, $order->payout_kopecks, 'cosmetic_payout', ['correlation_id' => $correlationId, 'order_id' => $order->id]);
-            Log::channel('audit')->info('Cosmetic order completed', ['order_id' => $order->id, 'correlation_id' => $correlationId]);
+            $this->log->channel('audit')->info('Cosmetic order completed', ['order_id' => $order->id, 'correlation_id' => $correlationId]);
             return $order;
         });
     }
@@ -66,14 +66,14 @@ final class CosmeticsService
     public function cancelOrder(int $orderId, string $correlationId = ""): CosmeticOrder
     {
         $correlationId = $correlationId ?: (string) Str::uuid();
-        return DB::transaction(function () use ($orderId, $correlationId) {
+        return $this->db->transaction(function () use ($orderId, $correlationId) {
             $order = CosmeticOrder::findOrFail($orderId);
             if ($order->status === 'completed') throw new \RuntimeException("Cannot cancel completed", 400);
             $order->update(['status' => 'cancelled', 'payment_status' => 'refunded', 'correlation_id' => $correlationId]);
             if ($order->payment_status === 'completed') {
                 $this->wallet->credit(tenant()->id, $order->total_kopecks, 'cosmetic_refund', ['correlation_id' => $correlationId, 'order_id' => $order->id]);
             }
-            Log::channel('audit')->info('Cosmetic order cancelled', ['order_id' => $order->id, 'correlation_id' => $correlationId]);
+            $this->log->channel('audit')->info('Cosmetic order cancelled', ['order_id' => $order->id, 'correlation_id' => $correlationId]);
             return $order;
         });
     }

@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -8,7 +10,16 @@ use App\Filament\Tenant\Resources\MasterResource;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Str;
 
-final class CreateMaster extends CreateRecord
+final /**
+ * CreateMaster
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class CreateMaster extends CreateRecord
 {
     protected static string $resource = MasterResource::class;
 

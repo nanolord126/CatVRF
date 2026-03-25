@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Fitness\Filament\Resources\FitnessClassResource\Pages;
@@ -5,7 +7,16 @@ namespace App\Domains\Fitness\Filament\Resources\FitnessClassResource\Pages;
 use App\Domains\Fitness\Filament\Resources\FitnessClassResource;
 use Filament\Resources\Pages\EditRecord;
 
-final class EditFitnessClass extends EditRecord
+final /**
+ * EditFitnessClass
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class EditFitnessClass extends EditRecord
 {
     protected static string $resource = FitnessClassResource::class;
 }

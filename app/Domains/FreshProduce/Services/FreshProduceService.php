@@ -36,7 +36,7 @@ final class FreshProduceService
     {
         $correlationId = $correlationId ?: (string) Str::uuid();
 
-        return DB::transaction(function () use ($supplierId, $boxType, $correlationId) {
+        return $this->db->transaction(function () use ($supplierId, $boxType, $correlationId) {
             $supplier = FarmSupplier::findOrFail($supplierId);
             
             // 1. Fraud Check - проверка на мультиаккаунтинг для получения скидок
@@ -65,7 +65,7 @@ final class FreshProduceService
                 "tags" => ["fresh", "organic", "subscription"]
             ]);
 
-            Log::channel("audit")->info("Fresh: subscription created", ["box_id" => $box->id, "supplier" => $supplierId]);
+            $this->log->channel("audit")->info("Fresh: subscription created", ["box_id" => $box->id, "supplier" => $supplierId]);
 
             return $box;
         });
@@ -79,11 +79,11 @@ final class FreshProduceService
         $correlationId = $correlationId ?: (string) Str::uuid();
         $box = ProduceBox::with("supplier")->findOrFail($boxId);
 
-        DB::transaction(function () use ($box, $correlationId) {
+        $this->db->transaction(function () use ($box, $correlationId) {
             // 3. Проверка остатков (Inventory)
             $stock = $this->inventory->getCurrentStock($box->supplier_id);
             if ($stock <= 0) {
-                Log::channel("audit")->error("Fresh: out of stock", ["supplier" => $box->supplier_id]);
+                $this->log->channel("audit")->error("Fresh: out of stock", ["supplier" => $box->supplier_id]);
                 throw new \RuntimeException("Supplier out of stock for daily delivery.");
             }
 
@@ -117,7 +117,7 @@ final class FreshProduceService
                 correlationId: $correlationId
             );
 
-            Log::channel("audit")->info("Fresh: delivery processed", ["box_id" => $box->id, "payout" => $payout]);
+            $this->log->channel("audit")->info("Fresh: delivery processed", ["box_id" => $box->id, "payout" => $payout]);
         });
     }
 
@@ -131,7 +131,7 @@ final class FreshProduceService
             ->get();
 
         foreach ($expiredItems as $item) {
-            Log::channel("audit")->warning("Fresh: item expiring soon", [
+            $this->log->channel("audit")->warning("Fresh: item expiring soon", [
                 "item_id" => $item->id,
                 "expiry" => $item->expiry_date
             ]);

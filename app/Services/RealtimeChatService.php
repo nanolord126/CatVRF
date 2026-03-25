@@ -42,22 +42,22 @@ final class RealtimeChatService
                 'correlation_id' => $correlationId,
             ];
 
-            Cache::put($messageKey, $message, self::CHAT_TTL);
+            $this->cache->put($messageKey, $message, self::CHAT_TTL);
 
             // Добавляем в историю комнаты
             $roomHistoryKey = "chat:room:{$roomId}:messages";
-            $messages = Cache::get($roomHistoryKey, []);
+            $messages = $this->cache->get($roomHistoryKey, []);
             $messages[] = $messageId;
 
             // Сохраняем только последние 1000 сообщений
             if (count($messages) > 1000) {
                 $oldestMessageId = array_shift($messages);
-                Cache::forget("chat:message:{$roomId}:{$oldestMessageId}");
+                $this->cache->forget("chat:message:{$roomId}:{$oldestMessageId}");
             }
 
-            Cache::put($roomHistoryKey, $messages, self::CHAT_TTL);
+            $this->cache->put($roomHistoryKey, $messages, self::CHAT_TTL);
 
-            Log::channel('audit')->debug('Chat message created', [
+            $this->log->channel('audit')->debug('Chat message created', [
                 'correlation_id' => $correlationId,
                 'message_id' => $messageId,
                 'room_id' => $roomId,
@@ -66,7 +66,7 @@ final class RealtimeChatService
 
             return $message;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to create chat message', [
+            $this->log->channel('audit')->error('Failed to create chat message', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -83,7 +83,7 @@ final class RealtimeChatService
         int $limit = 50
     ): Collection {
         $roomHistoryKey = "chat:room:{$roomId}:messages";
-        $messageIds = Cache::get($roomHistoryKey, []);
+        $messageIds = $this->cache->get($roomHistoryKey, []);
 
         $messages = collect();
 
@@ -92,7 +92,7 @@ final class RealtimeChatService
 
         foreach ($recentMessageIds as $messageId) {
             $messageKey = "chat:message:{$roomId}:{$messageId}";
-            $message = Cache::get($messageKey);
+            $message = $this->cache->get($messageKey);
 
             if ($message && !$message['deleted']) {
                 $messages->push($message);
@@ -115,7 +115,7 @@ final class RealtimeChatService
 
         try {
             $messageKey = "chat:message:{$roomId}:{$messageId}";
-            $message = Cache::get($messageKey);
+            $message = $this->cache->get($messageKey);
 
             if (!$message) {
                 throw new \Exception("Message not found: {$messageId}");
@@ -128,9 +128,9 @@ final class RealtimeChatService
             $message['deleted'] = true;
             $message['deleted_at'] = now()->toIso8601String();
 
-            Cache::put($messageKey, $message, self::CHAT_TTL);
+            $this->cache->put($messageKey, $message, self::CHAT_TTL);
 
-            Log::channel('audit')->info('Chat message deleted', [
+            $this->log->channel('audit')->info('Chat message deleted', [
                 'correlation_id' => $correlationId,
                 'message_id' => $messageId,
                 'room_id' => $roomId,
@@ -138,7 +138,7 @@ final class RealtimeChatService
 
             return true;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to delete chat message', [
+            $this->log->channel('audit')->error('Failed to delete chat message', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -161,7 +161,7 @@ final class RealtimeChatService
 
         try {
             $messageKey = "chat:message:{$roomId}:{$messageId}";
-            $message = Cache::get($messageKey);
+            $message = $this->cache->get($messageKey);
 
             if (!$message) {
                 throw new \Exception("Message not found: {$messageId}");
@@ -174,16 +174,16 @@ final class RealtimeChatService
             $message['content'] = $content;
             $message['edited_at'] = now()->toIso8601String();
 
-            Cache::put($messageKey, $message, self::CHAT_TTL);
+            $this->cache->put($messageKey, $message, self::CHAT_TTL);
 
-            Log::channel('audit')->info('Chat message edited', [
+            $this->log->channel('audit')->info('Chat message edited', [
                 'correlation_id' => $correlationId,
                 'message_id' => $messageId,
             ]);
 
             return $message;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to edit chat message', [
+            $this->log->channel('audit')->error('Failed to edit chat message', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -217,9 +217,9 @@ final class RealtimeChatService
                 'correlation_id' => $correlationId,
             ];
 
-            Cache::put($roomKey, $room, self::ACTIVE_ROOMS_TTL);
+            $this->cache->put($roomKey, $room, self::ACTIVE_ROOMS_TTL);
 
-            Log::channel('audit')->info('Chat room created', [
+            $this->log->channel('audit')->info('Chat room created', [
                 'correlation_id' => $correlationId,
                 'room_id' => $roomId,
                 'tenant_id' => $tenantId,
@@ -227,7 +227,7 @@ final class RealtimeChatService
 
             return $room;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to create chat room', [
+            $this->log->channel('audit')->error('Failed to create chat room', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -248,7 +248,7 @@ final class RealtimeChatService
 
         try {
             $roomKey = "chat:room:{$roomId}";
-            $room = Cache::get($roomKey);
+            $room = $this->cache->get($roomKey);
 
             if (!$room) {
                 throw new \Exception("Room not found: {$roomId}");
@@ -256,12 +256,12 @@ final class RealtimeChatService
 
             if (!in_array($userId, $room['members'])) {
                 $room['members'][] = $userId;
-                Cache::put($roomKey, $room, self::ACTIVE_ROOMS_TTL);
+                $this->cache->put($roomKey, $room, self::ACTIVE_ROOMS_TTL);
             }
 
             return true;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to add member to room', [
+            $this->log->channel('audit')->error('Failed to add member to room', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);

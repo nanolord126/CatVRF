@@ -31,7 +31,7 @@ final class OfficeCateringOrderController extends BaseApiController
 
             return $this->successResponse($orders);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('OfficeCatering orders list error', ['error' => $e->getMessage()]);
+            $this->log->channel('audit')->error('OfficeCatering orders list error', ['error' => $e->getMessage()]);
             return $this->errorResponse('Failed to fetch orders', 500);
         }
     }
@@ -53,11 +53,11 @@ final class OfficeCateringOrderController extends BaseApiController
                 correlationId: $correlationId,
             );
 
-            Log::channel('audit')->info('OfficeCatering order created', ['order_id' => $order->id]);
+            $this->log->channel('audit')->info('OfficeCatering order created', ['order_id' => $order->id]);
 
             return $this->successResponse($order, 'Order placed successfully', 201);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('OfficeCatering order creation failed', ['error' => $e->getMessage()]);
+            $this->log->channel('audit')->error('OfficeCatering order creation failed', ['error' => $e->getMessage()]);
             return $this->errorResponse('Failed to place order: ' . $e->getMessage(), 400);
         }
     }
@@ -77,11 +77,11 @@ final class OfficeCateringOrderController extends BaseApiController
                 correlationId: $correlationId,
             );
 
-            Log::channel('audit')->info('OfficeCatering recurring setup', ['order_id' => $id]);
+            $this->log->channel('audit')->info('OfficeCatering recurring setup', ['order_id' => $id]);
 
             return $this->successResponse($recurring, 'Recurring order setup');
         } catch (\Exception $e) {
-            Log::channel('audit')->error('OfficeCatering recurring setup failed', ['error' => $e->getMessage()]);
+            $this->log->channel('audit')->error('OfficeCatering recurring setup failed', ['error' => $e->getMessage()]);
             return $this->errorResponse('Failed to setup recurring', 400);
         }
     }

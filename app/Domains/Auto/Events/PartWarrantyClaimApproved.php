@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Auto\Events;
@@ -10,7 +12,16 @@ use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-final class PartWarrantyClaimApproved implements ShouldBroadcast
+final /**
+ * PartWarrantyClaimApproved
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class PartWarrantyClaimApproved implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -18,7 +29,7 @@ final class PartWarrantyClaimApproved implements ShouldBroadcast
         public readonly PartWarranty $warranty,
         public readonly string $correlationId
     ) {
-        Log::channel('audit')->info('PartWarrantyClaimApproved event dispatched', [
+        $this->log->channel('audit')->info('PartWarrantyClaimApproved event dispatched', [
             'correlation_id' => $this->correlationId,
             'warranty_id' => $this->warranty->id,
             'warranty_number' => $this->warranty->warranty_number,

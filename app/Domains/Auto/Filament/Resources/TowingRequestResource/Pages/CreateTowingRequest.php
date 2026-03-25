@@ -30,7 +30,7 @@ final class CreateTowingRequest extends CreateRecord
         ]);
 
         if ($fraudCheck['blocked']) {
-            Log::channel('fraud_alert')->warning('Towing request blocked', [
+            $this->log->channel('fraud_alert')->warning('Towing request blocked', [
                 'correlation_id' => $correlationId,
             ]);
             throw new \Exception('Операция заблокирована системой безопасности');
@@ -41,8 +41,8 @@ final class CreateTowingRequest extends CreateRecord
 
     protected function afterCreate(): void
     {
-        DB::transaction(function () {
-            Log::channel('audit')->info('TowingRequest created', [
+        $this->db->transaction(function () {
+            $this->log->channel('audit')->info('TowingRequest created', [
                 'correlation_id' => $this->record->correlation_id,
                 'request_id' => $this->record->id,
             ]);
@@ -53,7 +53,7 @@ final class CreateTowingRequest extends CreateRecord
             ));
         });
 
-        Notification::make()
+        $this->notification->make()
             ->success()
             ->title('Заявка на эвакуатор создана')
             ->body('Ожидайте назначения водителя')

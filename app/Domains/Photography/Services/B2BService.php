@@ -18,9 +18,9 @@ final readonly class B2BService
 	public function createStorefront(array $data): B2BPhotoStorefront
 	{
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Photography', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in Photography', ['correlation_id' => $correlationId]);
 
-		return DB::transaction(function () use ($data) {
+		return $this->db->transaction(function () use ($data) {
 			$correlationId = $data['correlation_id'] ?? Str::uuid()->toString();
 
 			$storefront = B2BPhotoStorefront::create([
@@ -36,7 +36,7 @@ final readonly class B2BService
 				'correlation_id' => $correlationId,
 			]);
 
-			Log::channel('audit')->info('Photography B2B: Storefront created', [
+			$this->log->channel('audit')->info('Photography B2B: Storefront created', [
 				'storefront_id' => $storefront->id,
 				'inn' => $data['inn'],
 				'correlation_id' => $correlationId,
@@ -49,9 +49,9 @@ final readonly class B2BService
 	public function createB2BOrder(array $data): B2BPhotoOrder
 	{
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Photography', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in Photography', ['correlation_id' => $correlationId]);
 
-		return DB::transaction(function () use ($data) {
+		return $this->db->transaction(function () use ($data) {
 			$correlationId = $data['correlation_id'] ?? Str::uuid()->toString();
 
 			$order = B2BPhotoOrder::create([
@@ -70,7 +70,7 @@ final readonly class B2BService
 				'correlation_id' => $correlationId,
 			]);
 
-			Log::channel('audit')->info('Photography B2B: Order created', [
+			$this->log->channel('audit')->info('Photography B2B: Order created', [
 				'order_id' => $order->id,
 				'amount' => $data['total_amount'],
 				'correlation_id' => $correlationId,
@@ -83,12 +83,12 @@ final readonly class B2BService
 	public function approveB2BOrder(B2BPhotoOrder $order): B2BPhotoOrder
 	{
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Photography', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in Photography', ['correlation_id' => $correlationId]);
 
-		return DB::transaction(function () use ($order) {
+		return $this->db->transaction(function () use ($order) {
 			$order->update(['status' => 'approved']);
 
-			Log::channel('audit')->info('Photography B2B: Order approved', [
+			$this->log->channel('audit')->info('Photography B2B: Order approved', [
 				'order_id' => $order->id,
 				'correlation_id' => $order->correlation_id,
 			]);

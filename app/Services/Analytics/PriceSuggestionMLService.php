@@ -33,10 +33,10 @@ final class PriceSuggestionMLService
     {
         $cacheKey = "price_suggestion:{$productId}";
 
-        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($productId, $tenantId) {
+        return $this->cache->remember($cacheKey, self::CACHE_TTL, function () use ($productId, $tenantId) {
             try {
                 // Получаем исходные данные
-                $product = DB::table('products')->find($productId);
+                $product = $this->db->table('products')->find($productId);
                 if (!$product) {
                     return $this->getDefaultPriceResponse();
                 }
@@ -84,7 +84,7 @@ final class PriceSuggestionMLService
                 ];
 
             } catch (\Throwable $e) {
-                Log::channel('analytics_errors')->error('Price suggestion failed', [
+                $this->log->channel('analytics_errors')->error('Price suggestion failed', [
                     'product_id' => $productId,
                     'error' => $e->getMessage()
                 ]);
@@ -104,17 +104,17 @@ final class PriceSuggestionMLService
     {
         $last30Days = now()->subDays(30)->startOfDay();
 
-        $views = DB::table('user_views')
+        $views = $this->db->table('user_views')
             ->where('product_id', $productId)
             ->where('created_at', '>=', $last30Days)
             ->count();
 
-        $cartAdds = DB::table('cart_items')
+        $cartAdds = $this->db->table('cart_items')
             ->where('product_id', $productId)
             ->where('created_at', '>=', $last30Days)
             ->count();
 
-        $sales = DB::table('order_items')
+        $sales = $this->db->table('order_items')
             ->where('product_id', $productId)
             ->where('created_at', '>=', $last30Days)
             ->count();
@@ -151,10 +151,10 @@ final class PriceSuggestionMLService
      */
     private function analyzeCompetition(int $productId, float $basePrice): float
     {
-        $product = DB::table('products')->find($productId);
+        $product = $this->db->table('products')->find($productId);
         
         // Получаем среднюю цену конкурентов в той же категории
-        $competitorAvgPrice = DB::table('products')
+        $competitorAvgPrice = $this->db->table('products')
             ->where('category_id', $product->category_id)
             ->where('id', '!=', $productId)
             ->where('status', 'active')
@@ -186,14 +186,14 @@ final class PriceSuggestionMLService
         $currentDayOfWeek = (int)now()->format('w');
 
         // Получаем среднюю продажу в этот месяц за последние 2 года
-        $historicalMonthAvg = DB::table('order_items')
+        $historicalMonthAvg = $this->db->table('order_items')
             ->where('product_id', $productId)
             ->whereRaw('MONTH(created_at) = ?', [$currentMonth])
             ->where('created_at', '>=', now()->subYears(2))
             ->count() / 2; // Делим на 2 года
 
         // Получаем среднюю продажу во все месяцы
-        $overallAvg = DB::table('order_items')
+        $overallAvg = $this->db->table('order_items')
             ->where('product_id', $productId)
             ->where('created_at', '>=', now()->subYears(2))
             ->count() / 24; // Делим на 24 месяца

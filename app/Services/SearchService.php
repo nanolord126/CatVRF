@@ -38,7 +38,7 @@ final readonly class SearchService
         int $perPage = 20,
     ): array {
         try {
-            Log::channel('audit')->info('Search executed', [
+            $this->log->channel('audit')->info('Search executed', [
                 'query' => $query,
                 'user_id' => $userId,
                 'filters' => count($filters),
@@ -48,7 +48,7 @@ final readonly class SearchService
             $cacheKey = "search:{$query}:user:{$userId}:page:{$page}:v1";
 
             // Проверяем кэш
-            $cached = Cache::get($cacheKey);
+            $cached = $this->cache->get($cacheKey);
             if ($cached) {
                 return $cached;
             }
@@ -84,11 +84,11 @@ final readonly class SearchService
             ];
 
             // Кэшируем на 1 час
-            Cache::put($cacheKey, $response, now()->addHour());
+            $this->cache->put($cacheKey, $response, now()->addHour());
 
             return $response;
         } catch (Exception $e) {
-            Log::channel('audit')->error('Search failed', [
+            $this->log->channel('audit')->error('Search failed', [
                 'query' => $query,
                 'error' => $e->getMessage(),
             ]);
@@ -123,10 +123,10 @@ final readonly class SearchService
     public function boostProductFromWishlist(int $productId, int $boostPoints = 10): void
     {
         $key = "search:product:{$productId}:boost";
-        $current = (int) Cache::get($key, 0);
-        Cache::put($key, $current + $boostPoints, now()->addDays(30));
+        $current = (int) $this->cache->get($key, 0);
+        $this->cache->put($key, $current + $boostPoints, now()->addDays(30));
 
-        Log::channel('audit')->info('Product boost applied', [
+        $this->log->channel('audit')->info('Product boost applied', [
             'product_id' => $productId,
             'boost_points' => $boostPoints,
         ]);
@@ -143,10 +143,10 @@ final readonly class SearchService
     public function demoteProductFromWishlist(int $productId, int $penaltyPoints = 5): void
     {
         $key = "search:product:{$productId}:penalty";
-        $current = (int) Cache::get($key, 0);
-        Cache::put($key, $current + $penaltyPoints, now()->addDays(30));
+        $current = (int) $this->cache->get($key, 0);
+        $this->cache->put($key, $current + $penaltyPoints, now()->addDays(30));
 
-        Log::channel('audit')->info('Product demotion applied', [
+        $this->log->channel('audit')->info('Product demotion applied', [
             'product_id' => $productId,
             'penalty_points' => $penaltyPoints,
         ]);

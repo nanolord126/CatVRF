@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -9,7 +11,16 @@ use App\Services\CollaborationService;
 use App\Services\TeamPresenceService;
 use Illuminate\Support\Facades\Cache;
 
-final class LiveEditingWidget extends Widget
+final /**
+ * LiveEditingWidget
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class LiveEditingWidget extends Widget
 {
     protected static string $view = 'filament.widgets.live-editing-widget';
 
@@ -37,7 +48,7 @@ final class LiveEditingWidget extends Widget
             $this->activePresence = [];
             $this->presenceCount = 0;
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::channel('audit')->error('Failed to load live editing data', [
+            \Illuminate\Support\Facades\$this->log->channel('audit')->error('Failed to load live editing data', [
                 'error' => $e->getMessage(),
             ]);
         }

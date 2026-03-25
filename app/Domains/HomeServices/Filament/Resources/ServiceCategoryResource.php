@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\HomeServices\Filament\Resources;
@@ -10,7 +12,16 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
-final class ServiceCategoryResource extends Resource
+final /**
+ * ServiceCategoryResource
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class ServiceCategoryResource extends Resource
 {
     protected static ?string $model = ServiceCategory::class;
     protected static ?string $navigationIcon = 'heroicon-o-list-bullet';

@@ -1,10 +1,21 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Confectionery\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-final class CakeOrderStoreRequest extends FormRequest
+final /**
+ * CakeOrderStoreRequest
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class CakeOrderStoreRequest extends FormRequest
 {
     public function authorize(): bool
     {

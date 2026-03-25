@@ -30,7 +30,7 @@ final class FarmService
         }
         RateLimiter::hit("farm:order:".auth()->id(), 3600);
 
-        return DB::transaction(function () use ($farmId, $items, $data, $correlationId) {
+        return $this->db->transaction(function () use ($farmId, $items, $data, $correlationId) {
             $farm = Farm::findOrFail($farmId);
             $total = 0;
 
@@ -54,7 +54,7 @@ final class FarmService
             ]);
 
             if ($fraud['decision'] === 'block') {
-                Log::channel('audit')->error('Farm order blocked by fraud', [
+                $this->log->channel('audit')->error('Farm order blocked by fraud', [
                     'user_id' => auth()->id(),
                     'score' => $fraud['score'],
                     'correlation_id' => $correlationId,
@@ -79,7 +79,7 @@ final class FarmService
                 'tags' => ['farm_direct' => true, 'total_items' => count($items), 'delivery_date' => now()->toDateString()],
             ]);
 
-            Log::channel('audit')->info('Farm order created', [
+            $this->log->channel('audit')->info('Farm order created', [
                 'order_id' => $order->id,
                 'farm_id' => $farmId,
                 'total_kopecks' => $total,
@@ -95,7 +95,7 @@ final class FarmService
     {
         $correlationId = $correlationId ?: (string) Str::uuid();
 
-        return DB::transaction(function () use ($orderId, $correlationId) {
+        return $this->db->transaction(function () use ($orderId, $correlationId) {
             $order = FarmOrder::findOrFail($orderId);
 
             if ($order->payment_status !== 'completed') {
@@ -122,7 +122,7 @@ final class FarmService
                 'order_id' => $order->id,
             ]);
 
-            Log::channel('audit')->info('Farm order completed and payout credited', [
+            $this->log->channel('audit')->info('Farm order completed and payout credited', [
                 'order_id' => $order->id,
                 'farm_id' => $order->farm_id,
                 'payout_kopecks' => $order->payout_kopecks,
@@ -137,7 +137,7 @@ final class FarmService
     {
         $correlationId = $correlationId ?: (string) Str::uuid();
 
-        return DB::transaction(function () use ($orderId, $correlationId) {
+        return $this->db->transaction(function () use ($orderId, $correlationId) {
             $order = FarmOrder::findOrFail($orderId);
 
             if ($order->status === 'completed') {
@@ -158,7 +158,7 @@ final class FarmService
                 ]);
             }
 
-            Log::channel('audit')->info('Farm order cancelled', [
+            $this->log->channel('audit')->info('Farm order cancelled', [
                 'order_id' => $order->id,
                 'farm_id' => $order->farm_id,
                 'correlation_id' => $correlationId,

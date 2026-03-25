@@ -36,7 +36,7 @@ final class Model3DService
         ?string $description,
         string $correlationId,
     ): Model3D {
-        return DB::transaction(function () use ($tenantId, $file, $name, $description, $correlationId): Model3D {
+        return $this->db->transaction(function () use ($tenantId, $file, $name, $description, $correlationId): Model3D {
             // SECURITY: Проверка размера
             if ($file->getSize() > self::MAX_FILE_SIZE) {
                 throw new Exception('Файл превышает лимит 50MB', 413);
@@ -50,7 +50,7 @@ final class Model3DService
             // SECURITY: Вирусный скан
             $scanResult = $this->validationService->scanForMalware($file, $correlationId);
             if (!$scanResult['safe']) {
-                Log::channel('audit')->warning('3D модель не прошла сканирование на вирусы', [
+                $this->log->channel('audit')->warning('3D модель не прошла сканирование на вирусы', [
                     'correlation_id' => $correlationId,
                     'tenant_id' => $tenantId,
                     'reason' => $scanResult['reason'],
@@ -68,7 +68,7 @@ final class Model3DService
                 ->first();
 
             if ($existingModel) {
-                Log::channel('audit')->info('3D модель уже загружена (дедупликация)', [
+                $this->log->channel('audit')->info('3D модель уже загружена (дедупликация)', [
                     'correlation_id' => $correlationId,
                     'tenant_id' => $tenantId,
                     'model_id' => $existingModel->id,
@@ -82,14 +82,14 @@ final class Model3DService
 
             // Сохраняем файл в защищённое хранилище
             try {
-                Storage::disk('private')->putFileAs(
+                $this->storage->disk('private')->putFileAs(
                     "tenants/{$tenantId}/models",
                     $file,
                     $fileName,
                     'private'
                 );
             } catch (Exception $e) {
-                Log::channel('audit')->error('Ошибка при сохранении 3D файла', [
+                $this->log->channel('audit')->error('Ошибка при сохранении 3D файла', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
@@ -112,7 +112,7 @@ final class Model3DService
             // Диспатчим событие для асинхронной обработки
             Model3DUploaded::dispatch($model, $correlationId);
 
-            Log::channel('audit')->info('3D модель создана', [
+            $this->log->channel('audit')->info('3D модель создана', [
                 'model_id' => $model->id,
                 'uuid' => $model->uuid,
                 'correlation_id' => $correlationId,
@@ -148,11 +148,11 @@ final class Model3DService
      */
     public function getSignedDownloadUrl(Model3D $model, int $expirationMinutes = 60): string
     {
-        if (!Storage::disk('private')->exists($model->file_path)) {
+        if (!$this->storage->disk('private')->exists($model->file_path)) {
             throw new Exception('Файл модели не найден', 404);
         }
 
-        return Storage::disk('private')->temporaryUrl(
+        return $this->storage->disk('private')->temporaryUrl(
             $model->file_path,
             now()->addMinutes($expirationMinutes)
         );

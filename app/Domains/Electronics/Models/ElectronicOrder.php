@@ -1,6 +1,30 @@
 <?php declare(strict_types=1);
 
-namespace App\Domains\Electronics\Models;
+namespa
+
+/**
+ * ElectronicOrder
+ * 
+ * Производитель: CatVRF Platform
+ * Версия: 1.0.0
+ * 
+ * Примеры использования:
+ * 
+ * ```php
+ * // Базовое использование
+ * $instance = new ElectronicOrder();
+ * ```
+ * 
+ * Требования:
+ * - Laravel 10+
+ * - PHP 8.2+
+ * - Все методы должны быть явно типизированы
+ * 
+ * @author CatVRF
+ * @package namespace App\Domains\Electronics\Models
+ * @see https://github.com/iyegorovskyi_clemny/CatVRF
+ */
+ce App\Domains\Electronics\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -25,16 +49,34 @@ final class ElectronicOrder extends Model
         'tags'          => 'json',
     ];
 
+    /**
+     * Выполнить операцию
+     * 
+     * @return mixed
+     * @throws \Exception
+     */
     public function product(): BelongsTo
     {
         return $this->belongsTo(ElectronicProduct::class, 'product_id');
     }
 
+    /**
+     * Выполнить операцию
+     * 
+     * @return mixed
+     * @throws \Exception
+     */
     public function isPending(): bool
     {
         return $this->status === 'pending';
     }
 
+    /**
+     * Выполнить операцию
+     * 
+     * @return mixed
+     * @throws \Exception
+     */
     public function isDelivered(): bool
     {
         return $this->status === 'delivered';

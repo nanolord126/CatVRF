@@ -62,7 +62,7 @@ final class MedicalAppointmentController
         try {
 
             $validated = $request->all();
-            $appointment = DB::transaction(function () use ($validated, $correlationId) {
+            $appointment = $this->db->transaction(function () use ($validated, $correlationId) {
                 return $this->appointmentService->createAppointment(
                     tenantId: auth()->user()->tenant_id,
                     clinicId: ($validated['clinic_id'] ?? null),
@@ -81,7 +81,7 @@ final class MedicalAppointmentController
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (Throwable $e) {
-            Log::error('Failed to create appointment', ['error' => $e->getMessage()]);
+            $this->log->error('Failed to create appointment', ['error' => $e->getMessage()]);
             return response()->json(['success' => false, 'error' => 'Failed to create appointment'], 500);
         }
     }
@@ -119,7 +119,7 @@ final class MedicalAppointmentController
                 'correlation_id' => $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
             ]);
 
-            Log::channel('audit')->info('Appointment updated', ['appointment_id' => $appointment->id]);
+            $this->log->channel('audit')->info('Appointment updated', ['appointment_id' => $appointment->id]);
 
             return response()->json(['success' => true, 'data' => $appointment]);
         } catch (Throwable $e) {
@@ -278,7 +278,7 @@ final class MedicalAppointmentController
                 'correlation_id' => $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
             ]);
 
-            Log::channel('audit')->info('Appointment status updated', [
+            $this->log->channel('audit')->info('Appointment status updated', [
                 'appointment_id' => $appointment->id,
                 'status' => $request->input('status'),
             ]);

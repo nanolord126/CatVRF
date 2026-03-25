@@ -78,7 +78,7 @@ final class ApiRateLimiter
         }
 
         // Add current request
-        $redis->zadd($key, $now->timestamp, uniqid());
+        $redis->za);
 
         // Set expiry
         $redis->expire($key, $window);

@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -8,17 +10,34 @@ use App\Domains\Photography\Models\PhotoSession;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
-final class BookingService
+final /**
+ * BookingService
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class BookingService
 {
     public function __construct(
         private readonly string $correlationId = ''
-    ) {}
+    ) {
+    /**
+     * Инициализировать класс
+     */
+    public function __construct()
+    {
+        // TODO: инициализация
+    }
+}
 
     public function bookSession(int $studioId, int $clientId, Carbon $scheduledAt, int $durationMinutes = 60): PhotoSession
     {
-        return DB::transaction(function () use ($studioId, $clientId, $scheduledAt, $durationMinutes) {
+        return $this->db->transaction(function () use ($studioId, $clientId, $scheduledAt, $durationMinutes) {
             // Проверка наложения сессий (Race Condition check)
-            $exists = PhotoSession::where('studio_id', $studioId)
+            $exists = Photo$this->session->where('studio_id', $studioId)
                 ->where('status', 'confirmed')
                 ->whereBetween('scheduled_at', [
                     $scheduledAt->copy()->subMinutes($durationMinutes - 1),
@@ -31,7 +50,7 @@ final class BookingService
                 throw new \Exception('Выбранное время уже занято');
             }
 
-            return PhotoSession::create([
+            return Photo$this->session->create([
                 'studio_id' => $studioId,
                 'client_id' => $clientId,
                 'tenant_id' => auth()->user()->tenant_id,

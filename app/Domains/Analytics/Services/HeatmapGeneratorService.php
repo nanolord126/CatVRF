@@ -48,7 +48,7 @@ final class HeatmapGeneratorService
         ]);
 
         // Проверяем кэш
-        $cached = Cache::get($cacheKey);
+        $cached = $this->cache->get($cacheKey);
         if ($cached) {
             return $cached;
         }
@@ -94,9 +94,9 @@ final class HeatmapGeneratorService
             ];
 
             // Кэшируем результат
-            Cache::put($cacheKey, $result, $this->cacheTTL);
+            $this->cache->put($cacheKey, $result, $this->cacheTTL);
 
-            Log::channel('audit')->info('Гео-тепловая карта сгенерирована', [
+            $this->log->channel('audit')->info('Гео-тепловая карта сгенерирована', [
                 'tenant_id' => $tenantId,
                 'vertical' => $vertical,
                 'points_count' => count($heatmapData),
@@ -105,7 +105,7 @@ final class HeatmapGeneratorService
             return $result;
 
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Ошибка при генерации гео-тепловой карты', [
+            $this->log->channel('audit')->error('Ошибка при генерации гео-тепловой карты', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
@@ -135,13 +135,13 @@ final class HeatmapGeneratorService
         ]);
 
         // Проверяем кэш
-        $cached = Cache::get($cacheKey);
+        $cached = $this->cache->get($cacheKey);
         if ($cached) {
             return $cached;
         }
 
         try {
-            $query = UserClickEvent::forPage($pageUrl);
+            $query = UserClick$this->event->forPage($pageUrl);
 
             if ($fromDate && $toDate) {
                 $query->inDateRange($fromDate, $toDate);
@@ -167,9 +167,9 @@ final class HeatmapGeneratorService
             ];
 
             // Кэшируем результат
-            Cache::put($cacheKey, $result, $this->cacheTTL);
+            $this->cache->put($cacheKey, $result, $this->cacheTTL);
 
-            Log::channel('audit')->info('Клик-тепловая карта сгенерирована', [
+            $this->log->channel('audit')->info('Клик-тепловая карта сгенерирована', [
                 'page_url' => $pageUrl,
                 'clicks_count' => count($heatmapData),
             ]);
@@ -177,7 +177,7 @@ final class HeatmapGeneratorService
             return $result;
 
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Ошибка при генерации клик-тепловой карты', [
+            $this->log->channel('audit')->error('Ошибка при генерации клик-тепловой карты', [
                 'page_url' => $pageUrl,
                 'error' => $e->getMessage(),
             ]);
@@ -248,10 +248,9 @@ final class HeatmapGeneratorService
     {
         // Инвалидируем все кэши этого типа
         $pattern = $this->cachePrefix . '*';
-        // TODO: Использовать Redis SCAN для удаления по паттерну
-        Cache::flush();
+        $this->cache->flush();
 
-        Log::channel('audit')->info('Кэш тепловых карт инвалидирован', [
+        $this->log->channel('audit')->info('Кэш тепловых карт инвалидирован', [
             'tenant_id' => $tenantId,
             'vertical' => $vertical,
         ]);

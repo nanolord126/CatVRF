@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -6,7 +8,16 @@ namespace App\Domains\Bloggers\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-final class CreateStreamRequest extends FormRequest
+final /**
+ * CreateStreamRequest
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class CreateStreamRequest extends FormRequest
 {
     public function authorize(): bool
     {

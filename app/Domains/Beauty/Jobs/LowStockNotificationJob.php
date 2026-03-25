@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -12,7 +14,16 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-final class LowStockNotificationJob implements ShouldQueue
+final /**
+ * LowStockNotificationJob
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class LowStockNotificationJob implements ShouldQueue
 {
     use Dispatchable;
     use InteractsWithQueue;
@@ -21,14 +32,22 @@ final class LowStockNotificationJob implements ShouldQueue
 
     public function __construct(
         private readonly string $correlationId = '',
-    ) {}
+    ) {
+    /**
+     * Инициализировать класс
+     */
+    public function __construct()
+    {
+        // TODO: инициализация
+    }
+}
 
     public function handle(InventoryManagementService $inventory): void
     {
         $lowStockItems = $inventory->checkLowStock();
 
         foreach ($lowStockItems as $item) {
-            Log::channel('audit')->warning('Low stock alert', [
+            $this->log->channel('audit')->warning('Low stock alert', [
                 'item_id' => $item->id,
                 'current_stock' => $item->current_stock,
                 'threshold' => $item->min_stock_threshold,

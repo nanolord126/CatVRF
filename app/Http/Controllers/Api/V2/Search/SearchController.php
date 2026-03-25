@@ -60,7 +60,7 @@ final class SearchController extends Controller
                 resultsCount: $results->count()
             );
 
-            Log::channel('audit')->info('Document search executed', [
+            $this->log->channel('audit')->info('Document search executed', [
                 'correlation_id' => $correlationId,
                 'query' => $validated['q'],
                 'results_count' => $results->count(),
@@ -73,7 +73,7 @@ final class SearchController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Document search failed', [
+            $this->log->channel('audit')->error('Document search failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -114,7 +114,7 @@ final class SearchController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('User search failed', [
+            $this->log->channel('audit')->error('User search failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -144,7 +144,7 @@ final class SearchController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to get search history', [
+            $this->log->channel('audit')->error('Failed to get search history', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -174,7 +174,7 @@ final class SearchController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to clear search history', [
+            $this->log->channel('audit')->error('Failed to clear search history', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);

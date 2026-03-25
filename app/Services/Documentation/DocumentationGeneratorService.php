@@ -370,23 +370,23 @@ final class DocumentationGeneratorService
     public static function saveDocumentation(string $type = 'api', string $format = 'html'): string
     {
         $path = storage_path('docs');
-        if (!File::exists($path)) {
-            File::makeDirectory($path, 0755, true);
+        if (!$this->file->exists($path)) {
+            $this->file->makeDirectory($path, 0755, true);
         }
 
         $filename = "{$type}-documentation." . $format;
         $filepath = "{$path}/{$filename}";
 
         if ($format === 'html') {
-            File::put($filepath, self::exportAsHTML($type));
+            $this->file->put($filepath, self::exportAsHTML($type));
         } else {
-            File::put($filepath, json_encode(
+            $this->file->put($filepath, json_encode(
                 self::{ucfirst($type) . 'Documentation'}(),
                 JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE
             ));
         }
 
-        Log::channel('documentation')->info('Documentation saved', [
+        $this->log->channel('documentation')->info('Documentation saved', [
             'type' => $type,
             'format' => $format,
             'path' => $filepath,

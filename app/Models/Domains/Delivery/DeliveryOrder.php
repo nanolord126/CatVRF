@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 namespace App\Models\Domains\Delivery;
@@ -5,6 +7,15 @@ namespace App\Models\Domains\Delivery;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * DeliveryOrder
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
 class DeliveryOrder extends Model
 {
     use HasFactory;

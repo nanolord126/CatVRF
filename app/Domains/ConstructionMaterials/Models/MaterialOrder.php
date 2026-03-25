@@ -1,6 +1,30 @@
 <?php declare(strict_types=1);
 
-namespace App\Domains\ConstructionMaterials\Models;
+namespace App\Dom
+
+/**
+ * MaterialOrder
+ * 
+ * Производитель: CatVRF Platform
+ * Версия: 1.0.0
+ * 
+ * Примеры использования:
+ * 
+ * ```php
+ * // Базовое использование
+ * $instance = new MaterialOrder();
+ * ```
+ * 
+ * Требования:
+ * - Laravel 10+
+ * - PHP 8.2+
+ * - Все методы должны быть явно типизированы
+ * 
+ * @author CatVRF
+ * @package namespace App\Domains\ConstructionMaterials\Models
+ * @see https://github.com/iyegorovskyi_clemny/CatVRF
+ */
+ains\ConstructionMaterials\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -22,6 +46,12 @@ final class MaterialOrder extends Model
         'meta' => 'json',
     ];
 
+    /**
+     * Выполнить операцию
+     * 
+     * @return mixed
+     * @throws \Exception
+     */
     public function material()
     {
         return $this->belongsTo(ConstructionMaterial::class);

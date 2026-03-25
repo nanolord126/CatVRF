@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Flowers\Filament\Resources;
@@ -8,7 +10,16 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 
-final class FlowerDeliveryResource extends Resource
+final /**
+ * FlowerDeliveryResource
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class FlowerDeliveryResource extends Resource
 {
     protected static ?string $model = FlowerDelivery::class;
     protected static ?string $slug = 'flower-deliveries';

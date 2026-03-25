@@ -16,10 +16,10 @@ final class UpdateFlowerShopRating implements ShouldQueue
     public function handle(FlowerDeliveryCompleted $event): void
     {
         try {
-            DB::transaction(function () use ($event) {
+            $this->db->transaction(function () use ($event) {
                 $order = $event->delivery->order;
                 
-                Log::channel('audit')->info('Update flower shop rating', [
+                $this->log->channel('audit')->info('Update flower shop rating', [
                     'shop_id' => $event->delivery->shop_id,
                     'order_id' => $order->id,
                     'correlation_id' => $event->correlationId,
@@ -43,7 +43,7 @@ final class UpdateFlowerShopRating implements ShouldQueue
                             'review_count' => $reviews->count(),
                         ]);
 
-                        Log::channel('audit')->info('Shop rating updated', [
+                        $this->log->channel('audit')->info('Shop rating updated', [
                             'shop_id' => $shop->id,
                             'new_rating' => $shop->rating,
                             'review_count' => $shop->review_count,
@@ -52,7 +52,7 @@ final class UpdateFlowerShopRating implements ShouldQueue
                 }
             });
         } catch (\Exception $exception) {
-            Log::channel('audit')->error('Rating update failed', [
+            $this->log->channel('audit')->error('Rating update failed', [
                 'shop_id' => $event->delivery->shop_id,
                 'error' => $exception->getMessage(),
                 'correlation_id' => $event->correlationId,

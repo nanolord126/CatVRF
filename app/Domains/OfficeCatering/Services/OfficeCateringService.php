@@ -30,12 +30,12 @@ final class OfficeCateringService
         }
         RateLimiter::hit("catering:order:".auth()->id(), 3600);
 
-        return DB::transaction(function () use ($companyId, $menuId, $data, $correlationId) {
+        return $this->db->transaction(function () use ($companyId, $menuId, $data, $correlationId) {
             $company = CateringCompany::findOrFail($companyId);
             $menu = CateringMenu::where('id', $menuId)->where('catering_company_id', $companyId)->firstOrFail();
 
             if ($data['person_count'] < $company->min_person_count || $data['person_count'] > $company->max_person_count) {
-                Log::channel('audit')->warning('Catering order person count out of range', [
+                $this->log->channel('audit')->warning('Catering order person count out of range', [
                     'company_id' => $companyId,
                     'person_count' => $data['person_count'],
                     'min' => $company->min_person_count,
@@ -56,7 +56,7 @@ final class OfficeCateringService
             ]);
 
             if ($fraud['decision'] === 'block') {
-                Log::channel('audit')->error('Catering order blocked by fraud', [
+                $this->log->channel('audit')->error('Catering order blocked by fraud', [
                     'user_id' => auth()->id(),
                     'score' => $fraud['score'],
                     'correlation_id' => $correlationId,
@@ -84,7 +84,7 @@ final class OfficeCateringService
                 'tags' => ['office_catering' => true, 'person_count' => $data['person_count'], 'delivery_date' => now()->toDateString()],
             ]);
 
-            Log::channel('audit')->info('Catering order created', [
+            $this->log->channel('audit')->info('Catering order created', [
                 'order_id' => $order->id,
                 'company_id' => $companyId,
                 'total_kopecks' => $total,
@@ -100,7 +100,7 @@ final class OfficeCateringService
     {
         $correlationId = $correlationId ?: (string) Str::uuid();
 
-        return DB::transaction(function () use ($orderId, $correlationId) {
+        return $this->db->transaction(function () use ($orderId, $correlationId) {
             $order = CateringOrder::findOrFail($orderId);
 
             if ($order->payment_status !== 'completed') {
@@ -125,7 +125,7 @@ final class OfficeCateringService
                 'order_id' => $order->id,
             ]);
 
-            Log::channel('audit')->info('Catering order completed and payout credited', [
+            $this->log->channel('audit')->info('Catering order completed and payout credited', [
                 'order_id' => $order->id,
                 'company_id' => $company->id,
                 'payout_kopecks' => $payout,
@@ -140,7 +140,7 @@ final class OfficeCateringService
     {
         $correlationId = $correlationId ?: (string) Str::uuid();
 
-        return DB::transaction(function () use ($orderId, $correlationId) {
+        return $this->db->transaction(function () use ($orderId, $correlationId) {
             $order = CateringOrder::findOrFail($orderId);
 
             if ($order->status === 'completed') {
@@ -161,7 +161,7 @@ final class OfficeCateringService
                 ]);
             }
 
-            Log::channel('audit')->info('Catering order cancelled', [
+            $this->log->channel('audit')->info('Catering order cancelled', [
                 'order_id' => $order->id,
                 'company_id' => $order->catering_company_id,
                 'correlation_id' => $correlationId,

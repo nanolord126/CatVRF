@@ -43,7 +43,7 @@ class DemandForecastJob implements ShouldQueue
      */
     public function handle(): void
     {
-        Log::channel('audit')->info('DemandForecastJob started', [
+        $this->log->channel('audit')->info('DemandForecastJob started', [
             'correlation_id' => $this->correlationId,
         ]);
 
@@ -55,13 +55,13 @@ class DemandForecastJob implements ShouldQueue
                 $this->forecastProduct($product);
             }
 
-            Log::channel('audit')->info('DemandForecastJob completed successfully', [
+            $this->log->channel('audit')->info('DemandForecastJob completed successfully', [
                 'correlation_id' => $this->correlationId,
                 'products_processed' => $products->count(),
             ]);
 
         } catch (\Exception $e) {
-            Log::channel('audit')->error('DemandForecastJob failed', [
+            $this->log->channel('audit')->error('DemandForecastJob failed', [
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -75,7 +75,7 @@ class DemandForecastJob implements ShouldQueue
      */
     private function trainModel(): void
     {
-        Log::info('Training demand forecast model...');
+        $this->log->info('Training demand forecast model...');
         
         try {
             // Эмуляция задержки обучения
@@ -83,7 +83,7 @@ class DemandForecastJob implements ShouldQueue
             
             // В реальном приложении здесь был бы вызов Python-скрипта или API
             // Для демо мы просто генерируем "новую версию" с хорошими метриками
-            $version = now()->format('Y-m-d') . '-v' . (DB::table('demand_model_versions')
+            $version = now()->format('Y-m-d') . '-v' . ($this->db->table('demand_model_versions')
                 ->whereDate('trained_at', now())
                 ->count() + 1);
 
@@ -94,8 +94,8 @@ class DemandForecastJob implements ShouldQueue
                 'mape' => 9.2, // Mean Absolute Percentage Error
             ];
 
-            DB::transaction(function() use ($version, $metrics) {
-                return DB::table('demand_model_versions')->insert([
+            $this->db->transaction(function() use ($version, $metrics) {
+                return $this->db->table('demand_model_versions')->insert([
                     'version' => $version,
                     'trained_at' => now(),
                     'mae' => $metrics['mae'],
@@ -110,14 +110,14 @@ class DemandForecastJob implements ShouldQueue
             if ($metrics['mape'] < 15) {
                 cache(['demand_model_active_version' => $version], now()->addDays(30));
                 
-                Log::info('New demand forecast model activated', [
+                $this->log->info('New demand forecast model activated', [
                     'version' => $version,
                     'mape' => $metrics['mape'],
                 ]);
             }
 
         } catch (\Exception $e) {
-            Log::warning('Demand model training failed', [
+            $this->log->warning('Demand model training failed', [
                 'error' => $e->getMessage(),
             ]);
         }
@@ -156,8 +156,8 @@ class DemandForecastJob implements ShouldQueue
             ];
 
             try {
-                DB::transaction(function() use ($product, $forecastDate, $result) {
-                    DB::table('demand_forecasts')->updateOrInsert(
+                $this->db->transaction(function() use ($product, $forecastDate, $result) {
+                    $this->db->table('demand_forecasts')->updateOrInsert(
                         [
                             'tenant_id' => $product->tenant_id,
                             'item_id' => $product->id,
@@ -176,7 +176,7 @@ class DemandForecastJob implements ShouldQueue
                     );
                 });
             } catch (\Exception $e) {
-                Log::warning('Failed to save forecast', [
+                $this->log->warning('Failed to save forecast', [
                     'product_id' => $product->id,
                     'date' => $forecastDate,
                     'error' => $e->getMessage(),

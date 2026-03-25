@@ -33,7 +33,7 @@ final class EventReviewController extends Controller
                 'correlation_id' => Str::uuid()->toString(),
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to list reviews', [
+            $this->log->channel('audit')->error('Failed to list reviews', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -57,7 +57,7 @@ final class EventReviewController extends Controller
                 'correlation_id' => Str::uuid()->toString(),
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to list my reviews', [
+            $this->log->channel('audit')->error('Failed to list my reviews', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -82,7 +82,7 @@ final class EventReviewController extends Controller
                 'categories' => 'nullable|array',
             ]);
 
-            $review = DB::transaction(function () use ($eventId, $validated, $correlationId) {
+            $review = $this->db->transaction(function () use ($eventId, $validated, $correlationId) {
                 return $this->reviewService->createReview(
                     $eventId,
                     auth()->id(),
@@ -94,7 +94,7 @@ final class EventReviewController extends Controller
                 );
             });
 
-            Log::channel('audit')->info('Review created', [
+            $this->log->channel('audit')->info('Review created', [
                 'event_id' => $eventId,
                 'rating' => $validated['rating'],
                 'correlation_id' => $correlationId,
@@ -106,7 +106,7 @@ final class EventReviewController extends Controller
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to create review', [
+            $this->log->channel('audit')->error('Failed to create review', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -133,7 +133,7 @@ final class EventReviewController extends Controller
 
             $review->update($validated + ['correlation_id' => $correlationId]);
 
-            Log::channel('audit')->info('Review updated', [
+            $this->log->channel('audit')->info('Review updated', [
                 'review_id' => $id,
                 'correlation_id' => $correlationId,
             ]);
@@ -144,7 +144,7 @@ final class EventReviewController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to update review', [
+            $this->log->channel('audit')->error('Failed to update review', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -163,7 +163,7 @@ final class EventReviewController extends Controller
             $correlationId = (string) Str::uuid()->toString();
             $review->delete();
 
-            Log::channel('audit')->info('Review deleted', [
+            $this->log->channel('audit')->info('Review deleted', [
                 'review_id' => $id,
                 'correlation_id' => $correlationId,
             ]);
@@ -174,7 +174,7 @@ final class EventReviewController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to delete review', [
+            $this->log->channel('audit')->error('Failed to delete review', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([

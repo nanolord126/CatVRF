@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Food\Policies;
@@ -25,22 +27,22 @@ final class RestaurantOrderPolicy
     public function create(User $user): Response
     {
         if (!$user->isVerified()) {
-            return Response::deny('Подтвердите аккаунт для создания заказа');
+            return $this->response->deny('Подтвердите аккаунт для создания заказа');
         }
 
-        return Response::allow();
+        return $this->response->allow();
     }
 
     public function cancel(User $user, RestaurantOrder $order): Response
     {
         if ($user->id !== $order->client_id && !$user->isAdmin()) {
-            return Response::deny('Вы не можете отменить этот заказ');
+            return $this->response->deny('Вы не можете отменить этот заказ');
         }
 
         if ($order->status === 'cooking' || $order->status === 'ready' || $order->status === 'delivered') {
-            return Response::deny('Заказ уже готовится или доставляется');
+            return $this->response->deny('Заказ уже готовится или доставляется');
         }
 
-        return Response::allow();
+        return $this->response->allow();
     }
 }

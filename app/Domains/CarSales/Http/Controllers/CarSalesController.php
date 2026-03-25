@@ -23,7 +23,7 @@ final class B2BAutoController
 
 			return response()->json(['success' => true, 'data' => $storefronts, 'correlation_id' => Str::uuid()]);
 		} catch (\Exception $e) {
-			Log::channel('audit')->error('Auto B2B: Storefronts failed', ['error' => $e->getMessage()]);
+			$this->log->channel('audit')->error('Auto B2B: Storefronts failed', ['error' => $e->getMessage()]);
 			return response()->json(['success' => false, 'message' => 'Ошибка', 'correlation_id' => Str::uuid()], 500);
 		}
 	}
@@ -44,7 +44,7 @@ final class B2BAutoController
 
 			$correlationId = Str::uuid()->toString();
 
-			DB::transaction(function () use ($validated, $correlationId) {
+			$this->db->transaction(function () use ($validated, $correlationId) {
 				B2BAutoStorefront::create([
 					'uuid' => Str::uuid(),
 					'tenant_id' => auth()->user()->tenant_id,
@@ -57,7 +57,7 @@ final class B2BAutoController
 					'correlation_id' => $correlationId,
 				]);
 
-				Log::channel('audit')->info('Auto B2B: Storefront created', [
+				$this->log->channel('audit')->info('Auto B2B: Storefront created', [
 					'inn' => $validated['inn'],
 					'correlation_id' => $correlationId,
 				]);
@@ -82,7 +82,7 @@ final class B2BAutoController
 
 			$correlationId = Str::uuid()->toString();
 
-			DB::transaction(function () use ($validated, $correlationId) {
+			$this->db->transaction(function () use ($validated, $correlationId) {
 				B2BAutoOrder::create([
 					'uuid' => Str::uuid(),
 					'tenant_id' => auth()->user()->tenant_id,
@@ -97,7 +97,7 @@ final class B2BAutoController
 					'correlation_id' => $correlationId,
 				]);
 
-				Log::channel('audit')->info('Auto B2B: Order created', ['correlation_id' => $correlationId]);
+				$this->log->channel('audit')->info('Auto B2B: Order created', ['correlation_id' => $correlationId]);
 			});
 
 			return response()->json(['success' => true, 'message' => 'Заказ создан', 'correlation_id' => $correlationId], 201);
@@ -122,9 +122,9 @@ final class B2BAutoController
 			$order = B2BAutoOrder::findOrFail($id);
 			$this->authorize('approveOrder', $order);
 
-			DB::transaction(function () use ($order) {
+			$this->db->transaction(function () use ($order) {
 				$order->update(['status' => 'approved']);
-				Log::channel('audit')->info('Auto B2B: Order approved', ['order_id' => $order->id]);
+				$this->log->channel('audit')->info('Auto B2B: Order approved', ['order_id' => $order->id]);
 			});
 
 			return response()->json(['success' => true, 'message' => 'Одобрено', 'correlation_id' => Str::uuid()]);
@@ -140,9 +140,9 @@ final class B2BAutoController
 			$this->authorize('rejectOrder', $order);
 
    $validated = $request->all();
-			DB::transaction(function () use ($order, $validated) {
+			$this->db->transaction(function () use ($order, $validated) {
 				$order->update(['status' => 'rejected', 'notes' => ($validated['reason'] ?? '')]);
-				Log::channel('audit')->info('Auto B2B: Order rejected', ['order_id' => $order->id]);
+				$this->log->channel('audit')->info('Auto B2B: Order rejected', ['order_id' => $order->id]);
 			});
 
 			return response()->json(['success' => true, 'message' => 'Отклонено', 'correlation_id' => Str::uuid()]);
@@ -156,9 +156,9 @@ final class B2BAutoController
 		try {
 			$this->authorize('verifyInn', B2BAutoStorefront::class);
 
-			DB::transaction(function () use ($id) {
+			$this->db->transaction(function () use ($id) {
 				B2BAutoStorefront::findOrFail($id)->update(['is_verified' => true]);
-				Log::channel('audit')->info('Auto B2B: INN verified', ['storefront_id' => $id]);
+				$this->log->channel('audit')->info('Auto B2B: INN verified', ['storefront_id' => $id]);
 			});
 
 			return response()->json(['success' => true, 'message' => 'Верифицировано', 'correlation_id' => Str::uuid()]);

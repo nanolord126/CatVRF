@@ -23,13 +23,13 @@ final class TokenVaultService
      */
     public function setSecret(string $keyName, mixed $value, int $userId = null): EncryptedSecret
     {
-        Log::channel('audit')->info('Vault: Storing secret', [
+        $this->log->channel('audit')->info('Vault: Storing secret', [
             'key' => $keyName,
             'user_id' => $userId,
             'correlation_id' => $this->correlationId
         ]);
 
-        $encrypted = Crypt::encrypt($value);
+        $encrypted = $this->crypt->encrypt($value);
 
         $secret = EncryptedSecret::updateOrCreate(
             ['key_name' => $keyName],
@@ -63,9 +63,9 @@ final class TokenVaultService
         $this->logAccess($secret->id, 'read', $userId);
 
         try {
-            return Crypt::decrypt($secret->encrypted_payload);
+            return $this->crypt->decrypt($secret->encrypted_payload);
         } catch (\Exception $e) {
-            Log::error('Vault: Decryption failed', [
+            $this->log->error('Vault: Decryption failed', [
                 'secret_id' => $secret->id,
                 'correlation_id' => $this->correlationId
             ]);
@@ -78,7 +78,7 @@ final class TokenVaultService
      */
     private function logAccess(int $secretId, string $action, ?int $userId): void
     {
-        VaultAccessLog::create([
+        VaultAccess$this->log->create([
             'secret_id' => $secretId,
             'user_id' => $userId,
             'action' => $action,

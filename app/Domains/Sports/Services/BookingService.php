@@ -24,19 +24,19 @@ final readonly class BookingService
         ?string $correlationId = null,
     ): Booking {
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
 
         try {
             $correlationId = $correlationId ?? Str::uuid()->toString();
 
-            Log::channel('audit')->info('Creating booking', [
+            $this->log->channel('audit')->info('Creating booking', [
                 'class_id' => $classId,
                 'member_id' => $memberId,
                 'type' => $type,
                 'correlation_id' => $correlationId,
             ]);
 
-            $booking = DB::transaction(function () use (
+            $booking = $this->db->transaction(function () use (
                 $classId,
                 $memberId,
                 $trainerId,
@@ -45,7 +45,7 @@ final readonly class BookingService
                 $isTrial,
                 $correlationId,
             ) {
-                $classSession = ClassSession::findOrFail($classId);
+                $classSession = Class$this->session->findOrFail($classId);
 
                 if ($classSession->enrolled_count >= $classSession->max_participants && !$isTrial) {
                     throw new \Exception('Class is full');
@@ -67,14 +67,14 @@ final readonly class BookingService
                 ]);
             });
 
-            Log::channel('audit')->info('Booking created', [
+            $this->log->channel('audit')->info('Booking created', [
                 'booking_id' => $booking->id,
                 'correlation_id' => $correlationId,
             ]);
 
             return $booking;
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to create booking', [
+            $this->log->channel('audit')->error('Failed to create booking', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId ?? null,
             ]);
@@ -85,7 +85,7 @@ final readonly class BookingService
     public function confirmBooking(Booking $booking, ?string $correlationId = null): void
     {
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
 
         try {
             $correlationId = $correlationId ?? Str::uuid()->toString();
@@ -96,12 +96,12 @@ final readonly class BookingService
                 'correlation_id' => $correlationId,
             ]);
 
-            Log::channel('audit')->info('Booking confirmed', [
+            $this->log->channel('audit')->info('Booking confirmed', [
                 'booking_id' => $booking->id,
                 'correlation_id' => $correlationId,
             ]);
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to confirm booking', [
+            $this->log->channel('audit')->error('Failed to confirm booking', [
                 'error' => $e->getMessage(),
             ]);
             throw $e;
@@ -111,12 +111,12 @@ final readonly class BookingService
     public function cancelBooking(Booking $booking, string $reason = '', ?string $correlationId = null): void
     {
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
 
         try {
             $correlationId = $correlationId ?? Str::uuid()->toString();
 
-            DB::transaction(function () use ($booking, $reason, $correlationId) {
+            $this->db->transaction(function () use ($booking, $reason, $correlationId) {
                 $booking->update([
                     'status' => 'cancelled',
                     'notes' => $reason,
@@ -126,12 +126,12 @@ final readonly class BookingService
                 $booking->class->decrement('enrolled_count');
             });
 
-            Log::channel('audit')->info('Booking cancelled', [
+            $this->log->channel('audit')->info('Booking cancelled', [
                 'booking_id' => $booking->id,
                 'correlation_id' => $correlationId,
             ]);
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to cancel booking', [
+            $this->log->channel('audit')->error('Failed to cancel booking', [
                 'error' => $e->getMessage(),
             ]);
             throw $e;
@@ -141,7 +141,7 @@ final readonly class BookingService
     public function markAsAttended(Booking $booking, ?string $correlationId = null): void
     {
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
 
         try {
             $correlationId = $correlationId ?? Str::uuid()->toString();
@@ -152,12 +152,12 @@ final readonly class BookingService
                 'correlation_id' => $correlationId,
             ]);
 
-            Log::channel('audit')->info('Booking marked as attended', [
+            $this->log->channel('audit')->info('Booking marked as attended', [
                 'booking_id' => $booking->id,
                 'correlation_id' => $correlationId,
             ]);
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to mark booking as attended', [
+            $this->log->channel('audit')->error('Failed to mark booking as attended', [
                 'error' => $e->getMessage(),
             ]);
             throw $e;

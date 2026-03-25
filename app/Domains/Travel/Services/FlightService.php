@@ -33,7 +33,7 @@ final readonly class FlightService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-DB::transaction(function () use ($flight, $correlationId) {
+$this->db->transaction(function () use ($flight, $correlationId) {
                 $flight->lockForUpdate();
 
                 if ($flight->available_seats <= 0) {
@@ -42,7 +42,7 @@ DB::transaction(function () use ($flight, $correlationId) {
 
                 $flight->decrement('available_seats');
 
-                Log::channel('audit')->info('Flight booked', [
+                $this->log->channel('audit')->info('Flight booked', [
                     'flight_id' => $flight->id,
                     'flight_number' => $flight->flight_number,
                     'remaining_seats' => $flight->available_seats,
@@ -56,7 +56,7 @@ DB::transaction(function () use ($flight, $correlationId) {
                 return $flight->refresh();
             });
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Flight booking failed', [
+            $this->log->channel('audit')->error('Flight booking failed', [
                 'flight_id' => $flight->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -84,12 +84,12 @@ DB::transaction(function () use ($flight, $correlationId) {
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-DB::transaction(function () use ($flight, $correlationId) {
+$this->db->transaction(function () use ($flight, $correlationId) {
                 $flight->lockForUpdate();
 
                 $flight->increment('available_seats');
 
-                Log::channel('audit')->info('Flight seat released', [
+                $this->log->channel('audit')->info('Flight seat released', [
                     'flight_id' => $flight->id,
                     'flight_number' => $flight->flight_number,
                     'available_seats' => $flight->available_seats,
@@ -100,7 +100,7 @@ DB::transaction(function () use ($flight, $correlationId) {
                 return $flight->refresh();
             });
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Flight seat release failed', [
+            $this->log->channel('audit')->error('Flight seat release failed', [
                 'flight_id' => $flight->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

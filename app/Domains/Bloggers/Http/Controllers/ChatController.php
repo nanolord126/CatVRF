@@ -38,7 +38,7 @@ final class ChatController
                 'correlation_id' => $correlationId,
             ]);
 
-            Log::channel('audit')->info('Chat message sent', [
+            $this->log->channel('audit')->info('Chat message sent', [
                 'correlation_id' => $correlationId,
                 'stream_id' => $stream->id,
                 'user_id' => $userId,
@@ -57,7 +57,7 @@ final class ChatController
                 'status' => $message->moderation_status,
             ], 201);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Send message failed', [
+            $this->log->channel('audit')->error('Send message failed', [
                 'error' => $e->getMessage(),
             ]);
 
@@ -122,7 +122,7 @@ final class ChatController
 
             $message->delete();
 
-            Log::channel('audit')->info('Chat message deleted', [
+            $this->log->channel('audit')->info('Chat message deleted', [
                 'correlation_id' => $correlationId,
                 'message_id' => $messageId,
                 'user_id' => $userId,
@@ -171,7 +171,7 @@ final class ChatController
 
             $message->update(['is_pinned' => true]);
 
-            Log::channel('audit')->info('Chat message pinned', [
+            $this->log->channel('audit')->info('Chat message pinned', [
                 'correlation_id' => $correlationId,
                 'message_id' => $messageId,
                 'stream_id' => $message->stream_id,

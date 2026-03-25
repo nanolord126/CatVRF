@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\HomeServices\Filament\Resources\ServiceReviewResource\Pages;
@@ -5,7 +7,16 @@ namespace App\Domains\HomeServices\Filament\Resources\ServiceReviewResource\Page
 use App\Domains\HomeServices\Filament\Resources\ServiceReviewResource;
 use Filament\Resources\Pages\ListRecords;
 
-final class ListServiceReviews extends ListRecords
+final /**
+ * ListServiceReviews
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class ListServiceReviews extends ListRecords
 {
     protected static string $resource = ServiceReviewResource::class;
 

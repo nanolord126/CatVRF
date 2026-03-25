@@ -1,6 +1,30 @@
 <?php declare(strict_types=1);
 
-namespace App\Domains\TeaHouses\Models;
+names
+
+/**
+ * TeaType
+ * 
+ * Производитель: CatVRF Platform
+ * Версия: 1.0.0
+ * 
+ * Примеры использования:
+ * 
+ * ```php
+ * // Базовое использование
+ * $instance = new TeaType();
+ * ```
+ * 
+ * Требования:
+ * - Laravel 10+
+ * - PHP 8.2+
+ * - Все методы должны быть явно типизированы
+ * 
+ * @author CatVRF
+ * @package namespace App\Domains\TeaHouses\Models
+ * @see https://github.com/iyegorovskyi_clemny/CatVRF
+ */
+pace App\Domains\TeaHouses\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -15,6 +39,12 @@ final class TeaType extends Model
     protected $fillable = ['uuid', 'tenant_id', 'house_id', 'correlation_id', 'name', 'price_kopecks', 'origin', 'brewing_temp', 'tags'];
     protected $casts = ['price_kopecks' => 'integer', 'brewing_temp' => 'integer', 'tags' => 'json'];
 
+    /**
+     * Выполнить операцию
+     * 
+     * @return mixed
+     * @throws \Exception
+     */
     public function house() { return $this->belongsTo(TeaHouse::class, 'house_id'); }
 
     protected static function booted(): void

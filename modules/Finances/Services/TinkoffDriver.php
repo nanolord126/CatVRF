@@ -65,7 +65,7 @@ class TinkoffDriver implements PaymentGatewayInterface
                 throw new Exception("Tinkoff Init failed: {$response['Message']}");
             }
 
-            Log::info('Tinkoff payment initiated', [
+            $this->log->info('Tinkoff payment initiated', [
                 'order_id' => $data['order_id'],
                 'amount' => $data['amount'],
                 'payment_id' => $response['PaymentId'] ?? null,
@@ -78,7 +78,7 @@ class TinkoffDriver implements PaymentGatewayInterface
                 'status' => 'pending',
             ];
         } catch (Exception $e) {
-            Log::error('Tinkoff initPayment failed', [
+            $this->log->error('Tinkoff initPayment failed', [
                 'order_id' => $data['order_id'],
                 'error' => $e->getMessage(),
             ]);
@@ -112,14 +112,14 @@ class TinkoffDriver implements PaymentGatewayInterface
                 throw new Exception("Tinkoff Confirm failed: {$response['Message']}");
             }
 
-            Log::info('Tinkoff payment captured', [
+            $this->log->info('Tinkoff payment captured', [
                 'payment_id' => $paymentId,
                 'amount' => $amount,
             ]);
 
             return true;
         } catch (Exception $e) {
-            Log::error('Tinkoff capture failed', ['payment_id' => $paymentId, 'error' => $e->getMessage()]);
+            $this->log->error('Tinkoff capture failed', ['payment_id' => $paymentId, 'error' => $e->getMessage()]);
             return false;
         }
     }
@@ -147,7 +147,7 @@ class TinkoffDriver implements PaymentGatewayInterface
                 throw new Exception("Tinkoff Refund failed: {$response['Message']}");
             }
 
-            Log::info('Tinkoff refund processed', [
+            $this->log->info('Tinkoff refund processed', [
                 'payment_id' => $paymentId,
                 'amount' => $amount,
                 'refund_id' => $response['RefundId'] ?? null,
@@ -158,7 +158,7 @@ class TinkoffDriver implements PaymentGatewayInterface
                 'refund_id' => $response['RefundId'] ?? null,
             ];
         } catch (Exception $e) {
-            Log::error('Tinkoff refund failed', ['payment_id' => $paymentId, 'error' => $e->getMessage()]);
+            $this->log->error('Tinkoff refund failed', ['payment_id' => $paymentId, 'error' => $e->getMessage()]);
             throw $e;
         }
     }
@@ -194,7 +194,7 @@ class TinkoffDriver implements PaymentGatewayInterface
             $result = $response->json();
 
             if (($result['Success'] ?? false) || ($result['Status'] === 'SENT')) {
-                Log::channel('tinkoff')->info('Tinkoff payout successful', [
+                $this->log->channel('tinkoff')->info('Tinkoff payout successful', [
                     'recipient' => $recipient['account'] ?? null,
                     'amount' => $amount,
                     'order_id' => $payoutData['OrderId'],
@@ -209,7 +209,7 @@ class TinkoffDriver implements PaymentGatewayInterface
                 throw new Exception($result['Message'] ?? 'Payout failed');
             }
         } catch (Exception $e) {
-            Log::error('Tinkoff payout failed', ['error' => $e->getMessage()]);
+            $this->log->error('Tinkoff payout failed', ['error' => $e->getMessage()]);
             throw $e;
         }
     }
@@ -239,7 +239,7 @@ class TinkoffDriver implements PaymentGatewayInterface
                 'response_code' => $response['ErrorCode'] ?? null,
             ];
         } catch (Exception $e) {
-            Log::error('Get payment status failed', ['payment_id' => $paymentId, 'error' => $e->getMessage()]);
+            $this->log->error('Get payment status failed', ['payment_id' => $paymentId, 'error' => $e->getMessage()]);
             throw $e;
         }
     }
@@ -275,7 +275,7 @@ class TinkoffDriver implements PaymentGatewayInterface
                 throw new Exception("GetQr failed: {$response['Message']}");
             }
 
-            Log::info('Universal QR generated', [
+            $this->log->info('Universal QR generated', [
                 'order_id' => $data['order_id'],
                 'amount' => $data['amount'],
             ]);
@@ -286,7 +286,7 @@ class TinkoffDriver implements PaymentGatewayInterface
                 'payment_id' => $response['PaymentId'] ?? null,
             ];
         } catch (Exception $e) {
-            Log::error('QR generation failed', ['order_id' => $data['order_id'] ?? null, 'error' => $e->getMessage()]);
+            $this->log->error('QR generation failed', ['order_id' => $data['order_id'] ?? null, 'error' => $e->getMessage()]);
             throw $e;
         }
     }
@@ -339,7 +339,7 @@ class TinkoffDriver implements PaymentGatewayInterface
                 throw new Exception("Charge failed: {$response['Message']}");
             }
 
-            Log::info('Recurring charge completed', [
+            $this->log->info('Recurring charge completed', [
                 'payment_id' => $payload['PaymentId'],
                 'amount' => $amount,
             ]);
@@ -350,7 +350,7 @@ class TinkoffDriver implements PaymentGatewayInterface
                 'confirmation_id' => $response['ConfirmationId'] ?? null,
             ];
         } catch (Exception $e) {
-            Log::error('Charge by token failed', ['error' => $e->getMessage()]);
+            $this->log->error('Charge by token failed', ['error' => $e->getMessage()]);
             throw $e;
         }
     }
@@ -370,7 +370,7 @@ class TinkoffDriver implements PaymentGatewayInterface
                 throw new Exception('Invalid webhook signature');
             }
 
-            Log::info('Tinkoff webhook processed', [
+            $this->log->info('Tinkoff webhook processed', [
                 'payment_id' => $payload['PaymentId'] ?? null,
                 'status' => $payload['Status'] ?? null,
             ]);
@@ -381,7 +381,7 @@ class TinkoffDriver implements PaymentGatewayInterface
                 'status' => $this->mapStatus($payload['Status'] ?? 'UNKNOWN'),
             ];
         } catch (Exception $e) {
-            Log::error('Webhook processing failed', ['error' => $e->getMessage()]);
+            $this->log->error('Webhook processing failed', ['error' => $e->getMessage()]);
             throw $e;
         }
     }
@@ -396,14 +396,14 @@ class TinkoffDriver implements PaymentGatewayInterface
                 ->head($this->endpoint)
                 ->successful();
 
-            Log::info('Tinkoff health check', ['available' => $response]);
+            $this->log->info('Tinkoff health check', ['available' => $response]);
             return [
                 'status' => $response ? 'healthy' : 'unhealthy',
                 'provider' => 'tinkoff',
                 'timestamp' => now(),
             ];
         } catch (Exception $e) {
-            Log::warning('Tinkoff health check failed', ['error' => $e->getMessage()]);
+            $this->log->warning('Tinkoff health check failed', ['error' => $e->getMessage()]);
             return [
                 'status' => 'unhealthy',
                 'provider' => 'tinkoff',

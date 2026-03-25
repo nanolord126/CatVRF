@@ -41,8 +41,8 @@ final class HeatmapController
 
         try {
             // SECURITY: Проверка прав доступа
-            if (!Gate::allows('view_heatmaps')) {
-                Log::channel('audit')->warning('Доступ к тепловой карте запрещён', [
+            if (!$this->gate->allows('view_heatmaps')) {
+                $this->log->channel('audit')->warning('Доступ к тепловой карте запрещён', [
                     'correlation_id' => (string)$correlationId,
                     'user_id' => auth()->id(),
                 ]);
@@ -73,7 +73,7 @@ final class HeatmapController
                 toDate: $toDate,
             );
 
-            Log::channel('audit')->info('Гео-тепловая карта запрошена', [
+            $this->log->channel('audit')->info('Гео-тепловая карта запрошена', [
                 'correlation_id' => (string)$correlationId,
                 'user_id' => auth()->id(),
                 'tenant_id' => $validated['tenant_id'],
@@ -85,7 +85,7 @@ final class HeatmapController
             ]);
 
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Ошибка при получении гео-тепловой карты', [
+            $this->log->channel('audit')->error('Ошибка при получении гео-тепловой карты', [
                 'correlation_id' => (string)$correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -110,8 +110,8 @@ final class HeatmapController
 
         try {
             // SECURITY: Проверка прав доступа
-            if (!Gate::allows('view_heatmaps')) {
-                Log::channel('audit')->warning('Доступ к клик-карте запрещён', [
+            if (!$this->gate->allows('view_heatmaps')) {
+                $this->log->channel('audit')->warning('Доступ к клик-карте запрещён', [
                     'correlation_id' => (string)$correlationId,
                     'user_id' => auth()->id(),
                 ]);
@@ -140,7 +140,7 @@ final class HeatmapController
                 toDate: $toDate,
             );
 
-            Log::channel('audit')->info('Клик-тепловая карта запрошена', [
+            $this->log->channel('audit')->info('Клик-тепловая карта запрошена', [
                 'correlation_id' => (string)$correlationId,
                 'user_id' => auth()->id(),
                 'page_url' => $validated['page_url'],
@@ -152,7 +152,7 @@ final class HeatmapController
             ]);
 
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Ошибка при получении клик-тепловой карты', [
+            $this->log->channel('audit')->error('Ошибка при получении клик-тепловой карты', [
                 'correlation_id' => (string)$correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

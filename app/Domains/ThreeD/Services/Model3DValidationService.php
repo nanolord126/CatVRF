@@ -105,7 +105,7 @@ final class Model3DValidationService
             return true;
 
         } catch (Exception $e) {
-            Log::warning('GLB формат ошибка валидации', ['error' => $e->getMessage()]);
+            $this->log->warning('GLB формат ошибка валидации', ['error' => $e->getMessage()]);
             return false;
         }
     }
@@ -137,7 +137,7 @@ final class Model3DValidationService
             return $this->validateGltfJsonStructure($json);
 
         } catch (Exception $e) {
-            Log::warning('GLTF JSON формат ошибка', ['error' => $e->getMessage()]);
+            $this->log->warning('GLTF JSON формат ошибка', ['error' => $e->getMessage()]);
             return false;
         }
     }
@@ -165,7 +165,7 @@ final class Model3DValidationService
 
         foreach ($dangerousPatterns as $pattern) {
             if (preg_match($pattern, $jsonString)) {
-                Log::warning('Обнаружен опасный паттерн в GLTF JSON', [
+                $this->log->warning('Обнаружен опасный паттерн в GLTF JSON', [
                     'pattern' => $pattern,
                 ]);
                 return false;
@@ -209,7 +209,7 @@ final class Model3DValidationService
             $output = shell_exec($command);
 
             if ($output && stripos($output, 'FOUND') !== false) {
-                Log::channel('audit')->warning('ClamAV обнаружил угрозу', [
+                $this->log->channel('audit')->warning('ClamAV обнаружил угрозу', [
                     'correlation_id' => $correlationId,
                     'output' => $output,
                 ]);
@@ -223,7 +223,7 @@ final class Model3DValidationService
             return ['safe' => true, 'reason' => 'ClamAV прошёл'];
 
         } catch (Exception $e) {
-            Log::warning('Ошибка ClamAV сканирования', [
+            $this->log->warning('Ошибка ClamAV сканирования', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -270,7 +270,7 @@ final class Model3DValidationService
 
                 $malicious = $stats['malicious'] ?? 0;
                 if ($malicious > 0) {
-                    Log::channel('audit')->warning('VirusTotal обнаружил угрозу', [
+                    $this->log->channel('audit')->warning('VirusTotal обнаружил угрозу', [
                         'correlation_id' => $correlationId,
                         'malicious_count' => $malicious,
                     ]);
@@ -285,7 +285,7 @@ final class Model3DValidationService
             return ['safe' => true, 'reason' => 'VirusTotal прошёл'];
 
         } catch (Exception $e) {
-            Log::warning('Ошибка VirusTotal сканирования', [
+            $this->log->warning('Ошибка VirusTotal сканирования', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);

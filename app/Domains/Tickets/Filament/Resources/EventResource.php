@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Builder;
 
 final class EventResource extends Resource
 {
-    protected static ?string $model = Event::class;
+    protected static ?string $model = $this->event->class;
     protected static ?string $navigationIcon = 'heroicon-o-calendar-days';
     protected static ?string $navigationLabel = 'События';
     protected static ?int $navigationSort = 1;
@@ -133,8 +133,8 @@ final class EventResource extends Resource
     {
         return [
             'index' => Pages\ListEvents::route('/'),
-            'create' => Pages\CreateEvent::route('/create'),
-            'edit' => Pages\EditEvent::route('/{record}/edit'),
+            'create' => Pages\Create$this->event->route('/create'),
+            'edit' => Pages\Edit$this->event->route('/{record}/edit'),
         ];
     }
 

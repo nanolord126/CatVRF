@@ -13,7 +13,7 @@ final class DeductBoardingCommissionListener implements ShouldQueue
     public function handle(BoardingReservationCreated $event): void
     {
         try {
-            DB::transaction(function () use ($event) {
+            $this->db->transaction(function () use ($event) {
                 $clinic = $event->reservation->clinic;
                 $wallet = $clinic->owner->wallet;
 
@@ -38,7 +38,7 @@ final class DeductBoardingCommissionListener implements ShouldQueue
                     ],
                 ]);
 
-                Log::channel('audit')->info('Pet boarding commission deducted', [
+                $this->log->channel('audit')->info('Pet boarding commission deducted', [
                     'reservation_id' => $event->reservation->id,
                     'clinic_id' => $clinic->id,
                     'amount' => $commissionAmount / 100,
@@ -47,7 +47,7 @@ final class DeductBoardingCommissionListener implements ShouldQueue
                 ]);
             });
         } catch (\Throwable $e) {
-            Log::error('Failed to deduct boarding commission', [
+            $this->log->error('Failed to deduct boarding commission', [
                 'reservation_id' => $event->reservation->id,
                 'correlation_id' => $event->correlationId,
                 'error' => $e->getMessage(),

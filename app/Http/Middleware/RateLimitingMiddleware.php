@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 declare(strict_types=1);
 
@@ -7,7 +9,16 @@ use App\Services\Security\TenantAwareRateLimiter;
 use Closure;
 use Illuminate\Http\Request;
 
-final class RateLimitingMiddleware
+final /**
+ * RateLimitingMiddleware
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class RateLimitingMiddleware
 {
     public function __construct(
         private readonly TenantAwareRateLimiter $rateLimiter,

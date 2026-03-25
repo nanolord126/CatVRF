@@ -34,7 +34,7 @@ final readonly class AnalyticsService
                 throw new Exception('Rate limit exceeded for analytics', 429);
             }
 
-            Log::channel('audit')->info('Analytics metrics requested', [
+            $this->log->channel('audit')->info('Analytics metrics requested', [
                 'tenant_id' => $tenantId,
                 'period' => $period,
             ]);
@@ -44,7 +44,7 @@ final readonly class AnalyticsService
 
             return $metrics;
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Analytics metrics request failed', [
+            $this->log->channel('audit')->error('Analytics metrics request failed', [
                 'tenant_id' => $tenantId,
                 'period' => $period,
                 'error' => $e->getMessage(),
@@ -92,7 +92,7 @@ final readonly class AnalyticsService
 
             // BigDataAggregator::queue($event);
 
-            Log::channel('audit')->info('Analytics event tracked', [
+            $this->log->channel('audit')->info('Analytics event tracked', [
                 'user_id' => $userId,
                 'tenant_id' => $tenantId,
                 'event_type' => $eventType,
@@ -101,7 +101,7 @@ final readonly class AnalyticsService
 
             return true;
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Analytics event tracking failed', [
+            $this->log->channel('audit')->error('Analytics event tracking failed', [
                 'user_id' => $userId,
                 'event_type' => $eventType,
                 'error' => $e->getMessage(),
@@ -130,7 +130,7 @@ final readonly class AnalyticsService
                 throw new Exception('Rate limit exceeded for heatmap', 429);
             }
 
-            Log::channel('audit')->info('Heatmap requested', [
+            $this->log->channel('audit')->info('Heatmap requested', [
                 'tenant_id' => $tenantId,
                 'vertical' => $vertical,
             ]);
@@ -140,7 +140,7 @@ final readonly class AnalyticsService
 
             return $heatmap;
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Heatmap request failed', [
+            $this->log->channel('audit')->error('Heatmap request failed', [
                 'tenant_id' => $tenantId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

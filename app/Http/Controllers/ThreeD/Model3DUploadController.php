@@ -75,7 +75,7 @@ final class Model3DUploadController extends Controller
                 ]);
 
                 if (!$fraudResult['allowed']) {
-                    Log::channel('fraud_alert')->warning('3D модель заблокирована фрод-сервисом', [
+                    $this->log->channel('fraud_alert')->warning('3D модель заблокирована фрод-сервисом', [
                         'correlation_id' => (string)$correlationId,
                         'tenant_id' => $tenantId,
                         'reason' => $fraudResult['reason'] ?? 'Подозрение на мошенничество',
@@ -89,7 +89,7 @@ final class Model3DUploadController extends Controller
             }
 
             // SECURITY: Сохранение модели в транзакции
-            $model = DB::transaction(function () use ($request, $tenantId, $correlationId): Model3D {
+            $model = $this->db->transaction(function () use ($request, $tenantId, $correlationId): Model3D {
                 return $this->model3DService->storeModel(
                     tenantId: $tenantId,
                     file: $request->file('model'),
@@ -99,7 +99,7 @@ final class Model3DUploadController extends Controller
                 );
             });
 
-            Log::channel('audit')->info('3D модель успешно загружена', [
+            $this->log->channel('audit')->info('3D модель успешно загружена', [
                 'correlation_id' => (string)$correlationId,
                 'tenant_id' => $tenantId,
                 'model_id' => $model->id,
@@ -119,7 +119,7 @@ final class Model3DUploadController extends Controller
             ], 201);
 
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Ошибка при загрузке 3D модели', [
+            $this->log->channel('audit')->error('Ошибка при загрузке 3D модели', [
                 'correlation_id' => (string)$correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -183,7 +183,7 @@ final class Model3DUploadController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::channel('audit')->warning('Ошибка при получении превью 3D модели', [
+            $this->log->channel('audit')->warning('Ошибка при получении превью 3D модели', [
                 'model_uuid' => $modelUuid,
                 'error' => $e->getMessage(),
             ]);

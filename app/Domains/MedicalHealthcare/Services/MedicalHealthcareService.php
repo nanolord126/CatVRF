@@ -29,9 +29,9 @@ final class MedicalHealthcareService
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($data) {
+$this->db->transaction(function () use ($data) {
             $clinic = $this->clinicModel->create($data);
-            Log::channel('audit')->info('Клиника создана', [
+            $this->log->channel('audit')->info('Клиника создана', [
                 'clinic_id' => $clinic->id,
                 'correlation_id' => $data['correlation_id'] ?? null,
             ]);
@@ -49,9 +49,9 @@ DB::transaction(function () use ($data) {
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($data) {
+$this->db->transaction(function () use ($data) {
             $appointment = MedicalAppointment::create($data);
-            Log::channel('audit')->info('Прием назначен', [
+            $this->log->channel('audit')->info('Прием назначен', [
                 'appointment_id' => $appointment->id,
                 'correlation_id' => $data['correlation_id'] ?? null,
             ]);
@@ -78,10 +78,10 @@ DB::transaction(function () use ($data) {
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($appointmentId) {
+$this->db->transaction(function () use ($appointmentId) {
             $appointment = MedicalAppointment::findOrFail($appointmentId);
             $appointment->update(['status' => 'completed']);
-            Log::channel('audit')->info('Прием завершён', ['appointment_id' => $appointmentId]);
+            $this->log->channel('audit')->info('Прием завершён', ['appointment_id' => $appointmentId]);
             return true;
         });
     }
@@ -96,10 +96,10 @@ DB::transaction(function () use ($appointmentId) {
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($appointmentId, $reason) {
+$this->db->transaction(function () use ($appointmentId, $reason) {
             $appointment = MedicalAppointment::findOrFail($appointmentId);
             $appointment->update(['status' => 'cancelled', 'cancellation_reason' => $reason]);
-            Log::channel('audit')->warning('Прием отменён', [
+            $this->log->channel('audit')->warning('Прием отменён', [
                 'appointment_id' => $appointmentId,
                 'reason' => $reason,
             ]);

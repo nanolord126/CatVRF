@@ -28,13 +28,13 @@ final class PharmacyManagementService
      */
     public function createOrder(int $userId, int $pharmacyId, array $items): PharmacyOrder
     {
-        Log::channel('audit')->info('Pharmacy order initiation', [
+        $this->log->channel('audit')->info('Pharmacy order initiation', [
             'user_id' => $userId,
             'pharmacy_id' => $pharmacyId,
             'correlation_id' => $this->correlationId
         ]);
 
-        return DB::transaction(function () use ($userId, $pharmacyId, $items) {
+        return $this->db->transaction(function () use ($userId, $pharmacyId, $items) {
             $totalAmount = 0;
             $itemsToCreate = [];
 

@@ -24,7 +24,7 @@ final class FashionRetailShopController
                 ->paginate(20);
 
             $correlationId = Str::uuid()->toString();
-            Log::channel('audit')->info('FashionRetail shops listed', [
+            $this->log->channel('audit')->info('FashionRetail shops listed', [
                 'count' => $shops->count(),
                 'correlation_id' => $correlationId,
             ]);
@@ -36,7 +36,7 @@ final class FashionRetailShopController
             ]);
         } catch (\Throwable $e) {
             $correlationId = Str::uuid()->toString();
-            Log::error('FashionRetail shop listing failed', [
+            $this->log->error('FashionRetail shop listing failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -74,7 +74,7 @@ final class FashionRetailShopController
         $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
-            $shop = DB::transaction(function () use ($correlationId) {
+            $shop = $this->db->transaction(function () use ($correlationId) {
                 return FashionRetailShop::create([
                     'uuid' => Str::uuid(),
                     'tenant_id' => tenant('id'),
@@ -94,7 +94,7 @@ final class FashionRetailShopController
                 ]);
             });
 
-            Log::channel('audit')->info('FashionRetail shop created', [
+            $this->log->channel('audit')->info('FashionRetail shop created', [
                 'shop_id' => $shop->id,
                 'owner_id' => auth()->id(),
                 'correlation_id' => $correlationId,
@@ -107,7 +107,7 @@ final class FashionRetailShopController
             ], 201);
         } catch (\Throwable $e) {
             $correlationId = Str::uuid()->toString();
-            Log::error('FashionRetail shop creation failed', [
+            $this->log->error('FashionRetail shop creation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -136,7 +136,7 @@ final class FashionRetailShopController
                 ], 403);
             }
 
-            DB::transaction(function () use ($shop, $correlationId) {
+            $this->db->transaction(function () use ($shop, $correlationId) {
                 $shop->update([
                     'name' => request('name', $shop->name),
                     'description' => request('description', $shop->description),
@@ -147,7 +147,7 @@ final class FashionRetailShopController
                 ]);
             });
 
-            Log::channel('audit')->info('FashionRetail shop updated', [
+            $this->log->channel('audit')->info('FashionRetail shop updated', [
                 'shop_id' => $id,
                 'correlation_id' => $correlationId,
             ]);
@@ -159,7 +159,7 @@ final class FashionRetailShopController
             ]);
         } catch (\Throwable $e) {
             $correlationId = Str::uuid()->toString();
-            Log::error('FashionRetail shop update failed', [
+            $this->log->error('FashionRetail shop update failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);

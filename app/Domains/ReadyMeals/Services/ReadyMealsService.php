@@ -28,7 +28,7 @@ final class ReadyMealsService
         }
         RateLimiter::hit("meals:order:".auth()->id(), 3600);
 
-        return DB::transaction(function () use ($providerId, $items, $data, $correlationId) {
+        return $this->db->transaction(function () use ($providerId, $items, $data, $correlationId) {
             $provider = MealProvider::findOrFail($providerId);
             $total = 0;
 
@@ -46,7 +46,7 @@ final class ReadyMealsService
             ]);
 
             if ($fraud['decision'] === 'block') {
-                Log::channel('audit')->error('Meal order blocked', [
+                $this->log->channel('audit')->error('Meal order blocked', [
                     'user_id' => auth()->id(),
                     'score' => $fraud['score'],
                     'correlation_id' => $correlationId,
@@ -69,7 +69,7 @@ final class ReadyMealsService
                 'tags' => ['ready_meals' => true, 'items_count' => count($items)],
             ]);
 
-            Log::channel('audit')->info('Meal order created', [
+            $this->log->channel('audit')->info('Meal order created', [
                 'order_id' => $order->id,
                 'provider_id' => $providerId,
                 'total_kopecks' => $total,
@@ -84,7 +84,7 @@ final class ReadyMealsService
     {
         $correlationId = $correlationId ?: (string) Str::uuid();
 
-        return DB::transaction(function () use ($orderId, $correlationId) {
+        return $this->db->transaction(function () use ($orderId, $correlationId) {
             $order = MealOrder::findOrFail($orderId);
 
             if ($order->payment_status !== 'completed') {
@@ -98,7 +98,7 @@ final class ReadyMealsService
                 'order_id' => $order->id,
             ]);
 
-            Log::channel('audit')->info('Meal order completed', [
+            $this->log->channel('audit')->info('Meal order completed', [
                 'order_id' => $order->id,
                 'payout_kopecks' => $order->payout_kopecks,
                 'correlation_id' => $correlationId,
@@ -112,7 +112,7 @@ final class ReadyMealsService
     {
         $correlationId = $correlationId ?: (string) Str::uuid();
 
-        return DB::transaction(function () use ($orderId, $correlationId) {
+        return $this->db->transaction(function () use ($orderId, $correlationId) {
             $order = MealOrder::findOrFail($orderId);
 
             if ($order->status === 'completed') {
@@ -128,7 +128,7 @@ final class ReadyMealsService
                 ]);
             }
 
-            Log::channel('audit')->info('Meal order cancelled', [
+            $this->log->channel('audit')->info('Meal order cancelled', [
                 'order_id' => $order->id,
                 'correlation_id' => $correlationId,
             ]);

@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Pharmacy\Http\Controllers;
@@ -8,9 +10,26 @@ use Illuminate\Http\JsonResponse;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Str;
 
-final class B2BController extends Controller
+final /**
+ * B2BController
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class B2BController extends Controller
 {
-    public function __construct(private readonly B2BService $service) {}
+    public function __construct(private readonly B2BService $service) {
+    /**
+     * Инициализировать класс
+     */
+    public function __construct()
+    {
+        // TODO: инициализация
+    }
+}
 
     public function store(Request $request): JsonResponse
     {

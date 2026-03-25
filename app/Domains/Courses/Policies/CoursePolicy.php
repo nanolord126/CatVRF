@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Courses\Policies;
@@ -6,38 +8,47 @@ use App\Domains\Courses\Models\Course;
 use App\Models\User;
 use Illuminate\Auth\Access\Response;
 
-final class CoursePolicy
+final /**
+ * CoursePolicy
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class CoursePolicy
 {
     public function viewAny(?User $user): Response
     {
-        return Response::allow();
+        return $this->response->allow();
     }
 
     public function view(?User $user, Course $course): Response
     {
-        return Response::allow();
+        return $this->response->allow();
     }
 
     public function create(User $user): Response
     {
         return $user->hasPermission('courses.create')
-            ? Response::allow()
-            : Response::deny('Unauthorized');
+            ? $this->response->allow()
+            : $this->response->deny('Unauthorized');
     }
 
     public function update(User $user, Course $course): Response
     {
         if ($user->id === $course->instructor_id || $user->isAdmin()) {
-            return Response::allow();
+            return $this->response->allow();
         }
 
-        return Response::deny('Unauthorized');
+        return $this->response->deny('Unauthorized');
     }
 
     public function delete(User $user, Course $course): Response
     {
         return $user->isAdmin()
-            ? Response::allow()
-            : Response::deny('Only admins can delete courses');
+            ? $this->response->allow()
+            : $this->response->deny('Only admins can delete courses');
     }
 }

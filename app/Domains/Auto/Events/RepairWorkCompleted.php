@@ -23,7 +23,7 @@ final class RepairWorkCompleted implements ShouldBroadcast
         public readonly AutoServiceOrder $order,
         public readonly string $correlationId,
     ) {
-        Log::channel('audit')->info('Repair work completed', [
+        $this->log->channel('audit')->info('Repair work completed', [
             'correlation_id' => $this->correlationId,
             'order_id' => $this->order->id,
             'client_id' => $this->order->client_id,

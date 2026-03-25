@@ -39,7 +39,7 @@ final class CourseService
         }
         RateLimiter::hit("courses:enroll:{$userId}", 3600);
 
-        return DB::transaction(function () use ($userId, $courseId, $isB2B, $meta, $correlationId) {
+        return $this->db->transaction(function () use ($userId, $courseId, $isB2B, $meta, $correlationId) {
             $course = Course::findOrFail($courseId);
             
             // Расчет цены с учетом B2B скидки (КАНОН 20%)
@@ -55,7 +55,7 @@ final class CourseService
             ]);
 
             if ($fraud["decision"] === "block") {
-                Log::channel("audit")->warning("Courses Security Block", ["user_id" => $userId, "score" => $fraud["score"]]);
+                $this->log->channel("audit")->warning("Courses Security Block", ["user_id" => $userId, "score" => $fraud["score"]]);
                 throw new \RuntimeException("Запись заблокирована службой безопасности.", 403);
             }
 
@@ -72,7 +72,7 @@ final class CourseService
                 "tags" => ["vertical:education", $isB2B ? "segment:b2b" : "segment:b2c"]
             ]);
 
-            Log::channel("audit")->info("Courses: user enrolled", ["enrollment_id" => $enrollment->id, "corr" => $correlationId]);
+            $this->log->channel("audit")->info("Courses: user enrolled", ["enrollment_id" => $enrollment->id, "corr" => $correlationId]);
 
             return $enrollment;
         });
@@ -87,7 +87,7 @@ final class CourseService
         $enrollment = Enrollment::findOrFail($enrollmentId);
         $course = $enrollment->course;
 
-        DB::transaction(function () use ($enrollment, $lessonId, $course, $correlationId) {
+        $this->db->transaction(function () use ($enrollment, $lessonId, $course, $correlationId) {
             $totalLessons = $course->lessons()->count();
             $completedLessons = $enrollment->completed_lessons_count + 1;
             $newProgress = (int)(($completedLessons / $totalLessons) * 100);
@@ -111,7 +111,7 @@ final class CourseService
                 ]);
                 
                 $enrollment->update(["certificate_id" => $certificate->id]);
-                Log::channel("audit")->info("Courses: certificate issued", ["user_id" => $enrollment->user_id, "cert" => $certificate->uuid]);
+                $this->log->channel("audit")->info("Courses: certificate issued", ["user_id" => $enrollment->user_id, "cert" => $certificate->uuid]);
             }
         });
     }
@@ -127,7 +127,7 @@ final class CourseService
         }
 
         // Логирование доступа к живому уроку
-        Log::channel("audit")->info("Courses: access live room", ["user_id" => $userId, "lesson_id" => $lessonId]);
+        $this->log->channel("audit")->info("Courses: access live room", ["user_id" => $userId, "lesson_id" => $lessonId]);
         
         return "https://meet.catvrf.io/" . $lesson->uuid . "?token=" . Str::random(32);
     }

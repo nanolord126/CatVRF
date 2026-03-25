@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -12,6 +14,15 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * UpdateRatingsListener
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
 class UpdateRatingsListener implements ShouldQueue
 {
 	use InteractsWithQueue;
@@ -19,7 +30,7 @@ class UpdateRatingsListener implements ShouldQueue
 	public function handle(ReviewSubmitted $event): void
 	{
 		try {
-			DB::transaction(function () use ($event) {
+			$this->db->transaction(function () use ($event) {
 				$studio = PhotoStudio::find($event->review->photo_studio_id);
 				$photographer = Photographer::find($event->review->photographer_id);
 
@@ -36,14 +47,14 @@ class UpdateRatingsListener implements ShouldQueue
 					]);
 				}
 
-				Log::channel('audit')->info('Photography: Ratings updated', [
+				$this->log->channel('audit')->info('Photography: Ratings updated', [
 					'studio_id' => $studio?->id,
 					'photographer_id' => $photographer?->id,
 					'correlation_id' => $event->correlationId,
 				]);
 			});
 		} catch (\Exception $e) {
-			Log::channel('audit')->error('Photography: Rating update failed', [
+			$this->log->channel('audit')->error('Photography: Rating update failed', [
 				'review_id' => $event->review->id,
 				'error' => $e->getMessage(),
 				'correlation_id' => $event->correlationId,

@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources;
@@ -10,6 +12,15 @@ use Filament\Forms\Form;
 use App\Domains\Travel\Models\B2BTravelOrder;
 use Illuminate\Database\Eloquent\Builder;
 
+/**
+ * TravelResource
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
 class TravelResource extends Resource
 {
     protected static ?string $model = B2BTravelOrder::class;

@@ -22,7 +22,7 @@ final class AttendanceController
 
             return response()->json(['success' => true, 'data' => $attendance, 'correlation_id' => $correlationId], 201);
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to check in', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+            $this->log->channel('audit')->error('Failed to check in', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
             return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
         }
     }
@@ -90,7 +90,7 @@ final class AttendanceController
                 'correlation_id' => $correlationId,
             ]);
 
-            Log::channel('audit')->info('Metric recorded', ['metric_id' => $metric->id, 'member_id' => auth()->id(), 'correlation_id' => $correlationId]);
+            $this->log->channel('audit')->info('Metric recorded', ['metric_id' => $metric->id, 'member_id' => auth()->id(), 'correlation_id' => $correlationId]);
 
             return response()->json(['success' => true, 'data' => $metric, 'correlation_id' => $correlationId], 201);
         } catch (Throwable $e) {

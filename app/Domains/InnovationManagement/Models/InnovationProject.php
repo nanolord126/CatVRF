@@ -1,5 +1,29 @@
 <?php declare(strict_types=1);
-namespace App\Domains\InnovationManagement\Models;
+namespace App\Doma
+
+/**
+ * InnovationProject
+ * 
+ * Производитель: CatVRF Platform
+ * Версия: 1.0.0
+ * 
+ * Примеры использования:
+ * 
+ * ```php
+ * // Базовое использование
+ * $instance = new InnovationProject();
+ * ```
+ * 
+ * Требования:
+ * - Laravel 10+
+ * - PHP 8.2+
+ * - Все методы должны быть явно типизированы
+ * 
+ * @author CatVRF
+ * @package namespace App\Domains\InnovationManagement\Models
+ * @see https://github.com/iyegorovskyi_clemny/CatVRF
+ */
+ins\InnovationManagement\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;

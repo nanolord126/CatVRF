@@ -42,7 +42,7 @@ final class TaxiService
         }
         RateLimiter::hit("taxi:order:{$passengerId}", 3600);
 
-        return DB::transaction(function () use ($passengerId, $pickup, $dropoff, $class, $correlationId) {
+        return $this->db->transaction(function () use ($passengerId, $pickup, $dropoff, $class, $correlationId) {
             // 2. Расчет Surge Pricing на основе гео-зоны
             $surge = TaxiSurgeZone::where("geo_hash", $this->geo->getHash($pickup["lat"], $pickup["lng"]))->first();
             $multiplier = $surge ? $surge->multiplier : 1.0;
@@ -59,7 +59,7 @@ final class TaxiService
                 ->first();
 
             if (!$driver) {
-                Log::channel("audit")->warning("Taxi: no drivers available", ["class" => $class, "pos" => $pickup]);
+                $this->log->channel("audit")->warning("Taxi: no drivers available", ["class" => $class, "pos" => $pickup]);
                 throw new \RuntimeException("Нет свободных машин выбранного класса. Попробуйте сменить класс.", 404);
             }
 
@@ -89,7 +89,7 @@ final class TaxiService
 
             $driver->update(["is_busy" => true]);
 
-            Log::channel("audit")->info("Taxi: ride assigned", ["ride_id" => $ride->id, "driver_id" => $driver->id, "corr" => $correlationId]);
+            $this->log->channel("audit")->info("Taxi: ride assigned", ["ride_id" => $ride->id, "driver_id" => $driver->id, "corr" => $correlationId]);
 
             return $ride;
         });
@@ -103,7 +103,7 @@ final class TaxiService
         $correlationId = $correlationId ?: (string) Str::uuid();
         $ride = TaxiRide::with("driver.fleet")->findOrFail($rideId);
 
-        DB::transaction(function () use ($ride, $finalGeo, $correlationId) {
+        $this->db->transaction(function () use ($ride, $finalGeo, $correlationId) {
             $ride->update([
                 "status" => "completed",
                 "finished_at" => now(),
@@ -138,7 +138,7 @@ final class TaxiService
                 );
             }
 
-            Log::channel("audit")->info("Taxi: ride payout completed", [
+            $this->log->channel("audit")->info("Taxi: ride payout completed", [
                 "ride_id" => $ride->id, 
                 "payout" => $driverPayout, 
                 "total" => $total
@@ -152,7 +152,7 @@ final class TaxiService
     public function recalculateSurge(string $geoHash): float
     {
         // Логика: если спрос (запросы) > предложения (курьеры) в 1.5 раза -> multiplier 1.2
-        Log::channel("audit")->info("Taxi: surge recalculated", ["geo" => $geoHash]);
+        $this->log->channel("audit")->info("Taxi: surge recalculated", ["geo" => $geoHash]);
         return 1.2; 
     }
 }

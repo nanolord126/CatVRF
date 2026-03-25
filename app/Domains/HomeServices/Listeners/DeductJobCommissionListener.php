@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\HomeServices\Listeners;
@@ -7,7 +9,16 @@ use App\Models\Wallet;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
 
-final class DeductJobCommissionListener implements ShouldQueue
+final /**
+ * DeductJobCommissionListener
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class DeductJobCommissionListener implements ShouldQueue
 {
     use InteractsWithQueue;
 
@@ -16,13 +27,13 @@ final class DeductJobCommissionListener implements ShouldQueue
         try {
             $job = $event->job;
             
-            \DB::transaction(function () use ($job, $event) {
+            \$this->db->transaction(function () use ($job, $event) {
                 $wallet = Wallet::where('tenant_id', $job->tenant_id)->lockForUpdate()->firstOrFail();
                 $commissionAmount = (int)($job->commission_amount * 100);
                 
                 $wallet->decrement('balance', $commissionAmount);
                 
-                \DB::table('balance_transactions')->insert([
+                \$this->db->table('balance_transactions')->insert([
                     'wallet_id' => $wallet->id,
                     'type' => 'commission',
                     'amount' => -$commissionAmount,
@@ -32,13 +43,13 @@ final class DeductJobCommissionListener implements ShouldQueue
                 ]);
             });
 
-            \Log::channel('audit')->info('Job commission deducted', [
+            \$this->log->channel('audit')->info('Job commission deducted', [
                 'job_id' => $job->id,
                 'commission_amount' => $job->commission_amount,
                 'correlation_id' => $event->correlationId,
             ]);
         } catch (\Throwable $e) {
-            \Log::channel('audit')->error('Failed to deduct job commission', [
+            \$this->log->channel('audit')->error('Failed to deduct job commission', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $event->correlationId,
             ]);

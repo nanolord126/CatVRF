@@ -29,7 +29,7 @@ final class B2BAutoController
 
             $page = (int) $request->query('page', 1);
 
-            Log::channel('audit')->info('B2B Auto: storefronts list', [
+            $this->log->channel('audit')->info('B2B Auto: storefronts list', [
                 'tenant_id'      => $tenantId,
                 'correlation_id' => $correlationId,
             ]);
@@ -42,7 +42,7 @@ final class B2BAutoController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('B2B Auto: storefronts error', [
+            $this->log->channel('audit')->error('B2B Auto: storefronts error', [
                 'error'          => $e->getMessage(),
                 'trace'          => $e->getTraceAsString(),
                 'correlation_id' => $correlationId,
@@ -77,8 +77,8 @@ final class B2BAutoController
                 'min_order_amount'   => 'nullable|integer|min:1000',
             ]);
 
-            DB::transaction(function () use ($validated, $tenantId, $correlationId): void {
-                Log::channel('audit')->info('B2B Auto: Storefront created', [
+            $this->db->transaction(function () use ($validated, $tenantId, $correlationId): void {
+                $this->log->channel('audit')->info('B2B Auto: Storefront created', [
                     'inn'            => $validated['inn'],
                     'tenant_id'      => $tenantId,
                     'correlation_id' => $correlationId,
@@ -93,7 +93,7 @@ final class B2BAutoController
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('B2B Auto: createStorefront error', [
+            $this->log->channel('audit')->error('B2B Auto: createStorefront error', [
                 'error'          => $e->getMessage(),
                 'trace'          => $e->getTraceAsString(),
                 'correlation_id' => $correlationId,
@@ -126,8 +126,8 @@ final class B2BAutoController
                 'description'   => 'nullable|string|max:1000',
             ]);
 
-            DB::transaction(function () use ($validated, $tenantId, $correlationId): void {
-                Log::channel('audit')->info('B2B Auto: Order created', [
+            $this->db->transaction(function () use ($validated, $tenantId, $correlationId): void {
+                $this->log->channel('audit')->info('B2B Auto: Order created', [
                     'storefront_id'  => $validated['storefront_id'],
                     'amount'         => $validated['amount'],
                     'tenant_id'      => $tenantId,
@@ -143,7 +143,7 @@ final class B2BAutoController
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('B2B Auto: createOrder error', [
+            $this->log->channel('audit')->error('B2B Auto: createOrder error', [
                 'error'          => $e->getMessage(),
                 'trace'          => $e->getTraceAsString(),
                 'correlation_id' => $correlationId,
@@ -158,7 +158,7 @@ final class B2BAutoController
         try {
             $tenantId = auth()->user()?->tenant_id;
 
-            Log::channel('audit')->info('B2B Auto: myB2BOrders', [
+            $this->log->channel('audit')->info('B2B Auto: myB2BOrders', [
                 'tenant_id'      => $tenantId,
                 'correlation_id' => $correlationId,
             ]);
@@ -169,7 +169,7 @@ final class B2BAutoController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('B2B Auto: myB2BOrders error', [
+            $this->log->channel('audit')->error('B2B Auto: myB2BOrders error', [
                 'error'          => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -183,8 +183,8 @@ final class B2BAutoController
         try {
             $tenantId = auth()->user()?->tenant_id;
 
-            DB::transaction(function () use ($id, $tenantId, $correlationId): void {
-                Log::channel('audit')->info('B2B Auto: Order approved', [
+            $this->db->transaction(function () use ($id, $tenantId, $correlationId): void {
+                $this->log->channel('audit')->info('B2B Auto: Order approved', [
                     'order_id'       => $id,
                     'tenant_id'      => $tenantId,
                     'correlation_id' => $correlationId,
@@ -193,7 +193,7 @@ final class B2BAutoController
 
             return response()->json(['success' => true, 'message' => 'Заказ подтверждён', 'correlation_id' => $correlationId]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('B2B Auto: approveOrder error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+            $this->log->channel('audit')->error('B2B Auto: approveOrder error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
             return response()->json(['success' => false, 'message' => 'Ошибка', 'correlation_id' => $correlationId], 500);
         }
     }
@@ -206,8 +206,8 @@ final class B2BAutoController
 
             $reason = $request->validate(['reason' => 'required|string|max:500'])['reason'];
 
-            DB::transaction(function () use ($id, $reason, $tenantId, $correlationId): void {
-                Log::channel('audit')->info('B2B Auto: Order rejected', [
+            $this->db->transaction(function () use ($id, $reason, $tenantId, $correlationId): void {
+                $this->log->channel('audit')->info('B2B Auto: Order rejected', [
                     'order_id'       => $id,
                     'reason'         => $reason,
                     'tenant_id'      => $tenantId,
@@ -219,7 +219,7 @@ final class B2BAutoController
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('B2B Auto: rejectOrder error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+            $this->log->channel('audit')->error('B2B Auto: rejectOrder error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
             return response()->json(['success' => false, 'message' => 'Ошибка', 'correlation_id' => $correlationId], 500);
         }
     }
@@ -228,8 +228,8 @@ final class B2BAutoController
     {
         $correlationId = Str::uuid()->toString();
         try {
-            DB::transaction(function () use ($id, $correlationId): void {
-                Log::channel('audit')->info('B2B Auto: INN verified', [
+            $this->db->transaction(function () use ($id, $correlationId): void {
+                $this->log->channel('audit')->info('B2B Auto: INN verified', [
                     'storefront_id'  => $id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -237,7 +237,7 @@ final class B2BAutoController
 
             return response()->json(['success' => true, 'message' => 'ИНН подтверждён', 'correlation_id' => $correlationId]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('B2B Auto: verifyInn error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+            $this->log->channel('audit')->error('B2B Auto: verifyInn error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
             return response()->json(['success' => false, 'message' => 'Ошибка', 'correlation_id' => $correlationId], 500);
         }
     }

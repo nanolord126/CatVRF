@@ -39,7 +39,7 @@ final class B2BCourseController
 
             $correlationId = Str::uuid()->toString();
 
-            DB::transaction(function () use ($validated, $correlationId) {
+            $this->db->transaction(function () use ($validated, $correlationId) {
                 B2BCourseStorefront::create([
                     'uuid' => Str::uuid(),
                     'tenant_id' => auth()->user()->tenant_id,
@@ -47,7 +47,7 @@ final class B2BCourseController
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Course B2B: Storefront created', [
+                $this->log->channel('audit')->info('Course B2B: Storefront created', [
                     'inn' => $validated['inn'],
                     'correlation_id' => $correlationId,
                 ]);
@@ -59,7 +59,7 @@ final class B2BCourseController
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Course B2B: Storefront creation failed', [
+            $this->log->channel('audit')->error('Course B2B: Storefront creation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
             ]);
@@ -85,7 +85,7 @@ final class B2BCourseController
 
             $correlationId = Str::uuid()->toString();
 
-            DB::transaction(function () use ($validated, $correlationId) {
+            $this->db->transaction(function () use ($validated, $correlationId) {
                 B2BCourseOrder::create([
                     'uuid' => Str::uuid(),
                     'tenant_id' => auth()->user()->tenant_id,
@@ -96,7 +96,7 @@ final class B2BCourseController
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Course B2B: Order created', [
+                $this->log->channel('audit')->info('Course B2B: Order created', [
                     'order_number' => 'B2B-' . Str::random(8),
                     'total_amount' => $validated['total_amount'],
                     'correlation_id' => $correlationId,
@@ -109,7 +109,7 @@ final class B2BCourseController
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Course B2B: Order creation failed', [
+            $this->log->channel('audit')->error('Course B2B: Order creation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
             ]);
@@ -141,10 +141,10 @@ final class B2BCourseController
 
             $correlationId = Str::uuid()->toString();
 
-            DB::transaction(function () use ($order, $correlationId) {
+            $this->db->transaction(function () use ($order, $correlationId) {
                 $order->update(['status' => 'approved']);
 
-                Log::channel('audit')->info('Course B2B: Order approved', [
+                $this->log->channel('audit')->info('Course B2B: Order approved', [
                     'order_id' => $order->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -156,7 +156,7 @@ final class B2BCourseController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Course B2B: Order approval failed', [
+            $this->log->channel('audit')->error('Course B2B: Order approval failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
             ]);
@@ -178,13 +178,13 @@ final class B2BCourseController
             $correlationId = Str::uuid()->toString();
             $reason = $request->get('reason', '');
 
-            DB::transaction(function () use ($order, $reason, $correlationId) {
+            $this->db->transaction(function () use ($order, $reason, $correlationId) {
                 $order->update([
                     'status' => 'rejected',
                     'notes' => $reason,
                 ]);
 
-                Log::channel('audit')->info('Course B2B: Order rejected', [
+                $this->log->channel('audit')->info('Course B2B: Order rejected', [
                     'order_id' => $order->id,
                     'reason' => $reason,
                     'correlation_id' => $correlationId,
@@ -197,7 +197,7 @@ final class B2BCourseController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Course B2B: Order rejection failed', [
+            $this->log->channel('audit')->error('Course B2B: Order rejection failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
             ]);
@@ -218,10 +218,10 @@ final class B2BCourseController
             $storefront = B2BCourseStorefront::findOrFail($id);
             $correlationId = Str::uuid()->toString();
 
-            DB::transaction(function () use ($storefront, $correlationId) {
+            $this->db->transaction(function () use ($storefront, $correlationId) {
                 $storefront->update(['is_verified' => true]);
 
-                Log::channel('audit')->info('Course B2B: Storefront verified', [
+                $this->log->channel('audit')->info('Course B2B: Storefront verified', [
                     'storefront_id' => $storefront->id,
                     'inn' => $storefront->inn,
                     'correlation_id' => $correlationId,
@@ -234,7 +234,7 @@ final class B2BCourseController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Course B2B: Storefront verification failed', [
+            $this->log->channel('audit')->error('Course B2B: Storefront verification failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
             ]);

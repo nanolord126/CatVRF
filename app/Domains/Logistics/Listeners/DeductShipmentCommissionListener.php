@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Logistics\Listeners;
@@ -9,14 +11,23 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-final class DeductShipmentCommissionListener implements ShouldQueue
+final /**
+ * DeductShipmentCommissionListener
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class DeductShipmentCommissionListener implements ShouldQueue
 {
     use InteractsWithQueue;
 
     public function handle(ShipmentCreated $event): void
     {
         try {
-            DB::transaction(function () use ($event) {
+            $this->db->transaction(function () use ($event) {
                 $wallet = \App\Models\Wallet::where('tenant_id', $event->shipment->tenant_id)
                     ->lockForUpdate()
                     ->first();
@@ -37,7 +48,7 @@ final class DeductShipmentCommissionListener implements ShouldQueue
                     'correlation_id' => $event->correlationId,
                 ]);
 
-                Log::channel('audit')->info('Shipment commission deducted', [
+                $this->log->channel('audit')->info('Shipment commission deducted', [
                     'shipment_id' => $event->shipment->id,
                     'tenant_id' => $event->shipment->tenant_id,
                     'customer_id' => $event->shipment->customer_id,
@@ -46,7 +57,7 @@ final class DeductShipmentCommissionListener implements ShouldQueue
                 ]);
             });
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to deduct shipment commission', [
+            $this->log->channel('audit')->error('Failed to deduct shipment commission', [
                 'shipment_id' => $event->shipment->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

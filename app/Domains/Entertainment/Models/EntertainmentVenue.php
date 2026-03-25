@@ -45,7 +45,7 @@ final class EntertainmentVenue extends Model
 
     public function entertainmentEvents(): HasMany
     {
-        return $this->hasMany(EntertainmentEvent::class, 'venue_id');
+        return $this->hasMany(Entertainment$this->event->class, 'venue_id');
     }
 
     public function bookings(): HasMany

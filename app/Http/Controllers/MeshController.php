@@ -45,7 +45,7 @@ final class MeshController extends Controller
                 'turn_servers' => $this->getTurnServers(),
             ]);
         } catch (\Exception $e) {
-            Log::channel('fraud_alert')->error('Mesh join failed', [
+            $this->log->channel('fraud_alert')->error('Mesh join failed', [
                 'stream_id' => $stream->id,
                 'user_id' => auth()->id(),
                 'error' => $e->getMessage(),
@@ -86,7 +86,7 @@ final class MeshController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Exception $e) {
-            Log::channel('fraud_alert')->error('Offer send failed', [
+            $this->log->channel('fraud_alert')->error('Offer send failed', [
                 'stream_id' => $stream->id,
                 'error' => $e->getMessage(),
             ]);
@@ -126,7 +126,7 @@ final class MeshController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Exception $e) {
-            Log::channel('fraud_alert')->error('Answer send failed', [
+            $this->log->channel('fraud_alert')->error('Answer send failed', [
                 'stream_id' => $stream->id,
                 'error' => $e->getMessage(),
             ]);
@@ -167,7 +167,7 @@ final class MeshController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Exception $e) {
-            Log::channel('fraud_alert')->error('ICE candidate add failed', [
+            $this->log->channel('fraud_alert')->error('ICE candidate add failed', [
                 'stream_id' => $stream->id,
                 'error' => $e->getMessage(),
             ]);
@@ -199,7 +199,7 @@ final class MeshController extends Controller
                 'topology_switched' => $switched,
             ]);
         } catch (\Exception $e) {
-            Log::channel('fraud_alert')->error('Mark connected failed', [
+            $this->log->channel('fraud_alert')->error('Mark connected failed', [
                 'stream_id' => $stream->id,
                 'error' => $e->getMessage(),
             ]);
@@ -229,7 +229,7 @@ final class MeshController extends Controller
 
             return response()->json(['status' => 'failed']);
         } catch (\Exception $e) {
-            Log::channel('fraud_alert')->error('Mark failed failed', [
+            $this->log->channel('fraud_alert')->error('Mark failed failed', [
                 'stream_id' => $stream->id,
                 'error' => $e->getMessage(),
             ]);

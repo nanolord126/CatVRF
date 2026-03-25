@@ -16,7 +16,7 @@ final readonly class ReviewService
     public function getProductReviews(int $productId): Collection
     {
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
 
         return FashionRetailReview::where('product_id', $productId)
             ->where('status', 'approved')
@@ -28,7 +28,7 @@ final readonly class ReviewService
     public function getShopReviews(int $shopId): Collection
     {
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
 
         return FashionRetailReview::whereHas('product', function ($query) use ($shopId) {
             $query->where('shop_id', $shopId);
@@ -41,7 +41,7 @@ final readonly class ReviewService
     public function getPendingReviews(): Collection
     {
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
 
         return FashionRetailReview::where('status', 'pending')
             ->with('product', 'user')
@@ -52,9 +52,9 @@ final readonly class ReviewService
     public function approveReview(int $reviewId, string $correlationId): void
     {
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
 
-        DB::transaction(function () use ($reviewId, $correlationId) {
+        $this->db->transaction(function () use ($reviewId, $correlationId) {
             $review = FashionRetailReview::lockForUpdate()->findOrFail($reviewId);
 
             $review->update([
@@ -62,7 +62,7 @@ final readonly class ReviewService
                 'correlation_id' => $correlationId,
             ]);
 
-            Log::channel('audit')->info('FashionRetail review approved', [
+            $this->log->channel('audit')->info('FashionRetail review approved', [
                 'review_id' => $reviewId,
                 'correlation_id' => $correlationId,
             ]);
@@ -72,9 +72,9 @@ final readonly class ReviewService
     public function rejectReview(int $reviewId, string $correlationId): void
     {
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
 
-        DB::transaction(function () use ($reviewId, $correlationId) {
+        $this->db->transaction(function () use ($reviewId, $correlationId) {
             $review = FashionRetailReview::lockForUpdate()->findOrFail($reviewId);
 
             $review->update([
@@ -82,7 +82,7 @@ final readonly class ReviewService
                 'correlation_id' => $correlationId,
             ]);
 
-            Log::channel('audit')->info('FashionRetail review rejected', [
+            $this->log->channel('audit')->info('FashionRetail review rejected', [
                 'review_id' => $reviewId,
                 'correlation_id' => $correlationId,
             ]);
@@ -92,9 +92,9 @@ final readonly class ReviewService
     public function updateProductRating(int $productId): void
     {
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
 
-        DB::transaction(function () use ($productId) {
+        $this->db->transaction(function () use ($productId) {
             $reviews = FashionRetailReview::where('product_id', $productId)
                 ->where('status', 'approved')
                 ->get();

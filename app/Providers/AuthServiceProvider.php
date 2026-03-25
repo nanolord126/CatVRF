@@ -56,25 +56,25 @@ final class AuthServiceProvider extends ServiceProvider
     private function defineGates(): void
     {
         // Admin gates
-        Gate::define('view-admin-dashboard', static fn($user) => $user->hasRole('admin'));
-        Gate::define('manage-platforms', static fn($user) => $user->hasRole('admin'));
-        Gate::define('manage-disputes', static fn($user) => $user->hasRole('admin'));
+        $this->gate->define('view-admin-dashboard', static fn($user) => $user->hasRole('admin'));
+        $this->gate->define('manage-platforms', static fn($user) => $user->hasRole('admin'));
+        $this->gate->define('manage-disputes', static fn($user) => $user->hasRole('admin'));
 
         // Business owner gates
-        Gate::define('view-business-dashboard', static fn($user) => $user->hasRole('business_owner'));
-        Gate::define('manage-employees', static fn($user) => $user->hasRole('business_owner'));
-        Gate::define('manage-payroll', static fn($user) => $user->hasRole('business_owner'));
+        $this->gate->define('view-business-dashboard', static fn($user) => $user->hasRole('business_owner'));
+        $this->gate->define('manage-employees', static fn($user) => $user->hasRole('business_owner'));
+        $this->gate->define('manage-payroll', static fn($user) => $user->hasRole('business_owner'));
 
         // Manager gates
-        Gate::define('manage-operations', static fn($user) => $user->hasRole('manager'));
-        Gate::define('view-analytics', static fn($user) => $user->hasRole('manager'));
+        $this->gate->define('manage-operations', static fn($user) => $user->hasRole('manager'));
+        $this->gate->define('view-analytics', static fn($user) => $user->hasRole('manager'));
 
         // Accountant gates
-        Gate::define('manage-payments', static fn($user) => $user->hasRole('accountant'));
-        Gate::define('view-financial-reports', static fn($user) => $user->hasRole('accountant'));
+        $this->gate->define('manage-payments', static fn($user) => $user->hasRole('accountant'));
+        $this->gate->define('view-financial-reports', static fn($user) => $user->hasRole('accountant'));
 
         // Employee gates
-        Gate::define('manage-tasks', static fn($user) => $user->hasRole('employee'));
-        Gate::define('view-schedule', static fn($user) => $user->hasRole('employee'));
+        $this->gate->define('manage-tasks', static fn($user) => $user->hasRole('employee'));
+        $this->gate->define('view-schedule', static fn($user) => $user->hasRole('employee'));
     }
 }

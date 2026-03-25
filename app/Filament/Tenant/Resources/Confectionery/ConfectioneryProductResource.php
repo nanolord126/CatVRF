@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -11,7 +13,16 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
 
-final class ConfectioneryProductResource extends Resource
+final /**
+ * ConfectioneryProductResource
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class ConfectioneryProductResource extends Resource
 {
     protected static ?string $model = ConfectioneryProduct::class;
     protected static ?string $navigationGroup = 'Confectionery';

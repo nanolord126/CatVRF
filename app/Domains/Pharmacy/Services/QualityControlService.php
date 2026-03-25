@@ -35,7 +35,7 @@ final class QualityControlService
         }
         RateLimiter::hit("quality:check:batch", 60);
 
-        return DB::transaction(function () use ($medicineId, $batchNumber, $dataMatrix, $correlationId) {
+        return $this->db->transaction(function () use ($medicineId, $batchNumber, $dataMatrix, $correlationId) {
             $medicine = Medicine::findOrFail($medicineId);
 
             // 2. Fraud Check - проверка на поддельные коды маркировки
@@ -58,7 +58,7 @@ final class QualityControlService
                 "tags" => ["gis_mt:checked", "result:" . ($isValid ? "pass" : "fail")]
             ]);
 
-            Log::channel("audit")->info("Pharmacy: quality check completed", [
+            $this->log->channel("audit")->info("Pharmacy: quality check completed", [
                 "check_id" => $check->id,
                 "medicine" => $medicine->name,
                 "status" => $check->status
@@ -99,7 +99,7 @@ final class QualityControlService
         ]);
 
         if (!$isValid) {
-            Log::channel("audit")->warning("Pharmacy: cold chain violation!", [
+            $this->log->channel("audit")->warning("Pharmacy: cold chain violation!", [
                 "order_id" => $orderId,
                 "violations" => $violations
             ]);

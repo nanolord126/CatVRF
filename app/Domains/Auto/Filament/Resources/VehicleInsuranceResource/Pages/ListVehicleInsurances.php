@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Auto\Filament\Resources\VehicleInsuranceResource\Pages;
@@ -7,7 +9,16 @@ use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Database\Eloquent\Builder;
 
-final class ListVehicleInsurances extends ListRecords
+final /**
+ * ListVehicleInsurances
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class ListVehicleInsurances extends ListRecords
 {
     protected static string $resource = VehicleInsuranceResource::class;
 
@@ -23,7 +34,7 @@ final class ListVehicleInsurances extends ListRecords
                         ->where('end_date', '<=', now()->addDays(30))
                         ->count();
                     
-                    \Filament\Notifications\Notification::make()
+                    \Filament\Notifications\$this->notification->make()
                         ->title('Найдено полисов с истекающим сроком: ' . $expiring)
                         ->info()
                         ->send();

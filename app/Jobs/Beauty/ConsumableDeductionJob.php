@@ -38,11 +38,11 @@ final class ConsumableDeductionJob implements ShouldQueue
         $correlationId = Str::uuid()->toString();
 
         try {
-            DB::transaction(function () use ($inventoryService, $correlationId) {
+            $this->db->transaction(function () use ($inventoryService, $correlationId) {
                 $appointment = $inventoryService->getAppointmentWithConsumables($this->appointmentId);
 
                 if (! $appointment) {
-                    Log::channel('audit')->warning('Appointment not found for consumable deduction', [
+                    $this->log->channel('audit')->warning('Appointment not found for consumable deduction', [
                         'correlation_id' => $correlationId,
                         'appointment_id' => $this->appointmentId,
                         'tenant_id' => $this->tenantId,
@@ -60,7 +60,7 @@ final class ConsumableDeductionJob implements ShouldQueue
                         sourceId: $this->appointmentId
                     );
 
-                    Log::channel('audit')->info('Consumable deducted', [
+                    $this->log->channel('audit')->info('Consumable deducted', [
                         'correlation_id' => $correlationId,
                         'consumable_id' => $consumable->id,
                         'quantity' => $consumable->quantity,
@@ -70,7 +70,7 @@ final class ConsumableDeductionJob implements ShouldQueue
                 }
             });
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Consumable deduction job failed', [
+            $this->log->channel('audit')->error('Consumable deduction job failed', [
                 'correlation_id' => $correlationId,
                 'appointment_id' => $this->appointmentId,
                 'tenant_id' => $this->tenantId,

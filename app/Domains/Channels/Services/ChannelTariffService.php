@@ -22,7 +22,7 @@ use Carbon\Carbon;
  *   extended → 199₽/мес (5 постов/день, опросы, промо, расширенная статистика)
  *
  * Оплата через WalletService::debit().
- * Всегда DB::transaction() + FraudControlService::check().
+ * Всегда $this->db->transaction() + FraudControlService::check().
  */
 final class ChannelTariffService
 {
@@ -65,7 +65,7 @@ final class ChannelTariffService
         );
 
         if ($fraudResult['decision'] === 'block') {
-            Log::channel('audit')->warning('Channel subscription blocked by fraud', [
+            $this->log->channel('audit')->warning('Channel subscription blocked by fraud', [
                 'correlation_id' => $correlationId,
                 'tenant_id'      => $channel->tenant_id,
                 'plan'           => $planSlug,
@@ -75,7 +75,7 @@ final class ChannelTariffService
             throw new \RuntimeException('Операция заблокирована системой безопасности.');
         }
 
-        return DB::transaction(function () use ($channel, $plan, $correlationId): ChannelSubscriptionUsage {
+        return $this->db->transaction(function () use ($channel, $plan, $correlationId): ChannelSubscriptionUsage {
 
             // Отменить существующую активную подписку (если есть)
             ChannelSubscriptionUsage::where('channel_id', $channel->id)
@@ -118,9 +118,9 @@ final class ChannelTariffService
             ]);
 
             // Инвалидировать кэш
-            Cache::forget("channel_plan:{$channel->id}");
+            $this->cache->forget("channel_plan:{$channel->id}");
 
-            Log::channel('audit')->info('Channel subscription created', [
+            $this->log->channel('audit')->info('Channel subscription created', [
                 'correlation_id' => $correlationId,
                 'tenant_id'      => $channel->tenant_id,
                 'channel_id'     => $channel->id,
@@ -138,7 +138,7 @@ final class ChannelTariffService
      */
     public function getActivePlan(BusinessChannel $channel): ?ChannelSubscriptionPlan
     {
-        return Cache::remember(
+        return $this->cache->remember(
             "channel_plan:{$channel->id}",
             config('channels.cache.stats_ttl', 600),
             fn () => $channel->activeSubscription()->with('plan')->first()?->plan
@@ -232,7 +232,7 @@ final class ChannelTariffService
     {
         $correlationId = $correlationId ?: Str::uuid()->toString();
 
-        DB::transaction(function () use ($channel, $correlationId): void {
+        $this->db->transaction(function () use ($channel, $correlationId): void {
             ChannelSubscriptionUsage::where('channel_id', $channel->id)
                 ->where('status', 'active')
                 ->update([
@@ -240,7 +240,7 @@ final class ChannelTariffService
                     'cancelled_at'   => now(),
                 ]);
 
-            Log::channel('audit')->info('Channel subscription cancelled', [
+            $this->log->channel('audit')->info('Channel subscription cancelled', [
                 'correlation_id' => $correlationId,
                 'tenant_id'      => $channel->tenant_id,
                 'channel_id'     => $channel->id,
@@ -253,7 +253,7 @@ final class ChannelTariffService
      */
     public function getPlans(): \Illuminate\Database\Eloquent\Collection
     {
-        return Cache::remember(
+        return $this->cache->remember(
             'channel_subscription_plans',
             3600,
             fn () => ChannelSubscriptionPlan::where('is_active', true)->orderBy('price_kopecks')->get()

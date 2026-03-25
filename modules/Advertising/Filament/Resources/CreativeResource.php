@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 namespace Modules\Advertising\Filament\Resources;
 use Modules\Advertising\Models\Creative;
@@ -5,6 +7,15 @@ use Filament\{Forms, Tables, Resources\Resource};
 use Filament\Forms\Components\{TextInput, Textarea};
 use Filament\Tables\Columns\TextColumn;
 
+/**
+ * CreativeResource
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
 class CreativeResource extends Resource {
     protected static ?string $model = Creative::class;
     protected static ?string $navigationGroup = 'Маркетинг и Реклама';

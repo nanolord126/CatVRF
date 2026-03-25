@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -14,7 +16,16 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-final class DeductConsumablesJob implements ShouldQueue
+final /**
+ * DeductConsumablesJob
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class DeductConsumablesJob implements ShouldQueue
 {
     use Dispatchable;
     use InteractsWithQueue;
@@ -24,13 +35,21 @@ final class DeductConsumablesJob implements ShouldQueue
     public function __construct(
         private readonly int $appointmentId,
         private readonly string $correlationId,
-    ) {}
+    ) {
+    /**
+     * Инициализировать класс
+     */
+    public function __construct()
+    {
+        // TODO: инициализация
+    }
+}
 
     public function handle(InventoryManagementService $inventory): void
     {
         $appointment = Appointment::findOrFail($this->appointmentId);
 
-        DB::transaction(function () use ($appointment, $inventory): void {
+        $this->db->transaction(function () use ($appointment, $inventory): void {
             $consumables = $appointment->service->consumables_json ?? [];
 
             foreach ($consumables as $consumable) {
@@ -43,7 +62,7 @@ final class DeductConsumablesJob implements ShouldQueue
                 );
             }
 
-            Log::channel('audit')->info('Consumables deducted', [
+            $this->log->channel('audit')->info('Consumables deducted', [
                 'appointment_id' => $appointment->id,
                 'correlation_id' => $this->correlationId,
             ]);

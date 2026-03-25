@@ -217,8 +217,8 @@ final class EventServiceProvider extends ServiceProvider
         LowStockReached::class       => [LowStockNotificationListener::class],
 
         // ── Channels ────────────────────────────────────────────────
-        PostPublished::class    => [SendPostNotification::class],
-        ChannelArchived::class  => [SendChannelArchivedNotification::class],
+        PostPublished::class    => [SendPost$this->notification->class],
+        ChannelArchived::class  => [SendChannelArchived$this->notification->class],
         ChannelSubscribed::class => [],
 
         // ── Confectionery ───────────────────────────────────────────

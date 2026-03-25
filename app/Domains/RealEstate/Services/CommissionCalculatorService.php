@@ -19,7 +19,7 @@ final class CommissionCalculatorService
 
         $commission = (int) ($salePrice * self::COMMISSION_PERCENT / 100);
 
-        Log::channel('audit')->info('Sale commission calculated', [
+        $this->log->channel('audit')->info('Sale commission calculated', [
             'sale_price' => $salePrice,
             'commission_percent' => self::COMMISSION_PERCENT,
             'commission' => $commission,
@@ -39,7 +39,7 @@ final class CommissionCalculatorService
 
         $commission = (int) ($rentPriceMonth * self::COMMISSION_PERCENT / 100);
 
-        Log::channel('audit')->info('Rental commission calculated', [
+        $this->log->channel('audit')->info('Rental commission calculated', [
             'rent_price_month' => $rentPriceMonth,
             'commission_percent' => self::COMMISSION_PERCENT,
             'commission' => $commission,

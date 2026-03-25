@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -13,7 +15,16 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-final class UpdateMasterRatingsJob implements ShouldQueue
+final /**
+ * UpdateMasterRatingsJob
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class UpdateMasterRatingsJob implements ShouldQueue
 {
     use Dispatchable;
     use InteractsWithQueue;
@@ -22,20 +33,28 @@ final class UpdateMasterRatingsJob implements ShouldQueue
 
     public function __construct(
         private readonly string $correlationId,
-    ) {}
+    ) {
+    /**
+     * Инициализировать класс
+     */
+    public function __construct()
+    {
+        // TODO: инициализация
+    }
+}
 
     public function handle(): void
     {
         $masters = Master::query()->with('reviews')->get();
 
-        DB::transaction(function () use ($masters): void {
+        $this->db->transaction(function () use ($masters): void {
             foreach ($masters as $master) {
                 $avgRating = $master->reviews()->avg('rating') ?? 0.0;
                 $oldRating = $master->rating;
 
                 $master->update(['rating' => $avgRating]);
 
-                Log::channel('audit')->info('Master rating updated', [
+                $this->log->channel('audit')->info('Master rating updated', [
                     'master_id' => $master->id,
                     'old_rating' => $oldRating,
                     'new_rating' => $avgRating,

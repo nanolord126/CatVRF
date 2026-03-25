@@ -1,8 +1,19 @@
+declare(strict_types=1);
+
 <?php
 namespace Modules\Advertising\Database\Seeders;
 use Illuminate\Database\Seeder;
 use Modules\Advertising\Models\Campaign;
 
+/**
+ * AdSeeder
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
 class AdSeeder extends Seeder {
     public function run(): void {
         $campaign = Campaign::updateOrCreate(['name' => 'Grand Opening'], [

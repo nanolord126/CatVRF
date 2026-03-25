@@ -57,7 +57,7 @@ final class MLAnalyticsController extends Controller
 
             $forecast = $this->demandService->forecastForItem($itemId, $dateFrom, $dateTo);
 
-            Log::channel('audit')->info('Demand forecast generated', [
+            $this->log->channel('audit')->info('Demand forecast generated', [
                 'item_id' => $itemId,
                 'correlation_id' => $correlationId,
                 'days_ahead' => $daysAhead,
@@ -73,7 +73,7 @@ final class MLAnalyticsController extends Controller
             ]);
 
         } catch (\Throwable $e) {
-            Log::channel('analytics_errors')->error('Demand forecast failed', [
+            $this->log->channel('analytics_errors')->error('Demand forecast failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage()
             ]);
@@ -102,7 +102,7 @@ final class MLAnalyticsController extends Controller
 
             $priceRecommendation = $this->priceService->getSuggestedPrice($productId, $tenantId);
 
-            Log::channel('audit')->info('Price suggestion generated', [
+            $this->log->channel('audit')->info('Price suggestion generated', [
                 'product_id' => $productId,
                 'correlation_id' => $correlationId,
                 'suggested_price' => $priceRecommendation['suggested_price'],
@@ -118,7 +118,7 @@ final class MLAnalyticsController extends Controller
             ]);
 
         } catch (\Throwable $e) {
-            Log::channel('analytics_errors')->error('Price suggestion failed', [
+            $this->log->channel('analytics_errors')->error('Price suggestion failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage()
             ]);
@@ -147,7 +147,7 @@ final class MLAnalyticsController extends Controller
             $ltv = $this->ltvService->calculateUserLTV($userId);
             $churn = $this->ltvService->predictChurnProbability($userId);
 
-            Log::channel('audit')->info('User LTV and churn calculated', [
+            $this->log->channel('audit')->info('User LTV and churn calculated', [
                 'user_id' => $userId,
                 'correlation_id' => $correlationId,
                 'ltv' => $ltv,
@@ -164,7 +164,7 @@ final class MLAnalyticsController extends Controller
             ]);
 
         } catch (\Throwable $e) {
-            Log::channel('analytics_errors')->error('LTV calculation failed', [
+            $this->log->channel('analytics_errors')->error('LTV calculation failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage()
             ]);
@@ -206,7 +206,7 @@ final class MLAnalyticsController extends Controller
             ]);
 
         } catch (\Throwable $e) {
-            Log::channel('analytics_errors')->error('Customer segmentation failed', [
+            $this->log->channel('analytics_errors')->error('Customer segmentation failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage()
             ]);

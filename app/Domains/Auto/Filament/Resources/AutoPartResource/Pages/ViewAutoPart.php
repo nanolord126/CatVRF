@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Auto\Filament\Resources\AutoPartResource\Pages;
@@ -22,7 +24,7 @@ final class ViewAutoPart extends ViewRecord
 
             Actions\DeleteAction::make()
                 ->after(function () {
-                    Log::channel('audit')->info('Auto part deleted from view page', [
+                    $this->log->channel('audit')->info('Auto part deleted from view page', [
                         'correlation_id' => $this->record->correlation_id,
                         'part_id' => $this->record->id,
                         'sku' => $this->record->sku,
@@ -34,7 +36,7 @@ final class ViewAutoPart extends ViewRecord
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
-        Log::channel('audit')->info('Auto part viewed', [
+        $this->log->channel('audit')->info('Auto part viewed', [
             'correlation_id' => $this->record->correlation_id,
             'part_id' => $this->record->id,
             'sku' => $this->record->sku,

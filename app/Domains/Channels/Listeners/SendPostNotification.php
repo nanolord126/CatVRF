@@ -65,7 +65,7 @@ final class SendPostNotification implements ShouldQueue
                             ],
                         );
                     } catch (\Throwable $e) {
-                        Log::channel('audit')->warning('Failed to send post notification', [
+                        $this->log->channel('audit')->warning('Failed to send post notification', [
                             'correlation_id' => $event->correlationId,
                             'post_id'        => $post->id,
                             'user_id'        => $subscriber->user_id,
@@ -75,7 +75,7 @@ final class SendPostNotification implements ShouldQueue
                 }
             });
 
-        Log::channel('audit')->info('PostPublished notifications dispatched', [
+        $this->log->channel('audit')->info('PostPublished notifications dispatched', [
             'correlation_id' => $event->correlationId,
             'post_id'        => $post->id,
             'channel_id'     => $channel->id,

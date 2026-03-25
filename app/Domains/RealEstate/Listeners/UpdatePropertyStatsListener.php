@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Listeners;
@@ -20,13 +22,13 @@ final class UpdatePropertyStatsListener implements ShouldQueue
             // Инкрементируем счётчик просмотров
             $property->increment('view_count');
 
-            Log::channel('audit')->info('Property stats updated', [
+            $this->log->channel('audit')->info('Property stats updated', [
                 'property_id' => $property->id,
                 'view_count' => $property->view_count,
                 'correlation_id' => $event->correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to update property stats', [
+            $this->log->channel('audit')->error('Failed to update property stats', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $event->correlationId,
             ]);

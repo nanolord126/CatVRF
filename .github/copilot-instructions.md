@@ -2566,3 +2566,594 @@ InventoryManagementService — списание со склада фермера
 Wallet + Payment — оплата бокса
 RecommendationService — «Что берут с этим продуктом»
 Promo — фермерские акции
+
+---
+
+# КАНОН ДЛЯ AI КОНСТРУКТОРОВ И ML-АНАЛИЗА (2026)
+
+## AI Конструкторы (обязательны для каждой вертикали)
+
+Каждая вертикаль должна иметь AI-конструктор для создания/дизайна своих товаров/услуг:
+
+### Типы AI-конструкторов по вертикалям
+
+1. **Beauty** — AI-конструктор причёсок и макияжа
+   - Загрузить фото лица → получить рекомендации причёсок/цветов/стилей
+   - Виртуальная примерка (AR)
+   - Сохранение в профиль пользователя
+
+2. **Furniture & Interior** — AI-дизайнер интерьера
+   - Загрузить фото комнаты → получить рекомендации мебели/стилей
+   - 3D-визуализация комнаты
+   - Список товаров с ценами для заказа
+
+3. **Food** — AI-конструктор меню/рецептов
+   - Выбрать ингредиенты → получить рецепты
+   - Подбор блюд по калорийности/диете
+   - Расчёт стоимости меню
+
+4. **Fashion/Cosmetics** — AI-подбор стиля
+   - Загрузить фото → получить рекомендации одежды/косметики по типу внешности
+   - Цветовой анализ
+
+5. **Real Estate** — AI-конструктор планировки
+   - Загрузить план квартиры → рекомендации дизайна и мебели
+   - Расчёт стоимости ремонта
+
+### Требования к AI-конструкторам
+
+```php
+declare(strict_types=1);
+
+namespace App\Services\AI;
+
+use Illuminate\Support\Facades\Log;
+
+final readonly class AIConstructorService
+{
+    public function __construct(
+        private readonly \OpenAI\Client $openai,  // OpenAI или GigaChat
+        private readonly \App\Services\RecommendationService $recommendation,
+        private readonly \App\Services\InventoryService $inventory,
+    ) {}
+
+    /**
+     * Анализировать загруженное фото и дать рекомендации
+     */
+    public function analyzePhotoAndRecommend(
+        \Illuminate\Http\UploadedFile $photo,
+        string $vertical,
+        int $userId,
+    ): array {
+        try {
+            // 1. Отправить фото в AI (OpenAI Vision или GigaChat)
+            $analysis = $this->openai->vision()->analyze([
+                'image' => $photo->getRealPath(),
+                'prompt' => "Проанализируй это фото для вертикали '{$vertical}'",
+            ]);
+
+            // 2. Получить рекомендации на основе анализа
+            $recommendations = $this->recommendation->getByAnalysis(
+                analysis: $analysis,
+                vertical: $vertical,
+                userId: $userId,
+            );
+
+            // 3. Проверить наличие товаров
+            foreach ($recommendations as &$item) {
+                $item['inStock'] = $this->inventory->getCurrentStock($item['product_id']) > 0;
+            }
+
+            // 4. Логировать
+            Log::channel('audit')->info('AI constructor used', [
+                'user_id' => $userId,
+                'vertical' => $vertical,
+                'recommendations_count' => count($recommendations),
+            ]);
+
+            return [
+                'success' => true,
+                'analysis' => $analysis,
+                'recommendations' => $recommendations,
+            ];
+        } catch (\Throwable $e) {
+            Log::channel('audit')->error('AI constructor failed', [
+                'user_id' => $userId,
+                'vertical' => $vertical,
+                'error' => $e->getMessage(),
+            ]);
+
+            throw $e;
+        }
+    }
+
+    /**
+     * Сохранить результаты конструктора в профиль пользователя
+     */
+    public function saveDesignToProfile(
+        int $userId,
+        string $vertical,
+        array $design,
+    ): void {
+        // Сохранить в user_ai_designs таблицу
+        \Illuminate\Support\Facades\DB::table('user_ai_designs')->insert([
+            'user_id' => $userId,
+            'vertical' => $vertical,
+            'design_data' => json_encode($design),
+            'created_at' => now(),
+        ]);
+    }
+}
+```
+
+---
+
+## ML-Анализ вкусов и предпочтений пользователя (обязателен)
+
+### Статический анализ (сохранение в профиле)
+
+```php
+declare(strict_types=1);
+
+namespace App\Services\ML;
+
+use Illuminate\Support\Facades\DB;
+
+final readonly class UserTasteAnalyzerService
+{
+    /**
+     * Анализировать вкусы пользователя на основе:
+     * - Истории покупок
+     * - Просмотров товаров
+     * - Оценок и отзывов
+     * - Времени, проведённого на товарах
+     */
+    public function analyzeAndSaveUserProfile(int $userId): void
+    {
+        $user = \App\Models\User::findOrFail($userId);
+
+        // 1. Анализировать категории товаров, которые смотрел пользователь
+        $viewedCategories = DB::table('product_views')
+            ->where('user_id', $userId)
+            ->groupBy('product_category')
+            ->selectRaw('product_category, COUNT(*) as count')
+            ->orderByRaw('count DESC')
+            ->limit(10)
+            ->get()
+            ->mapWithKeys(fn ($row) => [$row->product_category => $row->count / 10])  // Нормализация
+            ->toArray();
+
+        // 2. Анализировать ценовой диапазон
+        $avgPrice = DB::table('orders')
+            ->where('user_id', $userId)
+            ->avg('total_price');
+
+        $priceRange = match (true) {
+            $avgPrice < 1000 => 'budget',
+            $avgPrice < 5000 => 'mid',
+            $avgPrice < 15000 => 'premium',
+            default => 'luxury',
+        };
+
+        // 3. Анализировать предпочтения по размерам (для Fashion)
+        $preferredSizes = DB::table('order_items')
+            ->join('products', 'order_items.product_id', '=', 'products.id')
+            ->where('order_items.user_id', $userId)
+            ->groupBy('products.size')
+            ->selectRaw('products.size, COUNT(*) as count')
+            ->pluck('count', 'size')
+            ->toArray();
+
+        // 4. Анализировать предпочтения по цветам (для Fashion/Beauty)
+        $preferredColors = DB::table('order_items')
+            ->join('products', 'order_items.product_id', '=', 'products.id')
+            ->where('order_items.user_id', $userId)
+            ->groupBy('products.color')
+            ->selectRaw('products.color, COUNT(*) as count')
+            ->pluck('count', 'color')
+            ->toArray();
+
+        // 5. Анализировать бренды
+        $preferredBrands = DB::table('order_items')
+            ->join('products', 'order_items.product_id', '=', 'products.id')
+            ->where('order_items.user_id', $userId)
+            ->groupBy('products.brand')
+            ->selectRaw('products.brand, COUNT(*) as count')
+            ->orderByRaw('count DESC')
+            ->limit(5)
+            ->pluck('count', 'brand')
+            ->toArray();
+
+        // 6. Сохранить в user_taste_profile
+        $user->update([
+            'taste_profile' => [
+                'categories' => $viewedCategories,
+                'price_range' => $priceRange,
+                'preferred_sizes' => $preferredSizes,
+                'preferred_colors' => $preferredColors,
+                'preferred_brands' => $preferredBrands,
+                'analyzed_at' => now()->toIso8601String(),
+            ],
+        ]);
+
+        \Illuminate\Support\Facades\Log::channel('audit')->info('User taste profile analyzed', [
+            'user_id' => $userId,
+            'categories_count' => count($viewedCategories),
+            'price_range' => $priceRange,
+        ]);
+    }
+}
+```
+
+---
+
+## Запоминание адресов доставки и поездок (обязательно)
+
+### До 5 адресов + история
+
+```php
+declare(strict_types=1);
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+final class UserAddress extends Model
+{
+    protected $table = 'user_addresses';
+
+    protected $fillable = [
+        'user_id',
+        'type',  // home, work, other
+        'address',
+        'lat',
+        'lon',
+        'is_default',
+        'usage_count',
+    ];
+
+    protected $casts = [
+        'lat' => 'float',
+        'lon' => 'float',
+        'is_default' => 'boolean',
+    ];
+}
+
+// ✅ В миграции
+Schema::create('user_addresses', function (Blueprint $table) {
+    $table->id();
+    $table->foreignId('user_id')->constrained('users');
+    $table->enum('type', ['home', 'work', 'other'])->default('other');
+    $table->string('address');
+    $table->decimal('lat', 10, 8)->nullable();
+    $table->decimal('lon', 11, 8)->nullable();
+    $table->boolean('is_default')->default(false);
+    $table->integer('usage_count')->default(0);
+    $table->timestamps();
+
+    $table->unique(['user_id', 'address']);  // Максимум 5 адресов
+});
+```
+
+```php
+declare(strict_types=1);
+
+namespace App\Services;
+
+use Illuminate\Support\Facades\DB;
+
+final readonly class UserAddressService
+{
+    /**
+     * Добавить или вернуть существующий адрес (максимум 5)
+     */
+    public function addOrGetAddress(int $userId, string $address, string $type = 'other'): \App\Models\UserAddress
+    {
+        // Проверить, существует ли уже такой адрес
+        $existing = \App\Models\UserAddress::where([
+            'user_id' => $userId,
+            'address' => $address,
+        ])->first();
+
+        if ($existing) {
+            $existing->increment('usage_count');
+            return $existing;
+        }
+
+        // Проверить, не превышены ли 5 адресов
+        $count = \App\Models\UserAddress::where('user_id', $userId)->count();
+        if ($count >= 5) {
+            // Удалить наименее используемый адрес
+            \App\Models\UserAddress::where('user_id', $userId)
+                ->orderBy('usage_count')
+                ->limit(1)
+                ->delete();
+        }
+
+        // Создать новый адрес
+        return \App\Models\UserAddress::create([
+            'user_id' => $userId,
+            'address' => $address,
+            'type' => $type,
+            'usage_count' => 1,
+        ]);
+    }
+
+    /**
+     * Получить историю поездок/доставок пользователя
+     */
+    public function getAddressHistory(int $userId): \Illuminate\Database\Eloquent\Collection
+    {
+        return \App\Models\UserAddress::where('user_id', $userId)
+            ->orderBy('usage_count', 'desc')
+            ->limit(5)
+            ->get();
+    }
+}
+```
+
+---
+
+## AI-Калькуляторы цен и скидок (обязательны в каждой вертикали)
+
+```php
+declare(strict_types=1);
+
+namespace App\Services\AI;
+
+final readonly class AIPricingCalculatorService
+{
+    /**
+     * Калькулятор для вертикали Furniture — расчёт стоимости ремонта
+     */
+    public function calculateFurnitureRepairCost(array $items): array
+    {
+        $baseCost = 0;
+        $laborCost = 0;
+        $materials = [];
+
+        foreach ($items as $item) {
+            $baseCost += $item['price'] * $item['quantity'];
+
+            // Добавить трудозатраты
+            $laborCost += $item['repair_hours'] * 500;  // 500 руб/час
+
+            // Материалы
+            $materials[] = [
+                'name' => $item['material'],
+                'quantity' => $item['quantity'],
+                'cost' => $item['material_cost'],
+            ];
+        }
+
+        $totalCost = $baseCost + $laborCost;
+        $discount = $this->getVolumeDiscount($baseCost);
+
+        return [
+            'base_cost' => $baseCost,
+            'labor_cost' => $laborCost,
+            'materials' => $materials,
+            'discount' => $discount,
+            'total' => max($totalCost - $discount, 0),
+        ];
+    }
+
+    /**
+     * Калькулятор для вертикали Beauty — стоимость услуг
+     */
+    public function calculateBeautyServiceCost(array $services, bool $isFirstTime = false): array
+    {
+        $total = 0;
+
+        foreach ($services as $service) {
+            $cost = $service['base_price'] * $service['duration_multiplier'];
+            $total += $cost;
+        }
+
+        // Скидка для новых клиентов
+        $discount = $isFirstTime ? (int)($total * 0.1) : 0;
+
+        return [
+            'services' => $services,
+            'subtotal' => $total,
+            'discount' => $discount,
+            'total' => $total - $discount,
+        ];
+    }
+
+    private function getVolumeDiscount(int $baseCost): int
+    {
+        return match (true) {
+            $baseCost > 50000 => (int)($baseCost * 0.15),
+            $baseCost > 20000 => (int)($baseCost * 0.10),
+            $baseCost > 10000 => (int)($baseCost * 0.05),
+            default => 0,
+        };
+    }
+}
+```
+
+---
+
+## Миграция для AI-конструкторов и профилей вкусов
+
+```php
+declare(strict_types=1);
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        // AI-дизайны и конструкции пользователей
+        Schema::create('user_ai_designs', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->string('vertical');  // furniture, beauty, food и т.д.
+            $table->json('design_data');
+            $table->string('correlation_id')->nullable()->index();
+            $table->timestamps();
+
+            $table->comment('AI-конструкции, созданные пользователями');
+        });
+
+        // Профили вкусов пользователей
+        Schema::table('users', function (Blueprint $table) {
+            $table->json('taste_profile')->nullable()->after('metadata');
+            $table->comment('Анализ предпочтений пользователя: категории, цены, размеры, цвета, бренды');
+        });
+
+        // История просмотров товаров (для анализа вкусов)
+        Schema::create('product_views', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('product_id')->constrained('products')->onDelete('cascade');
+            $table->string('product_category');
+            $table->integer('duration_seconds')->default(0);
+            $table->string('correlation_id')->nullable()->index();
+            $table->timestamps();
+
+            $table->index(['user_id', 'created_at']);
+            $table->comment('История просмотров товаров для анализа интересов');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('product_views');
+        Schema::table('users', function (Blueprint $table) {
+            $table->dropColumn('taste_profile');
+        });
+        Schema::dropIfExists('user_ai_designs');
+    }
+};
+```
+
+---
+
+## B2C vs B2B РЕЖИМЫ (2026)
+
+### B2C Режим (Consumer-to-Business / физические лица)
+```php
+$isB2C = !$request->has('inn') || !$request->has('business_card_id');
+
+if ($isB2C) {
+    // B2C режим: розничные цены, одна корзина на продавца
+    // Резерв 20 мин, товар не в наличии → чёрно-белый
+    // Цена выросла → показать новую; упала → оставить старую
+    
+    $cart = CartService::getOrCreate($user, $seller, 'b2c');
+    $prices = B2CPricingService::getPrices($productId);
+}
+```
+
+### B2B Режим (Business-to-Business / юридические лица)
+```php
+$isB2B = $request->has('inn') && $request->has('business_card_id');
+
+if ($isB2B) {
+    // B2B режим: оптовые цены, специальные условия
+    // Отдельные витрины и кредит
+    
+    $businessGroup = BusinessGroup::where('inn', $request->get('inn'))->first();
+    $cart = CartService::getOrCreate($businessGroup, $seller, 'b2b');
+    $prices = B2BPricingService::getPrices($productId, $businessGroup);
+}
+```
+
+---
+
+## ПРАВИЛО КОРЗИН (2026)
+
+### Правила
+- **1 продавец = 1 корзина**
+- **Max 20 корзин** одновременно в памяти
+- **Резерв 20 минут** — автоматическое снятие (CartCleanupJob)
+- **Проверка наличия** при открытии корзины
+- **Товар не в наличии** → чёрно-белый, без "В корзину"
+- **Логика цены:** выросла → новая; упала → старая
+
+---
+
+# КАНОН ДЛЯ AI-КОНСТРУКТОРОВ (2026) — УНИФИЦИРОВАННЫЙ ФРЕЙМВОРК
+
+## Общие правила AI-конструкторов (единый фреймворк для всех 52 вертикалей)
+
+1. **AIConstructorService** — центральный оркестратор для всех вертикалей.
+   - Использование **UserTasteProfile v2.0** для персонализации.
+   - Обязательный **correlation_id** во всех AI-запросах.
+   - Кэширование результатов генерации в Redis (TTL 3600 сек).
+   - Сохранение каждого результата в таблицу `ai_constructions`.
+
+2. **DTO: AIConstructionResult**
+   ```php
+   final readonly class AIConstructionResult {
+       public function __construct(
+           public string $vertical,
+           public string $type, // 'image', 'list', 'design', 'calculation'
+           public array $payload, // Основные данные
+           public array $suggestions, // Рекомендованные товары из Inventory
+           public float $confidence_score,
+           public string $correlation_id
+       ) {}
+   }
+   ```
+
+3. **Обязательная интеграция**:
+   - **InventoryManagementService**: Проверка наличия предложенных AI товаров.
+   - **RecommendationService**: Уточнение выдачи на базе профиля вкусов.
+   - **FraudMLService**: Блокировка подозрительных массовых генераций.
+   - **WalletService**: Списание квот за "Heavy AI" запросы.
+
+## Детализированные особенности AI-конструкторов по вертикалям
+
+### 1. Beauty & Wellness (Красота)
+- **AI-анализ лица (Vision)**: Определение цветотипа, формы лица, состояния кожи.
+- **Генерация**: Подбор причёсок, макияжа и ухода.
+- **Output**: Фото-превью (Stable Diffusion / DALL-E) + список услуг и косметики.
+- **Инфо**: "Ваш идеальный образ на базе анализа 15 параметров лица".
+
+### 2. Furniture & Interior (Интерьер)
+- **Vision-мерчандайзинг**: Анализ пустого или жилого пространства с фото.
+- **Генерация**: 3D-расстановка мебели в выбранном стиле (сканди, лофт и т.д.).
+- **Output**: Спецификация мебели со ссылками на Inventory текущего tenant.
+- **Инфо**: "AI-дизайнер подобрал 12 предметов мебели под ваш метраж".
+
+### 3. Fashion (Одежда и стиль)
+- **Body-score**: Анализ параметров фигуры (рост, тип).
+- **Генерация**: Готовые капсулы (Outfit) на неделю или под событие.
+- **Output**: Список товаров (SKU) + визуализация "Lookbook".
+
+### 4. Food & Restaurants (Еда)
+- **AI-шеф**: Генерация рецепта или состава блюда по фото ингредиентов.
+- **Генерация**: Кастомизация состава (без аллергенов, КБЖУ под цель).
+- **Output**: Итоговая цена (AIPricingCalculator) + КБЖУ.
+
+### 5. Medical & Clinic (Медицина)
+- **AI-диагност (вспомогательный)**: Предварительная сортировка по симптомам (Triage).
+- **Генерация**: Рекомендованный план анализов и выбор профильного специалиста.
+- **Output**: Предварительная запись (Appointment) + памятка.
+
+### 6. Auto (Автомобили)
+- **AI-тюнинг**: Визуализация дисков, цвета кузова и обвесов на фото авто.
+- **Vision-дефектовка**: Оценка повреждений по фото для предварительной сметы СТО.
+- **Output**: Смета запчастей из Inventory + стоимость работ.
+
+### 7. Education (Обучение)
+- **AI-куратор**: Генерация индивидуальной траектории обучения (Roadmap).
+- **Генерация**: Тесты и упражнения на базе текущего прогресса.
+- **Output**: План занятий на 30 дней.
+
+### 8. RealEstate (Недвижимость)
+- **AI-реноватор**: Виртуальный ремонт в серых стенах новостройки.
+- **Vision-оценка**: Сравнение объекта с похожими по фото отделки.
+- **Output**: Прогноз арендной ставки или цены продажи (DemandForecast).
+
+---
+
+**Версия:** 1.3 (AI Constructor Framework)  
+**Дата:** 25.03.2026  
+**Статус:** PRODUCTION READY

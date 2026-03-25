@@ -23,7 +23,7 @@ final class MaterialCalculatorService
 
 
         try {
-            $calculator = DB::table('material_calculators')
+            $calculator = $this->db->table('material_calculators')
                 ->where('material_type', $materialType)
                 ->first();
 
@@ -44,7 +44,7 @@ final class MaterialCalculatorService
                 'estimated_cost' => $quantity * $calculator->unit_price,
             ];
 
-            Log::channel('audit')->info('Material calculation completed', [
+            $this->log->channel('audit')->info('Material calculation completed', [
                 'area_m2' => $areaM2,
                 'material_type' => $materialType,
                 'quantity' => $quantity,
@@ -53,7 +53,7 @@ final class MaterialCalculatorService
 
             return $result;
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Material calculation failed', [
+            $this->log->channel('audit')->error('Material calculation failed', [
                 'material_type' => $materialType,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

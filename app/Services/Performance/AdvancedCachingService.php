@@ -56,10 +56,10 @@ final class AdvancedCachingService
                 default => self::TIER_WARM_TTL,
             };
 
-            return Cache::put($key, $serialized, $finalTtl);
+            return $this->cache->put($key, $serialized, $finalTtl);
 
         } catch (\Throwable $e) {
-            Log::channel('performance')->warning('Cache set failed', [
+            $this->log->channel('performance')->warning('Cache set failed', [
                 'key' => $key,
                 'tier' => $tier,
                 'error' => $e->getMessage()
@@ -80,15 +80,15 @@ final class AdvancedCachingService
             // Пытаемся получить сжатый вариант
             $compressedKey = "{$key}:compressed";
             
-            if (Cache::has($compressedKey)) {
-                $compressed = Cache::get($compressedKey);
+            if ($this->cache->has($compressedKey)) {
+                $compressed = $this->cache->get($compressedKey);
                 $decompressed = gzuncompress($compressed);
                 return unserialize($decompressed);
             }
 
             // Иначе обычный вариант
-            if (Cache::has($key)) {
-                $data = Cache::get($key);
+            if ($this->cache->has($key)) {
+                $data = $this->cache->get($key);
                 return unserialize($data);
             }
 
@@ -97,7 +97,7 @@ final class AdvancedCachingService
         } catch (\RuntimeException $e) {
             throw $e;
         } catch (\Throwable $e) {
-            Log::channel('performance')->warning('Cache get failed', [
+            $this->log->channel('performance')->warning('Cache get failed', [
                 'key' => $key,
                 'error' => $e->getMessage()
             ]);
@@ -152,14 +152,14 @@ final class AdvancedCachingService
             $count = 0;
 
             foreach ($keys as $key) {
-                if (Cache::forget($key)) {
+                if ($this->cache->forget($key)) {
                     $count++;
                 }
                 // Забываем и сжатый вариант
-                Cache::forget("{$key}:compressed");
+                $this->cache->forget("{$key}:compressed");
             }
 
-            Log::channel('performance')->info('Cache pattern invalidated', [
+            $this->log->channel('performance')->info('Cache pattern invalidated', [
                 'pattern' => $pattern,
                 'keys_cleared' => $count
             ]);
@@ -167,7 +167,7 @@ final class AdvancedCachingService
             return $count;
 
         } catch (\Throwable $e) {
-            Log::channel('performance')->error('Pattern invalidation failed', [
+            $this->log->channel('performance')->error('Pattern invalidation failed', [
                 'pattern' => $pattern,
                 'error' => $e->getMessage()
             ]);
@@ -183,7 +183,7 @@ final class AdvancedCachingService
      */
     public function getSize(string $key): int
     {
-        $data = Cache::get($key);
+        $data = $this->cache->get($key);
         return $data ? strlen($data) : 0;
     }
 
@@ -207,7 +207,7 @@ final class AdvancedCachingService
             ];
 
         } catch (\Throwable $e) {
-            Log::channel('performance')->warning('Failed to get cache stats', [
+            $this->log->channel('performance')->warning('Failed to get cache stats', [
                 'error' => $e->getMessage()
             ]);
             return [];
@@ -225,10 +225,10 @@ final class AdvancedCachingService
     {
         foreach ($tags as $tag) {
             $tagKey = "tag:{$tag}";
-            $existingKeys = Cache::get($tagKey, []);
+            $existingKeys = $this->cache->get($tagKey, []);
             if (!in_array($key, $existingKeys)) {
                 $existingKeys[] = $key;
-                Cache::put($tagKey, $existingKeys, self::TIER_COLD_TTL);
+                $this->cache->put($tagKey, $existingKeys, self::TIER_COLD_TTL);
             }
         }
     }
@@ -245,7 +245,7 @@ final class AdvancedCachingService
             $redis = Redis::connection();
             return $redis->keys($pattern);
         } catch (\Throwable $e) {
-            Log::channel('performance')->warning('Key search failed', [
+            $this->log->channel('performance')->warning('Key search failed', [
                 'pattern' => $pattern,
                 'error' => $e->getMessage()
             ]);

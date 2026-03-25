@@ -29,8 +29,8 @@ final class PropertyService
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($data, $tenantId, $correlationId) {
-            Log::channel('audit')->info('Creating real estate property', [
+$this->db->transaction(function () use ($data, $tenantId, $correlationId) {
+            $this->log->channel('audit')->info('Creating real estate property', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
             ]);
@@ -60,8 +60,8 @@ DB::transaction(function () use ($data, $tenantId, $correlationId) {
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($data, $propertyId, $type, $correlationId) {
-            Log::channel('audit')->info('Creating real estate listing', [
+$this->db->transaction(function () use ($data, $propertyId, $type, $correlationId) {
+            $this->log->channel('audit')->info('Creating real estate listing', [
                 'correlation_id' => $correlationId,
                 'property_id' => $propertyId,
                 'type' => $type,
@@ -89,8 +89,8 @@ DB::transaction(function () use ($data, $propertyId, $type, $correlationId) {
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($data, $propertyId, $userId, $correlationId) {
-            Log::channel('audit')->info('Creating property viewing', [
+$this->db->transaction(function () use ($data, $propertyId, $userId, $correlationId) {
+            $this->log->channel('audit')->info('Creating property viewing', [
                 'correlation_id' => $correlationId,
                 'property_id' => $propertyId,
                 'user_id' => $userId,

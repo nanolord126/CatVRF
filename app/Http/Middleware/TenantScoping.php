@@ -55,7 +55,7 @@ final class TenantScoping
 
         // Verify user has access to this tenant
         if ($tenantId && !$user->hasRoleInTenant($tenantId, null)) {
-            Log::channel('audit')->warning('TenantScoping: access denied', [
+            $this->log->channel('audit')->warning('TenantScoping: access denied', [
                 'user_id' => $user->id,
                 'tenant_id' => $tenantId,
                 'ip' => $request->ip(),
@@ -72,7 +72,7 @@ final class TenantScoping
                 session(['active_tenant_id' => $tenantId]);
 
                 // Log tenant access
-                Log::channel('audit')->info('TenantScoping: tenant set', [
+                $this->log->channel('audit')->info('TenantScoping: tenant set', [
                     'user_id' => $user->id,
                     'tenant_id' => $tenantId,
                     'tenant_name' => $tenant->name,

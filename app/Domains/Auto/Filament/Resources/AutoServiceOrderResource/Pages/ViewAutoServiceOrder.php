@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Auto\Filament\Resources\AutoServiceOrderResource\Pages;
@@ -22,7 +24,7 @@ final class ViewAutoServiceOrder extends ViewRecord
 
             Actions\DeleteAction::make()
                 ->after(function () {
-                    Log::channel('audit')->info('Auto service order deleted from view page', [
+                    $this->log->channel('audit')->info('Auto service order deleted from view page', [
                         'correlation_id' => $this->record->correlation_id,
                         'order_id' => $this->record->id,
                         'user_id' => auth()->id(),
@@ -33,7 +35,7 @@ final class ViewAutoServiceOrder extends ViewRecord
 
     protected function mutateFormDataBeforeFill(array $data): array
     {
-        Log::channel('audit')->info('Auto service order viewed', [
+        $this->log->channel('audit')->info('Auto service order viewed', [
             'correlation_id' => $this->record->correlation_id,
             'order_id' => $this->record->id,
             'service_type' => $this->record->service_type,

@@ -32,7 +32,7 @@ final class PetBoardingController extends Controller
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Throwable $e) {
-            Log::error('Failed to get reservations', ['error' => $e->getMessage()]);
+            $this->log->error('Failed to get reservations', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve reservations',
@@ -74,7 +74,7 @@ final class PetBoardingController extends Controller
                 $correlationId
             );
 
-            Log::channel('audit')->info('Pet boarding reservation created', [
+            $this->log->channel('audit')->info('Pet boarding reservation created', [
                 'correlation_id' => $correlationId,
                 'reservation_id' => $reservation->id ?? null,
                 'tenant_id'      => $reservation->tenant_id ?? null,
@@ -87,7 +87,7 @@ final class PetBoardingController extends Controller
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Throwable $e) {
-            Log::error('Failed to create reservation', ['error' => $e->getMessage()]);
+            $this->log->error('Failed to create reservation', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create reservation',
@@ -112,7 +112,7 @@ final class PetBoardingController extends Controller
                 'correlation_id' => $correlationId,
             ]);
 
-            Log::channel('audit')->info('Pet boarding reservation updated', [
+            $this->log->channel('audit')->info('Pet boarding reservation updated', [
                 'correlation_id' => $correlationId,
                 'reservation_id' => $reservation->id,
                 'tenant_id'      => $reservation->tenant_id,
@@ -145,7 +145,7 @@ final class PetBoardingController extends Controller
 
             $reservation->delete();
 
-            Log::channel('audit')->info('Pet boarding reservation deleted', [
+            $this->log->channel('audit')->info('Pet boarding reservation deleted', [
                 'correlation_id' => $correlationId,
                 'reservation_id' => $reservation->id,
                 'tenant_id'      => $reservation->tenant_id,
@@ -177,7 +177,7 @@ final class PetBoardingController extends Controller
 
             $reservation = $this->boardingService->cancelReservation($reservation, $correlationId);
 
-            Log::channel('audit')->info('Pet boarding reservation cancelled', [
+            $this->log->channel('audit')->info('Pet boarding reservation cancelled', [
                 'correlation_id' => $correlationId,
                 'reservation_id' => $reservation->id,
                 'user_id'        => auth()->id(),

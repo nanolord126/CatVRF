@@ -31,7 +31,7 @@ final class ContractService
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($contractId, $milestoneNumber, $amount, $correlationId) {
+$this->db->transaction(function () use ($contractId, $milestoneNumber, $amount, $correlationId) {
             $contract = FreelanceContract::findOrFail($contractId);
 
             $newAmountPaid = (float)$contract->amount_paid + $amount;
@@ -42,7 +42,7 @@ DB::transaction(function () use ($contractId, $milestoneNumber, $amount, $correl
 
             PaymentMilestoneReleased::dispatch($contract, $amount, $milestoneNumber, $correlationId);
 
-            Log::channel('audit')->info('Freelance milestone payment released', [
+            $this->log->channel('audit')->info('Freelance milestone payment released', [
                 'contract_id' => $contractId,
                 'milestone_number' => $milestoneNumber,
                 'amount' => $amount,
@@ -65,14 +65,14 @@ DB::transaction(function () use ($contractId, $milestoneNumber, $amount, $correl
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($contractId, $correlationId) {
+$this->db->transaction(function () use ($contractId, $correlationId) {
             $contract = FreelanceContract::findOrFail($contractId);
             $contract->update([
                 'status' => 'completed',
                 'completed_at' => now(),
             ]);
 
-            Log::channel('audit')->info('Freelance contract completed', [
+            $this->log->channel('audit')->info('Freelance contract completed', [
                 'contract_id' => $contractId,
                 'correlation_id' => $correlationId,
             ]);
@@ -94,11 +94,11 @@ DB::transaction(function () use ($contractId, $correlationId) {
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($contractId, $reason, $correlationId) {
+$this->db->transaction(function () use ($contractId, $reason, $correlationId) {
             $contract = FreelanceContract::findOrFail($contractId);
             $contract->update(['status' => 'on_hold']);
 
-            Log::channel('audit')->info('Freelance contract paused', [
+            $this->log->channel('audit')->info('Freelance contract paused', [
                 'contract_id' => $contractId,
                 'reason' => $reason,
                 'correlation_id' => $correlationId,
@@ -121,11 +121,11 @@ DB::transaction(function () use ($contractId, $reason, $correlationId) {
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($contractId, $reason, $correlationId) {
+$this->db->transaction(function () use ($contractId, $reason, $correlationId) {
             $contract = FreelanceContract::findOrFail($contractId);
             $contract->update(['status' => 'cancelled']);
 
-            Log::channel('audit')->info('Freelance contract cancelled', [
+            $this->log->channel('audit')->info('Freelance contract cancelled', [
                 'contract_id' => $contractId,
                 'reason' => $reason,
                 'correlation_id' => $correlationId,

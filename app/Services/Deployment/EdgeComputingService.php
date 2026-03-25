@@ -51,7 +51,7 @@ final class EdgeComputingService
             'config' => $config,
         ];
 
-        Log::channel('deployment')->info('Edge function deployed', $deployment);
+        $this->log->channel('deployment')->info('Edge function deployed', $deployment);
 
         return $deployment;
     }
@@ -65,7 +65,7 @@ final class EdgeComputingService
      */
     public static function registerRequestTransformer(string $pattern, callable $handler): void
     {
-        Log::channel('deployment')->debug('Request transformer registered', [
+        $this->log->channel('deployment')->debug('Request transformer registered', [
             'pattern' => $pattern,
         ]);
     }
@@ -79,7 +79,7 @@ final class EdgeComputingService
      */
     public static function registerResponseTransformer(string $pattern, callable $handler): void
     {
-        Log::channel('deployment')->debug('Response transformer registered', [
+        $this->log->channel('deployment')->debug('Response transformer registered', [
             'pattern' => $pattern,
         ]);
     }

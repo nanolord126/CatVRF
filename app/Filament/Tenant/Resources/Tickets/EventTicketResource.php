@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Tickets;
@@ -6,7 +8,16 @@ use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Forms;
 
-final class EventTicketResource extends Resource
+final /**
+ * EventTicketResource
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class EventTicketResource extends Resource
 {
     protected static ?string $navigationIcon = 'heroicon-o-ticket';
     protected static ?string $navigationGroup = 'Tickets';

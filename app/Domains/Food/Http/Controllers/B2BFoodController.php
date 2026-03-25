@@ -40,7 +40,7 @@ final class B2BFoodController
 
 			$correlationId = Str::uuid()->toString();
 
-			DB::transaction(function () use ($validated, $correlationId) {
+			$this->db->transaction(function () use ($validated, $correlationId) {
 				B2BFoodStorefront::create([
 					'uuid' => Str::uuid(),
 					'tenant_id' => auth()->user()->tenant_id,
@@ -53,7 +53,7 @@ final class B2BFoodController
 					'correlation_id' => $correlationId,
 				]);
 
-				Log::channel('audit')->info('Food B2B: Storefront created', ['inn' => $validated['inn'], 'correlation_id' => $correlationId]);
+				$this->log->channel('audit')->info('Food B2B: Storefront created', ['inn' => $validated['inn'], 'correlation_id' => $correlationId]);
 			});
 
 			return response()->json(['success' => true, 'message' => 'Витрина создана', 'correlation_id' => $correlationId], 201);
@@ -75,7 +75,7 @@ final class B2BFoodController
 
 			$correlationId = Str::uuid()->toString();
 
-			DB::transaction(function () use ($validated, $correlationId) {
+			$this->db->transaction(function () use ($validated, $correlationId) {
 				B2BFoodOrder::create([
 					'uuid' => Str::uuid(),
 					'tenant_id' => auth()->user()->tenant_id,
@@ -90,7 +90,7 @@ final class B2BFoodController
 					'correlation_id' => $correlationId,
 				]);
 
-				Log::channel('audit')->info('Food B2B: Order created', ['correlation_id' => $correlationId]);
+				$this->log->channel('audit')->info('Food B2B: Order created', ['correlation_id' => $correlationId]);
 			});
 
 			return response()->json(['success' => true, 'message' => 'Заказ создан', 'correlation_id' => $correlationId], 201);
@@ -114,7 +114,7 @@ final class B2BFoodController
 		try {
 			$order = B2BFoodOrder::findOrFail($id);
 			$this->authorize('approveOrder', $order);
-			DB::transaction(fn() => $order->update(['status' => 'approved']));
+			$this->db->transaction(fn() => $order->update(['status' => 'approved']));
 			return response()->json(['success' => true, 'message' => 'Одобрено', 'correlation_id' => Str::uuid()]);
 		} catch (\Exception $e) {
 			return response()->json(['success' => false, 'message' => 'Ошибка', 'correlation_id' => Str::uuid()], 500);
@@ -126,7 +126,7 @@ final class B2BFoodController
 		try {
 			$order = B2BFoodOrder::findOrFail($id);
 			$this->authorize('rejectOrder', $order);
-			DB::transaction(fn() => $order->update(['status' => 'rejected', 'notes' => $request->get('reason', '')]));
+			$this->db->transaction(fn() => $order->update(['status' => 'rejected', 'notes' => $request->get('reason', '')]));
 			return response()->json(['success' => true, 'message' => 'Отклонено', 'correlation_id' => Str::uuid()]);
 		} catch (\Exception $e) {
 			return response()->json(['success' => false, 'message' => 'Ошибка', 'correlation_id' => Str::uuid()], 500);
@@ -137,7 +137,7 @@ final class B2BFoodController
 	{
 		try {
 			$this->authorize('verifyInn', B2BFoodStorefront::class);
-			DB::transaction(fn() => B2BFoodStorefront::findOrFail($id)->update(['is_verified' => true]));
+			$this->db->transaction(fn() => B2BFoodStorefront::findOrFail($id)->update(['is_verified' => true]));
 			return response()->json(['success' => true, 'message' => 'Верифицировано', 'correlation_id' => Str::uuid()]);
 		} catch (\Exception $e) {
 			return response()->json(['success' => false, 'message' => 'Ошибка', 'correlation_id' => Str::uuid()], 500);

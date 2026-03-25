@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Medical\Filament\Resources;
@@ -11,7 +13,16 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Table;
 
-final class MedicalTestOrderResource extends Resource
+final /**
+ * MedicalTestOrderResource
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class MedicalTestOrderResource extends Resource
 {
     protected static ?string $model = MedicalTestOrder::class;
 

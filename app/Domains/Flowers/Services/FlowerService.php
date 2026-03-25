@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Flowers\Services;
@@ -7,21 +9,38 @@ use App\Domains\Flowers\Models\{Bouquet, FlowerOrder};
 use Illuminate\Support\Facades\{DB, Log};
 use Illuminate\Support\Str;
 
-final class FlowerService
+final /**
+ * FlowerService
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class FlowerService
 {
     public function __construct(
         private readonly FraudControlService $fraud,
         private readonly WalletService $wallet,
         private readonly PaymentService $payment,
-    ) {}
+    ) {
+    /**
+     * Инициализировать класс
+     */
+    public function __construct()
+    {
+        // TODO: инициализация
+    }
+}
 
     public function createOrder(array $data, bool $isB2B): array
     {
         $cid = Str::uuid()->toString();
-        Log::channel('audit')->info('Flower order', compact('cid', 'isB2B'));
+        $this->log->channel('audit')->info('Flower order', compact('cid', 'isB2B'));
         $this->fraud->check(0, 'flower_order', 0, null, null, $cid);
 
-        return DB::transaction(function () use ($data, $isB2B, $cid) {
+        return $this->db->transaction(function () use ($data, $isB2B, $cid) {
             $bouquet = Bouquet::findOrFail($data['bouquet_id']);
             $price = $isB2B ? $bouquet->price * 0.85 : $bouquet->price;
 
@@ -44,6 +63,6 @@ final class FlowerService
 
     private function deductConsumables($bouquet, $cid): void
     {
-        Log::channel('audit')->info('Deduct consumables', compact('cid'));
+        $this->log->channel('audit')->info('Deduct consumables', compact('cid'));
     }
 }

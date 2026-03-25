@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Auto\Events;
@@ -10,7 +12,16 @@ use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-final class TowingRequestCreated implements ShouldBroadcast
+final /**
+ * TowingRequestCreated
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class TowingRequestCreated implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -18,7 +29,7 @@ final class TowingRequestCreated implements ShouldBroadcast
         public readonly TowingRequest $request,
         public readonly string $correlationId
     ) {
-        Log::channel('audit')->info('TowingRequestCreated event dispatched', [
+        $this->log->channel('audit')->info('TowingRequestCreated event dispatched', [
             'correlation_id' => $this->correlationId,
             'request_id' => $this->request->id,
             'location' => $this->request->pickup_location,

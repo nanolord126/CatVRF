@@ -27,7 +27,7 @@ final class ProcessPortfolioImageJob implements ShouldQueue
 
     public function handle(): void
     {
-        Log::channel('audit')->info('Processing portfolio image', [
+        $this->log->channel('audit')->info('Processing portfolio image', [
             'item_id' => $this->item->id,
             'correlation_id' => $this->correlationId
         ]);
@@ -46,12 +46,12 @@ final class ProcessPortfolioImageJob implements ShouldQueue
                 'status' => 'active'
             ]);
 
-            Log::channel('audit')->info('Portfolio image processed successfully', [
+            $this->log->channel('audit')->info('Portfolio image processed successfully', [
                 'item_id' => $this->item->id,
                 'correlation_id' => $this->correlationId
             ]);
         } catch (\Throwable $e) {
-            Log::error('Failed to process image', [
+            $this->log->error('Failed to process image', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $this->correlationId
             ]);

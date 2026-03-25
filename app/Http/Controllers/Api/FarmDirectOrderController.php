@@ -27,7 +27,7 @@ final class FarmDirectOrderController extends BaseApiController
             $correlationId = Str::uuid()->toString();
             $tenantId = auth()->user()?->tenant_id ?? tenant()->id;
 
-            Log::channel('audit')->info('FarmDirect orders list', [
+            $this->log->channel('audit')->info('FarmDirect orders list', [
                 'tenant_id' => $tenantId,
                 'correlation_id' => $correlationId,
                 'user_id' => auth()->id(),
@@ -39,7 +39,7 @@ final class FarmDirectOrderController extends BaseApiController
 
             return $this->successResponse($orders);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('FarmDirect orders list error', [
+            $this->log->channel('audit')->error('FarmDirect orders list error', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
@@ -55,7 +55,7 @@ final class FarmDirectOrderController extends BaseApiController
 
             $order = FarmOrder::where('tenant_id', $tenantId)->findOrFail($id);
 
-            Log::channel('audit')->info('FarmDirect order viewed', [
+            $this->log->channel('audit')->info('FarmDirect order viewed', [
                 'order_id' => $id,
                 'tenant_id' => $tenantId,
                 'correlation_id' => $correlationId,
@@ -65,7 +65,7 @@ final class FarmDirectOrderController extends BaseApiController
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
             return $this->errorResponse('Order not found', 404);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('FarmDirect order show error', [
+            $this->log->channel('audit')->error('FarmDirect order show error', [
                 'error' => $e->getMessage(),
             ]);
             return $this->errorResponse('Failed to fetch order', 500);
@@ -90,7 +90,7 @@ final class FarmDirectOrderController extends BaseApiController
                 correlationId: $correlationId,
             );
 
-            Log::channel('audit')->info('FarmDirect order created', [
+            $this->log->channel('audit')->info('FarmDirect order created', [
                 'order_id' => $order->id,
                 'tenant_id' => $tenantId,
                 'correlation_id' => $correlationId,
@@ -99,7 +99,7 @@ final class FarmDirectOrderController extends BaseApiController
 
             return $this->successResponse($order, 'Order created successfully', 201);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('FarmDirect order creation failed', [
+            $this->log->channel('audit')->error('FarmDirect order creation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId ?? 'unknown',
             ]);
@@ -123,7 +123,7 @@ final class FarmDirectOrderController extends BaseApiController
 
             $order->update($request->validated());
 
-            Log::channel('audit')->info('FarmDirect order updated', [
+            $this->log->channel('audit')->info('FarmDirect order updated', [
                 'order_id' => $id,
                 'tenant_id' => $tenantId,
                 'correlation_id' => $correlationId,
@@ -133,7 +133,7 @@ final class FarmDirectOrderController extends BaseApiController
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
             return $this->errorResponse('Order not found', 404);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('FarmDirect order update failed', [
+            $this->log->channel('audit')->error('FarmDirect order update failed', [
                 'error' => $e->getMessage(),
             ]);
             return $this->errorResponse('Failed to update order', 500);
@@ -156,7 +156,7 @@ final class FarmDirectOrderController extends BaseApiController
 
             $order->delete();
 
-            Log::channel('audit')->info('FarmDirect order deleted', [
+            $this->log->channel('audit')->info('FarmDirect order deleted', [
                 'order_id' => $id,
                 'tenant_id' => $tenantId,
                 'correlation_id' => $correlationId,
@@ -166,7 +166,7 @@ final class FarmDirectOrderController extends BaseApiController
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
             return $this->errorResponse('Order not found', 404);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('FarmDirect order deletion failed', [
+            $this->log->channel('audit')->error('FarmDirect order deletion failed', [
                 'error' => $e->getMessage(),
             ]);
             return $this->errorResponse('Failed to delete order', 500);

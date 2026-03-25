@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\HomeServices\Policies;
@@ -6,30 +8,41 @@ use App\Models\User;
 use App\Domains\HomeServices\Models\ServiceReview;
 use Illuminate\Auth\Access\Response;
 
-final class ServiceReviewPolicy
+final /**
+ * ServiceReviewPolicy
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class ServiceReviewPolicy
 {
+    // Dependencies injected via constructor
+    // Add private readonly properties here
     public function viewAny(User $user): Response
     {
-        return Response::allow();
+        return $this->response->allow();
     }
 
     public function view(User $user, ServiceReview $review): Response
     {
-        return Response::allow();
+        return $this->response->allow();
     }
 
     public function create(User $user): Response
     {
-        return $user->auth() ? Response::allow() : Response::deny('Unauthorized');
+        return $user->auth() ? $this->response->allow() : $this->response->deny('Unauthorized');
     }
 
     public function update(User $user, ServiceReview $review): Response
     {
-        return $user->id === $review->reviewer_id || $user->hasPermissionTo('update_reviews') ? Response::allow() : Response::deny('Unauthorized');
+        return $user->id === $review->reviewer_id || $user->hasPermissionTo('update_reviews') ? $this->response->allow() : $this->response->deny('Unauthorized');
     }
 
     public function delete(User $user, ServiceReview $review): Response
     {
-        return $user->id === $review->reviewer_id || $user->hasPermissionTo('delete_reviews') ? Response::allow() : Response::deny('Unauthorized');
+        return $user->id === $review->reviewer_id || $user->hasPermissionTo('delete_reviews') ? $this->response->allow() : $this->response->deny('Unauthorized');
     }
 }

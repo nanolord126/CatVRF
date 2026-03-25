@@ -34,13 +34,13 @@ final class CalculateEntertainerEarningsJob implements ShouldQueue
                     }
                 });
 
-            Log::channel('audit')->info('Entertainer earnings calculated', [
+            $this->log->channel('audit')->info('Entertainer earnings calculated', [
                 'month' => $month,
                 'year' => $year,
                 'correlation_id' => $this->correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to calculate entertainer earnings', [
+            $this->log->channel('audit')->error('Failed to calculate entertainer earnings', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $this->correlationId,
             ]);
@@ -60,7 +60,7 @@ final class CalculateEntertainerEarningsJob implements ShouldQueue
             ->get();
 
         foreach ($events as $event) {
-            Log::channel('audit')->info('Entertainer earnings updated', [
+            $this->log->channel('audit')->info('Entertainer earnings updated', [
                 'entertainer_id' => $entertainer->id,
                 'event_id' => $event->id,
                 'month' => $month,

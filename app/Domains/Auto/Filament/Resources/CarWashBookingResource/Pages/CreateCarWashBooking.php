@@ -34,7 +34,7 @@ final class CreateCarWashBooking extends CreateRecord
         ]);
 
         if (!$fraudCheck['allowed']) {
-            Notification::make()
+            $this->notification->make()
                 ->title('Подозрение на мошенничество')
                 ->body($fraudCheck['reason'] ?? 'Операция заблокирована')
                 ->danger()
@@ -43,7 +43,7 @@ final class CreateCarWashBooking extends CreateRecord
             $this->halt();
         }
 
-        Log::channel('audit')->info('Creating car wash booking', [
+        $this->log->channel('audit')->info('Creating car wash booking', [
             'correlation_id' => $correlationId,
             'tenant_id' => filament()->getTenant()->id,
             'user_id' => auth()->id(),
@@ -55,14 +55,14 @@ final class CreateCarWashBooking extends CreateRecord
 
     protected function afterCreate(): void
     {
-        DB::transaction(function () {
+        $this->db->transaction(function () {
             // Событие создания брони мойки
             event(new CarWashBookingCreated(
                 $this->record,
                 $this->record->correlation_id
             ));
 
-            Log::channel('audit')->info('Car wash booking created successfully', [
+            $this->log->channel('audit')->info('Car wash booking created successfully', [
                 'correlation_id' => $this->record->correlation_id,
                 'booking_id' => $this->record->id,
                 'wash_type' => $this->record->wash_type,
@@ -70,7 +70,7 @@ final class CreateCarWashBooking extends CreateRecord
                 'tenant_id' => filament()->getTenant()->id,
             ]);
 
-            Notification::make()
+            $this->notification->make()
                 ->title('Бронь мойки создана')
                 ->body("Тип мойки: {$this->record->wash_type}, дата: {$this->record->scheduled_at->format('d.m.Y H:i')}")
                 ->success()

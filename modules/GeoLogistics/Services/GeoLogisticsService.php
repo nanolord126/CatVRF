@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 namespace Modules\GeoLogistics\Services;
@@ -12,6 +14,8 @@ use Illuminate\Support\Facades\Log;
  */
 class GeoLogisticsService
 {
+    // Dependencies injected via constructor
+    // Add private readonly properties here
     /**
      * Расчет времени и дистанции (Yandex/OSRM API)
      */
@@ -19,7 +23,7 @@ class GeoLogisticsService
     {
         $apiKey = config('geologistics.api_key', DopplerService::get('GEO_ROUTING_KEY'));
         
-        Log::info('Geo: Routing request', [
+        $this->log->info('Geo: Routing request', [
             'from' => $from,
             'to' => $to,
             'correlation_id' => request()->header('X-Correlation-ID')

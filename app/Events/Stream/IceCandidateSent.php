@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -11,7 +13,16 @@ use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Str;
 
-final class IceCandidateSent implements ShouldBroadcast
+final /**
+ * IceCandidateSent
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class IceCandidateSent implements ShouldBroadcast
 {
     use Dispatchable;
     use InteractsWithSockets;

@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Logistics\Http\Controllers;
@@ -9,7 +11,16 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
-final class CourierRatingController
+final /**
+ * CourierRatingController
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class CourierRatingController
 {
     public function getCourierRatings(int $courierId): JsonResponse
     {
@@ -29,7 +40,7 @@ final class CourierRatingController
         try {
             $correlationId = Str::uuid()->toString();
 
-            DB::transaction(function () use ($shipmentId, $correlationId) {
+            $this->db->transaction(function () use ($shipmentId, $correlationId) {
                 $shipment = \App\Domains\Logistics\Models\Shipment::findOrFail($shipmentId);
 
                 CourierRating::create([
@@ -42,7 +53,7 @@ final class CourierRatingController
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Courier rated', [
+                $this->log->channel('audit')->info('Courier rated', [
                     'shipment_id' => $shipmentId,
                     'courier_id' => $shipment->courier_service_id,
                     'rating' => request('rating'),

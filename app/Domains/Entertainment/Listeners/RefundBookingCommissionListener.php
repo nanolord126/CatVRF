@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Entertainment\Listeners;
@@ -8,7 +10,16 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
-final class RefundBookingCommissionListener implements ShouldQueue
+final /**
+ * RefundBookingCommissionListener
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class RefundBookingCommissionListener implements ShouldQueue
 {
     use InteractsWithQueue;
 
@@ -19,7 +30,7 @@ final class RefundBookingCommissionListener implements ShouldQueue
         }
 
         try {
-            DB::transaction(function () use ($event) {
+            $this->db->transaction(function () use ($event) {
                 $commissionAmount = (int) ($event->booking->commission_amount * 100);
                 $wallet = \App\Models\Wallet::lockForUpdate()->where('tenant_id', $event->booking->tenant_id)->firstOrFail();
                 $wallet->increment('balance', $commissionAmount);
@@ -32,7 +43,7 @@ final class RefundBookingCommissionListener implements ShouldQueue
                     'correlation_id' => $event->correlationId,
                 ]);
 
-                Log::channel('audit')->info('Booking commission refunded', [
+                $this->log->channel('audit')->info('Booking commission refunded', [
                     'booking_id' => $event->booking->id,
                     'venue_id' => $event->booking->venue_id,
                     'customer_id' => $event->booking->customer_id,
@@ -41,7 +52,7 @@ final class RefundBookingCommissionListener implements ShouldQueue
                 ]);
             });
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to refund booking commission', [
+            $this->log->channel('audit')->error('Failed to refund booking commission', [
                 'booking_id' => $event->booking->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $event->correlationId,

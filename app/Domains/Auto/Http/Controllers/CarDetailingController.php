@@ -34,7 +34,7 @@ final class CarDetailingController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Car detailing index failed', [
+            $this->log->channel('audit')->error('Car detailing index failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -67,7 +67,7 @@ final class CarDetailingController extends Controller
                 'amount' => $validated['price'],
             ]);
 
-            $detailing = DB::transaction(function () use ($validated, $correlationId) {
+            $detailing = $this->db->transaction(function () use ($validated, $correlationId) {
                 return CarDetailing::create([
                     ...$validated,
                     'tenant_id' => tenant()->id,
@@ -78,7 +78,7 @@ final class CarDetailingController extends Controller
                 ]);
             });
 
-            Log::channel('audit')->info('Car detailing booking created', [
+            $this->log->channel('audit')->info('Car detailing booking created', [
                 'correlation_id' => $correlationId,
                 'detailing_id' => $detailing->id,
             ]);
@@ -89,7 +89,7 @@ final class CarDetailingController extends Controller
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Car detailing booking creation failed', [
+            $this->log->channel('audit')->error('Car detailing booking creation failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -121,11 +121,11 @@ final class CarDetailingController extends Controller
         ]);
 
         try {
-            DB::transaction(function () use ($detailing, $validated) {
+            $this->db->transaction(function () use ($detailing, $validated) {
                 $detailing->update($validated);
             });
 
-            Log::channel('audit')->info('Car detailing booking updated', [
+            $this->log->channel('audit')->info('Car detailing booking updated', [
                 'correlation_id' => $correlationId,
                 'detailing_id' => $detailing->id,
             ]);
@@ -136,7 +136,7 @@ final class CarDetailingController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Car detailing booking update failed', [
+            $this->log->channel('audit')->error('Car detailing booking update failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -154,14 +154,14 @@ final class CarDetailingController extends Controller
         $correlationId = Str::uuid()->toString();
 
         try {
-            DB::transaction(function () use ($detailing) {
+            $this->db->transaction(function () use ($detailing) {
                 $detailing->update([
                     'status' => 'completed',
                     'completed_at' => now(),
                 ]);
             });
 
-            Log::channel('audit')->info('Car detailing completed', [
+            $this->log->channel('audit')->info('Car detailing completed', [
                 'correlation_id' => $correlationId,
                 'detailing_id' => $detailing->id,
             ]);
@@ -172,7 +172,7 @@ final class CarDetailingController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Car detailing completion failed', [
+            $this->log->channel('audit')->error('Car detailing completion failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -190,11 +190,11 @@ final class CarDetailingController extends Controller
         $correlationId = Str::uuid()->toString();
 
         try {
-            DB::transaction(function () use ($detailing) {
+            $this->db->transaction(function () use ($detailing) {
                 $detailing->update(['status' => 'cancelled']);
             });
 
-            Log::channel('audit')->info('Car detailing cancelled', [
+            $this->log->channel('audit')->info('Car detailing cancelled', [
                 'correlation_id' => $correlationId,
                 'detailing_id' => $detailing->id,
             ]);
@@ -205,7 +205,7 @@ final class CarDetailingController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Car detailing cancellation failed', [
+            $this->log->channel('audit')->error('Car detailing cancellation failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -225,7 +225,7 @@ final class CarDetailingController extends Controller
         try {
             $detailing->delete();
 
-            Log::channel('audit')->info('Car detailing deleted', [
+            $this->log->channel('audit')->info('Car detailing deleted', [
                 'correlation_id' => $correlationId,
                 'detailing_id' => $detailing->id,
             ]);
@@ -236,7 +236,7 @@ final class CarDetailingController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Car detailing deletion failed', [
+            $this->log->channel('audit')->error('Car detailing deletion failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);

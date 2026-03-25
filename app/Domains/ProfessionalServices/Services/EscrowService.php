@@ -38,7 +38,7 @@ final class EscrowService
         }
         RateLimiter::hit("escrow:open:{$clientId}", 3600);
 
-        return DB::transaction(function () use ($clientId, $providerId, $totalAmount, $milestones, $correlationId) {
+        return $this->db->transaction(function () use ($clientId, $providerId, $totalAmount, $milestones, $correlationId) {
             
             // 2. Fraud Check - проверка на отмывание денег через проф-услуги
             $fraud = $this->fraud->check([
@@ -49,7 +49,7 @@ final class EscrowService
             ]);
 
             if ($fraud["decision"] === "block") {
-                Log::channel("audit")->error("Escrow Security Block", ["client" => $clientId, "score" => $fraud["score"]]);
+                $this->log->channel("audit")->error("Escrow Security Block", ["client" => $clientId, "score" => $fraud["score"]]);
                 throw new \RuntimeException("Контракт заблокирован комплаенсом.", 403);
             }
 
@@ -81,7 +81,7 @@ final class EscrowService
                 correlationId: $correlationId
             );
 
-            Log::channel("audit")->info("Escrow: contract opened", ["contract_id" => $contract->id, "amount" => $totalAmount]);
+            $this->log->channel("audit")->info("Escrow: contract opened", ["contract_id" => $contract->id, "amount" => $totalAmount]);
 
             return $contract;
         });
@@ -99,7 +99,7 @@ final class EscrowService
             throw new \RuntimeException("Этап уже оплачен или отменен.");
         }
 
-        DB::transaction(function () use ($milestone, $correlationId) {
+        $this->db->transaction(function () use ($milestone, $correlationId) {
             $contract = $milestone->contract;
             
             // Обновляем статус этапа
@@ -135,7 +135,7 @@ final class EscrowService
                 correlationId: $correlationId
             );
 
-            Log::channel("audit")->info("Escrow: milestone released", ["milestone_id" => $milestone->id, "payout" => $providerPayout]);
+            $this->log->channel("audit")->info("Escrow: milestone released", ["milestone_id" => $milestone->id, "payout" => $providerPayout]);
         });
     }
 }

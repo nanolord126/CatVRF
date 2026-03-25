@@ -31,14 +31,14 @@ final class EventService
     public function buyTickets(int $userId, int $eventId, array $data, string $correlationId = ""): TicketOrder
     {
         $correlationId = $correlationId ?: (string) Str::uuid();
-        $event = Event::findOrFail($eventId);
+        $event = $this->event->findOrFail($eventId);
 
         if (RateLimiter::tooManyAttempts("events:buy:".$userId, 5)) {
             throw new \RuntimeException("Ticket purchase limit reached.", 429);
         }
         RateLimiter::hit("events:buy:".$userId, 3600);
 
-        return DB::transaction(function () use ($userId, $eventId, $event, $data, $correlationId) {
+        return $this->db->transaction(function () use ($userId, $eventId, $event, $data, $correlationId) {
             $this->fraud->check([
                 "user_id" => $userId,
                 "operation_type" => "event_ticket_purchase",
@@ -82,7 +82,7 @@ final class EventService
                 ]);
             }
 
-            Log::channel("audit")->info("Events: tickets ordered", ["order_uuid" => $order->uuid, "fee" => $fee]);
+            $this->log->channel("audit")->info("Events: tickets ordered", ["order_uuid" => $order->uuid, "fee" => $fee]);
 
             return $order;
         });
@@ -100,14 +100,14 @@ final class EventService
             throw new \RuntimeException("Ticket already used or invalid.", 403);
         }
 
-        return DB::transaction(function () use ($ticket, $operatorId, $correlationId) {
+        return $this->db->transaction(function () use ($ticket, $operatorId, $correlationId) {
             $ticket->update([
                 "status" => "used",
                 "checked_in_at" => now(),
                 "checked_in_by" => $operatorId
             ]);
 
-            Log::channel("audit")->info("Events: guest check-in successful", [
+            $this->log->channel("audit")->info("Events: guest check-in successful", [
                 "ticket_id" => $ticket->id,
                 "operator" => $operatorId
             ]);
@@ -126,7 +126,7 @@ final class EventService
     public function settleEventPayouts(int $eventId, string $correlationId = ""): void
     {
         $correlationId = $correlationId ?: (string) Str::uuid();
-        $event = Event::findOrFail($eventId);
+        $event = $this->event->findOrFail($eventId);
 
         if ($event->end_at > now()) {
             throw new \RuntimeException("Event still in progress. Payout locked.");
@@ -135,7 +135,7 @@ final class EventService
         $orders = TicketOrder::where("event_id", $eventId)->where("status", "confirmed")->get();
 
         foreach ($orders as $order) {
-            DB::transaction(function () use ($order, $event, $correlationId) {
+            $this->db->transaction(function () use ($order, $event, $correlationId) {
                 $payout = $order->total_price - $order->platform_fee;
 
                 $this->wallet->releaseHold($order->user_id, $order->total_price, $correlationId);
@@ -145,6 +145,6 @@ final class EventService
             });
         }
 
-        Log::channel("audit")->info("Events: event payouts settled", ["event_id" => $eventId]);
+        $this->log->channel("audit")->info("Events: event payouts settled", ["event_id" => $eventId]);
     }
 }

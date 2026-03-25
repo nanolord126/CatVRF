@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\MedicalSupplies\Services;
@@ -8,7 +10,16 @@ use Illuminate\Support\Facades\Log;
 use App\Domains\MedicalSupplies\Models\MedicalSupply;
 use Illuminate\Support\Str;
 
-final class MedicalSupplyService
+final /**
+ * MedicalSupplyService
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class MedicalSupplyService
 {
     public function __construct(
         private readonly FraudControlService $fraudControlService,
@@ -27,7 +38,7 @@ final class MedicalSupplyService
 
     public function getSuppliesByType(string $type)
     {
-        Log::channel('audit')->info('Get medical supplies', [
+        $this->log->channel('audit')->info('Get medical supplies', [
             'correlation_id' => $this->correlationId,
             'type' => $type,
         ]);

@@ -67,14 +67,10 @@
 
     // Lighting
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
-    scene.add(ambientLight);
-
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.9);
+    scene.aconst directionalLight = new THREE.DirectionalLight(0xffffff, 0.9);
     directionalLight.position.set(5, 8, 5);
     directionalLight.castShadow = true;
-    scene.add(directionalLight);
-
-    // Create Room
+    scene.a// Create Room
     const roomWidth = 5;
     const roomDepth = 4;
     const roomHeight = 2.8;
@@ -92,32 +88,25 @@
         const geometry = new THREE.BoxGeometry(...wall.size);
         const mesh = new THREE.Mesh(geometry, wallMaterial);
         mesh.position.set(...wall.pos);
-        scene.add(mesh);
-    });
+        scene.a});
 
     // Floor
     const floorGeometry = new THREE.PlaneGeometry(roomWidth, roomDepth);
     const floorMaterial = new THREE.MeshStandardMaterial({ color: 0xd4af8f });
     const floor = new THREE.Mesh(floorGeometry, floorMaterial);
     floor.rotation.x = -Math.PI / 2;
-    scene.add(floor);
-
-    // Ceiling
+    scene.a// Ceiling
     const ceilingGeometry = new THREE.PlaneGeometry(roomWidth, roomDepth);
     const ceilingMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
     const ceiling = new THREE.Mesh(ceilingGeometry, ceilingMaterial);
     ceiling.rotation.x = Math.PI / 2;
     ceiling.position.y = roomHeight;
-    scene.add(ceiling);
-
-    // Add furniture
+    scene.a// Add furniture
     const bedroomGeo = new THREE.BoxGeometry(1.6, 0.5, 2);
     const bedMat = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
     const bed = new THREE.Mesh(bedroomGeo, bedMat);
     bed.position.set(-1.5, 0.25, 0);
-    scene.add(bed);
-
-    camera.position.set({{ $currentView['position'][0] ?? 0 }}, {{ $currentView['position'][1] ?? 1.5 }}, {{ $currentView['position'][2] ?? 0 }});
+    scene.acamera.position.set({{ $currentView['position'][0] ?? 0 }}, {{ $currentView['position'][1] ?? 1.5 }}, {{ $currentView['position'][2] ?? 0 }});
     camera.lookAt({{ $currentView['target'][0] ?? 0 }}, {{ $currentView['target'][1] ?? 1 }}, {{ $currentView['target'][2] ?? 0 }});
 
     const animate = () => {

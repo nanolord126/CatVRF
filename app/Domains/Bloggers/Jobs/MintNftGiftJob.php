@@ -38,12 +38,12 @@ class MintNftGiftJob implements ShouldQueue
         try {
             $mintingService->mintGift($this->giftId, $this->correlationId);
 
-            Log::channel('bloggers')->info('NFT gift minting completed', [
+            $this->log->channel('bloggers')->info('NFT gift minting completed', [
                 'gift_id' => $this->giftId,
                 'correlation_id' => $this->correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('bloggers')->error('NFT minting job failed', [
+            $this->log->channel('bloggers')->error('NFT minting job failed', [
                 'gift_id' => $this->giftId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $this->correlationId,
@@ -63,7 +63,7 @@ class MintNftGiftJob implements ShouldQueue
 
     public function failed(\Throwable $exception): void
     {
-        Log::channel('bloggers')->error('NFT minting job permanently failed', [
+        $this->log->channel('bloggers')->error('NFT minting job permanently failed', [
             'gift_id' => $this->giftId,
             'error' => $exception->getMessage(),
             'correlation_id' => $this->correlationId,

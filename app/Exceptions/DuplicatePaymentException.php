@@ -21,6 +21,6 @@ final class DuplicatePaymentException extends Exception
         return response()->json([
             'error' => 'Duplicate payment attempt',
             'message' => $this->message,
-        ], Response::HTTP_CONFLICT);  // 409
+        ], $this->response->HTTP_CONFLICT);  // 409
     }
 }

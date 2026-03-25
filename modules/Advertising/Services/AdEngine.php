@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 namespace Modules\Advertising\Services;
 use Modules\Advertising\Models\Campaign;
@@ -5,8 +7,27 @@ use Modules\Advertising\Models\Creative;
 use App\Models\User;
 use Bavix\Wallet\Models\Wallet;
 
+/**
+ * AdEngine
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
 class AdEngine {
-    public function __construct(protected OrdService $ord) {}
+    // Dependencies injected via constructor
+    // Add private readonly properties here
+    public function __construct(protected OrdService $ord) {
+    /**
+     * Инициализировать класс
+     */
+    public function __construct()
+    {
+        // TODO: инициализация
+    }
+}
 
     public function createCampaign(User $user, array $data): Campaign {
         $campaign = Campaign::create([

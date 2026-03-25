@@ -19,7 +19,7 @@ final readonly class ImportService
         $path = $file->store('imports');
 
         try {
-            $data = Excel::toArray(null, Storage::path($path));
+            $data = Excel::toArray(null, $this->storage->path($path));
             $records = $data[0] ?? [];
 
             $imported = [];
@@ -42,7 +42,7 @@ final readonly class ImportService
                 'errors' => $errors,
             ];
         } finally {
-            Storage::delete($path);
+            $this->storage->delete($path);
         }
     }
 
@@ -51,7 +51,7 @@ final readonly class ImportService
         $path = $file->store('imports');
 
         try {
-            $rows = array_map('str_getcsv', file(Storage::path($path)));
+            $rows = array_map('str_getcsv', file($this->storage->path($path)));
             $header = array_shift($rows);
 
             $imported = [];
@@ -75,7 +75,7 @@ final readonly class ImportService
                 'errors' => $errors,
             ];
         } finally {
-            Storage::delete($path);
+            $this->storage->delete($path);
         }
     }
 

@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Auto\Events;
@@ -10,7 +12,16 @@ use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-final class AutoPartOrderCreated implements ShouldBroadcast
+final /**
+ * AutoPartOrderCreated
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class AutoPartOrderCreated implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -21,7 +32,7 @@ final class AutoPartOrderCreated implements ShouldBroadcast
         public readonly int $totalPrice,
         public readonly string $correlationId,
     ) {
-        Log::channel('audit')->info('AutoPartOrderCreated event dispatched', [
+        $this->log->channel('audit')->info('AutoPartOrderCreated event dispatched', [
             'correlation_id' => $this->correlationId,
             'order_id' => $this->autoPartOrderId,
             'tenant_id' => $this->tenantId,

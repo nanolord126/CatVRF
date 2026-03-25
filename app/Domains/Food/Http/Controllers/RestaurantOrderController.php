@@ -74,7 +74,7 @@ final class RestaurantOrderController
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Order creation failed', ['error' => $e->getMessage()]);
+            $this->log->channel('audit')->error('Order creation failed', ['error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => 'Ошибка'], 500);
         }
     }
@@ -96,7 +96,7 @@ final class RestaurantOrderController
 
             $order->update(['status' => 'cancelled']);
 
-            Log::channel('audit')->info('Order cancelled', ['order_id' => $order->id]);
+            $this->log->channel('audit')->info('Order cancelled', ['order_id' => $order->id]);
 
             return response()->json(['success' => true, 'message' => 'Заказ отменён']);
         } catch (\Throwable $e) {

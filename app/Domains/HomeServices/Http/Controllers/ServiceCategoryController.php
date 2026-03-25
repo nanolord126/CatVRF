@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\HomeServices\Http\Controllers;
@@ -6,8 +8,19 @@ use App\Domains\HomeServices\Models\ServiceCategory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Str;
 
-final class ServiceCategoryController
+final /**
+ * ServiceCategoryController
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class ServiceCategoryController
 {
+    // Dependencies injected via constructor
+    // Add private readonly properties here
     public function index(): JsonResponse
     {
         try {

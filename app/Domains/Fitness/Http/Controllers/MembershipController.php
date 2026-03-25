@@ -38,7 +38,7 @@ final class MembershipController
 
             return response()->json(['success' => true, 'data' => $membership, 'correlation_id' => $correlationId], 201);
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to create membership', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+            $this->log->channel('audit')->error('Failed to create membership', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
             return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
         }
     }
@@ -78,7 +78,7 @@ final class MembershipController
 
             $membership->update(array_merge(request()->except(['id', 'tenant_id', 'business_group_id', 'correlation_id']), ['correlation_id' => $correlationId]));
 
-            Log::channel('audit')->info('Membership updated', ['membership_id' => $id, 'correlation_id' => $correlationId]);
+            $this->log->channel('audit')->info('Membership updated', ['membership_id' => $id, 'correlation_id' => $correlationId]);
 
             return response()->json(['success' => true, 'data' => $membership, 'correlation_id' => $correlationId]);
         } catch (Throwable $e) {
@@ -95,7 +95,7 @@ final class MembershipController
 
             $this->membershipService->cancelMembership($membership, request('reason', 'User requested'), $correlationId);
 
-            Log::channel('audit')->info('Membership cancelled', ['membership_id' => $id, 'correlation_id' => $correlationId]);
+            $this->log->channel('audit')->info('Membership cancelled', ['membership_id' => $id, 'correlation_id' => $correlationId]);
 
             return response()->json(['success' => true, 'correlation_id' => $correlationId]);
         } catch (Throwable $e) {

@@ -33,7 +33,7 @@ final class StreamController
                 ->orderByDesc('viewer_count')
                 ->paginate(20);
 
-            Log::channel('audit')->info('Get active streams', [
+            $this->log->channel('audit')->info('Get active streams', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => tenant()->id,
                 'count' => $streams->total(),
@@ -50,7 +50,7 @@ final class StreamController
                 ],
             ]);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Get streams failed', [
+            $this->log->channel('audit')->error('Get streams failed', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
@@ -77,7 +77,7 @@ final class StreamController
                 ->orderByDesc('created_at')
                 ->paginate(50);
 
-            Log::channel('audit')->info('Get blogger streams', [
+            $this->log->channel('audit')->info('Get blogger streams', [
                 'correlation_id' => $correlationId,
                 'blogger_id' => $blogerId,
                 'count' => $streams->total(),
@@ -88,7 +88,7 @@ final class StreamController
                 'data' => $streams->items(),
             ]);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Get blogger streams failed', [
+            $this->log->channel('audit')->error('Get blogger streams failed', [
                 'error' => $e->getMessage(),
             ]);
 
@@ -116,7 +116,7 @@ final class StreamController
                 correlationId: $correlationId,
             );
 
-            Log::channel('audit')->info('Stream created', [
+            $this->log->channel('audit')->info('Stream created', [
                 'correlation_id' => $correlationId,
                 'stream_id' => $stream->id,
                 'blogger_id' => $blogerId,
@@ -130,7 +130,7 @@ final class StreamController
                 'room_id' => $stream->room_id,
             ], 201);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Create stream failed', [
+            $this->log->channel('audit')->error('Create stream failed', [
                 'error' => $e->getMessage(),
                 'user_id' => auth()->id(),
             ]);
@@ -165,7 +165,7 @@ final class StreamController
                 'data' => $stream,
             ]);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Get stream details failed', [
+            $this->log->channel('audit')->error('Get stream details failed', [
                 'room_id' => $roomId,
                 'error' => $e->getMessage(),
             ]);
@@ -194,7 +194,7 @@ final class StreamController
                 correlationId: $correlationId,
             );
 
-            Log::channel('audit')->info('Stream started', [
+            $this->log->channel('audit')->info('Stream started', [
                 'correlation_id' => $correlationId,
                 'stream_id' => $stream->id,
                 'blogger_id' => $blogerId,
@@ -205,7 +205,7 @@ final class StreamController
                 'data' => $stream,
             ]);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Start stream failed', [
+            $this->log->channel('audit')->error('Start stream failed', [
                 'error' => $e->getMessage(),
             ]);
 
@@ -234,7 +234,7 @@ final class StreamController
                 correlationId: $correlationId,
             );
 
-            Log::channel('audit')->info('Stream ended', [
+            $this->log->channel('audit')->info('Stream ended', [
                 'correlation_id' => $correlationId,
                 'stream_id' => $stream->id,
                 'duration_minutes' => $stream->duration_minutes,
@@ -246,7 +246,7 @@ final class StreamController
                 'data' => $stream,
             ]);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('End stream failed', [
+            $this->log->channel('audit')->error('End stream failed', [
                 'error' => $e->getMessage(),
             ]);
 
@@ -319,7 +319,7 @@ final class StreamController
                 ],
             ]);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Get stream statistics failed', [
+            $this->log->channel('audit')->error('Get stream statistics failed', [
                 'error' => $e->getMessage(),
             ]);
 

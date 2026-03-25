@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\HomeServices\Models;
@@ -8,7 +10,16 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-final class Contractor extends Model
+final /**
+ * Contractor
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class Contractor extends Model
 {
     protected $table = 'contractors';
     protected $fillable = ['tenant_id', 'user_id', 'company_name', 'description', 'address', 'geo_point', 'services', 'specializations', 'phone', 'website', 'hourly_rate', 'rating', 'review_count', 'job_count', 'completed_count', 'is_verified', 'is_active', 'correlation_id'];

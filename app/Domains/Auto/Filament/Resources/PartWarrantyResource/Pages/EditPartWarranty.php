@@ -21,7 +21,7 @@ final class EditPartWarranty extends EditRecord
         return [
             Actions\DeleteAction::make()
                 ->after(function () {
-                    Log::channel('audit')->info('PartWarranty deleted', [
+                    $this->log->channel('audit')->info('PartWarranty deleted', [
                         'correlation_id' => $this->record->correlation_id,
                         'warranty_id' => $this->record->id,
                     ]);
@@ -32,10 +32,10 @@ final class EditPartWarranty extends EditRecord
                 ->visible(fn () => $this->record->claim_status === 'pending')
                 ->requiresConfirmation()
                 ->action(function () {
-                    DB::transaction(function () {
+                    $this->db->transaction(function () {
                         $this->record->update(['claim_status' => 'approved']);
                         
-                        Log::channel('audit')->info('PartWarrantyClaimApproved', [
+                        $this->log->channel('audit')->info('PartWarrantyClaimApproved', [
                             'correlation_id' => $this->record->correlation_id,
                             'warranty_id' => $this->record->id,
                         ]);
@@ -46,7 +46,7 @@ final class EditPartWarranty extends EditRecord
                         ));
                     });
 
-                    Notification::make()
+                    $this->notification->make()
                         ->success()
                         ->title('Претензия одобрена')
                         ->send();
@@ -62,10 +62,10 @@ final class EditPartWarranty extends EditRecord
                         ->required(),
                 ])
                 ->action(function (array $data) {
-                    DB::transaction(function () use ($data) {
+                    $this->db->transaction(function () use ($data) {
                         $this->record->update(['claim_status' => 'rejected']);
                         
-                        Log::channel('audit')->info('PartWarrantyClaimRejected', [
+                        $this->log->channel('audit')->info('PartWarrantyClaimRejected', [
                             'correlation_id' => $this->record->correlation_id,
                             'warranty_id' => $this->record->id,
                             'reason' => $data['rejection_reason'],
@@ -78,7 +78,7 @@ final class EditPartWarranty extends EditRecord
                         ));
                     });
 
-                    Notification::make()
+                    $this->notification->make()
                         ->warning()
                         ->title('Претензия отклонена')
                         ->send();
@@ -90,7 +90,7 @@ final class EditPartWarranty extends EditRecord
     {
         $wasChanged = $this->record->wasChanged('claim_status');
         
-        Log::channel('audit')->info('PartWarranty updated', [
+        $this->log->channel('audit')->info('PartWarranty updated', [
             'correlation_id' => $this->record->correlation_id,
             'warranty_id' => $this->record->id,
             'claim_status' => $this->record->claim_status,

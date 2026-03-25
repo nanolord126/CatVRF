@@ -26,7 +26,7 @@ final class CertificateService
 
 
         try {
-            Log::channel('audit')->info('Issuing certificate', [
+            $this->log->channel('audit')->info('Issuing certificate', [
                 'enrollment_id' => $enrollment->id,
                 'student_name' => $studentName,
                 'correlation_id' => $correlationId,
@@ -45,7 +45,7 @@ final class CertificateService
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
 
-            $certificate = DB::transaction(function () use ($enrollment, $studentName, $correlationId) {
+            $certificate = $this->db->transaction(function () use ($enrollment, $studentName, $correlationId) {
                 $verificationCode = strtoupper(Str::random(12));
                 $certificateNumber = 'CERT-' . now()->format('Y') . '-' . Str::random(8);
 
@@ -67,7 +67,7 @@ final class CertificateService
                 return $certificate;
             });
 
-            Log::channel('audit')->info('Certificate issued successfully', [
+            $this->log->channel('audit')->info('Certificate issued successfully', [
                 'certificate_id' => $certificate->id,
                 'certificate_number' => $certificate->certificate_number,
                 'correlation_id' => $correlationId,
@@ -75,7 +75,7 @@ final class CertificateService
 
             return $certificate;
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to issue certificate', [
+            $this->log->channel('audit')->error('Failed to issue certificate', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -86,7 +86,7 @@ final class CertificateService
     public function verifyCertificate(string $verificationCode, string $correlationId = ''): ?Certificate
     {
         try {
-            Log::channel('audit')->info('Verifying certificate', [
+            $this->log->channel('audit')->info('Verifying certificate', [
                 'verification_code' => $verificationCode,
                 'correlation_id' => $correlationId,
             ]);
@@ -94,14 +94,14 @@ final class CertificateService
             $certificate = Certificate::where('verification_code', $verificationCode)
                 ->first();
 
-            Log::channel('audit')->info('Certificate verification result', [
+            $this->log->channel('audit')->info('Certificate verification result', [
                 'found' => $certificate ? true : false,
                 'correlation_id' => $correlationId,
             ]);
 
             return $certificate;
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to verify certificate', [
+            $this->log->channel('audit')->error('Failed to verify certificate', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);

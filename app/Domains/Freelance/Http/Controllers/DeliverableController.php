@@ -25,7 +25,7 @@ final class DeliverableController
     public function store(Request $request): JsonResponse
     {
         $correlationId = Str::uuid()->toString();
-        $this->fraudControlService->check(Auth::user(), 'deliverable_create', crc32((string)$correlationId));
+        $this->fraudControlService->check($this->auth->user(), 'deliverable_create', crc32((string)$correlationId));
 
         try {
             $validated = $request->validate([
@@ -36,7 +36,7 @@ final class DeliverableController
 
             $deliverable = $this->deliverableService->submitDeliverable(
                 contractId: $request->input('contract_id'),
-                freelancerId: Auth::user()?->freelancer->id ?? 0,
+                freelancerId: $this->auth->user()?->freelancer->id ?? 0,
                 data: $validated,
                 correlationId: (string)$correlationId,
             );
@@ -47,7 +47,7 @@ final class DeliverableController
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Error submitting deliverable', [
+            $this->log->channel('audit')->error('Error submitting deliverable', [
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
             ]);
@@ -73,7 +73,7 @@ final class DeliverableController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Error showing deliverable', [
+            $this->log->channel('audit')->error('Error showing deliverable', [
                 'deliverable_id' => $id,
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
@@ -102,7 +102,7 @@ final class DeliverableController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Error approving deliverable', [
+            $this->log->channel('audit')->error('Error approving deliverable', [
                 'deliverable_id' => $id,
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
@@ -135,7 +135,7 @@ final class DeliverableController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Error requesting revision', [
+            $this->log->channel('audit')->error('Error requesting revision', [
                 'deliverable_id' => $id,
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
@@ -168,7 +168,7 @@ final class DeliverableController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Error rejecting deliverable', [
+            $this->log->channel('audit')->error('Error rejecting deliverable', [
                 'deliverable_id' => $id,
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
@@ -195,7 +195,7 @@ final class DeliverableController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Error listing contract deliverables', [
+            $this->log->channel('audit')->error('Error listing contract deliverables', [
                 'contract_id' => $contractId,
                 'error' => $e->getMessage(),
             ]);

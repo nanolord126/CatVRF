@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Auto\Policies;
@@ -25,27 +27,27 @@ final class AutoPartPolicy
     public function create(User $user): Response
     {
         if (!$user->isStaff()) {
-            return Response::deny('Только персонал может создавать запчасти');
+            return $this->response->deny('Только персонал может создавать запчасти');
         }
 
-        return Response::allow();
+        return $this->response->allow();
     }
 
     public function update(User $user, AutoPart $part): Response
     {
         if (!$user->isStaff()) {
-            return Response::deny('Только персонал может редактировать запчасти');
+            return $this->response->deny('Только персонал может редактировать запчасти');
         }
 
-        return Response::allow();
+        return $this->response->allow();
     }
 
     public function delete(User $user, AutoPart $part): Response
     {
         if (!$user->isAdmin()) {
-            return Response::deny('Только администратор может удалять запчасти');
+            return $this->response->deny('Только администратор может удалять запчасти');
         }
 
-        return Response::allow();
+        return $this->response->allow();
     }
 }

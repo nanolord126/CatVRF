@@ -41,6 +41,12 @@ final class ShopOrder extends Model
         });
     }
 
+    /**
+     * Выполнить операцию
+     * 
+     * @return mixed
+     * @throws \Exception
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(\App\Models\User::class, 'user_id');

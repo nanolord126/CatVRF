@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Auto\Policies;
@@ -12,6 +14,8 @@ use Illuminate\Auth\Access\Response;
  */
 final class AutoServiceOrderPolicy
 {
+    // Dependencies injected via constructor
+    // Add private readonly properties here
     public function viewAny(User $user): bool
     {
         return true; // Все могут видеть список заказов (публичная информация)
@@ -30,19 +34,19 @@ final class AutoServiceOrderPolicy
     public function cancel(User $user, AutoServiceOrder $order): Response
     {
         if ($user->id !== $order->client_id && !$user->isAdmin()) {
-            return Response::deny('Вы не можете отменить этот заказ');
+            return $this->response->deny('Вы не можете отменить этот заказ');
         }
 
         if ($order->status === 'completed' || $order->status === 'cancelled') {
-            return Response::deny('Заказ уже завершён или отменён');
+            return $this->response->deny('Заказ уже завершён или отменён');
         }
 
         // Отмену можно сделать только в течение 24 часов до начала
         $hoursUntilStart = $order->appointment_datetime->diffInHours(now(), false);
         if ($hoursUntilStart < -24) {
-            return Response::deny('Отмену можно сделать только за 24 часа до начала');
+            return $this->response->deny('Отмену можно сделать только за 24 часа до начала');
         }
 
-        return Response::allow();
+        return $this->response->allow();
     }
 }

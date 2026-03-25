@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Fitness\Models;
@@ -7,7 +9,16 @@ use App\Models\Tenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-final class PerformanceMetric extends Model
+final /**
+ * PerformanceMetric
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class PerformanceMetric extends Model
 {
     protected $table = 'performance_metrics';
     protected $fillable = ['tenant_id', 'member_id', 'gym_id', 'metric_date', 'classes_attended', 'total_classes_available', 'calories_burned', 'workout_duration_minutes', 'body_weight', 'body_fat_percentage', 'muscle_mass', 'custom_metrics', 'notes', 'correlation_id'];

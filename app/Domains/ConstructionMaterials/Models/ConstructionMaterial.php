@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\ConstructionMaterials\Models;
@@ -5,7 +7,16 @@ namespace App\Domains\ConstructionMaterials\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-final class ConstructionMaterial extends Model
+final /**
+ * ConstructionMaterial
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class ConstructionMaterial extends Model
 {
     use SoftDeletes;
 

@@ -192,7 +192,7 @@ class Subscription extends Model
                 'ends_at' => Carbon::now(),
             ]);
 
-            Log::channel('payments')->info('Subscription cancelled', [
+            $this->log->channel('payments')->info('Subscription cancelled', [
                 'subscription_id' => $this->id,
                 'user_id' => $this->user_id,
                 'reason' => $reason,
@@ -201,7 +201,7 @@ class Subscription extends Model
 
             return true;
         } catch (Throwable $e) {
-            Log::error('Failed to cancel subscription', [
+            $this->log->error('Failed to cancel subscription', [
                 'subscription_id' => $this->id,
                 'error' => $e->getMessage(),
             ]);

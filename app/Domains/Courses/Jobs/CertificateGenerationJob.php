@@ -34,7 +34,7 @@ final class CertificateGenerationJob implements ShouldQueue
     public function handle(): void
     {
         try {
-            Log::channel('audit')->info('Generating certificate PDF', [
+            $this->log->channel('audit')->info('Generating certificate PDF', [
                 'certificate_id' => $this->certificateId,
                 'correlation_id' => $this->correlationId,
             ]);
@@ -43,7 +43,7 @@ final class CertificateGenerationJob implements ShouldQueue
 
             throw new \RuntimeException('PDF generation not yet configured. Install barryvdh/laravel-dompdf and implement certificate rendering.');
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to generate certificate', [
+            $this->log->channel('audit')->error('Failed to generate certificate', [
                 'certificate_id' => $this->certificateId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $this->correlationId,

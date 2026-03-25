@@ -26,7 +26,7 @@ final class ProgressTrackingService
 
 
         try {
-            Log::channel('audit')->info('Tracking lesson watch time', [
+            $this->log->channel('audit')->info('Tracking lesson watch time', [
                 'enrollment_id' => $enrollmentId,
                 'lesson_id' => $lessonId,
                 'watch_time' => $watchTimeSeconds,
@@ -42,7 +42,7 @@ final class ProgressTrackingService
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
 
-            $progress = DB::transaction(function () use ($enrollmentId, $lessonId, $watchTimeSeconds, $correlationId) {
+            $progress = $this->db->transaction(function () use ($enrollmentId, $lessonId, $watchTimeSeconds, $correlationId) {
                 $progress = LessonProgress::firstOrCreate([
                     'tenant_id' => tenant('id'),
                     'enrollment_id' => $enrollmentId,
@@ -56,21 +56,21 @@ final class ProgressTrackingService
 
                 // Update enrollment total watch time
                 Enrollment::findOrFail($enrollmentId)->update([
-                    'total_watch_time_seconds' => DB::raw("total_watch_time_seconds + {$watchTimeSeconds}"),
+                    'total_watch_time_seconds' => $this->db->raw("total_watch_time_seconds + {$watchTimeSeconds}"),
                     'last_accessed_at' => now(),
                 ]);
 
                 return $progress;
             });
 
-            Log::channel('audit')->info('Lesson watch time tracked', [
+            $this->log->channel('audit')->info('Lesson watch time tracked', [
                 'progress_id' => $progress->id,
                 'correlation_id' => $correlationId,
             ]);
 
             return $progress;
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to track lesson watch time', [
+            $this->log->channel('audit')->error('Failed to track lesson watch time', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -86,7 +86,7 @@ final class ProgressTrackingService
 
 
         try {
-            Log::channel('audit')->info('Marking lesson as complete', [
+            $this->log->channel('audit')->info('Marking lesson as complete', [
                 'enrollment_id' => $enrollmentId,
                 'lesson_id' => $lessonId,
                 'correlation_id' => $correlationId,
@@ -101,7 +101,7 @@ final class ProgressTrackingService
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
 
-            $progress = DB::transaction(function () use ($enrollmentId, $lessonId, $correlationId) {
+            $progress = $this->db->transaction(function () use ($enrollmentId, $lessonId, $correlationId) {
                 $progress = LessonProgress::where('enrollment_id', $enrollmentId)
                     ->where('lesson_id', $lessonId)
                     ->firstOrFail();
@@ -127,14 +127,14 @@ final class ProgressTrackingService
                 return $progress;
             });
 
-            Log::channel('audit')->info('Lesson marked as complete', [
+            $this->log->channel('audit')->info('Lesson marked as complete', [
                 'progress_id' => $progress->id,
                 'correlation_id' => $correlationId,
             ]);
 
             return $progress;
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to mark lesson as complete', [
+            $this->log->channel('audit')->error('Failed to mark lesson as complete', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -147,7 +147,7 @@ final class ProgressTrackingService
 
 
         try {
-            Log::channel('audit')->info('Getting enrollment progress', [
+            $this->log->channel('audit')->info('Getting enrollment progress', [
                 'enrollment_id' => $enrollmentId,
                 'correlation_id' => $correlationId,
             ]);
@@ -167,7 +167,7 @@ final class ProgressTrackingService
                 'status' => $enrollment->status,
             ];
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to get enrollment progress', [
+            $this->log->channel('audit')->error('Failed to get enrollment progress', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);

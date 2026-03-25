@@ -1,6 +1,30 @@
 <?php declare(strict_types=1);
 
-namespace App\Domains\OfficeCatering\Models;
+namespace 
+
+/**
+ * CateringCompany
+ * 
+ * Производитель: CatVRF Platform
+ * Версия: 1.0.0
+ * 
+ * Примеры использования:
+ * 
+ * ```php
+ * // Базовое использование
+ * $instance = new CateringCompany();
+ * ```
+ * 
+ * Требования:
+ * - Laravel 10+
+ * - PHP 8.2+
+ * - Все методы должны быть явно типизированы
+ * 
+ * @author CatVRF
+ * @package namespace App\Domains\OfficeCatering\Models
+ * @see https://github.com/iyegorovskyi_clemny/CatVRF
+ */
+App\Domains\OfficeCatering\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -32,7 +56,19 @@ final class CateringCompany extends Model
         'tags' => 'json',
     ];
 
+    /**
+     * Выполнить операцию
+     * 
+     * @return mixed
+     * @throws \Exception
+     */
     public function orders() { return $this->hasMany(CateringOrder::class, 'catering_company_id'); }
+    /**
+     * Выполнить операцию
+     * 
+     * @return mixed
+     * @throws \Exception
+     */
     public function menus() { return $this->hasMany(CateringMenu::class, 'catering_company_id'); }
 
     protected static function booted(): void

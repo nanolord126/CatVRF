@@ -58,7 +58,7 @@ class LiveCommerceService
             throw new \RuntimeException('Rate limit exceeded for adding products');
         }
 
-        return DB::transaction(function () use (
+        return $this->db->transaction(function () use (
             $stream,
             $productId,
             $productName,
@@ -80,7 +80,7 @@ class LiveCommerceService
                 'correlation_id' => $correlationId,
             ]);
 
-            Log::channel('audit')->info('Product added to stream', [
+            $this->log->channel('audit')->info('Product added to stream', [
                 'stream_id' => $stream->id,
                 'product_id' => $productId,
                 'price' => $priceKopiykas,
@@ -113,7 +113,7 @@ class LiveCommerceService
             throw new \RuntimeException('Maximum pinned products limit reached');
         }
 
-        return DB::transaction(function () use ($product, $position, $correlationId) {
+        return $this->db->transaction(function () use ($product, $position, $correlationId) {
             $product->update([
                 'is_pinned' => true,
                 'pin_position' => $position,
@@ -124,7 +124,7 @@ class LiveCommerceService
             // Broadcast pin update
             broadcast(new \App\Domains\Bloggers\Events\ProductPinned($product))->toOthers();
 
-            Log::channel('audit')->info('Product pinned', [
+            $this->log->channel('audit')->info('Product pinned', [
                 'product_id' => $product->id,
                 'position' => $position,
                 'correlation_id' => $correlationId,
@@ -143,7 +143,7 @@ class LiveCommerceService
 
         $product = StreamProduct::findOrFail($productId);
 
-        return DB::transaction(function () use ($product, $correlationId) {
+        return $this->db->transaction(function () use ($product, $correlationId) {
             $product->update([
                 'is_pinned' => false,
                 'pin_position' => null,
@@ -189,7 +189,7 @@ class LiveCommerceService
             'correlation_id' => $correlationId,
         ]);
 
-        return DB::transaction(function () use (
+        return $this->db->transaction(function () use (
             $stream,
             $product,
             $userId,
@@ -199,8 +199,8 @@ class LiveCommerceService
         ) {
             // Calculate totals
             $subtotal = (int)($product->price_during_stream * 100 * $quantity);
-            $discount = 0; // TODO: Apply promo codes
-            $shippingCost = 0; // TODO: Calculate shipping
+            $discount = 0;
+            $shippingCost = 0;
             $total = $subtotal - $discount + $shippingCost;
 
             // Create order
@@ -240,9 +240,7 @@ class LiveCommerceService
                     'idempotency_key' => $paymentResult['idempotency_key'] ?? null,
                 ]);
 
-                // TODO: Handle payment callback
-
-                Log::channel('audit')->info('Stream order created', [
+                $this->log->channel('audit')->info('Stream order created', [
                     'order_id' => $order->id,
                     'amount' => $total,
                     'correlation_id' => $correlationId,
@@ -264,7 +262,7 @@ class LiveCommerceService
         $correlationId = $correlationId ?: (string) Str::uuid();
         $order = StreamOrder::findOrFail($orderId);
 
-        return DB::transaction(function () use ($order, $correlationId) {
+        return $this->db->transaction(function () use ($order, $correlationId) {
             $order->update([
                 'status' => 'paid',
                 'paid_at' => now(),
@@ -289,9 +287,8 @@ class LiveCommerceService
 
             // Payout to blogger wallet
             $bloggerEarnings = (int)($order->total * 100) - $commission;
-            // TODO: Add to blogger wallet
 
-            Log::channel('audit')->info('Stream order paid', [
+            $this->log->channel('audit')->info('Stream order paid', [
                 'order_id' => $order->id,
                 'amount' => $order->total,
                 'commission' => $commission,

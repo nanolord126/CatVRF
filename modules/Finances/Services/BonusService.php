@@ -46,7 +46,7 @@ final readonly class BonusService
             // Проверка fraud
             $this->fraudControlService->checkBonus($tenantId, $recipientId, $amountCopeki, $correlationId);
 
-            Log::channel('audit')->info('Начисление бонуса', [
+            $this->log->channel('audit')->info('Начисление бонуса', [
                 'recipient_id' => $recipientId,
                 'tenant_id' => $tenantId,
                 'amount' => $amountCopeki,
@@ -55,7 +55,7 @@ final readonly class BonusService
                 'correlation_id' => $correlationId,
             ]);
 
-            return DB::transaction(function () use (
+            return $this->db->transaction(function () use (
                 $recipientId,
                 $tenantId,
                 $amountCopeki,
@@ -97,7 +97,7 @@ final readonly class BonusService
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Бонус начислен успешно', [
+                $this->log->channel('audit')->info('Бонус начислен успешно', [
                     'bonus_id' => $bonus->id,
                     'transaction_id' => $transaction->id,
                     'correlation_id' => $correlationId,
@@ -106,7 +106,7 @@ final readonly class BonusService
                 return $transaction;
             });
         } catch (Exception $e) {
-            Log::channel('audit')->error('Ошибка при начислении бонуса', [
+            $this->log->channel('audit')->error('Ошибка при начислении бонуса', [
                 'recipient_id' => $recipientId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -132,7 +132,7 @@ final readonly class BonusService
         string $correlationId = '',
     ): bool {
         try {
-            return DB::transaction(function () use ($bonusId, $reason, $correlationId) {
+            return $this->db->transaction(function () use ($bonusId, $reason, $correlationId) {
                 $bonus = Bonus::findOrFail($bonusId);
 
                 // Списываем с wallet
@@ -164,7 +164,7 @@ final readonly class BonusService
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Бонус рефундирован', [
+                $this->log->channel('audit')->info('Бонус рефундирован', [
                     'bonus_id' => $bonusId,
                     'reason' => $reason,
                     'correlation_id' => $correlationId,
@@ -173,7 +173,7 @@ final readonly class BonusService
                 return true;
             });
         } catch (Exception $e) {
-            Log::channel('audit')->error('Ошибка при рефунде бонуса', [
+            $this->log->channel('audit')->error('Ошибка при рефунде бонуса', [
                 'bonus_id' => $bonusId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -227,7 +227,7 @@ final readonly class BonusService
                 $correlationId,
             );
         } catch (Exception $e) {
-            Log::channel('audit')->error('Ошибка при проверке бонуса за оборот', [
+            $this->log->channel('audit')->error('Ошибка при проверке бонуса за оборот', [
                 'recipient_id' => $recipientId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

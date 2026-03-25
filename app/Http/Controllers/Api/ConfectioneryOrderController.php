@@ -31,7 +31,7 @@ final class ConfectioneryOrderController extends BaseApiController
 
             return $this->successResponse($orders);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Confectionery orders list error', ['error' => $e->getMessage()]);
+            $this->log->channel('audit')->error('Confectionery orders list error', ['error' => $e->getMessage()]);
             return $this->errorResponse('Failed to fetch orders', 500);
         }
     }
@@ -52,14 +52,14 @@ final class ConfectioneryOrderController extends BaseApiController
                 correlationId: $correlationId,
             );
 
-            Log::channel('audit')->info('Confectionery order created', [
+            $this->log->channel('audit')->info('Confectionery order created', [
                 'order_id' => $order->id,
                 'correlation_id' => $correlationId,
             ]);
 
             return $this->successResponse($order, 'Order created successfully', 201);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Confectionery order creation failed', ['error' => $e->getMessage()]);
+            $this->log->channel('audit')->error('Confectionery order creation failed', ['error' => $e->getMessage()]);
             return $this->errorResponse('Failed to create order: ' . $e->getMessage(), 400);
         }
     }
@@ -78,11 +78,11 @@ final class ConfectioneryOrderController extends BaseApiController
                 correlationId: $correlationId,
             );
 
-            Log::channel('audit')->info('Confectionery order marked ready', ['order_id' => $id]);
+            $this->log->channel('audit')->info('Confectionery order marked ready', ['order_id' => $id]);
 
             return $this->successResponse($order->refresh(), 'Order marked as ready');
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Confectionery mark ready failed', ['error' => $e->getMessage()]);
+            $this->log->channel('audit')->error('Confectionery mark ready failed', ['error' => $e->getMessage()]);
             return $this->errorResponse('Failed to mark order as ready', 400);
         }
     }

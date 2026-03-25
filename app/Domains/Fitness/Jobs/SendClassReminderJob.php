@@ -47,14 +47,14 @@ final class SendClassReminderJob implements ShouldQueue
             $attendees = $schedule->attendances()->where('status', '!=', 'cancelled')->get();
 
             foreach ($attendees as $attendance) {
-                Log::channel('audit')->info('Class reminder sent', [
+                $this->log->channel('audit')->info('Class reminder sent', [
                     'schedule_id' => $this->scheduleId,
                     'member_id' => $attendance->member_id,
                     'correlation_id' => $this->correlationId,
                 ]);
             }
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to send class reminder', [
+            $this->log->channel('audit')->error('Failed to send class reminder', [
                 'schedule_id' => $this->scheduleId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $this->correlationId,

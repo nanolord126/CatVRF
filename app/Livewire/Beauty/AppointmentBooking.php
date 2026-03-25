@@ -151,11 +151,11 @@ final class AppointmentBooking extends Component
         $correlationId = (string) Str::uuid()->toString();
 
         // Rate limiting — не более 5 бронирований в час с одного пользователя
-        $rateLimitKey = 'beauty:booking:' . Auth::id() . ':' . tenant('id');
+        $rateLimitKey = 'beauty:booking:' . $this->auth->id() . ':' . tenant('id');
         if (RateLimiter::tooManyAttempts($rateLimitKey, 5)) {
             $this->errorMessage = 'Слишком много попыток. Попробуйте позже.';
-            Log::channel('audit')->warning('Beauty: Rate limit exceeded on booking', [
-                'user_id' => Auth::id(),
+            $this->log->channel('audit')->warning('Beauty: Rate limit exceeded on booking', [
+                'user_id' => $this->auth->id(),
                 'correlation_id' => $correlationId,
             ]);
             return;
@@ -166,7 +166,7 @@ final class AppointmentBooking extends Component
 
         // Fraud check (instance-метод, DI через параметр action)
         $fraudResult = $fraudControlService->check(
-            userId: Auth::id(),
+            userId: $this->auth->id(),
             operationType: 'appointment_booking',
             amount: 0,
             correlationId: $correlationId,
@@ -174,8 +174,8 @@ final class AppointmentBooking extends Component
 
         if ($fraudResult['decision'] === 'block') {
             $this->errorMessage = 'Бронирование временно недоступно. Обратитесь в поддержку.';
-            Log::channel('audit')->warning('Beauty: Fraud block on booking', [
-                'user_id' => Auth::id(),
+            $this->log->channel('audit')->warning('Beauty: Fraud block on booking', [
+                'user_id' => $this->auth->id(),
                 'score' => $fraudResult['score'],
                 'correlation_id' => $correlationId,
             ]);
@@ -201,9 +201,9 @@ final class AppointmentBooking extends Component
             $this->booked = true;
             $this->createdAppointmentId = $appointment->id;
 
-            Log::channel('audit')->info('Beauty: Appointment booked via Livewire', [
+            $this->log->channel('audit')->info('Beauty: Appointment booked via Livewire', [
                 'appointment_id' => $appointment->id,
-                'user_id' => Auth::id(),
+                'user_id' => $this->auth->id(),
                 'salon_id' => $this->salonId,
                 'master_id' => $this->masterId,
                 'service_id' => $this->serviceId,
@@ -215,10 +215,10 @@ final class AppointmentBooking extends Component
 
         } catch (\Exception $e) {
             $this->errorMessage = 'Не удалось создать запись: ' . $e->getMessage();
-            Log::channel('audit')->error('Beauty: Booking failed in Livewire', [
+            $this->log->channel('audit')->error('Beauty: Booking failed in Livewire', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
-                'user_id' => Auth::id(),
+                'user_id' => $this->auth->id(),
                 'correlation_id' => $correlationId,
             ]);
         }

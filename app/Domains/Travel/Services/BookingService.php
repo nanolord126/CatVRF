@@ -38,7 +38,7 @@ final readonly class BookingService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-DB::transaction(function () use (
+$this->db->transaction(function () use (
                 $tour,
                 $user,
                 $participantsCount,
@@ -67,7 +67,7 @@ DB::transaction(function () use (
                     'uuid' => Str::uuid(),
                 ]);
 
-                Log::channel('audit')->info('Tour booking created', [
+                $this->log->channel('audit')->info('Tour booking created', [
                     'booking_id' => $booking->id,
                     'booking_number' => $booking->booking_number,
                     'tour_id' => $tour->id,
@@ -83,7 +83,7 @@ DB::transaction(function () use (
                 return $booking;
             });
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Tour booking creation failed', [
+            $this->log->channel('audit')->error('Tour booking creation failed', [
                 'tour_id' => $tour->id,
                 'user_id' => $user->id,
                 'error' => $e->getMessage(),
@@ -112,13 +112,13 @@ DB::transaction(function () use (
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-DB::transaction(function () use ($booking, $correlationId) {
+$this->db->transaction(function () use ($booking, $correlationId) {
                 $booking->update([
                     'status' => 'completed',
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Tour booking completed', [
+                $this->log->channel('audit')->info('Tour booking completed', [
                     'booking_id' => $booking->id,
                     'booking_number' => $booking->booking_number,
                     'correlation_id' => $correlationId,
@@ -128,7 +128,7 @@ DB::transaction(function () use ($booking, $correlationId) {
                 return $booking->refresh();
             });
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Tour booking completion failed', [
+            $this->log->channel('audit')->error('Tour booking completion failed', [
                 'booking_id' => $booking->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -157,14 +157,14 @@ DB::transaction(function () use ($booking, $correlationId) {
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-DB::transaction(function () use ($booking, $reason, $correlationId) {
+$this->db->transaction(function () use ($booking, $reason, $correlationId) {
                 $booking->update([
                     'status' => 'cancelled',
                     'cancelled_at' => now(),
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Tour booking cancelled', [
+                $this->log->channel('audit')->info('Tour booking cancelled', [
                     'booking_id' => $booking->id,
                     'booking_number' => $booking->booking_number,
                     'reason' => $reason,
@@ -176,7 +176,7 @@ DB::transaction(function () use ($booking, $reason, $correlationId) {
                 return $booking->refresh();
             });
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Tour booking cancellation failed', [
+            $this->log->channel('audit')->error('Tour booking cancellation failed', [
                 'booking_id' => $booking->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

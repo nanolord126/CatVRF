@@ -41,7 +41,7 @@ final class MedicalReviewController
 
         try {
             $validated = $request->all();
-            $review = DB::transaction(function () use ($validated, $doctorId) {
+            $review = $this->db->transaction(function () use ($validated, $doctorId) {
                 return MedicalReview::create([
                     'tenant_id' => auth()->user()->tenant_id,
                     'doctor_id' => $doctorId,
@@ -56,7 +56,7 @@ final class MedicalReviewController
                 ]);
             });
 
-            Log::channel('audit')->info('Review created', ['review_id' => $review->id]);
+            $this->log->channel('audit')->info('Review created', ['review_id' => $review->id]);
 
             return response()->json([
                 'success' => true,
@@ -83,7 +83,7 @@ final class MedicalReviewController
                 'correlation_id' => $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
             ]);
 
-            Log::channel('audit')->info('Review updated', ['review_id' => $review->id]);
+            $this->log->channel('audit')->info('Review updated', ['review_id' => $review->id]);
 
             return response()->json(['success' => true, 'data' => $review]);
         } catch (Throwable $e) {
@@ -99,7 +99,7 @@ final class MedicalReviewController
 
             $review->delete();
 
-            Log::channel('audit')->info('Review deleted', ['review_id' => $review->id]);
+            $this->log->channel('audit')->info('Review deleted', ['review_id' => $review->id]);
 
             return response()->json(['success' => true]);
         } catch (Throwable $e) {
@@ -114,7 +114,7 @@ final class MedicalReviewController
 
             $review->increment('helpful_count');
 
-            Log::channel('audit')->info('Review marked helpful', ['review_id' => $review->id]);
+            $this->log->channel('audit')->info('Review marked helpful', ['review_id' => $review->id]);
 
             return response()->json(['success' => true, 'data' => $review]);
         } catch (Throwable $e) {
@@ -144,7 +144,7 @@ final class MedicalReviewController
 
             $review->update(['status' => 'approved']);
 
-            Log::channel('audit')->info('Review approved', ['review_id' => $review->id]);
+            $this->log->channel('audit')->info('Review approved', ['review_id' => $review->id]);
 
             return response()->json(['success' => true, 'data' => $review]);
         } catch (Throwable $e) {
@@ -159,7 +159,7 @@ final class MedicalReviewController
 
             $review->delete();
 
-            Log::channel('audit')->info('Review rejected', ['review_id' => $review->id]);
+            $this->log->channel('audit')->info('Review rejected', ['review_id' => $review->id]);
 
             return response()->json(['success' => true]);
         } catch (Throwable $e) {

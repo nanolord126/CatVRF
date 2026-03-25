@@ -33,7 +33,7 @@ final class AutoCloseOrderJob implements ShouldQueue
     public function handle(): void
     {
         try {
-            Log::channel('audit')->info('Auto close order job started', [
+            $this->log->channel('audit')->info('Auto close order job started', [
                 'order_id' => $this->order->id,
                 'correlation_id' => $this->correlationId,
             ]);
@@ -47,13 +47,13 @@ final class AutoCloseOrderJob implements ShouldQueue
             if ($order->ready_at && $order->ready_at->addHours(2)->isPast()) {
                 $order->update(['status' => 'delivered', 'completed_at' => now()]);
 
-                Log::channel('audit')->info('Order auto-closed', [
+                $this->log->channel('audit')->info('Order auto-closed', [
                     'order_id' => $order->id,
                     'correlation_id' => $this->correlationId,
                 ]);
             }
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Auto close order job failed', [
+            $this->log->channel('audit')->error('Auto close order job failed', [
                 'order_id' => $this->order->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $this->correlationId,

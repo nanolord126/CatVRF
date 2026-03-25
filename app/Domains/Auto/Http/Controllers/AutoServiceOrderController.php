@@ -55,7 +55,7 @@ final class AutoServiceOrderController
         );
 
         if ($fraudResult['decision'] === 'block') {
-            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+            $this->log->channel('fraud_alert')->warning('Operation blocked by fraud control', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'score'          => $fraudResult['score'],
@@ -79,7 +79,7 @@ final class AutoServiceOrderController
             ]);
 
             $validated = $request->all();
-            $order = DB::transaction(function () use ($validated, $correlationId) {
+            $order = $this->db->transaction(function () use ($validated, $correlationId) {
                 $order = AutoServiceOrder::create([
                     'tenant_id' => tenant('id'),
                     'client_id' => ($validated['client_id'] ?? null),
@@ -92,7 +92,7 @@ final class AutoServiceOrderController
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Service order created', [
+                $this->log->channel('audit')->info('Service order created', [
                     'order_id' => $order->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -128,7 +128,7 @@ final class AutoServiceOrderController
 
             $order->update(['status' => 'cancelled']);
 
-            Log::channel('audit')->info('Service order cancelled', [
+            $this->log->channel('audit')->info('Service order cancelled', [
                 'order_id' => $order->id,
             ]);
 
@@ -152,7 +152,7 @@ final class AutoServiceOrderController
                 'completed_at' => now(),
             ]);
 
-            Log::channel('audit')->info('Service order completed', [
+            $this->log->channel('audit')->info('Service order completed', [
                 'order_id' => $order->id,
             ]);
 

@@ -71,9 +71,9 @@ final class FashionOrderController
         try {
             $order = FashionOrder::findOrFail($id);
 
-            DB::transaction(function () use ($order, $correlationId) {
+            $this->db->transaction(function () use ($order, $correlationId) {
                 $order->update([...request()->except(['id', 'tenant_id', 'business_group_id', 'correlation_id']), 'correlation_id' => $correlationId]);
-                Log::channel('audit')->info('Fashion order updated', ['order_id' => $id, 'correlation_id' => $correlationId]);
+                $this->log->channel('audit')->info('Fashion order updated', ['order_id' => $id, 'correlation_id' => $correlationId]);
             });
 
             return response()->json(['success' => true, 'data' => $order, 'correlation_id' => $correlationId]);

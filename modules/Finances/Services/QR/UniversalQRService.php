@@ -26,14 +26,14 @@ class UniversalQRService
     {
         try {
             $qrData = $this->buildQRString(null, null);
-            Log::info('Static QR generated', ['phone_number' => $this->phoneNumber]);
+            $this->log->info('Static QR generated', ['phone_number' => $this->phoneNumber]);
             return [
                 'type' => 'static',
                 'qr_data' => $qrData,
                 'qr_image' => $this->generateQRImage($qrData),
             ];
         } catch (Exception $e) {
-            Log::error('Static QR generation failed', ['error' => $e->getMessage()]);
+            $this->log->error('Static QR generation failed', ['error' => $e->getMessage()]);
             throw $e;
         }
     }
@@ -49,7 +49,7 @@ class UniversalQRService
             }
 
             $qrData = $this->buildQRString($amount, $orderId, $description);
-            Log::info('Dynamic QR generated', ['amount' => $amount, 'order_id' => $orderId]);
+            $this->log->info('Dynamic QR generated', ['amount' => $amount, 'order_id' => $orderId]);
             
             return [
                 'type' => 'dynamic',
@@ -59,7 +59,7 @@ class UniversalQRService
                 'qr_image' => $this->generateQRImage($qrData),
             ];
         } catch (Exception $e) {
-            Log::error('Dynamic QR generation failed', ['error' => $e->getMessage()]);
+            $this->log->error('Dynamic QR generation failed', ['error' => $e->getMessage()]);
             throw $e;
         }
     }

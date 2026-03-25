@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -9,7 +11,16 @@ use App\Domains\Beauty\Jobs\NotifyLowConsumablesJob;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Log;
 
-final class HandleConsumablesDepletedListener implements ShouldQueue
+final /**
+ * HandleConsumablesDepletedListener
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class HandleConsumablesDepletedListener implements ShouldQueue
 {
     public function handle(ConsumablesDepleted $event): void
     {
@@ -19,7 +30,7 @@ final class HandleConsumablesDepletedListener implements ShouldQueue
         if ($consumable->current_stock <= $consumable->min_stock_threshold) {
             NotifyLowConsumablesJob::dispatch($event->correlationId);
             
-            Log::channel('audit')->warning('Consumable depleted below threshold', [
+            $this->log->channel('audit')->warning('Consumable depleted below threshold', [
                 'consumable_id' => $consumable->id,
                 'name' => $consumable->name,
                 'current_stock' => $consumable->current_stock,
@@ -28,7 +39,7 @@ final class HandleConsumablesDepletedListener implements ShouldQueue
             ]);
         }
 
-        Log::channel('audit')->info('ConsumablesDepleted event handled', [
+        $this->log->channel('audit')->info('ConsumablesDepleted event handled', [
             'consumable_id' => $consumable->id,
             'quantity_depleted' => $event->quantity,
             'correlation_id' => $event->correlationId,

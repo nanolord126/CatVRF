@@ -27,7 +27,7 @@ final class EventReviewService
 
 
         try {
-            Log::channel('audit')->info('Creating event review', [
+            $this->log->channel('audit')->info('Creating event review', [
                 'event_id' => $eventId,
                 'buyer_id' => $buyerId,
                 'rating' => $rating,
@@ -47,7 +47,7 @@ final class EventReviewService
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
 
-            $review = DB::transaction(function () use ($eventId, $buyerId, $rating, $title, $content, $correlationId) {
+            $review = $this->db->transaction(function () use ($eventId, $buyerId, $rating, $title, $content, $correlationId) {
                 $review = EventReview::create([
                     'tenant_id' => tenant('id'),
                     'event_id' => $eventId,
@@ -62,7 +62,7 @@ final class EventReviewService
 
                 // Recalculate event rating
                 $avgRating = EventReview::where('event_id', $eventId)->avg('rating');
-                $event = Event::findOrFail($eventId);
+                $event = $this->event->findOrFail($eventId);
                 $event->update([
                     'rating' => round($avgRating, 1),
                     'review_count' => $event->reviews()->count() + 1,
@@ -73,14 +73,14 @@ final class EventReviewService
                 return $review;
             });
 
-            Log::channel('audit')->info('Event review created', [
+            $this->log->channel('audit')->info('Event review created', [
                 'review_id' => $review->id,
                 'correlation_id' => $correlationId,
             ]);
 
             return $review;
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to create event review', [
+            $this->log->channel('audit')->error('Failed to create event review', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);

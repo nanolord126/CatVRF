@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Medical\Listeners;
@@ -8,12 +10,21 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
-final class DeductTestOrderCommissionListener implements ShouldQueue
+final /**
+ * DeductTestOrderCommissionListener
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class DeductTestOrderCommissionListener implements ShouldQueue
 {
     public function handle(TestOrderCreated $event): void
     {
         try {
-            DB::transaction(function () use ($event) {
+            $this->db->transaction(function () use ($event) {
                 $testOrder = $event->testOrder;
                 $commission = $testOrder->commission_amount;
 
@@ -34,7 +45,7 @@ final class DeductTestOrderCommissionListener implements ShouldQueue
                     'correlation_id' => $event->correlationId,
                 ]);
 
-                Log::channel('audit')->info('Medical test order commission deducted', [
+                $this->log->channel('audit')->info('Medical test order commission deducted', [
                     'test_order_id' => $testOrder->id,
                     'patient_id' => $testOrder->patient_id,
                     'clinic_id' => $testOrder->clinic_id,
@@ -43,7 +54,7 @@ final class DeductTestOrderCommissionListener implements ShouldQueue
                 ]);
             });
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to deduct test order commission', [
+            $this->log->channel('audit')->error('Failed to deduct test order commission', [
                 'test_order_id' => $event->testOrder->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $event->correlationId,

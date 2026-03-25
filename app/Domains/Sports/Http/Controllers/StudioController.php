@@ -32,7 +32,7 @@ final class StudioController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to list studios', ['error' => $e->getMessage()]);
+            $this->log->channel('audit')->error('Failed to list studios', ['error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => 'Failed to list studios'], 500);
         }
     }
@@ -81,11 +81,11 @@ final class StudioController
                 'correlation_id' => $correlationId,
             ]);
 
-            Log::channel('audit')->info('Studio created', ['studio_id' => $studio->id, 'correlation_id' => $correlationId]);
+            $this->log->channel('audit')->info('Studio created', ['studio_id' => $studio->id, 'correlation_id' => $correlationId]);
 
             return response()->json(['success' => true, 'data' => $studio, 'correlation_id' => $correlationId], 201);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to create studio', ['error' => $e->getMessage()]);
+            $this->log->channel('audit')->error('Failed to create studio', ['error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => 'Failed to create studio'], 500);
         }
     }
@@ -192,7 +192,7 @@ final class StudioController
             $membership = Membership::findOrFail($membershipId);
             $correlationId = Str::uuid()->toString();
 
-            $purchase = DB::transaction(function () use ($membership, $correlationId) {
+            $purchase = $this->db->transaction(function () use ($membership, $correlationId) {
                 return $this->purchaseService->createPurchase(
                     $membership->studio_id,
                     auth()->id(),
@@ -228,7 +228,7 @@ final class StudioController
             $this->authorize('refund', $purchase);
             $correlationId = Str::uuid()->toString();
 
-            DB::transaction(fn() => $this->purchaseService->refundPurchase($purchase, 'User requested refund', $correlationId));
+            $this->db->transaction(fn() => $this->purchaseService->refundPurchase($purchase, 'User requested refund', $correlationId));
 
             return response()->json(['success' => true, 'message' => 'Refund processed', 'correlation_id' => $correlationId]);
         } catch (\Throwable $e) {

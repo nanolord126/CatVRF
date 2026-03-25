@@ -71,7 +71,7 @@ final class DishController
                 'is_available'      => 'boolean',
             ]);
 
-            $dish = DB::transaction(function () use ($data, $correlationId) {
+            $dish = $this->db->transaction(function () use ($data, $correlationId) {
                 return Dish::create([
                     ...$data,
                     'tenant_id'      => tenant('id'),
@@ -80,7 +80,7 @@ final class DishController
                 ]);
             });
 
-            Log::channel('audit')->info('Dish created', [
+            $this->log->channel('audit')->info('Dish created', [
                 'correlation_id' => $correlationId,
                 'dish_id'   => $dish->id,
                 'tenant_id' => $dish->tenant_id,
@@ -96,7 +96,7 @@ final class DishController
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Dish create failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            $this->log->channel('audit')->error('Dish create failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json(['success' => false, 'message' => 'Ошибка создания блюда.', 'correlation_id' => $correlationId], 500);
         }
     }
@@ -122,11 +122,11 @@ final class DishController
 
             $before = $dish->getAttributes();
 
-            DB::transaction(function () use ($dish, $data) {
+            $this->db->transaction(function () use ($dish, $data) {
                 $dish->update($data);
             });
 
-            Log::channel('audit')->info('Dish updated', [
+            $this->log->channel('audit')->info('Dish updated', [
                 'correlation_id' => $correlationId,
                 'dish_id'   => $dish->id,
                 'tenant_id' => $dish->tenant_id,
@@ -143,7 +143,7 @@ final class DishController
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Dish update failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            $this->log->channel('audit')->error('Dish update failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json(['success' => false, 'message' => 'Ошибка обновления блюда.', 'correlation_id' => $correlationId], 500);
         }
     }
@@ -158,11 +158,11 @@ final class DishController
         }
 
         try {
-            DB::transaction(function () use ($dish) {
+            $this->db->transaction(function () use ($dish) {
                 $dish->delete();
             });
 
-            Log::channel('audit')->info('Dish deleted', [
+            $this->log->channel('audit')->info('Dish deleted', [
                 'correlation_id' => $correlationId,
                 'dish_id'   => $dish->id,
                 'tenant_id' => $dish->tenant_id,
@@ -174,7 +174,7 @@ final class DishController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Dish delete failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            $this->log->channel('audit')->error('Dish delete failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json(['success' => false, 'message' => 'Ошибка удаления блюда.', 'correlation_id' => $correlationId], 500);
         }
     }

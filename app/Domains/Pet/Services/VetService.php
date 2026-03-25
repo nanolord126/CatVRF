@@ -42,7 +42,7 @@ final class VetService
         }
         RateLimiter::hit("pet:booking:{$userId}", 3600);
 
-        return DB::transaction(function () use ($userId, $vetId, $serviceId, $dateTime, $correlationId) {
+        return $this->db->transaction(function () use ($userId, $vetId, $serviceId, $dateTime, $correlationId) {
             $vet = Vet::findOrFail($vetId);
             $clinic = PetClinic::findOrFail($vet->clinic_id);
             
@@ -72,7 +72,7 @@ final class VetService
                 "tags" => ["vertical:pet", "vet_specialization:" . $vet->specialization]
             ]);
 
-            Log::channel("audit")->info("Pet: appointment created", ["appointment_id" => $appointment->id, "corr" => $correlationId]);
+            $this->log->channel("audit")->info("Pet: appointment created", ["appointment_id" => $appointment->id, "corr" => $correlationId]);
 
             return $appointment;
         });
@@ -86,7 +86,7 @@ final class VetService
         $correlationId = $correlationId ?: (string) Str::uuid();
         $appointment = PetAppointment::findOrFail($appointmentId);
 
-        DB::transaction(function () use ($appointment, $findings, $vaccineId, $correlationId) {
+        $this->db->transaction(function () use ($appointment, $findings, $vaccineId, $correlationId) {
             $appointment->update(["status" => "completed"]);
 
             // Списание медикаментов/расходников
@@ -111,7 +111,7 @@ final class VetService
                 "correlation_id" => $correlationId
             ]);
 
-            Log::channel("audit")->info("Pet: appointment completed", ["appointment_id" => $appointment->id]);
+            $this->log->channel("audit")->info("Pet: appointment completed", ["appointment_id" => $appointment->id]);
         });
     }
 }

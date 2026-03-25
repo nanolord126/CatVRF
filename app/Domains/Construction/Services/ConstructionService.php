@@ -31,7 +31,7 @@ final class ConstructionService
         // 1. Fraud Check (защита от массового создания фейковых строек)
         FraudControlService::check($this->correlationId);
 
-        return DB::transaction(function () use ($data, $tenantId) {
+        return $this->db->transaction(function () use ($data, $tenantId) {
             $project = ConstructionProject::create([
                 'tenant_id' => $tenantId,
                 'business_group_id' => $data['business_group_id'] ?? null,
@@ -44,7 +44,7 @@ final class ConstructionService
                 'correlation_id' => $this->correlationId,
             ]);
 
-            Log::channel('audit')->info('Construction project created', [
+            $this->log->channel('audit')->info('Construction project created', [
                 'project_id' => $project->id,
                 'tenant_id' => $tenantId,
                 'correlation_id' => $this->correlationId,
@@ -59,7 +59,7 @@ final class ConstructionService
      */
     public function deductMaterial(int $materialId, float $usage, string $reason = 'manual'): bool
     {
-        return DB::transaction(function () use ($materialId, $usage, $reason) {
+        return $this->db->transaction(function () use ($materialId, $usage, $reason) {
             $material = ConstructionMaterial::lockForUpdate()->findOrFail($materialId);
             
             if ($material->quantity < $usage) {
@@ -70,7 +70,7 @@ final class ConstructionService
             $material->actual_usage += $usage;
             $material->save();
 
-            Log::channel('audit')->info('Material deducted from project', [
+            $this->log->channel('audit')->info('Material deducted from project', [
                 'material_id' => $materialId,
                 'project_id' => $material->project_id,
                 'usage' => $usage,

@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Auto\Filament\Resources\TuningProjectResource\Pages;
@@ -11,7 +13,16 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
-final class CreateTuningProject extends CreateRecord
+final /**
+ * CreateTuningProject
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class CreateTuningProject extends CreateRecord
 {
     protected static string $resource = TuningProjectResource::class;
 
@@ -38,8 +49,8 @@ final class CreateTuningProject extends CreateRecord
 
     protected function afterCreate(): void
     {
-        DB::transaction(function () {
-            Log::channel('audit')->info('TuningProject created', [
+        $this->db->transaction(function () {
+            $this->log->channel('audit')->info('TuningProject created', [
                 'correlation_id' => $this->record->correlation_id,
                 'project_id' => $this->record->id,
             ]);
@@ -50,7 +61,7 @@ final class CreateTuningProject extends CreateRecord
             ));
         });
 
-        Notification::make()
+        $this->notification->make()
             ->success()
             ->title('Проект тюнинга создан')
             ->send();

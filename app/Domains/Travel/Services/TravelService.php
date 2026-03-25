@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Travel\Services;
@@ -9,7 +11,16 @@ use App\Domains\Travel\Models\TravelTour;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 
-final class TravelService
+final /**
+ * TravelService
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class TravelService
 {
     public function __construct(
         private readonly FraudControlService $fraudControlService,
@@ -30,7 +41,7 @@ final class TravelService
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-DB::transaction(function () use ($tourId, $seats) {
+$this->db->transaction(function () use ($tourId, $seats) {
             $tour = TravelTour::lockForUpdate()->find($tourId);
 
             if (!$tour || ($tour->booked + $seats) > $tour->capacity) {
@@ -39,7 +50,7 @@ DB::transaction(function () use ($tourId, $seats) {
 
             $tour->update(['booked' => $tour->booked + $seats]);
 
-            Log::channel('audit')->info('Tour booked', [
+            $this->log->channel('audit')->info('Tour booked', [
                 'correlation_id' => $this->correlationId,
                 'tour_id' => $tourId,
                 'seats' => $seats,

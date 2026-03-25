@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Sports\Listeners;
@@ -9,20 +11,29 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
-final class DeductPurchaseCommissionListener implements ShouldQueue
+final /**
+ * DeductPurchaseCommissionListener
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class DeductPurchaseCommissionListener implements ShouldQueue
 {
     use InteractsWithQueue;
 
     public function handle(PurchaseCreated $event): void
     {
         try {
-            Log::channel('audit')->info('Processing purchase commission deduction', [
+            $this->log->channel('audit')->info('Processing purchase commission deduction', [
                 'purchase_id' => $event->purchase->id,
                 'commission_amount' => $event->purchase->commission_amount,
                 'correlation_id' => $event->correlationId,
             ]);
 
-            DB::transaction(function () use ($event) {
+            $this->db->transaction(function () use ($event) {
                 $wallet = \App\Models\Wallet::lockForUpdate()
                     ->where('tenant_id', $event->purchase->tenant_id)
                     ->firstOrFail();
@@ -42,12 +53,12 @@ final class DeductPurchaseCommissionListener implements ShouldQueue
                 ]);
             });
 
-            Log::channel('audit')->info('Purchase commission deducted successfully', [
+            $this->log->channel('audit')->info('Purchase commission deducted successfully', [
                 'purchase_id' => $event->purchase->id,
                 'correlation_id' => $event->correlationId,
             ]);
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to deduct purchase commission', [
+            $this->log->channel('audit')->error('Failed to deduct purchase commission', [
                 'purchase_id' => $event->purchase->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $event->correlationId,

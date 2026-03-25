@@ -87,7 +87,7 @@ final class PaymentController extends BaseApiV1Controller
                 $correlationId
             );
 
-            Log::channel('audit')->info('PaymentController::init called', [
+            $this->log->channel('audit')->info('PaymentController::init called', [
                 'user_id' => auth()->id(),
                 'amount' => $request->get('amount'),
                 'correlation_id' => $correlationId,
@@ -110,7 +110,7 @@ final class PaymentController extends BaseApiV1Controller
             }
 
             $validated = $request->all();
-            return DB::transaction(function () use ($validated, $correlationId) {
+            return $this->db->transaction(function () use ($validated, $correlationId) {
                 $paymentId = \Str::uuid()->toString();
                 
                 $payment = \App\Domains\Finances\Models\PaymentTransaction::create([
@@ -127,7 +127,7 @@ final class PaymentController extends BaseApiV1Controller
                     ],
                 ]);
 
-                \Illuminate\Support\Facades\Log::channel('audit')->info('Payment initiated V1', [
+                \Illuminate\Support\Facades\$this->log->channel('audit')->info('Payment initiated V1', [
                     'payment_id' => $payment->id,
                     'correlation_id' => $paymentId,
                 ]);
@@ -159,7 +159,7 @@ final class PaymentController extends BaseApiV1Controller
                 ->where('tenant_id', (int) tenant('id'))
                 ->firstOrFail();
 
-            \Illuminate\Support\Facades\Log::channel('audit')->info('Payment retrieved', [
+            \Illuminate\Support\Facades\$this->log->channel('audit')->info('Payment retrieved', [
                 'payment_id' => $payment->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -172,7 +172,7 @@ final class PaymentController extends BaseApiV1Controller
             ]);
 
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::channel('audit')->error('Payment retrieval failed', [
+            \Illuminate\Support\Facades\$this->log->channel('audit')->error('Payment retrieval failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);

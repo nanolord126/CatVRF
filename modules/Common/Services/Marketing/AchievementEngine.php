@@ -41,7 +41,7 @@ class AchievementEngine
     public function __construct()
     {
         $this->correlationId = Str::uuid();
-        $this->tenantId = Auth::guard('tenant')?->id();
+        $this->tenantId = $this->auth->guard('tenant')?->id();
     }
 
     /**
@@ -53,7 +53,7 @@ class AchievementEngine
 
         try {
             if (!isset($this->achievements[$achievementKey])) {
-                Log::warning('AchievementEngine: unknown achievement', [
+                $this->log->warning('AchievementEngine: unknown achievement', [
                     'correlation_id' => $this->correlationId,
                     'achievement_key' => $achievementKey,
                     'user_id' => $user->id,
@@ -64,8 +64,8 @@ class AchievementEngine
             $id = "achievement_{$user->id}_{$achievementKey}";
 
             // Проверка, не получен ли уже этот ачивмент
-            if (Cache::has($id)) {
-                Log::info('AchievementEngine: achievement already granted', [
+            if ($this->cache->has($id)) {
+                $this->log->info('AchievementEngine: achievement already granted', [
                     'correlation_id' => $this->correlationId,
                     'achievement_key' => $achievementKey,
                     'user_id' => $user->id,
@@ -73,7 +73,7 @@ class AchievementEngine
                 return false;
             }
 
-            Log::channel('marketing')->info('AchievementEngine: granting achievement', [
+            $this->log->channel('marketing')->info('AchievementEngine: granting achievement', [
                 'correlation_id' => $this->correlationId,
                 'achievement_key' => $achievementKey,
                 'user_id' => $user->id,
@@ -90,14 +90,14 @@ class AchievementEngine
             ], 'loyalty_points');
 
             // Отметить в кэше на год
-            Cache::put($id, now()->toIso8601String(), 365 * 24 * 3600);
+            $this->cache->put($id, now()->toIso8601String(), 365 * 24 * 3600);
 
             // Логирование в audit trail
-            AuditLog::create([
+            Audit$this->log->create([
                 'entity_type' => 'Achievement',
                 'entity_id' => $achievementKey,
                 'action' => 'granted',
-                'user_id' => Auth::id(),
+                'user_id' => $this->auth->id(),
                 'tenant_id' => $this->tenantId,
                 'correlation_id' => $this->correlationId,
                 'changes' => [],
@@ -109,7 +109,7 @@ class AchievementEngine
                 ],
             ]);
 
-            Log::channel('marketing')->info('AchievementEngine: achievement granted successfully', [
+            $this->log->channel('marketing')->info('AchievementEngine: achievement granted successfully', [
                 'correlation_id' => $this->correlationId,
                 'achievement_key' => $achievementKey,
                 'user_id' => $user->id,
@@ -118,7 +118,7 @@ class AchievementEngine
 
             return true;
         } catch (Throwable $e) {
-            Log::error('AchievementEngine: achievement grant failed', [
+            $this->log->error('AchievementEngine: achievement grant failed', [
                 'correlation_id' => $this->correlationId,
                 'achievement_key' => $achievementKey,
                 'user_id' => $user->id,
@@ -138,15 +138,15 @@ class AchievementEngine
             $userAchievements = [];
             foreach ($this->achievements as $key => $achievement) {
                 $cacheKey = "achievement_{$user->id}_{$key}";
-                if (Cache::has($cacheKey)) {
+                if ($this->cache->has($cacheKey)) {
                     $userAchievements[$key] = array_merge($achievement, [
-                        'granted_at' => Cache::get($cacheKey),
+                        'granted_at' => $this->cache->get($cacheKey),
                     ]);
                 }
             }
             return $userAchievements;
         } catch (Throwable $e) {
-            Log::error('AchievementEngine: get achievements failed', [
+            $this->log->error('AchievementEngine: get achievements failed', [
                 'correlation_id' => $this->correlationId,
                 'user_id' => $user->id,
                 'error' => $e->getMessage(),

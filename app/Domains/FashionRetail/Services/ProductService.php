@@ -16,7 +16,7 @@ final readonly class ProductService
     public function getActive(): Collection
     {
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
 
         return FashionRetailProduct::where('status', 'active')
             ->with('shop', 'category', 'variants')
@@ -26,7 +26,7 @@ final readonly class ProductService
     public function getByShop(int $shopId): Collection
     {
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
 
         return FashionRetailProduct::where('shop_id', $shopId)
             ->where('status', 'active')
@@ -37,7 +37,7 @@ final readonly class ProductService
     public function getByCategory(int $categoryId): Collection
     {
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
 
         return FashionRetailProduct::where('category_id', $categoryId)
             ->where('status', 'active')
@@ -48,7 +48,7 @@ final readonly class ProductService
     public function search(string $query): Collection
     {
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
 
         return FashionRetailProduct::where('name', 'like', "%{$query}%")
             ->orWhere('sku', 'like', "%{$query}%")
@@ -61,7 +61,7 @@ final readonly class ProductService
     public function checkStock(int $productId, int $quantity): bool
     {
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
 
         $product = FashionRetailProduct::findOrFail($productId);
         return $product->current_stock >= $quantity;
@@ -70,9 +70,9 @@ final readonly class ProductService
     public function reduceStock(int $productId, int $quantity, string $correlationId): void
     {
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
 
-        DB::transaction(function () use ($productId, $quantity, $correlationId) {
+        $this->db->transaction(function () use ($productId, $quantity, $correlationId) {
             $product = FashionRetailProduct::lockForUpdate()->findOrFail($productId);
 
             if ($product->current_stock < $quantity) {
@@ -84,7 +84,7 @@ final readonly class ProductService
                 'correlation_id' => $correlationId,
             ]);
 
-            Log::channel('audit')->info('FashionRetail stock reduced', [
+            $this->log->channel('audit')->info('FashionRetail stock reduced', [
                 'product_id' => $productId,
                 'quantity' => $quantity,
                 'correlation_id' => $correlationId,
@@ -95,9 +95,9 @@ final readonly class ProductService
     public function increaseStock(int $productId, int $quantity, string $correlationId): void
     {
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in FashionRetail', ['correlation_id' => $correlationId]);
 
-        DB::transaction(function () use ($productId, $quantity, $correlationId) {
+        $this->db->transaction(function () use ($productId, $quantity, $correlationId) {
             $product = FashionRetailProduct::lockForUpdate()->findOrFail($productId);
 
             $product->update([
@@ -105,7 +105,7 @@ final readonly class ProductService
                 'correlation_id' => $correlationId,
             ]);
 
-            Log::channel('audit')->info('FashionRetail stock increased', [
+            $this->log->channel('audit')->info('FashionRetail stock increased', [
                 'product_id' => $productId,
                 'quantity' => $quantity,
                 'correlation_id' => $correlationId,

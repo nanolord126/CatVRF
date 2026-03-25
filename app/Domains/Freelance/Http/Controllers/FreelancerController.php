@@ -30,7 +30,7 @@ final class FreelancerController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Error listing freelancers', [
+            $this->log->channel('audit')->error('Error listing freelancers', [
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
             ]);
@@ -54,7 +54,7 @@ final class FreelancerController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Error showing freelancer', [
+            $this->log->channel('audit')->error('Error showing freelancer', [
                 'freelancer_id' => $id,
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
@@ -74,7 +74,7 @@ final class FreelancerController
             $correlationId = Str::uuid()->toString();
 
             $validated = $request->all();
-            return DB::transaction(function () use ($validated, $correlationId) {
+            return $this->db->transaction(function () use ($validated, $correlationId) {
                 $freelancer = Freelancer::create([
                     'tenant_id' => tenant()->id,
                     'user_id' => auth()->id(),
@@ -88,7 +88,7 @@ final class FreelancerController
                     'correlation_id' => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('Freelancer registered', [
+                $this->log->channel('audit')->info('Freelancer registered', [
                     'freelancer_id' => $freelancer->id,
                     'user_id' => auth()->id(),
                     'correlation_id' => $correlationId,
@@ -101,7 +101,7 @@ final class FreelancerController
                 ], 201);
             });
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Error registering freelancer', [
+            $this->log->channel('audit')->error('Error registering freelancer', [
                 'user_id' => auth()->id(),
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
@@ -126,13 +126,13 @@ final class FreelancerController
             $this->authorize('update', $freelancer);
 
             $validated = $request->all();
-            return DB::transaction(function () use ($validated, $freelancer, $correlationId) {
+            return $this->db->transaction(function () use ($validated, $freelancer, $correlationId) {
                 $freelancer->update($request->only([
                     'full_name', 'bio', 'hourly_rate', 'skills', 'languages',
                     'experience_years', 'portfolio_url', 'website',
                 ]));
 
-                Log::channel('audit')->info('Freelancer updated', [
+                $this->log->channel('audit')->info('Freelancer updated', [
                     'freelancer_id' => $freelancer->id,
                     'user_id' => auth()->id(),
                     'correlation_id' => $correlationId,
@@ -145,7 +145,7 @@ final class FreelancerController
                 ]);
             });
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Error updating freelancer', [
+            $this->log->channel('audit')->error('Error updating freelancer', [
                 'freelancer_id' => $id,
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
@@ -169,10 +169,10 @@ final class FreelancerController
 
             $this->authorize('delete', $freelancer);
 
-            return DB::transaction(function () use ($freelancer, $correlationId) {
+            return $this->db->transaction(function () use ($freelancer, $correlationId) {
                 $freelancer->delete();
 
-                Log::channel('audit')->info('Freelancer deleted', [
+                $this->log->channel('audit')->info('Freelancer deleted', [
                     'freelancer_id' => $freelancer->id,
                     'user_id' => auth()->id(),
                     'correlation_id' => $correlationId,
@@ -184,7 +184,7 @@ final class FreelancerController
                 ]);
             });
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Error deleting freelancer', [
+            $this->log->channel('audit')->error('Error deleting freelancer', [
                 'freelancer_id' => $id,
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
@@ -212,7 +212,7 @@ final class FreelancerController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Error getting top freelancers', [
+            $this->log->channel('audit')->error('Error getting top freelancers', [
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
             ]);
@@ -231,10 +231,10 @@ final class FreelancerController
             $correlationId = Str::uuid()->toString();
             $freelancer = Freelancer::findOrFail($id);
 
-            return DB::transaction(function () use ($freelancer, $correlationId) {
+            return $this->db->transaction(function () use ($freelancer, $correlationId) {
                 $freelancer->update(['is_verified' => true]);
 
-                Log::channel('audit')->info('Freelancer verified by admin', [
+                $this->log->channel('audit')->info('Freelancer verified by admin', [
                     'freelancer_id' => $freelancer->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -246,7 +246,7 @@ final class FreelancerController
                 ]);
             });
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Error verifying freelancer', [
+            $this->log->channel('audit')->error('Error verifying freelancer', [
                 'freelancer_id' => $id,
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),

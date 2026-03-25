@@ -41,7 +41,7 @@ final class ToyProductController
 
             return response()->json(['success' => true, 'data' => $products, 'correlation_id' => $correlationId]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('ToysKids: index error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+            $this->log->channel('audit')->error('ToysKids: index error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
             return response()->json(['success' => false, 'message' => 'Ошибка загрузки', 'correlation_id' => $correlationId], 500);
         }
     }
@@ -63,10 +63,10 @@ final class ToyProductController
         try {
             $validated = $request->validate(['product_id' => 'required|integer|exists:toy_products,id']);
             $key = 'wishlist:user:' . auth()->id();
-            $wishlist = \Illuminate\Support\Facades\Cache::get($key, []);
+            $wishlist = \Illuminate\Support\Facades\$this->cache->get($key, []);
             if (!in_array($validated['product_id'], $wishlist, true)) {
                 $wishlist[] = $validated['product_id'];
-                \Illuminate\Support\Facades\Cache::put($key, $wishlist, 86400);
+                \Illuminate\Support\Facades\$this->cache->put($key, $wishlist, 86400);
             }
             return response()->json(['success' => true, 'data' => $wishlist, 'correlation_id' => $correlationId]);
         } catch (\Throwable $e) {
@@ -98,7 +98,7 @@ final class ToyProductController
                 'gift_message'     => 'nullable|string|max:200',
             ]);
 
-            $order = DB::transaction(function () use ($validated, $userId, $correlationId): ToyOrder {
+            $order = $this->db->transaction(function () use ($validated, $userId, $correlationId): ToyOrder {
                 $product = ToyProduct::findOrFail($validated['product_id']);
                 $order   = ToyOrder::create([
                     'uuid'             => Str::uuid(),
@@ -114,7 +114,7 @@ final class ToyProductController
                     'correlation_id'   => $correlationId,
                 ]);
 
-                Log::channel('audit')->info('ToysKids: Order created', [
+                $this->log->channel('audit')->info('ToysKids: Order created', [
                     'order_id' => $order->id, 'user_id' => $userId, 'correlation_id' => $correlationId,
                 ]);
 
@@ -125,7 +125,7 @@ final class ToyProductController
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('ToysKids: order error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+            $this->log->channel('audit')->error('ToysKids: order error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
             return response()->json(['success' => false, 'message' => 'Ошибка заказа', 'correlation_id' => $correlationId], 500);
         }
     }

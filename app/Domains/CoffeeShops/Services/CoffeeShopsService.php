@@ -28,7 +28,7 @@ final class CoffeeShopsService
         }
         RateLimiter::hit("coffee:order:".auth()->id(), 3600);
 
-        return DB::transaction(function () use ($shopId, $items, $data, $correlationId) {
+        return $this->db->transaction(function () use ($shopId, $items, $data, $correlationId) {
             $shop = CoffeeShop::findOrFail($shopId);
             $total = 0;
 
@@ -46,7 +46,7 @@ final class CoffeeShopsService
             ]);
 
             if ($fraud['decision'] === 'block') {
-                Log::channel('audit')->error('Coffee order blocked', [
+                $this->log->channel('audit')->error('Coffee order blocked', [
                     'user_id' => auth()->id(),
                     'score' => $fraud['score'],
                     'correlation_id' => $correlationId,
@@ -69,7 +69,7 @@ final class CoffeeShopsService
                 'tags' => ['coffee' => true, 'items_count' => count($items)],
             ]);
 
-            Log::channel('audit')->info('Coffee order created', [
+            $this->log->channel('audit')->info('Coffee order created', [
                 'order_id' => $order->id,
                 'shop_id' => $shopId,
                 'total_kopecks' => $total,
@@ -84,7 +84,7 @@ final class CoffeeShopsService
     {
         $correlationId = $correlationId ?: (string) Str::uuid();
 
-        return DB::transaction(function () use ($orderId, $correlationId) {
+        return $this->db->transaction(function () use ($orderId, $correlationId) {
             $order = CoffeeOrder::findOrFail($orderId);
 
             if ($order->payment_status !== 'completed') {
@@ -98,7 +98,7 @@ final class CoffeeShopsService
                 'order_id' => $order->id,
             ]);
 
-            Log::channel('audit')->info('Coffee order completed', [
+            $this->log->channel('audit')->info('Coffee order completed', [
                 'order_id' => $order->id,
                 'payout_kopecks' => $order->payout_kopecks,
                 'correlation_id' => $correlationId,
@@ -112,7 +112,7 @@ final class CoffeeShopsService
     {
         $correlationId = $correlationId ?: (string) Str::uuid();
 
-        return DB::transaction(function () use ($orderId, $correlationId) {
+        return $this->db->transaction(function () use ($orderId, $correlationId) {
             $order = CoffeeOrder::findOrFail($orderId);
 
             if ($order->status === 'completed') {
@@ -128,7 +128,7 @@ final class CoffeeShopsService
                 ]);
             }
 
-            Log::channel('audit')->info('Coffee order cancelled', [
+            $this->log->channel('audit')->info('Coffee order cancelled', [
                 'order_id' => $order->id,
                 'correlation_id' => $correlationId,
             ]);

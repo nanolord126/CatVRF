@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 declare(strict_types=1);
 
@@ -6,13 +8,24 @@ namespace App\Services\Payment;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
-final class PaymentIdempotencyService
+final /**
+ * PaymentIdempotencyService
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class PaymentIdempotencyService
 {
+    // Dependencies injected via constructor
+    // Add private readonly properties here
     public function checkAndRecord(string $idempotencyKey, array $payload, int $tenantId): ?array
     {
         $payloadHash = hash('sha256', json_encode($payload));
         
-        $record = DB::table('payment_idempotency_records')
+        $record = $this->db->table('payment_idempotency_records')
             ->where('tenant_id', $tenantId)
             ->where('idempotency_key', $idempotencyKey)
             ->first();
@@ -28,7 +41,7 @@ final class PaymentIdempotencyService
     {
         $payloadHash = hash('sha256', json_encode($payload));
 
-        DB::table('payment_idempotency_records')->insert([
+        $this->db->table('payment_idempotency_records')->insert([
             'tenant_id' => $tenantId,
             'idempotency_key' => $idempotencyKey,
             'payload_hash' => $payloadHash,

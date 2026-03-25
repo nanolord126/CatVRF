@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -16,6 +18,8 @@ use Throwable;
  */
 final class MercuryService
 {
+    // Dependencies injected via constructor
+    // Add private readonly properties here
     /**
      * Verify VSD (Veterinary Accompanying Document) for product.
      * ЭВСД: Электронный Ветеринарно-сопроводительный документ.
@@ -36,7 +40,7 @@ final class MercuryService
 
             return $response->successful() && $response->json('status') === 'COMPLETED';
         } catch (Throwable $e) {
-            Log::channel('fraud_alert')->error('Mercury VSD verification failed', [
+            $this->log->channel('fraud_alert')->error('Mercury VSD verification failed', [
                 'vsd_id' => $vsdId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId

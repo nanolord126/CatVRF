@@ -50,7 +50,7 @@ final class AutoPartsInventoryService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-DB::transaction(function () use ($parts, $reason, $correlationId) {
+$this->db->transaction(function () use ($parts, $reason, $correlationId) {
                 foreach ($parts as $partData) {
                     $part = AutoPart::query()->lockForUpdate()->find($partData['id']);
 
@@ -60,7 +60,7 @@ DB::transaction(function () use ($parts, $reason, $correlationId) {
 
                     $part->decrement('current_stock', $partData['qty'] ?? 1);
 
-                    Log::channel('audit')->info('Auto parts reserved', [
+                    $this->log->channel('audit')->info('Auto parts reserved', [
                         'part_id' => $part->id,
                         'quantity' => $partData['qty'] ?? 1,
                         'reason' => $reason,
@@ -71,7 +71,7 @@ DB::transaction(function () use ($parts, $reason, $correlationId) {
                 return true;
             });
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Auto parts reservation failed', [
+            $this->log->channel('audit')->error('Auto parts reservation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -96,7 +96,7 @@ DB::transaction(function () use ($parts, $reason, $correlationId) {
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-DB::transaction(function () use ($partId, $quantity, $reason, $correlationId) {
+$this->db->transaction(function () use ($partId, $quantity, $reason, $correlationId) {
                 $part = AutoPart::query()->lockForUpdate()->find($partId);
 
                 if (!$part) {
@@ -105,7 +105,7 @@ DB::transaction(function () use ($partId, $quantity, $reason, $correlationId) {
 
                 $part->increment('current_stock', $quantity);
 
-                Log::channel('audit')->info('Auto parts added', [
+                $this->log->channel('audit')->info('Auto parts added', [
                     'part_id' => $part->id,
                     'quantity' => $quantity,
                     'reason' => $reason,
@@ -115,7 +115,7 @@ DB::transaction(function () use ($partId, $quantity, $reason, $correlationId) {
                 return true;
             });
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Auto parts addition failed', [
+            $this->log->channel('audit')->error('Auto parts addition failed', [
                 'part_id' => $partId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

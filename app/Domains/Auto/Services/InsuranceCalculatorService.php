@@ -15,7 +15,7 @@ final class InsuranceCalculatorService
     ): int {
         $correlationId = \Illuminate\Support\Str::uuid()->toString();
 
-        Log::channel('audit')->info('Calculating insurance premium', [
+        $this->log->channel('audit')->info('Calculating insurance premium', [
             'correlation_id' => $correlationId,
             'vehicle_id' => $vehicleId,
             'insurance_type' => $insuranceType,
@@ -49,14 +49,14 @@ final class InsuranceCalculatorService
 
             $finalPremium = (int) ($adjustedPremium * $durationDiscount);
 
-            Log::channel('audit')->info('Insurance premium calculated', [
+            $this->log->channel('audit')->info('Insurance premium calculated', [
                 'correlation_id' => $correlationId,
                 'premium' => $finalPremium,
             ]);
 
             return $finalPremium;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Insurance premium calculation failed', [
+            $this->log->channel('audit')->error('Insurance premium calculation failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);

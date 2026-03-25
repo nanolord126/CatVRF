@@ -31,7 +31,7 @@ final class PetProductController extends Controller
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Throwable $e) {
-            Log::error('Failed to get products', ['error' => $e->getMessage()]);
+            $this->log->error('Failed to get products', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve products',
@@ -69,7 +69,7 @@ final class PetProductController extends Controller
 
             $product = $this->productService->createProduct($clinic, $request->validated(), $correlationId);
 
-            Log::channel('audit')->info('Pet product created', [
+            $this->log->channel('audit')->info('Pet product created', [
                 'correlation_id' => $correlationId,
                 'product_id'     => $product->id ?? null,
                 'tenant_id'      => $product->tenant_id ?? null,
@@ -82,7 +82,7 @@ final class PetProductController extends Controller
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Throwable $e) {
-            Log::error('Failed to create product', ['error' => $e->getMessage()]);
+            $this->log->error('Failed to create product', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create product',
@@ -102,7 +102,7 @@ final class PetProductController extends Controller
 
             $product = $this->productService->updateProduct($product, $request->validated(), $correlationId);
 
-            Log::channel('audit')->info('Pet product updated', [
+            $this->log->channel('audit')->info('Pet product updated', [
                 'correlation_id' => $correlationId,
                 'product_id'     => $product->id,
                 'tenant_id'      => $product->tenant_id ?? null,
@@ -134,7 +134,7 @@ final class PetProductController extends Controller
 
             $product->delete();
 
-            Log::channel('audit')->info('Pet product deleted', [
+            $this->log->channel('audit')->info('Pet product deleted', [
                 'correlation_id' => $correlationId,
                 'product_id'     => $product->id,
                 'tenant_id'      => $product->tenant_id ?? null,

@@ -28,7 +28,7 @@ final class UpdateShipmentStatusJob implements ShouldQueue
         try {
             $shipment = Shipment::find($this->shipmentId);
             if (!$shipment) {
-                Log::channel('audit')->warning('Shipment not found for status update', [
+                $this->log->channel('audit')->warning('Shipment not found for status update', [
                     'shipment_id' => $this->shipmentId,
                     'correlation_id' => $this->correlationId,
                 ]);
@@ -50,13 +50,13 @@ final class UpdateShipmentStatusJob implements ShouldQueue
                 'correlation_id' => $this->correlationId,
             ]);
 
-            Log::channel('audit')->info('Shipment status updated via job', [
+            $this->log->channel('audit')->info('Shipment status updated via job', [
                 'shipment_id' => $this->shipmentId,
                 'status' => $this->status,
                 'correlation_id' => $this->correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to update shipment status', [
+            $this->log->channel('audit')->error('Failed to update shipment status', [
                 'shipment_id' => $this->shipmentId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

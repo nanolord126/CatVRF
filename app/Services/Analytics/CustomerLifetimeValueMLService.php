@@ -31,7 +31,7 @@ final class CustomerLifetimeValueMLService
     {
         $cacheKey = "ltv:user:{$userId}";
 
-        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($userId) {
+        return $this->cache->remember($cacheKey, self::CACHE_TTL, function () use ($userId) {
             try {
                 // Получаем исторические данные
                 $history = $this->getUserPurchaseHistory($userId);
@@ -55,7 +55,7 @@ final class CustomerLifetimeValueMLService
                 return max(0.0, $ltv);
 
             } catch (\Throwable $e) {
-                Log::channel('analytics_errors')->error('LTV calculation failed', [
+                $this->log->channel('analytics_errors')->error('LTV calculation failed', [
                     'user_id' => $userId,
                     'error' => $e->getMessage()
                 ]);
@@ -102,7 +102,7 @@ final class CustomerLifetimeValueMLService
             ];
 
         } catch (\Throwable $e) {
-            Log::channel('analytics_errors')->error('Churn prediction failed', [
+            $this->log->channel('analytics_errors')->error('Churn prediction failed', [
                 'user_id' => $userId,
                 'error' => $e->getMessage()
             ]);
@@ -123,7 +123,7 @@ final class CustomerLifetimeValueMLService
      */
     public function segmentCustomersByValue(int $tenantId): array
     {
-        $users = DB::table('users')
+        $users = $this->db->table('users')
             ->where('tenant_id', $tenantId)
             ->where('status', 'active')
             ->pluck('id');
@@ -168,7 +168,7 @@ final class CustomerLifetimeValueMLService
      */
     private function getUserPurchaseHistory(int $userId): array
     {
-        $purchases = DB::table('orders')
+        $purchases = $this->db->table('orders')
             ->where('user_id', $userId)
             ->where('status', 'completed')
             ->orderBy('created_at')
@@ -252,7 +252,7 @@ final class CustomerLifetimeValueMLService
     private function predictCustomerLifetime(int $userId, float $retentionRate): float
     {
         $accountAgeMonths = \Carbon\Carbon::parse(
-            DB::table('users')->find($userId)->created_at
+            $this->db->table('users')->find($userId)->created_at
         )->diffInMonths(now());
 
         // Формула: средняя жизненная ценность клиента = месяцы активности
@@ -276,7 +276,7 @@ final class CustomerLifetimeValueMLService
         $daysSinceLastPurchase = (int)$now->diffInDays(\Carbon\Carbon::parse($lastPurchaseDate));
 
         $last30Days = $now->copy()->subDays(30)->startOfDay();
-        $purchasesLast30Days = DB::table('orders')
+        $purchasesLast30Days = $this->db->table('orders')
             ->where('user_id', $userId)
             ->where('created_at', '>=', $last30Days)
             ->count();
@@ -375,7 +375,7 @@ final class CustomerLifetimeValueMLService
      */
     private function getUserAgeInDays(int $userId): int
     {
-        $createdAt = DB::table('users')->find($userId)?->created_at;
+        $createdAt = $this->db->table('users')->find($userId)?->created_at;
         
         if (!$createdAt) {
             return 0;

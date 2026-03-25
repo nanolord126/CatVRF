@@ -50,7 +50,7 @@ final class TravelTourController extends Controller
                 'correlation_id' => Str::uuid()->toString(),
             ]);
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to list tours', [
+            $this->log->channel('audit')->error('Failed to list tours', [
                 'error' => $e->getMessage(),
             ]);
 
@@ -105,7 +105,7 @@ final class TravelTourController extends Controller
             $this->authorize('create', TravelTour::class);
 
             $validated = $request->all();
-            $tour = DB::transaction(function () use ($validated, $agency, $correlationId) {
+            $tour = $this->db->transaction(function () use ($validated, $agency, $correlationId) {
                 return TravelTour::create([
                     'tenant_id' => tenant()->id,
                     'agency_id' => $agency->id,
@@ -126,7 +126,7 @@ final class TravelTourController extends Controller
                 ]);
             });
 
-            Log::channel('audit')->info('Travel tour created', [
+            $this->log->channel('audit')->info('Travel tour created', [
                 'tour_id' => $tour->id,
                 'agency_id' => $agency->id,
                 'correlation_id' => $correlationId,
@@ -138,7 +138,7 @@ final class TravelTourController extends Controller
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Tour creation failed', [
+            $this->log->channel('audit')->error('Tour creation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -162,7 +162,7 @@ final class TravelTourController extends Controller
             $this->authorize('update', $tour);
 
             $validated = $request->all();
-            $tour = DB::transaction(function () use ($validated, $tour, $correlationId) {
+            $tour = $this->db->transaction(function () use ($validated, $tour, $correlationId) {
                 $tour->update([
                     'name' => ($validated['name'] ?? $tour->name),
                     'destination' => ($validated['destination'] ?? $tour->destination),
@@ -179,7 +179,7 @@ final class TravelTourController extends Controller
                 return $tour;
             });
 
-            Log::channel('audit')->info('Travel tour updated', [
+            $this->log->channel('audit')->info('Travel tour updated', [
                 'tour_id' => $tour->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -208,11 +208,11 @@ final class TravelTourController extends Controller
 
             $this->authorize('delete', $tour);
 
-            DB::transaction(function () use ($tour, $correlationId) {
+            $this->db->transaction(function () use ($tour, $correlationId) {
                 $tour->delete();
             });
 
-            Log::channel('audit')->info('Travel tour deleted', [
+            $this->log->channel('audit')->info('Travel tour deleted', [
                 'tour_id' => $tour->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -262,12 +262,12 @@ final class TravelTourController extends Controller
                 ->where('tenant_id', tenant()->id)
                 ->findOrFail($id);
 
-            DB::transaction(function () use ($tour, $correlationId) {
+            $this->db->transaction(function () use ($tour, $correlationId) {
                 $tour->restore();
                 $tour->update(['correlation_id' => $correlationId]);
             });
 
-            Log::channel('audit')->info('Travel tour restored', [
+            $this->log->channel('audit')->info('Travel tour restored', [
                 'tour_id' => $tour->id,
                 'correlation_id' => $correlationId,
             ]);

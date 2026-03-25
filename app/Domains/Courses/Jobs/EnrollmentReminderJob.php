@@ -29,7 +29,7 @@ final class EnrollmentReminderJob implements ShouldQueue
     public function handle(): void
     {
         try {
-            Log::channel('audit')->info('Running enrollment reminder job', [
+            $this->log->channel('audit')->info('Running enrollment reminder job', [
                 'correlation_id' => $this->correlationId,
             ]);
 
@@ -44,12 +44,12 @@ final class EnrollmentReminderJob implements ShouldQueue
                         new EnrollmentReminderNotification($enrollment)
                     );
 
-                    Log::channel('audit')->info('Reminder sent to student', [
+                    $this->log->channel('audit')->info('Reminder sent to student', [
                         'enrollment_id' => $enrollment->id,
                         'correlation_id' => $this->correlationId,
                     ]);
                 } catch (Throwable $e) {
-                    Log::channel('audit')->error('Failed to send reminder', [
+                    $this->log->channel('audit')->error('Failed to send reminder', [
                         'enrollment_id' => $enrollment->id,
                         'error' => $e->getMessage(),
                         'correlation_id' => $this->correlationId,
@@ -57,12 +57,12 @@ final class EnrollmentReminderJob implements ShouldQueue
                 }
             }
 
-            Log::channel('audit')->info('Enrollment reminder job completed', [
+            $this->log->channel('audit')->info('Enrollment reminder job completed', [
                 'reminders_sent' => $stalledEnrollments->count(),
                 'correlation_id' => $this->correlationId,
             ]);
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Enrollment reminder job failed', [
+            $this->log->channel('audit')->error('Enrollment reminder job failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $this->correlationId,
             ]);

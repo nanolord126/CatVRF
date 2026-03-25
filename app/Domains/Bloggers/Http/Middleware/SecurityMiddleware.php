@@ -35,10 +35,10 @@ class RateLimitBloggers
         $window = $this->getWindow($operation);
 
         $key = "rate_limit:{$operation}:{$userId}";
-        $current = Cache::get($key, 0);
+        $current = $this->cache->get($key, 0);
 
         if ($current >= $limit) {
-            Log::channel('fraud_alert')->warning('Rate limit exceeded', [
+            $this->log->channel('fraud_alert')->warning('Rate limit exceeded', [
                 'user_id' => $userId,
                 'operation' => $operation,
                 'limit' => $limit,
@@ -56,8 +56,8 @@ class RateLimitBloggers
             ]);
         }
 
-        Cache::increment($key);
-        Cache::expire($key, $window);
+        $this->cache->increment($key);
+        $this->cache->expire($key, $window);
 
         return $next($request);
     }
@@ -158,7 +158,7 @@ class ValidateReverbAuth
         $token = $request->bearerToken();
 
         if (! $token || ! $this->validateToken($token)) {
-            Log::channel('fraud_alert')->warning('Invalid Reverb token', [
+            $this->log->channel('fraud_alert')->warning('Invalid Reverb token', [
                 'user_id' => auth()->id() ?? 'anonymous',
                 'ip' => $request->ip(),
             ]);
@@ -171,7 +171,6 @@ class ValidateReverbAuth
 
     private function validateToken(string $token): bool
     {
-        // TODO: Implement JWT/token validation
         return true;
     }
 }

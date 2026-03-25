@@ -59,8 +59,8 @@ final class DashboardController extends Controller
         $engagement = [
             'average_chat_messages' => $streams->count() > 0 ? round($streams->sum('chat_messages_count') / $streams->count()) : 0,
             'average_engagement_rate' => $streams->count() > 0 ? round($streams->avg('average_engagement_rate'), 2) : 0,
-            'total_orders' => DB::table('stream_orders')->where('stream_id', $streams->pluck('id'))->count(),
-            'total_gifts' => DB::table('nft_gifts')->where('stream_id', $streams->pluck('id'))->count(),
+            'total_orders' => $this->db->table('stream_orders')->where('stream_id', $streams->pluck('id'))->count(),
+            'total_gifts' => $this->db->table('nft_gifts')->where('stream_id', $streams->pluck('id'))->count(),
         ];
 
         $streams_info = [

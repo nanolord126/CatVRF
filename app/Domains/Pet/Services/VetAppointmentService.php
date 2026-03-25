@@ -42,7 +42,7 @@ final class VetAppointmentService
         }
         RateLimiter::hit("pet:vet_book:{$clinicId}", 3600);
 
-        return DB::transaction(function () use ($clinicId, $vetId, $data, $correlationId) {
+        return $this->db->transaction(function () use ($clinicId, $vetId, $data, $correlationId) {
             $clinic = PetClinic::findOrFail($clinicId);
             $vet = Vet::findOrFail($vetId);
 
@@ -55,7 +55,7 @@ final class VetAppointmentService
             ]);
 
             if ($fraud["decision"] === "block") {
-                Log::channel("audit")->error("Pet Security Block", ["pet_id" => $data["pet_id"], "score" => $fraud["score"]]);
+                $this->log->channel("audit")->error("Pet Security Block", ["pet_id" => $data["pet_id"], "score" => $fraud["score"]]);
                 throw new \RuntimeException("Операция заблокирована системой безопасности.", 403);
             }
 
@@ -85,7 +85,7 @@ final class VetAppointmentService
                 }
             }
 
-            Log::channel("audit")->info("Pet: vet appointment booked", ["app_id" => $appointment->id, "pet_id" => $data["pet_id"], "corr" => $correlationId]);
+            $this->log->channel("audit")->info("Pet: vet appointment booked", ["app_id" => $appointment->id, "pet_id" => $data["pet_id"], "corr" => $correlationId]);
 
             return $appointment;
         });
@@ -99,7 +99,7 @@ final class VetAppointmentService
         $correlationId = $correlationId ?: (string) Str::uuid();
         $appointment = PetAppointment::with("clinic", "vet")->findOrFail($appointmentId);
 
-        DB::transaction(function () use ($appointment, $results, $correlationId) {
+        $this->db->transaction(function () use ($appointment, $results, $correlationId) {
             $appointment->update([
                 "status" => "completed",
                 "finished_at" => now()
@@ -119,7 +119,7 @@ final class VetAppointmentService
             if (!empty($results["vaccinations"])) {
                 foreach ($results["vaccinations"] as $vaccine) {
                     // Логика добавления в ветпаспорт (симуляция)
-                    Log::channel("audit")->info("Pet: vaccination recorded", ["pet" => $appointment->pet_id, "vaccine" => $vaccine["name"]]);
+                    $this->log->channel("audit")->info("Pet: vaccination recorded", ["pet" => $appointment->pet_id, "vaccine" => $vaccine["name"]]);
                 }
             }
 
@@ -146,7 +146,7 @@ final class VetAppointmentService
                 correlationId: $correlationId
             );
 
-            Log::channel("audit")->info("Pet: visit finished + payout", ["app_id" => $appointment->id, "payout" => $clinicPayout]);
+            $this->log->channel("audit")->info("Pet: visit finished + payout", ["app_id" => $appointment->id, "payout" => $clinicPayout]);
         });
     }
 }

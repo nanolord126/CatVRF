@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Auto\Filament\Resources\TuningProjectResource\Pages;
@@ -7,7 +9,16 @@ use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 use Illuminate\Database\Eloquent\Builder;
 
-final class ListTuningProjects extends ListRecords
+final /**
+ * ListTuningProjects
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class ListTuningProjects extends ListRecords
 {
     protected static string $resource = TuningProjectResource::class;
 

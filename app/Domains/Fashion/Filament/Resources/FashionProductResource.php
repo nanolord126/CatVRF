@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Fashion\Filament\Resources;
@@ -12,7 +14,16 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Table;
 
-final class FashionProductResource extends Resource
+final /**
+ * FashionProductResource
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class FashionProductResource extends Resource
 {
     protected static ?string $model = FashionProduct::class;
 

@@ -88,7 +88,7 @@ final class PostService
             );
         }
 
-        return DB::transaction(function () use (
+        return $this->db->transaction(function () use (
             $channel, $content, $title, $visibility, $isPromo,
             $mediaFiles, $scheduledAt, $poll, $correlationId
         ): Post {
@@ -127,11 +127,11 @@ final class PostService
             $channel->update(['last_post_at' => now()]);
 
             // Инвалидировать кэш ленты
-            Cache::forget("channel_feed:{$channel->id}");
-            Cache::forget("channel_feed_b2c:{$channel->id}");
-            Cache::forget("channel_feed_b2b:{$channel->id}");
+            $this->cache->forget("channel_feed:{$channel->id}");
+            $this->cache->forget("channel_feed_b2c:{$channel->id}");
+            $this->cache->forget("channel_feed_b2b:{$channel->id}");
 
-            Log::channel('audit')->info('Post created', [
+            $this->log->channel('audit')->info('Post created', [
                 'correlation_id' => $correlationId,
                 'tenant_id'      => $channel->tenant_id,
                 'channel_id'     => $channel->id,
@@ -155,7 +155,7 @@ final class PostService
     ): Post {
         $correlationId = $correlationId ?: Str::uuid()->toString();
 
-        DB::transaction(function () use ($post, $moderatedBy, $correlationId): void {
+        $this->db->transaction(function () use ($post, $moderatedBy, $correlationId): void {
             $post->update([
                 'status'             => 'published',
                 'published_at'       => now(),
@@ -164,10 +164,10 @@ final class PostService
                 'moderated_at'       => now(),
             ]);
 
-            Cache::forget("post:{$post->id}");
-            Cache::forget("channel_feed:{$post->channel_id}");
+            $this->cache->forget("post:{$post->id}");
+            $this->cache->forget("channel_feed:{$post->channel_id}");
 
-            Log::channel('audit')->info('Post published', [
+            $this->log->channel('audit')->info('Post published', [
                 'correlation_id' => $correlationId,
                 'tenant_id'      => $post->tenant_id,
                 'post_id'        => $post->id,
@@ -193,7 +193,7 @@ final class PostService
     ): Post {
         $correlationId = $correlationId ?: Str::uuid()->toString();
 
-        DB::transaction(function () use ($post, $reason, $moderatedBy, $correlationId): void {
+        $this->db->transaction(function () use ($post, $reason, $moderatedBy, $correlationId): void {
             $post->update([
                 'status'             => 'rejected',
                 'is_moderated'       => true,
@@ -202,7 +202,7 @@ final class PostService
                 'moderation_comment' => $reason,
             ]);
 
-            Log::channel('audit')->warning('Post rejected by moderator', [
+            $this->log->channel('audit')->warning('Post rejected by moderator', [
                 'correlation_id' => $correlationId,
                 'tenant_id'      => $post->tenant_id,
                 'post_id'        => $post->id,
@@ -221,11 +221,11 @@ final class PostService
     {
         $correlationId = $correlationId ?: Str::uuid()->toString();
 
-        DB::transaction(function () use ($post, $correlationId): void {
+        $this->db->transaction(function () use ($post, $correlationId): void {
             $post->update(['status' => 'archived']);
-            Cache::forget("post:{$post->id}");
+            $this->cache->forget("post:{$post->id}");
 
-            Log::channel('audit')->info('Post archived', [
+            $this->log->channel('audit')->info('Post archived', [
                 'correlation_id' => $correlationId,
                 'post_id'        => $post->id,
                 'tenant_id'      => $post->tenant_id,
@@ -247,7 +247,7 @@ final class PostService
         // Лента не кэшируется постранично, только первая страница
         if ($page === 1) {
             $cacheKey = "channel_feed_{$audience}:{$channel->id}";
-            return Cache::remember(
+            return $this->cache->remember(
                 $cacheKey,
                 config('channels.cache.feed_ttl', 120),
                 fn () => $this->buildFeedQuery($channel, $audience)->paginate($perPage)
@@ -266,16 +266,16 @@ final class PostService
         $key = "post_views:{$post->id}:{$userHash}";
 
         // Дедупликация — не считать повторные просмотры с того же юзера за 5 мин
-        if (!Cache::has($key)) {
-            Cache::put($key, 1, 300);
-            DB::table('posts')->where('id', $post->id)->increment('views_count');
+        if (!$this->cache->has($key)) {
+            $this->cache->put($key, 1, 300);
+            $this->db->table('posts')->where('id', $post->id)->increment('views_count');
 
             // Запись в daily-статистику
-            DB::table('post_stats_daily')->updateOrInsert(
+            $this->db->table('post_stats_daily')->updateOrInsert(
                 ['post_id' => $post->id, 'stat_date' => today()],
                 [
                     'tenant_id' => $post->tenant_id,
-                    'views'     => DB::raw('views + 1'),
+                    'views'     => $this->db->raw('views + 1'),
                     'updated_at' => now(),
                 ]
             );
@@ -335,7 +335,7 @@ final class PostService
             $type = 'shorts';
         }
 
-        $path = Storage::disk('public')->putFile(
+        $path = $this->storage->disk('public')->putFile(
             "channels/{$post->channel_id}/posts/{$post->id}",
             $file
         );
@@ -344,7 +344,7 @@ final class PostService
             'post_id'        => $post->id,
             'tenant_id'      => $post->tenant_id,
             'type'           => $type,
-            'url'            => Storage::disk('public')->url($path),
+            'url'            => $this->storage->disk('public')->url($path),
             'mime_type'      => $mime,
             'size_bytes'     => $file->getSize(),
             'sort_order'     => $sortOrder,

@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -9,7 +11,16 @@ use App\Services\TeamPresenceService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Auth;
 
-final class TeamPresenceWidget extends Widget
+final /**
+ * TeamPresenceWidget
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class TeamPresenceWidget extends Widget
 {
     protected static string $view = 'filament.widgets.team-presence-widget';
 
@@ -33,7 +44,7 @@ final class TeamPresenceWidget extends Widget
             $this->onlineCount = 0;
             $this->totalCount = 0;
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\Log::channel('audit')->error('Failed to load team presence data', [
+            \Illuminate\Support\Facades\$this->log->channel('audit')->error('Failed to load team presence data', [
                 'error' => $e->getMessage(),
             ]);
         }

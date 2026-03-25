@@ -61,7 +61,7 @@ final class ComplianceIntegration extends Model
      */
     public function setApiTokenAttribute(string $value): void
     {
-        $this->attributes['api_token_encrypted'] = Crypt::encryptString($value);
+        $this->attributes['api_token_encrypted'] = $this->crypt->encryptString($value);
     }
 
     /**
@@ -74,7 +74,7 @@ final class ComplianceIntegration extends Model
         }
 
         try {
-            return Crypt::decryptString($this->attributes['api_token_encrypted']);
+            return $this->crypt->decryptString($this->attributes['api_token_encrypted']);
         } catch (\Exception $e) {
             return null;
         }

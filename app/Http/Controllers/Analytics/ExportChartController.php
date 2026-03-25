@@ -37,7 +37,7 @@ final class ExportChartController extends Controller
 
             // Base64 decode image
             if (!preg_match('/^data:image\/png;base64,/', $validated['chart_image'])) {
-                Log::channel('error')->error('Invalid PNG data format', [
+                $this->log->channel('error')->error('Invalid PNG data format', [
                     'correlation_id' => $correlationId,
                     'provided_format' => substr($validated['chart_image'], 0, 50),
                 ]);
@@ -55,7 +55,7 @@ final class ExportChartController extends Controller
 
             $filename = $validated['filename'] ?? 'chart-' . now()->format('Y-m-d-H-i-s') . '.png';
 
-            Log::channel('audit')->info('Chart PNG exported', [
+            $this->log->channel('audit')->info('Chart PNG exported', [
                 'correlation_id' => $correlationId,
                 'filename' => $filename,
                 'size_bytes' => strlen($imageData),
@@ -68,7 +68,7 @@ final class ExportChartController extends Controller
                 ->header('X-Correlation-ID', $correlationId);
 
         } catch (\Exception $e) {
-            Log::channel('error')->error('PNG export failed', [
+            $this->log->channel('error')->error('PNG export failed', [
                 'correlation_id' => $request->header('X-Correlation-ID'),
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -121,7 +121,7 @@ final class ExportChartController extends Controller
             $filename = $validated['title'] ?? 'analytics-report';
             $filename = Str::slug($filename) . '-' . now()->format('Y-m-d-H-i-s') . '.pdf';
 
-            Log::channel('audit')->info('Chart PDF exported', [
+            $this->log->channel('audit')->info('Chart PDF exported', [
                 'correlation_id' => $correlationId,
                 'filename' => $filename,
                 'title' => $pdfData['title'],
@@ -132,7 +132,7 @@ final class ExportChartController extends Controller
                 ->header('X-Correlation-ID', $correlationId);
 
         } catch (\Exception $e) {
-            Log::channel('error')->error('PDF export failed', [
+            $this->log->channel('error')->error('PDF export failed', [
                 'correlation_id' => $request->header('X-Correlation-ID'),
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -174,7 +174,7 @@ final class ExportChartController extends Controller
             //     ->windowSize($width, $height)
             //     ->screenshot();
 
-            Log::channel('audit')->info('Browsershot PNG export attempted', [
+            $this->log->channel('audit')->info('Browsershot PNG export attempted', [
                 'correlation_id' => $correlationId,
                 'width' => $width,
                 'height' => $height,
@@ -184,7 +184,7 @@ final class ExportChartController extends Controller
                 ->header('X-Correlation-ID', $correlationId);
 
         } catch (\Exception $e) {
-            Log::channel('error')->error('Browsershot PNG export failed', [
+            $this->log->channel('error')->error('Browsershot PNG export failed', [
                 'correlation_id' => $request->header('X-Correlation-ID'),
                 'message' => $e->getMessage(),
             ]);
@@ -216,16 +216,15 @@ final class ExportChartController extends Controller
                     true
                 );
 
-                Storage::disk('public')->put($filename, $imageData);
+                $this->storage->disk('public')->put($filename, $imageData);
 
             } elseif ($validated['export_type'] === 'pdf') {
-                // TODO: Реализовать PDF быстрый экспорт
                 $filename = str_replace('.pdf', '', $filename) . '.pdf';
             }
 
-            $url = Storage::disk('public')->url($filename);
+            $url = $this->storage->disk('public')->url($filename);
 
-            Log::channel('audit')->info('Quick export completed', [
+            $this->log->channel('audit')->info('Quick export completed', [
                 'correlation_id' => $correlationId,
                 'type' => $validated['export_type'],
                 'filename' => $filename,
@@ -241,7 +240,7 @@ final class ExportChartController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::channel('error')->error('Quick export failed', [
+            $this->log->channel('error')->error('Quick export failed', [
                 'correlation_id' => $request->header('X-Correlation-ID'),
                 'message' => $e->getMessage(),
             ]);

@@ -22,10 +22,10 @@ final class ApiKeyManagementService
         ?\DateTime $expiresAt = null
     ): array {
         $rawKey = Str::random(64);
-        $keyHash = Hash::make($rawKey);
+        $keyHash = $this->hash->make($rawKey);
         $keyId = (string) Str::uuid()->toString();
 
-        DB::transaction(function () use ($tenantId, $keyId, $name, $keyHash, $permissions, $ipWhitelist, $expiresAt) {
+        $this->db->transaction(function () use ($tenantId, $keyId, $name, $keyHash, $permissions, $ipWhitelist, $expiresAt) {
             $this->createApiKey(
                 tenantId: $tenantId,
                 keyId: $keyId,
@@ -36,7 +36,7 @@ final class ApiKeyManagementService
                 expiresAt: $expiresAt
             );
             
-            Log::channel('audit')->info('API Key generated', [
+            $this->log->channel('audit')->info('API Key generated', [
                 'tenant_id' => $tenantId,
                 'key_id' => $keyId,
                 'correlation_id' => request()->header('X-Correlation-ID', Str::uuid()->toString()),
@@ -58,7 +58,7 @@ final class ApiKeyManagementService
     {
         $keyHash = $this->hashKey($rawKey);
 
-        $apiKey = DB::table('api_keys')
+        $apiKey = $this->db->table('api_keys')
             ->where('key_hash', $keyHash)
             ->where('status', 'active')
             ->first();
@@ -72,8 +72,8 @@ final class ApiKeyManagementService
             return false;
         }
 
-        DB::transaction(function () use ($apiKey, $clientIp) {
-            DB::table('api_keys')
+        $this->db->transaction(function () use ($apiKey, $clientIp) {
+            $this->db->table('api_keys')
                 ->where('id', $apiKey->id)
                 ->update(['last_used_at' => now()]);
 
@@ -92,19 +92,19 @@ final class ApiKeyManagementService
      */
     public function revokeKey(int $tenantId, string $keyId): bool
     {
-        return DB::transaction(function () use ($tenantId, $keyId) {
-            $updated = DB::table('api_keys')
+        return $this->db->transaction(function () use ($tenantId, $keyId) {
+            $updated = $this->db->table('api_keys')
                 ->where('tenant_id', $tenantId)
                 ->where('key_id', $keyId)
                 ->update(['status' => 'revoked']);
 
             if ($updated) {
-                $apiKey = DB::table('api_keys')
+                $apiKey = $this->db->table('api_keys')
                     ->where('key_id', $keyId)
                     ->first();
                 $this->logAudit($apiKey->id, 'revoked', null);
                 
-                Log::channel('audit')->info('API Key revoked', [
+                $this->log->channel('audit')->info('API Key revoked', [
                     'tenant_id' => $tenantId,
                     'key_id' => $keyId,
                     'correlation_id' => request()->header('X-Correlation-ID', Str::uuid()->toString()),
@@ -120,8 +120,8 @@ final class ApiKeyManagementService
      */
     public function rotateKey(int $tenantId, string $keyId): array
     {
-        return DB::transaction(function () use ($tenantId, $keyId) {
-            $oldKey = DB::table('api_keys')
+        return $this->db->transaction(function () use ($tenantId, $keyId) {
+            $oldKey = $this->db->table('api_keys')
                 ->where('tenant_id', $tenantId)
                 ->where('key_id', $keyId)
                 ->first();
@@ -151,7 +151,7 @@ final class ApiKeyManagementService
         ?array $ipWhitelist,
         ?\DateTime $expiresAt
     ): void {
-        DB::table('api_keys')->insert([
+        $this->db->table('api_keys')->insert([
             'tenant_id' => $tenantId,
             'key_id' => $keyId,
             'name' => $name,
@@ -173,7 +173,7 @@ final class ApiKeyManagementService
 
     private function logAudit(int $apiKeyId, string $action, ?string $ipAddress): void
     {
-        DB::table('api_key_audit_logs')->insert([
+        $this->db->table('api_key_audit_logs')->insert([
             'api_key_id' => $apiKeyId,
             'action' => $action,
             'ip_address' => $ipAddress,

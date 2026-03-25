@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Pharmacy\Models;
@@ -6,7 +8,16 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 
-final class PharmacyB2BOrder extends Model
+final /**
+ * PharmacyB2BOrder
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class PharmacyB2BOrder extends Model
 {
     protected $table = 'pharmacy_b2b_orders';
     protected $fillable = ['uuid', 'tenant_id', 'supplier_id', 'pharmacy_id', 'amount', 'status', 'correlation_id', 'tags'];

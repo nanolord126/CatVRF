@@ -199,10 +199,10 @@ final class PhotoGalleryController
 		try {
 			$gallery = PhotoGallery::findOrFail($id);
 
-			DB::transaction(function () use ($gallery) {
+			$this->db->transaction(function () use ($gallery) {
 				$gallery->delete();
 
-				Log::channel('audit')->info('Photography: Gallery deleted', [
+				$this->log->channel('audit')->info('Photography: Gallery deleted', [
 					'gallery_id' => $gallery->id,
 					'correlation_id' => Str::uuid(),
 				]);
@@ -232,14 +232,14 @@ final class PhotoGalleryController
 				'photos.*' => 'url',
 			]);
 
-			DB::transaction(function () use ($gallery, $validated) {
+			$this->db->transaction(function () use ($gallery, $validated) {
 				$photos = array_merge($gallery->photos_json ?? [], $validated['photos']);
 				$gallery->update([
 					'photos_json' => $photos,
 					'photo_count' => count($photos),
 				]);
 
-				Log::channel('audit')->info('Photography: Photos added to gallery', [
+				$this->log->channel('audit')->info('Photography: Photos added to gallery', [
 					'gallery_id' => $gallery->id,
 					'count' => count($validated['photos']),
 					'correlation_id' => Str::uuid(),

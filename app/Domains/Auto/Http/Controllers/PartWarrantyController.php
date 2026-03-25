@@ -35,7 +35,7 @@ final class PartWarrantyController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Part warranty index failed', [
+            $this->log->channel('audit')->error('Part warranty index failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -65,7 +65,7 @@ final class PartWarrantyController extends Controller
         try {
             $warranty = $this->warrantyService->createPartWarranty($validated);
 
-            Log::channel('audit')->info('Part warranty created', [
+            $this->log->channel('audit')->info('Part warranty created', [
                 'correlation_id' => $correlationId,
                 'warranty_id' => $warranty->id,
             ]);
@@ -76,7 +76,7 @@ final class PartWarrantyController extends Controller
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Part warranty creation failed', [
+            $this->log->channel('audit')->error('Part warranty creation failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -113,7 +113,7 @@ final class PartWarrantyController extends Controller
                 $validated['notes'] ?? null
             );
 
-            Log::channel('audit')->info('Part warranty claim submitted', [
+            $this->log->channel('audit')->info('Part warranty claim submitted', [
                 'correlation_id' => $correlationId,
                 'warranty_id' => $warranty->id,
             ]);
@@ -124,7 +124,7 @@ final class PartWarrantyController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Part warranty claim failed', [
+            $this->log->channel('audit')->error('Part warranty claim failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -159,7 +159,7 @@ final class PartWarrantyController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Part warranty approval failed', [
+            $this->log->channel('audit')->error('Part warranty approval failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -192,7 +192,7 @@ final class PartWarrantyController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Part warranty rejection failed', [
+            $this->log->channel('audit')->error('Part warranty rejection failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);

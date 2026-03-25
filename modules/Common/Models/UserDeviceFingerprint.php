@@ -35,7 +35,7 @@ class UserDeviceFingerprint extends Model
     {
         static::creating(function (UserDeviceFingerprint $model) {
             $model->correlation_id ??= Str::uuid();
-            $model->tenant_id ??= Auth::guard('tenant')->id();
+            $model->tenant_id ??= $this->auth->guard('tenant')->id();
             $model->is_trusted ??= false;
             $model->risk_score ??= 0;
             $model->last_seen_at ??= now();
@@ -51,7 +51,7 @@ class UserDeviceFingerprint extends Model
                 $model->fingerprint_hash = hash('sha256', json_encode($fingerprint_data));
             }
 
-            Log::channel('security')->info('UserDeviceFingerprint creating', [
+            $this->log->channel('security')->info('UserDeviceFingerprint creating', [
                 'correlation_id' => $model->correlation_id,
                 'user_id' => $model->user_id,
                 'fingerprint_hash' => $model->fingerprint_hash,
@@ -60,11 +60,11 @@ class UserDeviceFingerprint extends Model
 
         static::created(function (UserDeviceFingerprint $model) {
             try {
-                AuditLog::create([
+                Audit$this->log->create([
                     'entity_type' => UserDeviceFingerprint::class,
                     'entity_id' => $model->id,
                     'action' => 'created',
-                    'user_id' => Auth::id(),
+                    'user_id' => $this->auth->id(),
                     'tenant_id' => $model->tenant_id,
                     'correlation_id' => $model->correlation_id,
                     'changes' => [
@@ -81,14 +81,14 @@ class UserDeviceFingerprint extends Model
                     ],
                 ]);
 
-                Log::channel('security')->info('UserDeviceFingerprint created', [
+                $this->log->channel('security')->info('UserDeviceFingerprint created', [
                     'correlation_id' => $model->correlation_id,
                     'fingerprint_id' => $model->id,
                     'user_id' => $model->user_id,
                     'risk_score' => $model->risk_score,
                 ]);
             } catch (Throwable $e) {
-                Log::error('UserDeviceFingerprint audit creation failed', [
+                $this->log->error('UserDeviceFingerprint audit creation failed', [
                     'correlation_id' => $model->correlation_id,
                     'error' => $e->getMessage(),
                 ]);
@@ -98,7 +98,7 @@ class UserDeviceFingerprint extends Model
         static::updating(function (UserDeviceFingerprint $model) {
             $model->correlation_id ??= Str::uuid();
 
-            Log::channel('security')->info('UserDeviceFingerprint updating', [
+            $this->log->channel('security')->info('UserDeviceFingerprint updating', [
                 'correlation_id' => $model->correlation_id,
                 'fingerprint_id' => $model->id,
             ]);
@@ -106,11 +106,11 @@ class UserDeviceFingerprint extends Model
 
         static::updated(function (UserDeviceFingerprint $model) {
             try {
-                AuditLog::create([
+                Audit$this->log->create([
                     'entity_type' => UserDeviceFingerprint::class,
                     'entity_id' => $model->id,
                     'action' => 'updated',
-                    'user_id' => Auth::id(),
+                    'user_id' => $this->auth->id(),
                     'tenant_id' => $model->tenant_id,
                     'correlation_id' => $model->correlation_id,
                     'changes' => $model->getChanges(),
@@ -121,12 +121,12 @@ class UserDeviceFingerprint extends Model
                     ],
                 ]);
 
-                Log::channel('security')->info('UserDeviceFingerprint updated', [
+                $this->log->channel('security')->info('UserDeviceFingerprint updated', [
                     'correlation_id' => $model->correlation_id,
                     'fingerprint_id' => $model->id,
                 ]);
             } catch (Throwable $e) {
-                Log::error('UserDeviceFingerprint audit update failed', [
+                $this->log->error('UserDeviceFingerprint audit update failed', [
                     'correlation_id' => $model->correlation_id,
                     'error' => $e->getMessage(),
                 ]);

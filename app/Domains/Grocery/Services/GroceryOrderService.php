@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -10,17 +12,36 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
-final readonly class GroceryOrderService
+final readonly /**
+ * GroceryOrderService
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class GroceryOrderService
 {
+    // Dependencies injected via constructor
+    // Add private readonly properties here
     public function __construct(
         private FraudControlService $fraudControlService
-    ) {}
+    ) {
+    /**
+     * Инициализировать класс
+     */
+    public function __construct()
+    {
+        // TODO: инициализация
+    }
+}
 
     public function createOrder(array $data, bool $isB2B = false): GroceryOrder
     {
         $correlationId = $data['correlation_id'] ?? Str::uuid()->toString();
 
-        Log::channel('audit')->info('Grocery order started', [
+        $this->log->channel('audit')->info('Grocery order started', [
             'correlation_id' => $correlationId,
             'is_b2b' => $isB2B,
         ]);
@@ -31,7 +52,7 @@ final readonly class GroceryOrderService
             'correlation_id' => $correlationId,
         ]);
 
-        return DB::transaction(function () use ($data, $correlationId) {
+        return $this->db->transaction(function () use ($data, $correlationId) {
             $order = GroceryOrder::create([
                 ...$data,
                 'uuid' => Str::uuid()->toString(),
@@ -39,7 +60,7 @@ final readonly class GroceryOrderService
                 'status' => 'pending',
             ]);
 
-            Log::channel('audit')->info('Grocery order created', [
+            $this->log->channel('audit')->info('Grocery order created', [
                 'order_id' => $order->id,
                 'correlation_id' => $correlationId,
             ]);

@@ -42,7 +42,7 @@ final class BonusAccrualJob implements ShouldQueue
     public function handle(): void
     {
         try {
-            Log::channel('audit')->info('Bonus accrual job started', [
+            $this->log->channel('audit')->info('Bonus accrual job started', [
                 'correlation_id' => $this->correlationId,
                 'timestamp' => now()->toIso8601String(),
             ]);
@@ -58,11 +58,11 @@ final class BonusAccrualJob implements ShouldQueue
                 ->pluck('user_id');
 
             if ($users->isEmpty()) {
-                Log::info('No users with completed orders found for bonus accrual');
+                $this->log->info('No users with completed orders found for bonus accrual');
                 return;
             }
 
-            Log::info('Starting bonus accrual for users', [
+            $this->log->info('Starting bonus accrual for users', [
                 'correlation_id' => $this->correlationId,
                 'user_count' => $users->count(),
             ]);
@@ -73,13 +73,13 @@ final class BonusAccrualJob implements ShouldQueue
                 $bonusesCreated += $this->accrueUserBonuses($userId, $lastMonth);
             }
 
-            Log::channel('audit')->info('Bonus accrual job completed', [
+            $this->log->channel('audit')->info('Bonus accrual job completed', [
                 'correlation_id' => $this->correlationId,
                 'bonuses_created' => $bonusesCreated,
             ]);
 
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Bonus accrual job failed', [
+            $this->log->channel('audit')->error('Bonus accrual job failed', [
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -110,7 +110,7 @@ final class BonusAccrualJob implements ShouldQueue
             }
 
             // Рассчитать оборот (сумму успешных платежей)
-            $monthlyTurnover = $orders->sum(DB::raw('total_price - refunded_amount'));
+            $monthlyTurnover = $orders->sum($this->db->raw('total_price - refunded_amount'));
 
             // 1. Бонус за оборот (turnover bonus)
             $bonusesCreated += $this->accrueOverBonuses($userId, $monthlyTurnover, $month);
@@ -121,7 +121,7 @@ final class BonusAccrualJob implements ShouldQueue
             return $bonusesCreated;
 
         } catch (\Exception $e) {
-            Log::warning('Error accruing bonuses for user', [
+            $this->log->warning('Error accruing bonuses for user', [
                 'user_id' => $userId,
                 'error' => $e->getMessage(),
             ]);
@@ -160,7 +160,7 @@ final class BonusAccrualJob implements ShouldQueue
 
         // Начислить бонус за каждый полный порог
         for ($i = 0; $i < $bonusCount; $i++) {
-            DB::transaction(function () use ($userId, $bonusAmount, $month) {
+            $this->db->transaction(function () use ($userId, $bonusAmount, $month) {
                 Bonus::create([
                     'user_id' => $userId,
                     'type' => 'turnover_bonus',
@@ -171,7 +171,7 @@ final class BonusAccrualJob implements ShouldQueue
                     'comment' => "Turnover bonus for {$month->format('F Y')}",
                 ]);
 
-                Log::info('Turnover bonus accrued', [
+                $this->log->info('Turnover bonus accrued', [
                     'user_id' => $userId,
                     'amount' => $bonusAmount,
                     'month' => $month->format('Y-m'),
@@ -221,7 +221,7 @@ final class BonusAccrualJob implements ShouldQueue
             return 0;
         }
 
-        DB::transaction(function () use ($userId, $bonusAmount, $month) {
+        $this->db->transaction(function () use ($userId, $bonusAmount, $month) {
             Bonus::create([
                 'user_id' => $userId,
                 'type' => 'loyalty_bonus',
@@ -232,7 +232,7 @@ final class BonusAccrualJob implements ShouldQueue
                 'comment' => "Loyalty bonus for {$month->format('F Y')}",
             ]);
 
-            Log::info('Loyalty bonus accrued', [
+            $this->log->info('Loyalty bonus accrued', [
                 'user_id' => $userId,
                 'amount' => $bonusAmount,
                 'month' => $month->format('Y-m'),
@@ -244,7 +244,7 @@ final class BonusAccrualJob implements ShouldQueue
 
     public function failed(\Exception $exception): void
     {
-        Log::channel('audit')->error('BonusAccrualJob failed permanently', [
+        $this->log->channel('audit')->error('BonusAccrualJob failed permanently', [
             'correlation_id' => $this->correlationId,
             'error' => $exception->getMessage(),
         ]);

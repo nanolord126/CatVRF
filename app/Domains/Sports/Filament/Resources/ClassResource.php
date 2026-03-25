@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Builder;
 
 final class ClassResource extends Resource
 {
-    protected static ?string $model = ClassSession::class;
+    protected static ?string $model = Class$this->session->class;
     protected static ?string $navigationIcon = 'heroicon-o-calendar';
     protected static ?string $navigationLabel = 'Классы';
 

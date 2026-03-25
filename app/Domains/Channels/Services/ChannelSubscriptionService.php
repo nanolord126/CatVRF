@@ -48,7 +48,7 @@ final class ChannelSubscriptionService
             throw new \RuntimeException('Канал архивирован. Подписка недоступна.');
         }
 
-        return DB::transaction(function () use ($userId, $channel, $visibilityPreference, $correlationId): ChannelSubscriber {
+        return $this->db->transaction(function () use ($userId, $channel, $visibilityPreference, $correlationId): ChannelSubscriber {
             $subscriber = ChannelSubscriber::where('channel_id', $channel->id)
                 ->where('user_id', $userId)
                 ->first();
@@ -63,7 +63,7 @@ final class ChannelSubscriptionService
                         'correlation_id'        => $correlationId,
                     ]);
 
-                    DB::table('business_channels')
+                    $this->db->table('business_channels')
                         ->where('id', $channel->id)
                         ->increment('subscribers_count');
                 }
@@ -79,13 +79,13 @@ final class ChannelSubscriptionService
                 'subscribed_at'         => now(),
             ]);
 
-            DB::table('business_channels')
+            $this->db->table('business_channels')
                 ->where('id', $channel->id)
                 ->increment('subscribers_count');
 
-            Cache::forget("channel_subs:{$channel->id}");
+            $this->cache->forget("channel_subs:{$channel->id}");
 
-            Log::channel('audit')->info('User subscribed to channel', [
+            $this->log->channel('audit')->info('User subscribed to channel', [
                 'correlation_id' => $correlationId,
                 'user_id'        => $userId,
                 'channel_id'     => $channel->id,
@@ -108,20 +108,20 @@ final class ChannelSubscriptionService
     ): void {
         $correlationId = $correlationId ?: Str::uuid()->toString();
 
-        DB::transaction(function () use ($userId, $channel, $correlationId): void {
+        $this->db->transaction(function () use ($userId, $channel, $correlationId): void {
             $updated = ChannelSubscriber::where('channel_id', $channel->id)
                 ->where('user_id', $userId)
                 ->whereNull('unsubscribed_at')
                 ->update(['unsubscribed_at' => now()]);
 
             if ($updated > 0) {
-                DB::table('business_channels')
+                $this->db->table('business_channels')
                     ->where('id', $channel->id)
-                    ->decrement('subscribers_count', 1, ['subscribers_count' => DB::raw('GREATEST(subscribers_count - 1, 0)')]);
+                    ->decrement('subscribers_count', 1, ['subscribers_count' => $this->db->raw('GREATEST(subscribers_count - 1, 0)')]);
 
-                Cache::forget("channel_subs:{$channel->id}");
+                $this->cache->forget("channel_subs:{$channel->id}");
 
-                Log::channel('audit')->info('User unsubscribed from channel', [
+                $this->log->channel('audit')->info('User unsubscribed from channel', [
                     'correlation_id' => $correlationId,
                     'user_id'        => $userId,
                     'channel_id'     => $channel->id,
@@ -136,7 +136,7 @@ final class ChannelSubscriptionService
      */
     public function isSubscribed(int $userId, int $channelId): bool
     {
-        return Cache::remember(
+        return $this->cache->remember(
             "is_subscribed:{$userId}:{$channelId}",
             60,
             fn () => ChannelSubscriber::where('channel_id', $channelId)
@@ -166,7 +166,7 @@ final class ChannelSubscriptionService
      */
     public function getSubscribersCount(BusinessChannel $channel): int
     {
-        return Cache::remember(
+        return $this->cache->remember(
             "channel_subs:{$channel->id}",
             config('channels.cache.subs_ttl', 300),
             fn () => ChannelSubscriber::where('channel_id', $channel->id)

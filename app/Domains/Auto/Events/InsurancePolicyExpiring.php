@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Auto\Events;
@@ -10,7 +12,16 @@ use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-final class InsurancePolicyExpiring implements ShouldBroadcast
+final /**
+ * InsurancePolicyExpiring
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class InsurancePolicyExpiring implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -19,7 +30,7 @@ final class InsurancePolicyExpiring implements ShouldBroadcast
         public readonly int $daysUntilExpiry,
         public readonly string $correlationId
     ) {
-        Log::channel('audit')->info('InsurancePolicyExpiring event dispatched', [
+        $this->log->channel('audit')->info('InsurancePolicyExpiring event dispatched', [
             'correlation_id' => $this->correlationId,
             'insurance_id' => $this->insurance->id,
             'days_until_expiry' => $this->daysUntilExpiry,

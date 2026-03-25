@@ -34,7 +34,7 @@ final class CreateAutoServiceOrder extends CreateRecord
         ]);
 
         if (!$fraudCheck['allowed']) {
-            Notification::make()
+            $this->notification->make()
                 ->title('Подозрение на мошенничество')
                 ->body($fraudCheck['reason'] ?? 'Операция заблокирована')
                 ->danger()
@@ -43,7 +43,7 @@ final class CreateAutoServiceOrder extends CreateRecord
             $this->halt();
         }
 
-        Log::channel('audit')->info('Creating auto service order', [
+        $this->log->channel('audit')->info('Creating auto service order', [
             'correlation_id' => $correlationId,
             'tenant_id' => filament()->getTenant()->id,
             'user_id' => auth()->id(),
@@ -55,14 +55,14 @@ final class CreateAutoServiceOrder extends CreateRecord
 
     protected function afterCreate(): void
     {
-        DB::transaction(function () {
+        $this->db->transaction(function () {
             // Событие создания заказа-наряда
             event(new AutoServiceOrderCreated(
                 $this->record,
                 $this->record->correlation_id
             ));
 
-            Log::channel('audit')->info('Auto service order created successfully', [
+            $this->log->channel('audit')->info('Auto service order created successfully', [
                 'correlation_id' => $this->record->correlation_id,
                 'order_id' => $this->record->id,
                 'service_type' => $this->record->service_type,
@@ -70,7 +70,7 @@ final class CreateAutoServiceOrder extends CreateRecord
                 'tenant_id' => filament()->getTenant()->id,
             ]);
 
-            Notification::make()
+            $this->notification->make()
                 ->title('Заказ-наряд создан')
                 ->body("Услуга: {$this->record->service_type}, дата: {$this->record->appointment_datetime->format('d.m.Y H:i')}")
                 ->success()

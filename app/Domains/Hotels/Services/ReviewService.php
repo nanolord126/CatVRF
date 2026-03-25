@@ -28,7 +28,7 @@ final class ReviewService
 
 
         try {
-            Log::channel('audit')->info('Creating review', [
+            $this->log->channel('audit')->info('Creating review', [
                 'hotel_id' => $hotelId,
                 'rating' => $rating,
                 'correlation_id' => $correlationId,
@@ -47,7 +47,7 @@ final class ReviewService
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
 
-            $review = DB::transaction(function () use (
+            $review = $this->db->transaction(function () use (
                 $hotelId,
                 $rating,
                 $title,
@@ -73,14 +73,14 @@ final class ReviewService
             // Update hotel rating
             $this->recalculateHotelRating($hotelId, $correlationId);
 
-            Log::channel('audit')->info('Review created', [
+            $this->log->channel('audit')->info('Review created', [
                 'review_id' => $review->id,
                 'correlation_id' => $correlationId,
             ]);
 
             return $review;
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Review creation failed', [
+            $this->log->channel('audit')->error('Review creation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -93,7 +93,7 @@ final class ReviewService
 
 
         try {
-            Log::channel('audit')->info('Recalculating hotel rating', [
+            $this->log->channel('audit')->info('Recalculating hotel rating', [
                 'hotel_id' => $hotelId,
                 'correlation_id' => $correlationId,
             ]);
@@ -106,7 +106,7 @@ final class ReviewService
                 'rating' => round($avgRating, 2),
             ]);
 
-            Log::channel('audit')->info('Hotel rating updated', [
+            $this->log->channel('audit')->info('Hotel rating updated', [
                 'hotel_id' => $hotelId,
                 'new_rating' => $avgRating,
                 'correlation_id' => $correlationId,
@@ -114,7 +114,7 @@ final class ReviewService
 
             return $avgRating;
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to recalculate rating', [
+            $this->log->channel('audit')->error('Failed to recalculate rating', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);

@@ -43,7 +43,7 @@ final class EditAutoServiceOrder extends EditRecord
                         ->rows(3),
                 ])
                 ->action(function (array $data) {
-                    DB::transaction(function () use ($data) {
+                    $this->db->transaction(function () use ($data) {
                         $this->record->status = 'completed';
                         $this->record->total_price = (int) $data['final_price'];
                         $this->record->work_description = $data['work_description'];
@@ -56,7 +56,7 @@ final class EditAutoServiceOrder extends EditRecord
                             $this->record->correlation_id
                         ));
 
-                        Log::channel('audit')->info('Auto service order completed', [
+                        $this->log->channel('audit')->info('Auto service order completed', [
                             'correlation_id' => $this->record->correlation_id,
                             'order_id' => $this->record->id,
                             'final_price' => $data['final_price'],
@@ -64,7 +64,7 @@ final class EditAutoServiceOrder extends EditRecord
                             'user_id' => auth()->id(),
                         ]);
 
-                        Notification::make()
+                        $this->notification->make()
                             ->title('Заказ-наряд завершён')
                             ->body("Услуга выполнена, стоимость: " . ($data['final_price'] / 100) . " ₽")
                             ->success()
@@ -74,7 +74,7 @@ final class EditAutoServiceOrder extends EditRecord
 
             Actions\DeleteAction::make()
                 ->after(function () {
-                    Log::channel('audit')->info('Auto service order deleted', [
+                    $this->log->channel('audit')->info('Auto service order deleted', [
                         'correlation_id' => $this->record->correlation_id,
                         'order_id' => $this->record->id,
                         'user_id' => auth()->id(),
@@ -85,7 +85,7 @@ final class EditAutoServiceOrder extends EditRecord
 
     protected function afterSave(): void
     {
-        Log::channel('audit')->info('Auto service order updated', [
+        $this->log->channel('audit')->info('Auto service order updated', [
             'correlation_id' => $this->record->correlation_id,
             'order_id' => $this->record->id,
             'status' => $this->record->status,

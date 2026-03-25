@@ -26,7 +26,7 @@ final class TaxiDemandForecastService
 
 
         try {
-            Log::channel('audit')->info('Forecasting taxi demand', [
+            $this->log->channel('audit')->info('Forecasting taxi demand', [
                 'tenant_id' => $tenantId,
                 'hours_ahead' => $hoursAhead,
                 'location' => $location,
@@ -51,7 +51,7 @@ final class TaxiDemandForecastService
 
             return $predictions;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Demand forecast failed', [
+            $this->log->channel('audit')->error('Demand forecast failed', [
                 'tenant_id' => $tenantId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

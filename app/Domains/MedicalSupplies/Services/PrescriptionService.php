@@ -24,8 +24,8 @@ final class PrescriptionService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-DB::transaction(function () use ($prescriptionCode, $medicineId, $correlationId) {
-                $prescription = DB::table('prescriptions')
+$this->db->transaction(function () use ($prescriptionCode, $medicineId, $correlationId) {
+                $prescription = $this->db->table('prescriptions')
                     ->where('code', $prescriptionCode)
                     ->where('medicine_id', $medicineId)
                     ->where('is_used', false)
@@ -37,11 +37,11 @@ DB::transaction(function () use ($prescriptionCode, $medicineId, $correlationId)
                 }
 
                 // Марк как использованный
-                DB::table('prescriptions')
+                $this->db->table('prescriptions')
                     ->where('id', $prescription->id)
                     ->update(['is_used' => true, 'used_at' => now()]);
 
-                Log::channel('audit')->info('Prescription validated', [
+                $this->log->channel('audit')->info('Prescription validated', [
                     'prescription_id' => $prescription->id,
                     'medicine_id' => $medicineId,
                     'correlation_id' => $correlationId,
@@ -50,7 +50,7 @@ DB::transaction(function () use ($prescriptionCode, $medicineId, $correlationId)
                 return true;
             });
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Prescription validation failed', [
+            $this->log->channel('audit')->error('Prescription validation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
                 'trace' => $e->getTraceAsString(),

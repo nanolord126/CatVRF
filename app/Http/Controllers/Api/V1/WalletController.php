@@ -27,7 +27,7 @@ final class WalletController extends BaseApiV1Controller
         try {
             $wallet = Wallet::where('tenant_id', $tenantId)->firstOrFail();
 
-            \Illuminate\Support\Facades\Log::channel('audit')->info('Wallet retrieved', [
+            \Illuminate\Support\Facades\$this->log->channel('audit')->info('Wallet retrieved', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
                 'balance' => $wallet->current_balance,

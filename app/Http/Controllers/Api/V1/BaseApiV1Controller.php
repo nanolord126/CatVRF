@@ -16,7 +16,7 @@ abstract class BaseApiV1Controller extends Controller
      */
     protected function errorResponse(\Throwable $e, string $correlationId, int $code = 500): ResponseFactory
     {
-        \Illuminate\Support\Facades\Log::channel('audit')->error('Controller error', [
+        \Illuminate\Support\Facades\$this->log->channel('audit')->error('Controller error', [
             'error' => $e->getMessage(),
             'code' => $code,
             'correlation_id' => $correlationId,

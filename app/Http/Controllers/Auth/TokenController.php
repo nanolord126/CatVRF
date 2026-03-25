@@ -37,8 +37,8 @@ final class TokenController extends Controller
 
             $user = \App\Models\User::where('email', $validated['email'])->first();
 
-            if (!$user || !Hash::check($validated['password'], $user->password)) {
-                Log::channel('audit')->warning('Invalid token creation credentials', [
+            if (!$user || !$this->hash->check($validated['password'], $user->password)) {
+                $this->log->channel('audit')->warning('Invalid token creation credentials', [
                     'email' => $validated['email'],
                     'correlation_id' => $correlationId,
                 ]);
@@ -48,14 +48,14 @@ final class TokenController extends Controller
                 ], 401);
             }
 
-            return DB::transaction(function () use ($user, $correlationId) {
+            return $this->db->transaction(function () use ($user, $correlationId) {
                 $token = $user->createToken(
                     name: 'API Token',
                     abilities: ['*'],
                     expiresAt: now()->addDays(365)
                 );
 
-                Log::channel('audit')->info('Token created', [
+                $this->log->channel('audit')->info('Token created', [
                     'user_id' => $user->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -69,7 +69,7 @@ final class TokenController extends Controller
             });
 
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Token creation failed', [
+            $this->log->channel('audit')->error('Token creation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
                 'trace' => $e->getTraceAsString(),
@@ -99,11 +99,11 @@ final class TokenController extends Controller
                 ], 401);
             }
 
-            return DB::transaction(function () use ($user, $correlationId) {
+            return $this->db->transaction(function () use ($user, $correlationId) {
                 $user->tokens()->delete();
                 $token = $user->createToken('API Token Refreshed');
 
-                Log::channel('audit')->info('Token refreshed', [
+                $this->log->channel('audit')->info('Token refreshed', [
                     'user_id' => $user->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -116,7 +116,7 @@ final class TokenController extends Controller
             });
 
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Token refresh failed', [
+            $this->log->channel('audit')->error('Token refresh failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
                 'trace' => $e->getTraceAsString(),

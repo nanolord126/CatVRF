@@ -46,7 +46,7 @@ final class Booking extends Model
 
     public function class(): BelongsTo
     {
-        return $this->belongsTo(ClassSession::class, 'class_id');
+        return $this->belongsTo(Class$this->session->class, 'class_id');
     }
 
     public function member(): BelongsTo

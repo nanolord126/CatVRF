@@ -29,7 +29,7 @@ final class VINCompatibilityService
                 ->whereJsonContains('compatible_vehicles', $vehicles)
                 ->get();
 
-            Log::channel('audit')->info('Compatible parts found', [
+            $this->log->channel('audit')->info('Compatible parts found', [
                 'vin_last_4' => substr($vin, -4),
                 'count' => $parts->count(),
                 'tenant_id' => $tenantId,
@@ -37,7 +37,7 @@ final class VINCompatibilityService
 
             return $parts;
         } catch (\Exception $e) {
-            Log::channel('audit')->error('VIN compatibility check failed', [
+            $this->log->channel('audit')->error('VIN compatibility check failed', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
@@ -49,7 +49,7 @@ final class VINCompatibilityService
     {
 
 
-        return DB::transaction(function () use ($partId, $vin, $quantity, $deliveryDate, $clientId, $tenantId, $correlationId) {
+        return $this->db->transaction(function () use ($partId, $vin, $quantity, $deliveryDate, $clientId, $tenantId, $correlationId) {
             $this->fraudControlService->check(
                 userId: $clientId,
                 operationType: 'auto_part_order',
@@ -82,7 +82,7 @@ final class VINCompatibilityService
             $part->decrement('current_stock', $quantity);
 
             AutoPartOrderCreated::dispatch($order->id, $tenantId, $clientId, $totalPrice, $correlationId);
-            Log::channel('audit')->info('Auto part order created', [
+            $this->log->channel('audit')->info('Auto part order created', [
                 'order_id' => $order->id,
                 'part_id' => $partId,
                 'quantity' => $quantity,

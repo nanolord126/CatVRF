@@ -25,7 +25,7 @@ final class AppointmentController
                 ->paginate(20);
 
             $correlationId = Str::uuid()->toString();
-            Log::channel('audit')->info('Beauty appointments listed', [
+            $this->log->channel('audit')->info('Beauty appointments listed', [
                 'user_id' => auth()->id(),
                 'count' => $appointments->count(),
                 'correlation_id' => $correlationId,
@@ -38,7 +38,7 @@ final class AppointmentController
             ]);
         } catch (\Throwable $e) {
             $correlationId = Str::uuid()->toString();
-            Log::error('Beauty appointment listing failed', [
+            $this->log->error('Beauty appointment listing failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -92,7 +92,7 @@ final class AppointmentController
         );
 
         if ($fraudResult['decision'] === 'block') {
-            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+            $this->log->channel('fraud_alert')->warning('Operation blocked by fraud control', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'score'          => $fraudResult['score'],
@@ -105,7 +105,7 @@ final class AppointmentController
         }
 
         try {
-            $appointment = DB::transaction(function () use ($correlationId) {
+            $appointment = $this->db->transaction(function () use ($correlationId) {
                 return Appointment::create([
                     'uuid' => Str::uuid(),
                     'tenant_id' => tenant('id'),
@@ -122,7 +122,7 @@ final class AppointmentController
                 ]);
             });
 
-            Log::channel('audit')->info('Beauty appointment created', [
+            $this->log->channel('audit')->info('Beauty appointment created', [
                 'appointment_id' => $appointment->id,
                 'user_id' => auth()->id(),
                 'correlation_id' => $correlationId,
@@ -135,7 +135,7 @@ final class AppointmentController
             ], 201);
         } catch (\Throwable $e) {
             $correlationId = Str::uuid()->toString();
-            Log::error('Beauty appointment creation failed', [
+            $this->log->error('Beauty appointment creation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -162,14 +162,14 @@ final class AppointmentController
                 ], 403);
             }
 
-            DB::transaction(function () use ($appointment, $correlationId) {
+            $this->db->transaction(function () use ($appointment, $correlationId) {
                 $appointment->update([
                     'status' => 'cancelled',
                     'correlation_id' => $correlationId,
                 ]);
             });
 
-            Log::channel('audit')->info('Beauty appointment cancelled', [
+            $this->log->channel('audit')->info('Beauty appointment cancelled', [
                 'appointment_id' => $id,
                 'correlation_id' => $correlationId,
             ]);
@@ -181,7 +181,7 @@ final class AppointmentController
             ]);
         } catch (\Throwable $e) {
             $correlationId = Str::uuid()->toString();
-            Log::error('Beauty appointment cancellation failed', [
+            $this->log->error('Beauty appointment cancellation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);

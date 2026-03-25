@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 declare(strict_types=1);
 
@@ -5,8 +7,19 @@ namespace App\Services\Webhook;
 
 use Illuminate\Support\Facades\Log;
 
-final class WebhookSignatureValidator
+final /**
+ * WebhookSignatureValidator
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class WebhookSignatureValidator
 {
+    // Dependencies injected via constructor
+    // Add private readonly properties here
     public function validate(string $provider, string $payload, string $signature): bool
     {
         return match($provider) {

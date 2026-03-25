@@ -26,19 +26,19 @@ final readonly class PurchaseService
         ?string $correlationId = null,
     ): Purchase {
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
 
         try {
             $correlationId = $correlationId ?? Str::uuid()->toString();
 
-            Log::channel('audit')->info('Creating purchase', [
+            $this->log->channel('audit')->info('Creating purchase', [
                 'studio_id' => $studioId,
                 'member_id' => $memberId,
                 'item_type' => $itemType,
                 'correlation_id' => $correlationId,
             ]);
 
-            $purchase = DB::transaction(function () use (
+            $purchase = $this->db->transaction(function () use (
                 $studioId,
                 $memberId,
                 $membershipId,
@@ -75,7 +75,7 @@ final readonly class PurchaseService
                 return $purchase;
             });
 
-            Log::channel('audit')->info('Purchase created successfully', [
+            $this->log->channel('audit')->info('Purchase created successfully', [
                 'purchase_id' => $purchase->id,
                 'total_amount' => $purchase->total_amount,
                 'correlation_id' => $correlationId,
@@ -83,7 +83,7 @@ final readonly class PurchaseService
 
             return $purchase;
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to create purchase', [
+            $this->log->channel('audit')->error('Failed to create purchase', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId ?? null,
             ]);
@@ -94,12 +94,12 @@ final readonly class PurchaseService
     public function confirmPayment(Purchase $purchase, string $transactionId, ?string $correlationId = null): void
     {
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
 
         try {
             $correlationId = $correlationId ?? Str::uuid()->toString();
 
-            Log::channel('audit')->info('Confirming purchase payment', [
+            $this->log->channel('audit')->info('Confirming purchase payment', [
                 'purchase_id' => $purchase->id,
                 'transaction_id' => $transactionId,
                 'correlation_id' => $correlationId,
@@ -111,12 +111,12 @@ final readonly class PurchaseService
                 'correlation_id' => $correlationId,
             ]);
 
-            Log::channel('audit')->info('Purchase payment confirmed', [
+            $this->log->channel('audit')->info('Purchase payment confirmed', [
                 'purchase_id' => $purchase->id,
                 'correlation_id' => $correlationId,
             ]);
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to confirm payment', [
+            $this->log->channel('audit')->error('Failed to confirm payment', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId ?? null,
             ]);
@@ -127,18 +127,18 @@ final readonly class PurchaseService
     public function refundPurchase(Purchase $purchase, string $reason = '', ?string $correlationId = null): void
     {
         $correlationId = Str::uuid()->toString();
-        Log::channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
+        $this->log->channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
 
         try {
             $correlationId = $correlationId ?? Str::uuid()->toString();
 
-            Log::channel('audit')->info('Refunding purchase', [
+            $this->log->channel('audit')->info('Refunding purchase', [
                 'purchase_id' => $purchase->id,
                 'reason' => $reason,
                 'correlation_id' => $correlationId,
             ]);
 
-            DB::transaction(function () use ($purchase, $reason, $correlationId) {
+            $this->db->transaction(function () use ($purchase, $reason, $correlationId) {
                 $purchase->update([
                     'purchase_status' => 'cancelled',
                     'correlation_id' => $correlationId,
@@ -147,12 +147,12 @@ final readonly class PurchaseService
                 \App\Domains\Sports\Events\PurchaseRefunded::dispatch($purchase, $reason, $correlationId);
             });
 
-            Log::channel('audit')->info('Purchase refunded', [
+            $this->log->channel('audit')->info('Purchase refunded', [
                 'purchase_id' => $purchase->id,
                 'correlation_id' => $correlationId,
             ]);
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to refund purchase', [
+            $this->log->channel('audit')->error('Failed to refund purchase', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId ?? null,
             ]);

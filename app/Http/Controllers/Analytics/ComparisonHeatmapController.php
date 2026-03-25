@@ -64,9 +64,9 @@ final class ComparisonHeatmapController
             $tenantId = $tenant?->id ?? auth()->id() ?? 0;
             $rateLimitKey = "ratelimit:compare:geo:{$tenantId}:{$validated['vertical']}";
             
-            $count = Cache::increment($rateLimitKey, 1, 60);
+            $count = $this->cache->increment($rateLimitKey, 1, 60);
             if ($count > 100) {
-                Log::channel('fraud_alert')->warning('Rate limit exceeded', [
+                $this->log->channel('fraud_alert')->warning('Rate limit exceeded', [
                     'correlation_id' => $correlationId,
                     'tenant_id' => $tenantId,
                     'endpoint' => '/compare/geo',
@@ -102,7 +102,7 @@ final class ComparisonHeatmapController
                 $metric
             );
 
-            Log::channel('audit')->info('Geo comparison API called', [
+            $this->log->channel('audit')->info('Geo comparison API called', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
                 'vertical' => $vertical,
@@ -117,7 +117,7 @@ final class ComparisonHeatmapController
             ]);
 
         } catch (ValidationException $e) {
-            Log::channel('error')->warning('Geo comparison validation failed', [
+            $this->log->channel('error')->warning('Geo comparison validation failed', [
                 'correlation_id' => $correlationId,
                 'errors' => $e->errors(),
             ]);
@@ -129,7 +129,7 @@ final class ComparisonHeatmapController
             ], 422);
 
         } catch (\Exception $e) {
-            Log::channel('error')->error('Geo comparison API error', [
+            $this->log->channel('error')->error('Geo comparison API error', [
                 'correlation_id' => $correlationId,
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -179,9 +179,9 @@ final class ComparisonHeatmapController
             $pageUrlHash = md5($validated['page_url']);
             $rateLimitKey = "ratelimit:compare:click:{$tenantId}:{$pageUrlHash}";
             
-            $count = Cache::increment($rateLimitKey, 1, 60);
+            $count = $this->cache->increment($rateLimitKey, 1, 60);
             if ($count > 100) {
-                Log::channel('fraud_alert')->warning('Rate limit exceeded', [
+                $this->log->channel('fraud_alert')->warning('Rate limit exceeded', [
                     'correlation_id' => $correlationId,
                     'tenant_id' => $tenantId,
                     'endpoint' => '/compare/click',
@@ -217,7 +217,7 @@ final class ComparisonHeatmapController
                 $period2To
             );
 
-            Log::channel('audit')->info('Click comparison API called', [
+            $this->log->channel('audit')->info('Click comparison API called', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
                 'vertical' => $vertical,
@@ -232,7 +232,7 @@ final class ComparisonHeatmapController
             ]);
 
         } catch (ValidationException $e) {
-            Log::channel('error')->warning('Click comparison validation failed', [
+            $this->log->channel('error')->warning('Click comparison validation failed', [
                 'correlation_id' => $correlationId,
                 'errors' => $e->errors(),
             ]);
@@ -244,7 +244,7 @@ final class ComparisonHeatmapController
             ], 422);
 
         } catch (\Exception $e) {
-            Log::channel('error')->error('Click comparison API error', [
+            $this->log->channel('error')->error('Click comparison API error', [
                 'correlation_id' => $correlationId,
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

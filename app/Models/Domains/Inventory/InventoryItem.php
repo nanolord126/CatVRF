@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 namespace App\Models\Domains\Inventory;
@@ -5,6 +7,15 @@ namespace App\Models\Domains\Inventory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * InventoryItem
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
 class InventoryItem extends Model
 {
     use HasFactory;

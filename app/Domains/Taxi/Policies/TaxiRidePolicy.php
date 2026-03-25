@@ -30,32 +30,32 @@ final class TaxiRidePolicy
     public function cancel(User $user, TaxiRide $ride): Response
     {
         if ($user->id !== $ride->passenger_id && !$user->isAdmin()) {
-            return Response::deny('Вы не можете отменить эту поездку');
+            return $this->response->deny('Вы не можете отменить эту поездку');
         }
 
         if ($ride->status === 'completed' || $ride->status === 'cancelled') {
-            return Response::deny('Поездка уже завершена или отменена');
+            return $this->response->deny('Поездка уже завершена или отменена');
         }
 
         // Отмену можно сделать только в течение 24 часов до начала
         $hoursUntilStart = $ride->started_at->diffInHours(now(), false);
         if ($hoursUntilStart < -24) {
-            return Response::deny('Отмену можно сделать только за 24 часа до начала');
+            return $this->response->deny('Отмену можно сделать только за 24 часа до начала');
         }
 
-        return Response::allow();
+        return $this->response->allow();
     }
 
     public function rate(User $user, TaxiRide $ride): Response
     {
         if ($user->id !== $ride->passenger_id && !$user->isAdmin()) {
-            return Response::deny('Вы не можете оценить эту поездку');
+            return $this->response->deny('Вы не можете оценить эту поездку');
         }
 
         if ($ride->status !== 'completed') {
-            return Response::deny('Можно оценить только завершённую поездку');
+            return $this->response->deny('Можно оценить только завершённую поездку');
         }
 
-        return Response::allow();
+        return $this->response->allow();
     }
 }

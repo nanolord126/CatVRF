@@ -38,7 +38,7 @@ final class HealthyFoodService
         }
         RateLimiter::hit("healthy:plan:{$userId}", 86400);
 
-        return DB::transaction(function () use ($userId, $goals, $correlationId) {
+        return $this->db->transaction(function () use ($userId, $goals, $correlationId) {
             // 2. Получение профиля здоровья (если нет — создаем базовый)
             $profile = HealthProfile::firstOrCreate(["user_id" => $userId]);
 
@@ -77,7 +77,7 @@ final class HealthyFoodService
                 "tags" => ["goal:" . ($goals["type"] ?? "general"), "generated:ai"]
             ]);
 
-            Log::channel("audit")->info("HealthyFood: diet plan generated", ["user_id" => $userId, "plan_id" => $plan->id]);
+            $this->log->channel("audit")->info("HealthyFood: diet plan generated", ["user_id" => $userId, "plan_id" => $plan->id]);
 
             return $plan;
         });
@@ -90,7 +90,7 @@ final class HealthyFoodService
     {
         $correlationId = $correlationId ?: (string) Str::uuid();
         
-        DB::transaction(function () use ($userId, $mealId, $correlationId) {
+        $this->db->transaction(function () use ($userId, $mealId, $correlationId) {
             $meal = HealthyMeal::findOrFail($mealId);
 
             // Списание ингредиентов
@@ -105,7 +105,7 @@ final class HealthyFoodService
                 );
             }
 
-            Log::channel("audit")->info("HealthyFood: meal consumed", ["user_id" => $userId, "meal_id" => $mealId]);
+            $this->log->channel("audit")->info("HealthyFood: meal consumed", ["user_id" => $userId, "meal_id" => $mealId]);
         });
     }
 
@@ -123,6 +123,6 @@ final class HealthyFoodService
             "meta" => array_merge($profile->meta ?? [], ["last_updated" => now()->toIso8601String()])
         ]);
         
-        Log::channel("audit")->info("HealthyFood: profile updated", ["user_id" => $userId]);
+        $this->log->channel("audit")->info("HealthyFood: profile updated", ["user_id" => $userId]);
     }
 }

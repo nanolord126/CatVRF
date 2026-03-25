@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -13,7 +15,16 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 
-final class SendAppointmentRemindersJob implements ShouldQueue
+final /**
+ * SendAppointmentRemindersJob
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class SendAppointmentRemindersJob implements ShouldQueue
 {
     use Dispatchable;
     use InteractsWithQueue;
@@ -22,7 +33,15 @@ final class SendAppointmentRemindersJob implements ShouldQueue
 
     public function __construct(
         private readonly string $correlationId,
-    ) {}
+    ) {
+    /**
+     * Инициализировать класс
+     */
+    public function __construct()
+    {
+        // TODO: инициализация
+    }
+}
 
     public function handle(): void
     {
@@ -37,17 +56,17 @@ final class SendAppointmentRemindersJob implements ShouldQueue
             
             if ($client && $client->phone) {
                 // Real SMS notification via configured SMS service
-                \Illuminate\Support\Facades\Notification::route('sms', $client->phone)
+                \Illuminate\Support\Facades\$this->notification->route('sms', $client->phone)
                     ->notify(new \App\Notifications\AppointmentReminderNotification($appointment));
             }
             
             if ($client && $client->email) {
                 // Real email notification
-                \Illuminate\Support\Facades\Mail::to($client->email)
+                \Illuminate\Support\Facades\$this->mail->to($client->email)
                     ->send(new \App\Mail\AppointmentReminderMail($appointment));
             }
 
-            Log::channel('audit')->info('Reminder sent', [
+            $this->log->channel('audit')->info('Reminder sent', [
                 'appointment_id' => $appointment->id,
                 'client_id' => $client?->id,
                 'methods' => ['sms' => (bool)$client?->phone, 'email' => (bool)$client?->email],

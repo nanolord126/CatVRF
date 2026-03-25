@@ -264,7 +264,7 @@ final class GraphQLSchemaService
             $errors[] = 'Suspicious query pattern detected';
         }
 
-        Log::channel('api')->debug('Query validation', [
+        $this->log->channel('api')->debug('Query validation', [
             'query' => substr($query, 0, 100),
             'errors' => $errors,
         ]);

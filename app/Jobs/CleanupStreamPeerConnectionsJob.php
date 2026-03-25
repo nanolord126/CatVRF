@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -12,7 +14,16 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 
-final class CleanupStreamPeerConnectionsJob implements ShouldQueue
+final /**
+ * CleanupStreamPeerConnectionsJob
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class CleanupStreamPeerConnectionsJob implements ShouldQueue
 {
     use Dispatchable;
     use InteractsWithQueue;
@@ -25,19 +36,27 @@ final class CleanupStreamPeerConnectionsJob implements ShouldQueue
 
     public function __construct(
         private readonly int $olderThanMinutes = 60,
-    ) {}
+    ) {
+    /**
+     * Инициализировать класс
+     */
+    public function __construct()
+    {
+        // TODO: инициализация
+    }
+}
 
     public function handle(MeshService $meshService): void
     {
         try {
             $deleted = $meshService->cleanupClosedConnections($this->olderThanMinutes);
 
-            Log::channel('audit')->info(
+            $this->log->channel('audit')->info(
                 'Stream peer connections cleanup completed',
                 ['deleted' => $deleted, 'older_than_minutes' => $this->olderThanMinutes]
             );
         } catch (\Exception $e) {
-            Log::channel('error')->error(
+            $this->log->channel('error')->error(
                 'Stream peer connections cleanup failed',
                 ['error' => $e->getMessage()]
             );

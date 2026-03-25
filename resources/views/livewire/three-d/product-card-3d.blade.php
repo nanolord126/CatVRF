@@ -68,20 +68,15 @@
 
     // Lighting
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-    scene.add(ambientLight);
-
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    scene.aconst directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
     directionalLight.position.set(5, 10, 5);
-    scene.add(directionalLight);
-
-    // Load 3D Model (GLB/GLTF)
+    scene.a// Load 3D Model (GLB/GLTF)
     const loader = new THREE.GLTFLoader();
     let model;
 
     loader.load('{{ $model3D["url"] ?? "/3d-models/default-product.glb" }}', (gltf) => {
         model = gltf.scene;
-        scene.add(model);
-        model.position.set(0, 0, 0);
+        scene.amodel.position.set(0, 0, 0);
         model.scale.set({{ $model3D['scale'] ?? 1 }}, {{ $model3D['scale'] ?? 1 }}, {{ $model3D['scale'] ?? 1 }});
     });
 

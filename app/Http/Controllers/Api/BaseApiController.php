@@ -1,6 +1,30 @@
 <?php
 declare(strict_types=1);
 
+
+
+/**
+ * BaseApiController
+ * 
+ * Производитель: CatVRF Platform
+ * Версия: 1.0.0
+ * 
+ * Примеры использования:
+ * 
+ * ```php
+ * // Базовое использование
+ * $instance = new BaseApiController();
+ * ```
+ * 
+ * Требования:
+ * - Laravel 10+
+ * - PHP 8.2+
+ * - Все методы должны быть явно типизированы
+ * 
+ * @author CatVRF
+ * @package namespace App\Http\Controllers\API
+ * @see https://github.com/iyegorovskyi_clemny/CatVRF
+ */
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;

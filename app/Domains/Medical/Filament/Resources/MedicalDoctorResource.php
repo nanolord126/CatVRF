@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Medical\Filament\Resources;
@@ -11,7 +13,16 @@ use Filament\Resources\Resource;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
-final class MedicalDoctorResource extends Resource
+final /**
+ * MedicalDoctorResource
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class MedicalDoctorResource extends Resource
 {
     protected static ?string $model = MedicalDoctor::class;
 

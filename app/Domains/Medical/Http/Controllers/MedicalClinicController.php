@@ -30,7 +30,7 @@ final class MedicalClinicController
                 'correlation_id' => request()->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
             ]);
         } catch (Throwable $e) {
-            Log::error('Error fetching clinics', ['error' => $e->getMessage()]);
+            $this->log->error('Error fetching clinics', ['error' => $e->getMessage()]);
             return response()->json(['success' => false, 'error' => 'Failed to fetch clinics'], 500);
         }
     }
@@ -144,7 +144,7 @@ final class MedicalClinicController
                 'correlation_id' => $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
             ]);
 
-            Log::channel('audit')->info('Clinic created', ['clinic_id' => $clinic->id]);
+            $this->log->channel('audit')->info('Clinic created', ['clinic_id' => $clinic->id]);
 
             return response()->json([
                 'success' => true,
@@ -152,7 +152,7 @@ final class MedicalClinicController
                 'correlation_id' => $request->header('X-Correlation-ID'),
             ], 201);
         } catch (Throwable $e) {
-            Log::error('Failed to create clinic', ['error' => $e->getMessage()]);
+            $this->log->error('Failed to create clinic', ['error' => $e->getMessage()]);
             return response()->json(['success' => false, 'error' => 'Failed to create clinic'], 500);
         }
     }
@@ -189,7 +189,7 @@ final class MedicalClinicController
                 'correlation_id' => $request->header('X-Correlation-ID') ?? \Illuminate\Support\Str::uuid(),
             ]);
 
-            Log::channel('audit')->info('Clinic updated', ['clinic_id' => $clinic->id]);
+            $this->log->channel('audit')->info('Clinic updated', ['clinic_id' => $clinic->id]);
 
             return response()->json(['success' => true, 'data' => $clinic]);
         } catch (Throwable $e) {
@@ -205,7 +205,7 @@ final class MedicalClinicController
 
             $clinic->delete();
 
-            Log::channel('audit')->info('Clinic deleted', ['clinic_id' => $clinic->id]);
+            $this->log->channel('audit')->info('Clinic deleted', ['clinic_id' => $clinic->id]);
 
             return response()->json(['success' => true]);
         } catch (Throwable $e) {
@@ -219,7 +219,7 @@ final class MedicalClinicController
             $clinic = MedicalClinic::findOrFail($id);
             $clinic->update(['is_verified' => true]);
 
-            Log::channel('audit')->info('Clinic verified', ['clinic_id' => $clinic->id]);
+            $this->log->channel('audit')->info('Clinic verified', ['clinic_id' => $clinic->id]);
 
             return response()->json(['success' => true, 'data' => $clinic]);
         } catch (Throwable $e) {

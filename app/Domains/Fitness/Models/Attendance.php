@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Fitness\Models;
@@ -7,7 +9,16 @@ use App\Models\Tenant;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-final class Attendance extends Model
+final /**
+ * Attendance
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class Attendance extends Model
 {
     protected $table = 'attendances';
     protected $fillable = ['tenant_id', 'class_schedule_id', 'member_id', 'checked_in_at', 'checked_out_at', 'duration_minutes', 'status', 'performance_data', 'correlation_id'];

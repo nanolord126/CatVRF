@@ -3,15 +3,35 @@
 use Illuminate\Support\Facades\Route;
 
 /**
- * API Routes - Production Ready
+ * CatVRF API Routes — Production Ready 2026
+ * Version: 2026.03.25
+ * 
+ * Middleware Pipeline (all requests):
+ * 1. CorrelationIdMiddleware - inject/validate correlation_id
+ * 2. EnrichRequestContextMiddleware - IP, user_agent, timing
+ * 3. auth:sanctum - validate API token (except /health and /webhooks)
+ * 4. TenantMiddleware - tenant scoping and validation
+ * 5. RateLimitMiddleware - per-endpoint throttling (tenant-aware)
+ * 6. FraudCheckMiddleware - payment fraud detection (payment endpoints only)
+ * 7. WebhookSignatureMiddleware - HMAC validation (webhook endpoints only)
  */
 
-// Health check (no auth)
-Route::get('/health', function () {
-    return response()->json(['status' => 'ok', 'timestamp' => now()]);
-})->name('api.health');
+// ===== GLOBAL MIDDLEWARE (all routes) =====
+Route::middleware([
+    'correlation-id',      // Inject/validate X-Correlation-ID header
+    'enrich-context',      // Add IP, user_agent, timing metadata
+])->group(function () {
 
-// API v1 - Authenticated
+    // ===== HEALTH CHECK (No Auth) =====
+    Route::get('/health', function () {
+        return response()->json(['status' => 'ok', 'timestamp' => now()]);
+    })->name('api.health');
+
+    // ===== API V1 PRODUCTION ROUTES =====
+    // All routes defined in routes/api-v1.php with tenant + auth middleware
+    require base_path('routes/api-v1.php');
+
+// ===== LEGACY API V1 - Authenticated (Backward Compatibility) =====
 Route::prefix('v1')
     ->middleware('auth:sanctum')
     ->group(function () {
@@ -75,6 +95,100 @@ Route::prefix('webhooks')
             ->name('webhooks.sbp');
     });
 
+// ─── B2B API Routes ───────────────────────────────────────────────────────
+require __DIR__ . '/api/b2b.php';
+
+// ─── Verticals API Routes ─────────────────────────────────────────────────────
+// Beauty & Wellness
+require __DIR__ . '/beauty.api.php';
+
+// Food & Delivery
+require __DIR__ . '/food.api.php';
+
+// Hotels & Accommodation
+require __DIR__ . '/hotels.api.php';
+
+// Auto & Taxi & Services
+require __DIR__ . '/auto.api.php';
+
+// Real Estate
+require __DIR__ . '/realestate.api.php';
+
+// Courses & Education
+require __DIR__ . '/courses.api.php';
+
+// Medical & Healthcare
+require __DIR__ . '/medical.api.php';
+
+// Pet Services & Clinics
+require __DIR__ . '/pet.api.php';
+
+// Entertainment (Tickets, Events)
+require __DIR__ . '/tickets.api.php';
+
+// Travel & Tourism
+require __DIR__ . '/travel.api.php';
+
+// Sports & Fitness
+require __DIR__ . '/sports.api.php';
+
+// Freelance & Services
+require __DIR__ . '/freelance.api.php';
+
+// Photography & Video
+require __DIR__ . '/photography.api.php';
+
+// Logistics & Courier
+require __DIR__ . '/logistics.api.php';
+
+// Fresh Produce & Delivery
+require __DIR__ . '/fresh_produce.api.php';
+
+// Grocery Delivery
+require __DIR__ . '/grocery.api.php';
+
+// Pharmacy & Medical Supplies
+require __DIR__ . '/pharmacy.api.php';
+
+// Healthy Food & Diet
+require __DIR__ . '/healthy_food.api.php';
+
+// Confectionery & Bakery
+require __DIR__ . '/confectionery.api.php';
+
+// Meat Shops
+require __DIR__ . '/meat_shops.api.php';
+
+// Office Catering
+require __DIR__ . '/office_catering.api.php';
+
+// Farm Direct
+require __DIR__ . '/farm_direct.api.php';
+
+// Books & Literature
+require __DIR__ . '/books.api.php';
+
+// Cosmetics & Perfume
+require __DIR__ . '/cosmetics.api.php';
+
+// Jewelry
+require __DIR__ . '/jewelry.api.php';
+
+// Gifts & Souvenirs
+require __DIR__ . '/gifts.api.php';
+
+// Furniture & Interior
+require __DIR__ . '/furniture.api.php';
+
+// Electronics & Gadgets
+require __DIR__ . '/electronics.api.php';
+
+// Construction Materials
+require __DIR__ . '/construction_materials.api.php';
+
+// Toys & Kids
+require __DIR__ . '/toys_kids.api.php';
+
 // Analytics routes (heatmaps, comparisons, custom metrics)
 require __DIR__ . '/analytics.api.php';
 
@@ -84,7 +198,11 @@ Route::prefix('docs')->group(function () {
         ->name('api.openapi.spec');
     Route::get('swagger', [\App\Http\Controllers\Api\OpenApiController::class, 'ui'])
         ->name('api.swagger.ui');
+    Route::get('postman', [\App\Http\Controllers\Api\OpenApiController::class, 'postman'])
+        ->name('api.postman.collection');
 });
 
 // ─── Channels (посты, подписки, реакции) ─────────────────────────────────────
 require __DIR__ . '/channels.api.php';
+
+}); // END: Global middleware group

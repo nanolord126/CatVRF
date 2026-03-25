@@ -43,9 +43,9 @@ final class AdvancedAnalyticsService
         $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
         $cacheKey = "analytics:metrics:{$tenantId}:{$metricType}:{$startDate}:{$endDate}";
 
-        $cached = Cache::get($cacheKey);
+        $cached = $this->cache->get($cacheKey);
         if ($cached !== null) {
-            Log::channel('analytics')->info('Metrics retrieved from cache', [
+            $this->log->channel('analytics')->info('Metrics retrieved from cache', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
                 'metric_type' => $metricType,
@@ -70,16 +70,16 @@ final class AdvancedAnalyticsService
                 $metrics = $this->calculateAOVMetrics($tenantId, $startDate, $endDate);
                 break;
             default:
-                Log::channel('analytics')->warning('Unknown metric type', [
+                $this->log->channel('analytics')->warning('Unknown metric type', [
                     'correlation_id' => $correlationId,
                     'metric_type' => $metricType,
                 ]);
                 return ['error' => "Unknown metric type: {$metricType}"];
         }
 
-        Cache::put($cacheKey, $metrics, self::CACHE_TTL_METRICS);
+        $this->cache->put($cacheKey, $metrics, self::CACHE_TTL_METRICS);
 
-        Log::channel('analytics')->info('Metrics calculated', [
+        $this->log->channel('analytics')->info('Metrics calculated', [
             'correlation_id' => $correlationId,
             'tenant_id' => $tenantId,
             'metric_type' => $metricType,
@@ -106,7 +106,7 @@ final class AdvancedAnalyticsService
         }
 
         $cacheKey = "analytics:forecast:{$tenantId}:{$metricType}:{$daysAhead}";
-        $cached = Cache::get($cacheKey);
+        $cached = $this->cache->get($cacheKey);
         if ($cached !== null) {
             return $cached;
         }
@@ -124,9 +124,9 @@ final class AdvancedAnalyticsService
         // Простой линейный прогноз
         $trend = $this->calculateLinearTrend($historicalMetrics, $daysAhead);
 
-        Cache::put($cacheKey, $trend, self::CACHE_TTL_FORECAST);
+        $this->cache->put($cacheKey, $trend, self::CACHE_TTL_FORECAST);
 
-        Log::channel('analytics')->info('Forecast generated', [
+        $this->log->channel('analytics')->info('Forecast generated', [
             'correlation_id' => $correlationId,
             'tenant_id' => $tenantId,
             'metric_type' => $metricType,
@@ -175,7 +175,7 @@ final class AdvancedAnalyticsService
             ];
         }
 
-        Log::channel('analytics')->info('Custom report generated', [
+        $this->log->channel('analytics')->info('Custom report generated', [
             'correlation_id' => $correlationId,
             'tenant_id' => $tenantId,
             'sections_count' => count($report['sections']),
@@ -204,7 +204,7 @@ final class AdvancedAnalyticsService
             ],
         ];
 
-        Log::channel('analytics')->info('KPIs calculated', [
+        $this->log->channel('analytics')->info('KPIs calculated', [
             'correlation_id' => $correlationId,
             'tenant_id' => $tenantId,
         ]);
@@ -249,7 +249,7 @@ final class AdvancedAnalyticsService
             ],
         ];
 
-        Log::channel('analytics')->info('Comparative analysis completed', [
+        $this->log->channel('analytics')->info('Comparative analysis completed', [
             'correlation_id' => $correlationId,
             'tenant_id' => $tenantId,
         ]);
@@ -356,7 +356,7 @@ final class AdvancedAnalyticsService
 
     private function getTotalRevenue(int $tenantId, int $days): int
     {
-        return (int) DB::table('balance_transactions')
+        return (int) $this->db->table('balance_transactions')
             ->where('tenant_id', $tenantId)
             ->where('type', 'deposit')
             ->where('created_at', '>=', now()->subDays($days))
@@ -365,7 +365,7 @@ final class AdvancedAnalyticsService
 
     private function getTotalOrders(int $tenantId, int $days): int
     {
-        return (int) DB::table('payment_transactions')
+        return (int) $this->db->table('payment_transactions')
             ->where('tenant_id', $tenantId)
             ->where('status', 'captured')
             ->where('created_at', '>=', now()->subDays($days))
@@ -374,7 +374,7 @@ final class AdvancedAnalyticsService
 
     private function getAverageOrderValue(int $tenantId, int $days): float
     {
-        return (float) DB::table('payment_transactions')
+        return (float) $this->db->table('payment_transactions')
             ->where('tenant_id', $tenantId)
             ->where('status', 'captured')
             ->where('created_at', '>=', now()->subDays($days))
@@ -383,12 +383,12 @@ final class AdvancedAnalyticsService
 
     private function getConversionRate(int $tenantId, int $days): float
     {
-        $total = DB::table('payment_transactions')
+        $total = $this->db->table('payment_transactions')
             ->where('tenant_id', $tenantId)
             ->where('created_at', '>=', now()->subDays($days))
             ->count();
         if ($total === 0) return 0.0;
-        $captured = DB::table('payment_transactions')
+        $captured = $this->db->table('payment_transactions')
             ->where('tenant_id', $tenantId)
             ->where('status', 'captured')
             ->where('created_at', '>=', now()->subDays($days))
@@ -398,7 +398,7 @@ final class AdvancedAnalyticsService
 
     private function estimateLTV(int $tenantId): float
     {
-        return (float) DB::table('payment_transactions')
+        return (float) $this->db->table('payment_transactions')
             ->where('tenant_id', $tenantId)
             ->where('status', 'captured')
             ->avg('amount') ?? 0.0;
@@ -406,14 +406,14 @@ final class AdvancedAnalyticsService
 
     private function getChurnRate(int $tenantId, int $days): float
     {
-        $prevPeriodUsers = DB::table('payment_transactions')
+        $prevPeriodUsers = $this->db->table('payment_transactions')
             ->where('tenant_id', $tenantId)
             ->where('created_at', '<', now()->subDays($days))
             ->where('created_at', '>=', now()->subDays($days * 2))
             ->distinct('client_id')
             ->count('client_id');
         if ($prevPeriodUsers === 0) return 0.0;
-        $retained = DB::table('payment_transactions')
+        $retained = $this->db->table('payment_transactions')
             ->where('tenant_id', $tenantId)
             ->where('created_at', '>=', now()->subDays($days))
             ->distinct('client_id')
@@ -424,7 +424,7 @@ final class AdvancedAnalyticsService
     private function estimateROI(int $tenantId): float
     {
         $revenue = $this->getTotalRevenue($tenantId, 30);
-        $costs = (int) DB::table('balance_transactions')
+        $costs = (int) $this->db->table('balance_transactions')
             ->where('tenant_id', $tenantId)
             ->where('type', 'commission')
             ->where('created_at', '>=', now()->subDays(30))
@@ -435,7 +435,7 @@ final class AdvancedAnalyticsService
 
     private function getTotalRevenueForRange(int $tenantId, string $start, string $end): int
     {
-        return (int) DB::table('balance_transactions')
+        return (int) $this->db->table('balance_transactions')
             ->where('tenant_id', $tenantId)
             ->where('type', 'deposit')
             ->whereBetween('created_at', [$start, $end])
@@ -444,7 +444,7 @@ final class AdvancedAnalyticsService
 
     private function getTotalOrdersForRange(int $tenantId, string $start, string $end): int
     {
-        return (int) DB::table('payment_transactions')
+        return (int) $this->db->table('payment_transactions')
             ->where('tenant_id', $tenantId)
             ->where('status', 'captured')
             ->whereBetween('created_at', [$start, $end])
@@ -453,7 +453,7 @@ final class AdvancedAnalyticsService
 
     private function getAOVForRange(int $tenantId, string $start, string $end): float
     {
-        return (float) DB::table('payment_transactions')
+        return (float) $this->db->table('payment_transactions')
             ->where('tenant_id', $tenantId)
             ->where('status', 'captured')
             ->whereBetween('created_at', [$start, $end])
@@ -474,7 +474,7 @@ final class AdvancedAnalyticsService
 
     private function getPeakRevenueDay(int $tenantId, string $start, string $end): string
     {
-        $row = DB::table('balance_transactions')
+        $row = $this->db->table('balance_transactions')
             ->where('tenant_id', $tenantId)
             ->where('type', 'deposit')
             ->whereBetween('created_at', [$start, $end])
@@ -487,7 +487,7 @@ final class AdvancedAnalyticsService
 
     private function getPeakOrderDay(int $tenantId, string $start, string $end): string
     {
-        $row = DB::table('payment_transactions')
+        $row = $this->db->table('payment_transactions')
             ->where('tenant_id', $tenantId)
             ->where('status', 'captured')
             ->whereBetween('created_at', [$start, $end])
@@ -500,12 +500,12 @@ final class AdvancedAnalyticsService
 
     private function getConversionRateForRange(int $tenantId, string $start, string $end): float
     {
-        $total = DB::table('payment_transactions')
+        $total = $this->db->table('payment_transactions')
             ->where('tenant_id', $tenantId)
             ->whereBetween('created_at', [$start, $end])
             ->count();
         if ($total === 0) return 0.0;
-        $captured = DB::table('payment_transactions')
+        $captured = $this->db->table('payment_transactions')
             ->where('tenant_id', $tenantId)
             ->where('status', 'captured')
             ->whereBetween('created_at', [$start, $end])

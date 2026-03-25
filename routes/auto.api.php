@@ -1,49 +1,60 @@
 <?php declare(strict_types=1);
 
-use App\Domains\Taxi\Http\Controllers\TaxiRideController;
-use App\Domains\Taxi\Http\Controllers\TaxiDriverController;
-use App\Domains\Auto\Http\Controllers\AutoServiceOrderController;
-use App\Domains\Auto\Http\Controllers\CarWashBookingController;
-use App\Domains\Auto\Http\Controllers\AutoPartController;
+use App\Http\Controllers\Api\V1\Auto\RideController;
 use Illuminate\Support\Facades\Route;
 
 /**
- * Auto & Taxi API Routes
- * Production 2026.
+ * Auto & Taxi API Routes v1
+ * Production 2026.03.24
  */
 
-Route::middleware(['api', 'auth', 'tenant'])->prefix('api/auto')->group(function () {
-    // ========== Taxi Rides ==========
-    Route::apiResource('taxi/rides', TaxiRideController::class);
+// ===== PUBLIC ENDPOINTS (No Auth) =====
+Route::middleware(['api', 'throttle:60,1'])->prefix('api/v1/auto')->group(function () {
+    // Driver search/listings
+    Route::get('/drivers', [RideController::class, 'listDrivers'])
+        ->name('api.auto.drivers.list');
+    
+    Route::get('/drivers/{driver}', [RideController::class, 'showDriver'])
+        ->name('api.auto.drivers.show');
+    
+    // Pricing estimation
+    Route::post('/rides/estimate', [RideController::class, 'estimatePrice'])
+        ->name('api.auto.rides.estimate');
+});
 
-    // Custom ride actions
-    Route::post('taxi/rides/{ride}/cancel', [TaxiRideController::class, 'cancel'])->name('taxi.rides.cancel');
-    Route::post('taxi/rides/{ride}/rate', [TaxiRideController::class, 'rate'])->name('taxi.rides.rate');
-    Route::get('taxi/rides/{ride}/status', [TaxiRideController::class, 'status'])->name('taxi.rides.status');
-
-    // ========== Taxi Drivers ==========
-    Route::apiResource('drivers', TaxiDriverController::class);
-
-    // Driver location tracking
-    Route::post('drivers/{driver}/location', [TaxiDriverController::class, 'updateLocation'])->name('drivers.update-location');
-    Route::get('drivers/{driver}/location', [TaxiDriverController::class, 'getLocation'])->name('drivers.get-location');
-    Route::post('drivers/{driver}/deactivate', [TaxiDriverController::class, 'deactivate'])->name('drivers.deactivate');
-    Route::post('drivers/{driver}/activate', [TaxiDriverController::class, 'activate'])->name('drivers.activate');
-
+// ===== AUTHENTICATED ENDPOINTS (Auth) =====
+Route::middleware(['api', 'auth:sanctum', 'tenant', 'throttle:60,1'])->prefix('api/v1/auto')->group(function () {
+    // Rides
+    Route::post('/rides', [RideController::class, 'store'])
+        ->name('api.auto.rides.store')
+        ->middleware('throttle:50,1');
+    
+    Route::get('/rides/{ride}', [RideController::class, 'show'])
+        ->name('api.auto.rides.show');
+    
+    Route::post('/rides/{ride}/complete', [RideController::class, 'complete'])
+        ->name('api.auto.rides.complete')
+        ->middleware('throttle:30,1');
+    
+    Route::post('/rides/{ride}/cancel', [RideController::class, 'cancel'])
+        ->name('api.auto.rides.cancel')
+        ->middleware('throttle:30,1');
+    
+    Route::get('/rides', [RideController::class, 'listUserRides'])
+        ->name('api.auto.rides.list');
+    
     // ========== Auto Service Orders ==========
     Route::apiResource('services/orders', AutoServiceOrderController::class);
-
     Route::post('services/orders/{order}/cancel', [AutoServiceOrderController::class, 'cancel'])->name('services.orders.cancel');
     Route::post('services/orders/{order}/complete', [AutoServiceOrderController::class, 'complete'])->name('services.orders.complete');
     Route::get('services', [AutoServiceOrderController::class, 'listServices'])->name('services.list');
-
+    
     // ========== Car Wash Bookings ==========
     Route::apiResource('car-wash/bookings', CarWashBookingController::class);
-
     Route::post('car-wash/bookings/{booking}/cancel', [CarWashBookingController::class, 'cancel'])->name('car-wash.bookings.cancel');
     Route::get('car-wash/availability', [CarWashBookingController::class, 'availability'])->name('car-wash.availability');
     Route::get('car-wash/types', [CarWashBookingController::class, 'washTypes'])->name('car-wash.types');
-
+    
     // ========== Auto Parts (Staff only) ==========
     Route::middleware('staff')->group(function () {
         Route::apiResource('parts', AutoPartController::class);
@@ -52,12 +63,10 @@ Route::middleware(['api', 'auth', 'tenant'])->prefix('api/auto')->group(function
     });
 });
 
-// Public endpoints (no auth required)
-Route::middleware('api')->prefix('api/auto/public')->group(function () {
+// ===== PUBLIC ENDPOINTS (No Auth) =====
+Route::middleware(['api'])->prefix('api/v1/auto')->group(function () {
     Route::get('taxi/drivers', [TaxiDriverController::class, 'list'])->name('taxi.drivers.list');
     Route::get('taxi/drivers/{driver}', [TaxiDriverController::class, 'show'])->name('taxi.drivers.show');
-
     Route::get('services', [AutoServiceOrderController::class, 'listServices'])->name('public.services.list');
-
     Route::get('car-wash/types', [CarWashBookingController::class, 'washTypes'])->name('public.car-wash.types');
 });

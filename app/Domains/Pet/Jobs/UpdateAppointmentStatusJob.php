@@ -29,7 +29,7 @@ final class UpdateAppointmentStatusJob implements ShouldQueue
             $appointment = PetAppointment::find($this->appointmentId);
 
             if (!$appointment) {
-                Log::warning('Pet appointment not found', [
+                $this->log->warning('Pet appointment not found', [
                     'appointment_id' => $this->appointmentId,
                     'correlation_id' => $this->correlationId,
                 ]);
@@ -41,7 +41,7 @@ final class UpdateAppointmentStatusJob implements ShouldQueue
                 'correlation_id' => $this->correlationId,
             ]);
 
-            Log::channel('audit')->info('Pet appointment status updated', [
+            $this->log->channel('audit')->info('Pet appointment status updated', [
                 'appointment_id' => $appointment->id,
                 'clinic_id' => $appointment->clinic_id,
                 'previous_status' => $appointment->getOriginal('status'),
@@ -49,7 +49,7 @@ final class UpdateAppointmentStatusJob implements ShouldQueue
                 'correlation_id' => $this->correlationId,
             ]);
         } catch (\Throwable $e) {
-            Log::error('Failed to update appointment status', [
+            $this->log->error('Failed to update appointment status', [
                 'appointment_id' => $this->appointmentId,
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),

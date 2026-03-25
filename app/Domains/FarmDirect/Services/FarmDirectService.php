@@ -16,7 +16,7 @@ use RuntimeException;
 
 /**
  * FarmDirectService — единственная точка управления заказами Farm-to-table.
- * КАНОН 2026: DI, DB::transaction, audit-лог, fraud-check, rate-limit.
+ * КАНОН 2026: DI, $this->db->transaction, audit-лог, fraud-check, rate-limit.
  */
 final class FarmDirectService
 {
@@ -41,7 +41,7 @@ final class FarmDirectService
         $key           = "farm_order:{$tenantId}:{$clientId}";
 
         if (RateLimiter::tooManyAttempts($key, 10)) {
-            Log::channel('audit')->warning('FarmDirect: rate limit exceeded', [
+            $this->log->channel('audit')->warning('FarmDirect: rate limit exceeded', [
                 'correlation_id' => $correlationId,
                 'client_id'      => $clientId,
                 'tenant_id'      => $tenantId,
@@ -60,7 +60,7 @@ final class FarmDirectService
         );
 
         if ($fraudResult['decision'] === 'block') {
-            Log::channel('audit')->warning('FarmDirect: fraud block', [
+            $this->log->channel('audit')->warning('FarmDirect: fraud block', [
                 'correlation_id' => $correlationId,
                 'ml_score'       => $fraudResult['score'],
                 'client_id'      => $clientId,
@@ -73,14 +73,14 @@ final class FarmDirectService
         if (FarmOrder::where('idempotency_key', $idempotencyKey)->exists()) {
             /** @var FarmOrder $existing */
             $existing = FarmOrder::where('idempotency_key', $idempotencyKey)->firstOrFail();
-            Log::channel('audit')->info('FarmDirect: duplicate order (idempotency)', [
+            $this->log->channel('audit')->info('FarmDirect: duplicate order (idempotency)', [
                 'correlation_id' => $correlationId,
                 'order_id'       => $existing->id,
             ]);
             return $existing;
         }
 
-        return DB::transaction(function () use (
+        return $this->db->transaction(function () use (
             $clientId, $farmId, $items, $deliveryAddress,
             $deliveryDate, $tenantId, $correlationId, $idempotencyKey, $totalAmount
         ) {
@@ -100,7 +100,7 @@ final class FarmDirectService
 
             event(new FarmOrderCreated($order, $correlationId));
 
-            Log::channel('audit')->info('FarmDirect: order created', [
+            $this->log->channel('audit')->info('FarmDirect: order created', [
                 'correlation_id' => $correlationId,
                 'order_id'       => $order->id,
                 'total_amount'   => $totalAmount,
@@ -120,7 +120,7 @@ final class FarmDirectService
 
         $correlationId = Str::uuid()->toString();
 
-        return DB::transaction(function () use ($orderId, $correlationId) {
+        return $this->db->transaction(function () use ($orderId, $correlationId) {
             /** @var FarmOrder $order */
             $order = FarmOrder::lockForUpdate()->findOrFail($orderId);
 
@@ -132,7 +132,7 @@ final class FarmDirectService
 
             event(new FarmOrderShipped($order, $correlationId));
 
-            Log::channel('audit')->info('FarmDirect: order shipped', [
+            $this->log->channel('audit')->info('FarmDirect: order shipped', [
                 'correlation_id' => $correlationId,
                 'order_id'       => $order->id,
             ]);
@@ -150,13 +150,13 @@ final class FarmDirectService
 
         $correlationId = Str::uuid()->toString();
 
-        return DB::transaction(function () use ($orderId, $correlationId) {
+        return $this->db->transaction(function () use ($orderId, $correlationId) {
             /** @var FarmOrder $order */
             $order = FarmOrder::lockForUpdate()->findOrFail($orderId);
 
             $order->update(['status' => 'delivered', 'delivered_at' => now()]);
 
-            Log::channel('audit')->info('FarmDirect: order delivered', [
+            $this->log->channel('audit')->info('FarmDirect: order delivered', [
                 'correlation_id' => $correlationId,
                 'order_id'       => $order->id,
             ]);

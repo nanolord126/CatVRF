@@ -46,7 +46,7 @@ final class WebSocketConnectionService
             $countKey = "ws:connections:count:{$tenantId}";
             cache()->increment($countKey, 1, 3600);
 
-            Log::channel('audit')->info('WebSocket connection registered', [
+            $this->log->channel('audit')->info('WebSocket connection registered', [
                 'connection_id' => $connectionId,
                 'user_id' => $userId,
                 'tenant_id' => $tenantId,
@@ -54,7 +54,7 @@ final class WebSocketConnectionService
 
             return true;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to register connection', [
+            $this->log->channel('audit')->error('Failed to register connection', [
                 'error' => $e->getMessage(),
             ]);
 
@@ -78,14 +78,14 @@ final class WebSocketConnectionService
             $countKey = "ws:connections:count:{$tenantId}";
             cache()->decrement($countKey, 1);
 
-            Log::channel('audit')->info('WebSocket connection unregistered', [
+            $this->log->channel('audit')->info('WebSocket connection unregistered', [
                 'connection_id' => $connectionId,
                 'tenant_id' => $tenantId,
             ]);
 
             return true;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to unregister connection', [
+            $this->log->channel('audit')->error('Failed to unregister connection', [
                 'error' => $e->getMessage(),
             ]);
 
@@ -112,7 +112,7 @@ final class WebSocketConnectionService
 
             return false;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Heartbeat failed', [
+            $this->log->channel('audit')->error('Heartbeat failed', [
                 'error' => $e->getMessage(),
             ]);
 
@@ -153,7 +153,7 @@ final class WebSocketConnectionService
 
             return false;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to add subscription', [
+            $this->log->channel('audit')->error('Failed to add subscription', [
                 'error' => $e->getMessage(),
             ]);
 
@@ -184,7 +184,7 @@ final class WebSocketConnectionService
 
             return false;
         } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to remove subscription', [
+            $this->log->channel('audit')->error('Failed to remove subscription', [
                 'error' => $e->getMessage(),
             ]);
 

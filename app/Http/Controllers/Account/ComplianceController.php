@@ -48,7 +48,7 @@ final class ComplianceController extends Controller
         }
 
         try {
-            Log::channel('audit')->info('Testing compliance integration', [
+            $this->log->channel('audit')->info('Testing compliance integration', [
                 'type' => $type,
                 'inn' => $inn,
                 'correlation_id' => $correlationId
@@ -63,7 +63,7 @@ final class ComplianceController extends Controller
             ]);
 
         } catch (Throwable $e) {
-            Log::error('Compliance test failed', [
+            $this->log->error('Compliance test failed', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'correlation_id' => $correlationId
@@ -93,7 +93,7 @@ final class ComplianceController extends Controller
             'api_token.required' => 'API Токен обязателен.',
         ]);
 
-        return DB::transaction(function () use ($request, $type, $correlationId) {
+        return $this->db->transaction(function () use ($request, $type, $correlationId) {
             try {
                 $integration = ComplianceIntegration::updateOrCreate(
                     [
@@ -113,7 +113,7 @@ final class ComplianceController extends Controller
                 $integration->setApiTokenAttribute($request->input('api_token'));
                 $integration->save();
 
-                Log::channel('audit')->info('Compliance integration connected', [
+                $this->log->channel('audit')->info('Compliance integration connected', [
                     'id' => $integration->id,
                     'type' => $type,
                     'correlation_id' => $correlationId
@@ -126,7 +126,7 @@ final class ComplianceController extends Controller
                 ]);
 
             } catch (Throwable $e) {
-                Log::channel('audit')->error('Failed to connect compliance integration', [
+                $this->log->channel('audit')->error('Failed to connect compliance integration', [
                     'type' => $type,
                     'error' => $e->getMessage(),
                     'correlation_id' => $correlationId
@@ -151,7 +151,7 @@ final class ComplianceController extends Controller
         try {
             ComplianceIntegration::where('type', $type)->delete();
 
-            Log::channel('audit')->info('Compliance integration disconnected', [
+            $this->log->channel('audit')->info('Compliance integration disconnected', [
                 'type' => $type,
                 'correlation_id' => $correlationId
             ]);

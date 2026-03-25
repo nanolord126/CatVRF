@@ -35,8 +35,8 @@ final class VenueBookingService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-            $bookingId = DB::transaction(function () use ($venueId, $eventName, $eventDate, $guestCount, $correlationId) {
-                $bookingId = DB::table('venue_bookings')->insertGetId([
+            $bookingId = $this->db->transaction(function () use ($venueId, $eventName, $eventDate, $guestCount, $correlationId) {
+                $bookingId = $this->db->table('venue_bookings')->insertGetId([
                     'venue_id' => $venueId,
                     'event_name' => $eventName,
                     'event_date' => $eventDate,
@@ -46,7 +46,7 @@ final class VenueBookingService
                     'created_at' => now(),
                 ]);
 
-                Log::channel('audit')->info('Venue booked', [
+                $this->log->channel('audit')->info('Venue booked', [
                     'booking_id' => $bookingId,
                     'venue_id' => $venueId,
                     'guests' => $guestCount,
@@ -58,7 +58,7 @@ final class VenueBookingService
 
             return $bookingId;
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Venue booking failed', [
+            $this->log->channel('audit')->error('Venue booking failed', [
                 'venue_id' => $venueId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -84,12 +84,12 @@ final class VenueBookingService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-            DB::transaction(function () use ($bookingId, $correlationId) {
-                DB::table('venue_bookings')
+            $this->db->transaction(function () use ($bookingId, $correlationId) {
+                $this->db->table('venue_bookings')
                     ->where('id', $bookingId)
                     ->update(['status' => 'confirmed']);
 
-                Log::channel('audit')->info('Venue booking confirmed', [
+                $this->log->channel('audit')->info('Venue booking confirmed', [
                     'booking_id' => $bookingId,
                     'correlation_id' => $correlationId,
                 ]);
@@ -97,7 +97,7 @@ final class VenueBookingService
 
             return true;
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Venue booking confirmation failed', [
+            $this->log->channel('audit')->error('Venue booking confirmation failed', [
                 'booking_id' => $bookingId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

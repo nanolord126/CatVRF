@@ -45,21 +45,21 @@ class RecurringPaymentService
                         'status' => 'failed',
                         'error' => $e->getMessage(),
                     ];
-                    Log::error('Subscription charge failed', [
+                    $this->log->error('Subscription charge failed', [
                         'subscription_id' => $subscription->id,
                         'error' => $e->getMessage(),
                     ]);
                 }
             }
 
-            Log::info('Recurring payments processed', [
+            $this->log->info('Recurring payments processed', [
                 'processed' => $results['processed'],
                 'failed' => $results['failed'],
             ]);
 
             return $results;
         } catch (Exception $e) {
-            Log::error('Process recurring payments failed', ['error' => $e->getMessage()]);
+            $this->log->error('Process recurring payments failed', ['error' => $e->getMessage()]);
             throw $e;
         }
     }
@@ -69,7 +69,7 @@ class RecurringPaymentService
      */
     private function chargeSubscription(Subscription $subscription): void
     {
-        DB::beginTransaction();
+        $this->db->beginTransaction();
         try {
             // Получить сохранённую карту
             $card = $subscription->walletCard;
@@ -100,16 +100,16 @@ class RecurringPaymentService
                 'last_payment_at' => Carbon::now(),
             ]);
 
-            Log::info('Subscription charged successfully', [
+            $this->log->info('Subscription charged successfully', [
                 'subscription_id' => $subscription->id,
                 'amount' => $subscription->amount,
                 'next_payment' => $subscription->next_payment_at,
             ]);
 
-            DB::commit();
+            $this->db->commit();
         } catch (Exception $e) {
-            DB::rollBack();
-            Log::error('Failed to charge subscription', [
+            $this->db->rollBack();
+            $this->log->error('Failed to charge subscription', [
                 'subscription_id' => $subscription->id,
                 'error' => $e->getMessage(),
             ]);
@@ -129,7 +129,7 @@ class RecurringPaymentService
             }
 
             /** @var User|null $user */
-            $user = Auth::user();
+            $user = $this->auth->user();
             if (!$user) {
                 throw new Exception('User not authenticated');
             }
@@ -146,7 +146,7 @@ class RecurringPaymentService
                 'metadata' => $data['metadata'] ?? [],
             ]);
 
-            Log::info('Subscription created', [
+            $this->log->info('Subscription created', [
                 'subscription_id' => $subscription->id,
                 'frequency' => $data['frequency'],
                 'amount' => $data['amount'],
@@ -154,7 +154,7 @@ class RecurringPaymentService
 
             return $subscription;
         } catch (Exception $e) {
-            Log::error('Failed to create subscription', ['error' => $e->getMessage()]);
+            $this->log->error('Failed to create subscription', ['error' => $e->getMessage()]);
             throw $e;
         }
     }
@@ -166,12 +166,12 @@ class RecurringPaymentService
     {
         try {
             $subscription->cancel($reason);
-            Log::info('Subscription cancelled', [
+            $this->log->info('Subscription cancelled', [
                 'subscription_id' => $subscription->id,
                 'reason' => $reason,
             ]);
         } catch (Exception $e) {
-            Log::error('Failed to cancel subscription', [
+            $this->log->error('Failed to cancel subscription', [
                 'subscription_id' => $subscription->id,
                 'error' => $e->getMessage(),
             ]);
@@ -199,7 +199,7 @@ class RecurringPaymentService
     public function updateCard(Subscription $subscription, int $walletCardId): Subscription
     {
         $subscription->update(['wallet_card_id' => $walletCardId]);
-        Log::info('Subscription card updated', [
+        $this->log->info('Subscription card updated', [
             'subscription_id' => $subscription->id,
             'wallet_card_id' => $walletCardId,
         ]);

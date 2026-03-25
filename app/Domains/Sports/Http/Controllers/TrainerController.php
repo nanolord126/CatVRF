@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Sports\Http\Controllers;
@@ -6,7 +8,16 @@ use App\Domains\Sports\Models\Trainer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Str;
 
-final class TrainerController
+final /**
+ * TrainerController
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class TrainerController
 {
     public function byStudio(int $studioId): JsonResponse
     {

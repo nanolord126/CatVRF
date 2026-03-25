@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Auto\Filament\Resources\VehicleInspectionResource\Pages;
@@ -7,7 +9,16 @@ use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Support\Facades\Log;
 
-final class EditVehicleInspection extends EditRecord
+final /**
+ * EditVehicleInspection
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class EditVehicleInspection extends EditRecord
 {
     protected static string $resource = VehicleInspectionResource::class;
 
@@ -16,7 +27,7 @@ final class EditVehicleInspection extends EditRecord
         return [
             Actions\DeleteAction::make()
                 ->after(function () {
-                    Log::channel('audit')->info('VehicleInspection deleted', [
+                    $this->log->channel('audit')->info('VehicleInspection deleted', [
                         'correlation_id' => $this->record->correlation_id,
                         'inspection_id' => $this->record->id,
                     ]);
@@ -26,7 +37,7 @@ final class EditVehicleInspection extends EditRecord
 
     protected function afterSave(): void
     {
-        Log::channel('audit')->info('VehicleInspection updated', [
+        $this->log->channel('audit')->info('VehicleInspection updated', [
             'correlation_id' => $this->record->correlation_id,
             'inspection_id' => $this->record->id,
             'status' => $this->record->status,

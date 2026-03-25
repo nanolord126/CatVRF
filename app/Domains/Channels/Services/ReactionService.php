@@ -75,7 +75,7 @@ final class ReactionService
         $fraudScore = $this->calculateFraudScore($post, $userId, $sessionHash, $ipAddress);
 
         if ($fraudScore > 0.8) {
-            Log::channel('fraud_alert')->warning('Reaction fraud detected', [
+            $this->log->channel('fraud_alert')->warning('Reaction fraud detected', [
                 'correlation_id' => $correlationId,
                 'post_id'        => $post->id,
                 'user_id'        => $userId,
@@ -86,9 +86,9 @@ final class ReactionService
             throw new \RuntimeException('Реакция заблокирована системой безопасности.');
         }
 
-        DB::transaction(function () use ($post, $emoji, $userId, $sessionHash, $ipAddress, $fraudScore, $correlationId): void {
+        $this->db->transaction(function () use ($post, $emoji, $userId, $sessionHash, $ipAddress, $fraudScore, $correlationId): void {
             // Записать лог реакции
-            PostReactionLog::create([
+            PostReaction$this->log->create([
                 'post_id'        => $post->id,
                 'tenant_id'      => $post->tenant_id,
                 'user_id'        => $userId,
@@ -105,26 +105,26 @@ final class ReactionService
             $current = $post->reactions ?? [];
             $current[$emoji] = (int) ($current[$emoji] ?? 0) + 1;
 
-            DB::table('posts')
+            $this->db->table('posts')
                 ->where('id', $post->id)
                 ->update([
                     'reactions'       => json_encode($current),
-                    'reactions_count' => DB::raw('reactions_count + 1'),
+                    'reactions_count' => $this->db->raw('reactions_count + 1'),
                 ]);
 
             // Обновить daily-статистику
-            DB::table('post_stats_daily')->updateOrInsert(
+            $this->db->table('post_stats_daily')->updateOrInsert(
                 ['post_id' => $post->id, 'stat_date' => today()],
                 [
                     'tenant_id'       => $post->tenant_id,
-                    'reactions_total' => DB::raw('reactions_total + 1'),
+                    'reactions_total' => $this->db->raw('reactions_total + 1'),
                     'updated_at'      => now(),
                 ]
             );
         });
 
         // Инвалидировать кэш поста
-        Cache::forget("post:{$post->id}");
+        $this->cache->forget("post:{$post->id}");
 
         return $this->getReactions($post->refresh());
     }
@@ -142,8 +142,8 @@ final class ReactionService
     ): array {
         $correlationId = $correlationId ?: Str::uuid()->toString();
 
-        DB::transaction(function () use ($post, $emoji, $userId, $sessionHash, $ipAddress, $correlationId): void {
-            PostReactionLog::create([
+        $this->db->transaction(function () use ($post, $emoji, $userId, $sessionHash, $ipAddress, $correlationId): void {
+            PostReaction$this->log->create([
                 'post_id'        => $post->id,
                 'tenant_id'      => $post->tenant_id,
                 'user_id'        => $userId,
@@ -165,15 +165,15 @@ final class ReactionService
                 $current[$emoji] = $val;
             }
 
-            DB::table('posts')
+            $this->db->table('posts')
                 ->where('id', $post->id)
                 ->update([
                     'reactions'       => json_encode($current),
-                    'reactions_count' => DB::raw('GREATEST(reactions_count - 1, 0)'),
+                    'reactions_count' => $this->db->raw('GREATEST(reactions_count - 1, 0)'),
                 ]);
         });
 
-        Cache::forget("post:{$post->id}");
+        $this->cache->forget("post:{$post->id}");
 
         return $this->getReactions($post->refresh());
     }
@@ -209,7 +209,7 @@ final class ReactionService
      */
     public function hasReacted(Post $post, string $emoji, ?int $userId, string $sessionHash): bool
     {
-        return PostReactionLog::where('post_id', $post->id)
+        return PostReaction$this->log->where('post_id', $post->id)
             ->where('emoji', $emoji)
             ->where(function ($q) use ($userId, $sessionHash): void {
                 if ($userId !== null) {
@@ -231,7 +231,7 @@ final class ReactionService
         $score = 0.0;
 
         // 1. Много реакций с одного IP за 1 час
-        $recentFromIp = PostReactionLog::where('ip_address', $ipAddress)
+        $recentFromIp = PostReaction$this->log->where('ip_address', $ipAddress)
             ->where('created_at', '>=', now()->subHour())
             ->count();
 
@@ -242,7 +242,7 @@ final class ReactionService
         }
 
         // 2. Много реакций на один пост за 5 минут
-        $recentOnPost = PostReactionLog::where('post_id', $post->id)
+        $recentOnPost = PostReaction$this->log->where('post_id', $post->id)
             ->when($userId, fn ($q) => $q->where('user_id', $userId))
             ->where('created_at', '>=', now()->subMinutes(5))
             ->count();
@@ -253,7 +253,7 @@ final class ReactionService
 
         // 3. Новый пользователь/сессия — первые 10 минут
         if ($userId === null && $sessionHash !== '') {
-            $firstActivity = PostReactionLog::where('session_hash', $sessionHash)
+            $firstActivity = PostReaction$this->log->where('session_hash', $sessionHash)
                 ->orderBy('reacted_at')
                 ->first();
 

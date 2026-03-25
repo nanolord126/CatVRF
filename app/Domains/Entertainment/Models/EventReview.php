@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php declare(strict_types=1);
 
 namespace App\Domains\Entertainment\Models;
@@ -7,7 +9,16 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-final class EventReview extends Model
+final /**
+ * EventReview
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class EventReview extends Model
 {
     use SoftDeletes;
 
@@ -30,7 +41,7 @@ final class EventReview extends Model
 
     public function entertainmentEvent(): BelongsTo
     {
-        return $this->belongsTo(EntertainmentEvent::class, 'entertainment_event_id');
+        return $this->belongsTo(Entertainment$this->event->class, 'entertainment_event_id');
     }
 
     public function reviewer(): BelongsTo

@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 namespace Modules\Analytics\Services;
@@ -7,8 +9,19 @@ use Modules\Analytics\Models\BehavioralEvent;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
+/**
+ * MarketingAutomationService
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
 class MarketingAutomationService
 {
+    // Dependencies injected via constructor
+    // Add private readonly properties here
     /**
      * Кросс-вертикальный апселл: Цветы после отеля.
      */
@@ -16,7 +29,7 @@ class MarketingAutomationService
     {
         // 1. Проверяем, не предлагали ли уже
         // 2. Генерируем оффер
-        Log::info("Triggering cross-sell Flowers for User {$user->id} after Hotel Booking {$hotelBookingId}");
+        $this->log->info("Triggering cross-sell Flowers for User {$user->id} after Hotel Booking {$hotelBookingId}");
 
         // Эффект: отправка Push-уведомления со скидкой 10% на букет
         $correlationId = session()->get('correlation_id', Str::uuid()->toString());
@@ -29,7 +42,7 @@ class MarketingAutomationService
      */
     public function getPersonalizedDiscount(User $user, string $vertical): float
     {
-        $stats = BehavioralEvent::where('user_id', $user->id)
+        $stats = Behavioral$this->event->where('user_id', $user->id)
             ->where('event_type', 'view')
             ->where('vertical', $vertical)
             ->get();

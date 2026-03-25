@@ -26,7 +26,7 @@ final class TicketSalesService
 
 
         try {
-            Log::channel('audit')->info('Creating ticket sale', [
+            $this->log->channel('audit')->info('Creating ticket sale', [
                 'event_id' => $eventId,
                 'ticket_type_id' => $ticketTypeId,
                 'quantity' => $quantity,
@@ -43,8 +43,8 @@ final class TicketSalesService
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
 
-            $sale = DB::transaction(function () use ($eventId, $ticketTypeId, $quantity, $buyerId, $correlationId) {
-                $event = Event::findOrFail($eventId);
+            $sale = $this->db->transaction(function () use ($eventId, $ticketTypeId, $quantity, $buyerId, $correlationId) {
+                $event = $this->event->findOrFail($eventId);
                 $ticketType = TicketType::findOrFail($ticketTypeId);
 
                 if ($ticketType->getAvailableCount() < $quantity) {
@@ -79,14 +79,14 @@ final class TicketSalesService
                 return $sale;
             });
 
-            Log::channel('audit')->info('Ticket sale created', [
+            $this->log->channel('audit')->info('Ticket sale created', [
                 'sale_id' => $sale->id,
                 'correlation_id' => $correlationId,
             ]);
 
             return $sale;
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to create ticket sale', [
+            $this->log->channel('audit')->error('Failed to create ticket sale', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -99,7 +99,7 @@ final class TicketSalesService
 
 
         try {
-            Log::channel('audit')->info('Confirming ticket sale payment', [
+            $this->log->channel('audit')->info('Confirming ticket sale payment', [
                 'sale_id' => $sale->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -110,14 +110,14 @@ final class TicketSalesService
                 'paid_at' => now(),
             ]);
 
-            Log::channel('audit')->info('Ticket sale payment confirmed', [
+            $this->log->channel('audit')->info('Ticket sale payment confirmed', [
                 'sale_id' => $sale->id,
                 'correlation_id' => $correlationId,
             ]);
 
             return $sale;
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to confirm payment', [
+            $this->log->channel('audit')->error('Failed to confirm payment', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -130,7 +130,7 @@ final class TicketSalesService
 
 
         try {
-            Log::channel('audit')->info('Refunding ticket sale', [
+            $this->log->channel('audit')->info('Refunding ticket sale', [
                 'sale_id' => $sale->id,
                 'reason' => $reason,
                 'correlation_id' => $correlationId,
@@ -144,7 +144,7 @@ final class TicketSalesService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-DB::transaction(function () use ($sale) {
+$this->db->transaction(function () use ($sale) {
                 $sale->update([
                     'sale_status' => 'refunded',
                     'refunded_at' => now(),
@@ -154,14 +154,14 @@ DB::transaction(function () use ($sale) {
                     ?->decrement('sold_quantity', $sale->quantity);
             });
 
-            Log::channel('audit')->info('Ticket sale refunded', [
+            $this->log->channel('audit')->info('Ticket sale refunded', [
                 'sale_id' => $sale->id,
                 'correlation_id' => $correlationId,
             ]);
 
             return true;
         } catch (Throwable $e) {
-            Log::channel('audit')->error('Failed to refund ticket sale', [
+            $this->log->channel('audit')->error('Failed to refund ticket sale', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);

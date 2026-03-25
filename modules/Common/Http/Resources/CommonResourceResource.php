@@ -1,3 +1,5 @@
+declare(strict_types=1);
+
 <?php
 
 declare(strict_types=1);
@@ -7,7 +9,16 @@ namespace App\Domains\Common\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-final class CommonResourceResource extends JsonResource
+final /**
+ * CommonResourceResource
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class CommonResourceResource extends JsonResource
 {
     public function toArray(Request $request): array
     {

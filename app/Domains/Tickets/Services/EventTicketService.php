@@ -30,8 +30,8 @@ final class EventTicketService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-            DB::transaction(function () use ($eventId, $ticketTypeId, $correlationId) {
-                DB::table('ticket_orders')->insert([
+            $this->db->transaction(function () use ($eventId, $ticketTypeId, $correlationId) {
+                $this->db->table('ticket_orders')->insert([
                     'event_id' => $eventId,
                     'ticket_type_id' => $ticketTypeId,
                     'status' => 'sold',
@@ -39,7 +39,7 @@ final class EventTicketService
                     'created_at' => now(),
                 ]);
 
-                Log::channel('audit')->info('Ticket purchased', [
+                $this->log->channel('audit')->info('Ticket purchased', [
                     'event_id' => $eventId,
                     'ticket_type_id' => $ticketTypeId,
                     'correlation_id' => $correlationId,
@@ -48,7 +48,7 @@ final class EventTicketService
 
             return true;
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Ticket purchase failed', [
+            $this->log->channel('audit')->error('Ticket purchase failed', [
                 'event_id' => $eventId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -74,12 +74,12 @@ final class EventTicketService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-            DB::transaction(function () use ($ticketOrderId, $correlationId) {
-                DB::table('ticket_orders')
+            $this->db->transaction(function () use ($ticketOrderId, $correlationId) {
+                $this->db->table('ticket_orders')
                     ->where('id', $ticketOrderId)
                     ->update(['status' => 'refunded', 'refunded_at' => now()]);
 
-                Log::channel('audit')->info('Ticket refunded', [
+                $this->log->channel('audit')->info('Ticket refunded', [
                     'ticket_order_id' => $ticketOrderId,
                     'correlation_id' => $correlationId,
                 ]);
@@ -87,7 +87,7 @@ final class EventTicketService
 
             return true;
         } catch (\Exception $e) {
-            Log::channel('audit')->error('Ticket refund failed', [
+            $this->log->channel('audit')->error('Ticket refund failed', [
                 'ticket_order_id' => $ticketOrderId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

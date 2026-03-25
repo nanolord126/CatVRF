@@ -10,7 +10,7 @@ use Filament\Tables\Table;
 
 final class EntertainmentEventResource extends Resource
 {
-    protected static ?string $model = EntertainmentEvent::class;
+    protected static ?string $model = Entertainment$this->event->class;
 
     protected static ?string $navigationIcon = 'heroicon-o-ticket';
 
@@ -85,8 +85,8 @@ final class EntertainmentEventResource extends Resource
     {
         return [
             'index' => \App\Domains\Entertainment\Filament\Resources\EntertainmentEventResource\Pages\ListEntertainmentEvents::class,
-            'create' => \App\Domains\Entertainment\Filament\Resources\EntertainmentEventResource\Pages\CreateEntertainmentEvent::class,
-            'edit' => \App\Domains\Entertainment\Filament\Resources\EntertainmentEventResource\Pages\EditEntertainmentEvent::class,
+            'create' => \App\Domains\Entertainment\Filament\Resources\EntertainmentEventResource\Pages\CreateEntertainment$this->event->class,
+            'edit' => \App\Domains\Entertainment\Filament\Resources\EntertainmentEventResource\Pages\EditEntertainment$this->event->class,
         ];
     }
 }

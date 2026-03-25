@@ -31,7 +31,7 @@ final class MeatShopsOrderController extends BaseApiController
 
             return $this->successResponse($orders);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('MeatShops orders list error', ['error' => $e->getMessage()]);
+            $this->log->channel('audit')->error('MeatShops orders list error', ['error' => $e->getMessage()]);
             return $this->errorResponse('Failed to fetch orders', 500);
         }
     }
@@ -53,11 +53,11 @@ final class MeatShopsOrderController extends BaseApiController
                 correlationId: $correlationId,
             );
 
-            Log::channel('audit')->info('MeatShops order created', ['order_id' => $order->id]);
+            $this->log->channel('audit')->info('MeatShops order created', ['order_id' => $order->id]);
 
             return $this->successResponse($order, 'Order created successfully', 201);
         } catch (\Exception $e) {
-            Log::channel('audit')->error('MeatShops order creation failed', ['error' => $e->getMessage()]);
+            $this->log->channel('audit')->error('MeatShops order creation failed', ['error' => $e->getMessage()]);
             return $this->errorResponse('Failed to create order: ' . $e->getMessage(), 400);
         }
     }

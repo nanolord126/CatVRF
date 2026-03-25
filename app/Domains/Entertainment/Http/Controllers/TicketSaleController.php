@@ -42,7 +42,7 @@ final class TicketSaleController
 
             $ticket->update(['status' => 'used', 'used_at' => now()]);
 
-            Log::channel('audit')->info('Ticket validated', ['ticket_id' => $id]);
+            $this->log->channel('audit')->info('Ticket validated', ['ticket_id' => $id]);
 
             return response()->json(['success' => true, 'data' => $ticket, 'correlation_id' => Str::uuid()]);
         } catch (\Throwable $e) {
