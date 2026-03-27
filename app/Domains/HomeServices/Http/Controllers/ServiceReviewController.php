@@ -71,7 +71,7 @@ final class ServiceReviewController
                 'job_id' => 'nullable|integer|exists:service_jobs,id',
             ]);
 
-            $review = \$this->db->transaction(fn() => $this->reviewService->createReview(
+            $review = \DB::transaction(fn() => $this->reviewService->createReview(
                 $validated['contractor_id'],
                 auth()->id(),
                 $validated['rating'],
@@ -81,7 +81,7 @@ final class ServiceReviewController
                 $correlationId
             ));
 
-            $this->log->channel('audit')->info('HomeService review created', [
+            Log::channel('audit')->info('HomeService review created', [
                 'correlation_id' => $correlationId,
                 'review_id'      => $review->id ?? null,
                 'contractor_id'  => $validated['contractor_id'],
@@ -110,7 +110,7 @@ final class ServiceReviewController
                 'content' => 'sometimes|string',
             ]);
 
-            $review = \$this->db->transaction(fn() => $this->reviewService->updateReview(
+            $review = \DB::transaction(fn() => $this->reviewService->updateReview(
                 $review,
                 $validated['rating'] ?? $review->rating,
                 $validated['title'] ?? $review->title,

@@ -2,8 +2,8 @@
 
 namespace App\Livewire\Channels;
 
-use App\Domains\Channels\Models\Post;
-use App\Domains\Channels\Services\ReactionService;
+use App\Domains\Content\Channels\Models\Post;
+use App\Domains\Content\Channels\Services\ReactionService;
 use Livewire\Component;
 use Illuminate\View\View;
 

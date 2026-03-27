@@ -1,6 +1,7 @@
-declare(strict_types=1);
+<?php
 
-<?php declare(strict_types=1); namespace App\Filament\Tenant\Resources\Electronics\Pages; use App\Filament\Tenant\Resources\ElectronicsResource; use Filament\Resources\Pages\ListRecords; final /**
+declare(strict_types=1);
+ namespace App\Filament\Tenant\Resources\Electronics\Pages; use App\Filament\Tenant\Resources\ElectronicsResource; use Filament\Resources\Pages\ListRecords; final /**
  * ListElectronics
  * 
  * Основной класс для работы с платформой CatVRF.

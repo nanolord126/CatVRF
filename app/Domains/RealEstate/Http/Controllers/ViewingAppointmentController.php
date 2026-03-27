@@ -55,7 +55,7 @@ final class ViewingAppointmentController
                 'status' => 'scheduled',
             ]);
 
-            $this->log->channel('audit')->info('Viewing appointment created', [
+            Log::channel('audit')->info('Viewing appointment created', [
                 'appointment_id' => $appointment->id,
             ]);
 

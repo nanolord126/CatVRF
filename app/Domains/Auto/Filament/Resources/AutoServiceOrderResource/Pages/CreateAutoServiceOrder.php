@@ -43,7 +43,7 @@ final class CreateAutoServiceOrder extends CreateRecord
             $this->halt();
         }
 
-        $this->log->channel('audit')->info('Creating auto service order', [
+        Log::channel('audit')->info('Creating auto service order', [
             'correlation_id' => $correlationId,
             'tenant_id' => filament()->getTenant()->id,
             'user_id' => auth()->id(),
@@ -55,14 +55,14 @@ final class CreateAutoServiceOrder extends CreateRecord
 
     protected function afterCreate(): void
     {
-        $this->db->transaction(function () {
+        DB::transaction(function () {
             // Событие создания заказа-наряда
             event(new AutoServiceOrderCreated(
                 $this->record,
                 $this->record->correlation_id
             ));
 
-            $this->log->channel('audit')->info('Auto service order created successfully', [
+            Log::channel('audit')->info('Auto service order created successfully', [
                 'correlation_id' => $this->record->correlation_id,
                 'order_id' => $this->record->id,
                 'service_type' => $this->record->service_type,

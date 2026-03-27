@@ -23,7 +23,7 @@ class GeoLogisticsService
     {
         $apiKey = config('geologistics.api_key', DopplerService::get('GEO_ROUTING_KEY'));
         
-        $this->log->info('Geo: Routing request', [
+        Log::info('Geo: Routing request', [
             'from' => $from,
             'to' => $to,
             'correlation_id' => request()->header('X-Correlation-ID')

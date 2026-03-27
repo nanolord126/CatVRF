@@ -134,7 +134,7 @@ final class CDNConfigurationService
             default => ['status' => 'error', 'message' => 'Unknown provider'],
         };
 
-        $this->log->channel('performance')->info('CDN cache purged', [
+        Log::channel('performance')->info('CDN cache purged', [
             'provider' => $provider,
             'paths_count' => count($paths),
             'result' => $result,
@@ -157,7 +157,7 @@ final class CDNConfigurationService
             default => ['status' => 'error', 'message' => 'Unknown provider'],
         };
 
-        $this->log->channel('performance')->warning('All CDN cache purged', [
+        Log::channel('performance')->warning('All CDN cache purged', [
             'provider' => $provider,
         ]);
 

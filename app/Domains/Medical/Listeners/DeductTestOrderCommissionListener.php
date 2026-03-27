@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Medical\Listeners;
 
@@ -24,7 +25,7 @@ class DeductTestOrderCommissionListener implements ShouldQueue
     public function handle(TestOrderCreated $event): void
     {
         try {
-            $this->db->transaction(function () use ($event) {
+            DB::transaction(function () use ($event) {
                 $testOrder = $event->testOrder;
                 $commission = $testOrder->commission_amount;
 
@@ -45,7 +46,7 @@ class DeductTestOrderCommissionListener implements ShouldQueue
                     'correlation_id' => $event->correlationId,
                 ]);
 
-                $this->log->channel('audit')->info('Medical test order commission deducted', [
+                Log::channel('audit')->info('Medical test order commission deducted', [
                     'test_order_id' => $testOrder->id,
                     'patient_id' => $testOrder->patient_id,
                     'clinic_id' => $testOrder->clinic_id,
@@ -54,7 +55,7 @@ class DeductTestOrderCommissionListener implements ShouldQueue
                 ]);
             });
         } catch (Throwable $e) {
-            $this->log->channel('audit')->error('Failed to deduct test order commission', [
+            Log::channel('audit')->error('Failed to deduct test order commission', [
                 'test_order_id' => $event->testOrder->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $event->correlationId,

@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Jobs\Bonus;
 
@@ -40,13 +41,13 @@ class BonusUnlockJob implements ShouldQueue
             $unlockedCount = $bonusService->unlockExpiredHolds();
 
             if ($unlockedCount > 0) {
-                $this->log->channel('audit')->info('Bonus unlock job completed', [
+                Log::channel('audit')->info('Bonus unlock job completed', [
                     'correlation_id' => $this->correlationId,
                     'unlocked_count' => $unlockedCount,
                 ]);
             }
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Bonus unlock job failed', [
+            Log::channel('audit')->error('Bonus unlock job failed', [
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

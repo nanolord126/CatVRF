@@ -59,7 +59,7 @@ final class WebhookSignatureMiddleware
         };
 
         if (!$isValid) {
-            \$this->log->channel('webhook_errors')->warning('Invalid webhook signature', [
+            \Log::channel('webhook_errors')->warning('Invalid webhook signature', [
                 'gateway' => $gateway,
                 'ip' => $request->ip(),
                 'signature' => $request->header('X-Signature', 'missing'),

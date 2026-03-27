@@ -18,7 +18,7 @@ final class ApiKeyAuthentication
         $apiKey = $request->header('X-API-Key');
 
         if (!$apiKey) {
-            $this->log->channel('audit')->warning('API request without X-API-Key header', [
+            Log::channel('audit')->warning('API request without X-API-Key header', [
                 'ip' => $request->ip(),
                 'path' => $request->path(),
                 'correlation_id' => $request->header('X-Correlation-ID'),
@@ -41,7 +41,7 @@ final class ApiKeyAuthentication
             ->first();
 
         if (!$record) {
-            $this->log->channel('audit')->warning('Invalid or expired API key attempted', [
+            Log::channel('audit')->warning('Invalid or expired API key attempted', [
                 'key_preview' => substr($apiKey, 0, 10) . '...',
                 'ip' => $request->ip(),
                 'correlation_id' => $request->header('X-Correlation-ID'),
@@ -64,7 +64,7 @@ final class ApiKeyAuthentication
             'api_abilities' => json_decode($record->abilities, true) ?? [],
         ]);
 
-        $this->log->channel('audit')->info('API key authenticated', [
+        Log::channel('audit')->info('API key authenticated', [
             'key_id' => $record->id,
             'tenant_id' => $record->tenant_id,
             'correlation_id' => $request->header('X-Correlation-ID'),

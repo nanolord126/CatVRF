@@ -26,7 +26,7 @@ final class TeamPresenceChanged implements ShouldBroadcast
         public readonly int $affectedUserId,
         public readonly string $correlationId
     ) {
-        $this->log->channel('audit')->info('TeamPresenceChanged event broadcasted', [
+        Log::channel('audit')->info('TeamPresenceChanged event broadcasted', [
             'tenant_id' => $this->tenantId,
             'document_type' => $this->documentType,
             'document_id' => $this->documentId,

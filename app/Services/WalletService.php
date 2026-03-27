@@ -13,7 +13,7 @@ use Illuminate\Support\Str;
  * Production 2026 CANON
  *
  * Manages wallet operations: hold, release, credit, debit
- * - Atomic transactions ($this->db->transaction)
+ * - Atomic transactions (DB::transaction)
  * - Optimistic locking (lockForUpdate)
  * - Audit logging on every operation
  * - Correlation ID tracing
@@ -35,13 +35,13 @@ final class WalletService
      */
     public function holdAmount(int $walletId, int $amount, string $reason, string $correlationId): bool
     {
-        return $this->db->transaction(function () use ($walletId, $amount, $reason, $correlationId): bool {
+        return DB::transaction(function () use ($walletId, $amount, $reason, $correlationId): bool {
             $wallet = Wallet::lockForUpdate()->findOrFail($walletId);
 
             // Check balance + hold_stock
             $availableBalance = $wallet->current_balance - $wallet->hold_amount;
             if ($availableBalance < $amount) {
-                $this->log->channel('audit')->warning('Insufficient funds for hold', [
+                Log::channel('audit')->warning('Insufficient funds for hold', [
                     'correlation_id' => $correlationId,
                     'wallet_id' => $walletId,
                     'requested' => $amount,
@@ -66,7 +66,7 @@ final class WalletService
                 'correlation_id' => $correlationId,
             ]);
 
-            $this->log->channel('audit')->info('Hold amount', [
+            Log::channel('audit')->info('Hold amount', [
                 'correlation_id' => $correlationId,
                 'wallet_id' => $walletId,
                 'amount' => $amount,
@@ -90,7 +90,7 @@ final class WalletService
      */
     public function releaseHold(int $walletId, int $amount, string $reason, string $correlationId): bool
     {
-        return $this->db->transaction(function () use ($walletId, $amount, $reason, $correlationId): bool {
+        return DB::transaction(function () use ($walletId, $amount, $reason, $correlationId): bool {
             $wallet = Wallet::lockForUpdate()->findOrFail($walletId);
 
             if ($wallet->hold_amount < $amount) {
@@ -113,7 +113,7 @@ final class WalletService
                 'correlation_id' => $correlationId,
             ]);
 
-            $this->log->channel('audit')->info('Release hold', [
+            Log::channel('audit')->info('Release hold', [
                 'correlation_id' => $correlationId,
                 'wallet_id' => $walletId,
                 'amount' => $amount,
@@ -136,7 +136,7 @@ final class WalletService
      */
     public function debit(int $walletId, int $amount, string $reason, string $correlationId): bool
     {
-        return $this->db->transaction(function () use ($walletId, $amount, $reason, $correlationId): bool {
+        return DB::transaction(function () use ($walletId, $amount, $reason, $correlationId): bool {
             $wallet = Wallet::lockForUpdate()->findOrFail($walletId);
 
             if ($wallet->current_balance < $amount) {
@@ -159,7 +159,7 @@ final class WalletService
                 'correlation_id' => $correlationId,
             ]);
 
-            $this->log->channel('audit')->info('Debit funds', [
+            Log::channel('audit')->info('Debit funds', [
                 'correlation_id' => $correlationId,
                 'wallet_id' => $walletId,
                 'amount' => $amount,
@@ -183,7 +183,7 @@ final class WalletService
      */
     public function credit(int $walletId, int $amount, string $reason, string $correlationId): bool
     {
-        return $this->db->transaction(function () use ($walletId, $amount, $reason, $correlationId): bool {
+        return DB::transaction(function () use ($walletId, $amount, $reason, $correlationId): bool {
             $wallet = Wallet::lockForUpdate()->findOrFail($walletId);
 
             // Add to balance
@@ -202,7 +202,7 @@ final class WalletService
                 'correlation_id' => $correlationId,
             ]);
 
-            $this->log->channel('audit')->info('Credit funds', [
+            Log::channel('audit')->info('Credit funds', [
                 'correlation_id' => $correlationId,
                 'wallet_id' => $walletId,
                 'amount' => $amount,

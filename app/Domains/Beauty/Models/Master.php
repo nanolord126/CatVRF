@@ -9,8 +9,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Модель мастера красоты.
- * Production 2026.
+ * КАНОН 2026: Beauty Master Model (Layer 2)
+ * Каждый мастер привязан к салону или работает в рамках тенанта.
  */
 final class Master extends Model
 {
@@ -19,6 +19,7 @@ final class Master extends Model
     protected $table = 'masters';
 
     protected $fillable = [
+        'uuid',
         'tenant_id',
         'salon_id',
         'user_id',
@@ -27,27 +28,32 @@ final class Master extends Model
         'experience_years',
         'rating',
         'review_count',
-        'correlation_id',
+        'bio',
         'tags',
-        'metadata',
+        'correlation_id',
     ];
 
-    protected $hidden = [];
-
     protected $casts = [
-        'specialization' => 'collection',
-        'tags' => 'collection',
-        'metadata' => 'json',
-        'rating' => 'float',
+        'specialization' => 'json',
+        'tags' => 'json',
         'experience_years' => 'integer',
+        'rating' => 'float',
         'review_count' => 'integer',
+        'deleted_at' => 'datetime',
     ];
 
     protected static function booted(): void
     {
-        static::addGlobalScope('tenant', fn ($query) => $query->where('tenant_id', tenant('id') ?? 0));
+        static::addGlobalScope('tenant_scoping', function ($builder) {
+            if (function_exists('tenant') && tenant('id')) {
+                $builder->where('tenant_id', tenant('id'));
+            }
+        });
     }
 
+    /**
+     * Отношения
+     */
     public function salon(): BelongsTo
     {
         return $this->belongsTo(BeautySalon::class, 'salon_id');
@@ -55,7 +61,7 @@ final class Master extends Model
 
     public function user(): BelongsTo
     {
-        return $this->belongsTo(related: \App\Models\User::class, foreignKey: 'user_id');
+        return $this->belongsTo(\App\Models\User::class, 'user_id');
     }
 
     public function services(): HasMany
@@ -68,7 +74,7 @@ final class Master extends Model
         return $this->hasMany(Appointment::class, 'master_id');
     }
 
-    public function portfolio(): HasMany
+    public function portfolioItems(): HasMany
     {
         return $this->hasMany(PortfolioItem::class, 'master_id');
     }
@@ -76,5 +82,10 @@ final class Master extends Model
     public function reviews(): HasMany
     {
         return $this->hasMany(Review::class, 'master_id');
+    }
+
+    public function schedules(): HasMany
+    {
+        return $this->hasMany(MasterSchedule::class, 'master_id');
     }
 }

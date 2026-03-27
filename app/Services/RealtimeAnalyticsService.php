@@ -52,13 +52,13 @@ final class RealtimeAnalyticsService
                 cache()->increment($revenueKeyDay, $data['amount'], 86400 * 30); // Keep for 30 days
             }
 
-            $this->log->channel('audit')->info('Analytics event tracked', [
+            Log::channel('audit')->info('Analytics event tracked', [
                 'tenant_id' => $tenantId,
                 'event_type' => $eventType,
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Failed to track analytics', [
+            Log::channel('audit')->error('Failed to track analytics', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -171,14 +171,14 @@ final class RealtimeAnalyticsService
             // Store daily aggregate
             cache()->put("stats:revenue:day:{$tenantId}:{$date}", $totalRevenue, 86400 * 365);
 
-            $this->log->channel('audit')->info('Daily stats aggregated', [
+            Log::channel('audit')->info('Daily stats aggregated', [
                 'tenant_id' => $tenantId,
                 'date' => $date,
                 'total_revenue' => $totalRevenue,
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Failed to aggregate daily stats', [
+            Log::channel('audit')->error('Failed to aggregate daily stats', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);

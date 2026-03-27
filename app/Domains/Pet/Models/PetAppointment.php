@@ -9,79 +9,183 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * РЕЖИМ ЛЮТЫЙ 2026: PET APPOINTMENT MODEL
+ * 
+ * Модель записи на прием пациента в ветеринарную клинику или груминг.
+ * Scoping: tenant_id.
+ * Канон: 60+ строк, UUID, correlation_id, JSONB metadata.
+ */
 final class PetAppointment extends Model
 {
-    use HasFactory;
-    use SoftDeletes;
+    use HasFactory, SoftDeletes;
 
     protected $table = 'pet_appointments';
 
+    /**
+     * Поля, доступные для массового заполнения.
+     */
     protected $fillable = [
+        'uuid',
         'tenant_id',
         'clinic_id',
-        'vet_id',
-        'owner_id',
+        'pet_id',
+        'veterinarian_id',
         'service_id',
-        'appointment_number',
-        'pet_name',
-        'pet_type',
-        'scheduled_at',
-        'completed_at',
-        'cancelled_at',
-        'status',
-        'payment_status',
-        'price',
-        'commission_amount',
-        'notes',
-        'transaction_id',
+        'starts_at',
+        'ends_at',
+        'status', // pending, confirmed, completed, cancelled
+        'total_price',
+        'prepayment_amount',
+        'payment_status', // unpaid, partially_paid, paid
         'correlation_id',
-        'uuid',
+        'idempotency_key',
+        'metadata',
     ];
 
+    /**
+     * Приведение типов.
+     */
     protected $casts = [
-        'price' => 'float',
-        'commission_amount' => 'float',
-        'scheduled_at' => 'datetime',
-        'completed_at' => 'datetime',
-        'cancelled_at' => 'datetime',
+        'starts_at' => 'datetime',
+        'ends_at' => 'datetime',
+        'total_price' => 'integer',
+        'prepayment_amount' => 'integer',
+        'metadata' => 'json',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',
     ];
 
-    protected $hidden = ['correlation_id', 'transaction_id'];
+    /**
+     * Скрытые поля.
+     */
+    protected $hidden = ['correlation_id'];
 
-    public function booted(): void
+    /**
+     * Инициализация модели.
+     */
+    protected static function booted(): void
     {
+        // Global scope для изоляции тенантов
         static::addGlobalScope('tenant', function ($query) {
-            if (auth()->check()) {
+            if (function_exists('tenant') && tenant()) {
                 $query->where('tenant_id', tenant()->id);
+            }
+        });
+
+        // Автогенерация UUID и correlation_id
+        static::creating(function (PetAppointment $model) {
+            $model->uuid = $model->uuid ?? (string) \Illuminate\Support\Str::uuid();
+            $model->correlation_id = $model->correlation_id ?? request()->header('X-Correlation-ID', (string) \Illuminate\Support\Str::uuid());
+            
+            if (function_exists('tenant') && tenant()) {
+                $model->tenant_id = $model->tenant_id ?? tenant()->id;
             }
         });
     }
 
-    public function clinic(): BelongsTo
+    /**
+     * Питомец, для которого создана запись.
+     */
+    public function pet(): BelongsTo
     {
-        return $this->belongsTo(PetClinic::class);
+        return $this->belongsTo(Pet::class, 'pet_id');
     }
 
-    public function vet(): BelongsTo
+    /**
+     * Врач или специалист, принимающий пациента.
+     */
+    public function veterinarian(): BelongsTo
     {
-        return $this->belongsTo(PetVet::class);
+        return $this->belongsTo(Veterinarian::class, 'veterinarian_id');
     }
 
-    public function owner(): BelongsTo
-    {
-        return $this->belongsTo(User::class);
-    }
-
+    /**
+     * Предоставляемая услуга.
+     */
     public function service(): BelongsTo
     {
-        return $this->belongsTo(PetGroomingService::class);
+        return $this->belongsTo(PetService::class, 'service_id');
     }
 
-    public function reviews(): HasMany
+    /**
+     * Клиника, в которой проходит прием.
+     */
+    public function clinic(): BelongsTo
     {
-        return $this->hasMany(PetReview::class, 'appointment_id');
+        return $this->belongsTo(PetClinic::class, 'clinic_id');
+    }
+
+    /**
+     * Проверка: подтвержден ли прием.
+     */
+    public function isConfirmed(): bool
+    {
+        return $this->status === 'confirmed';
+    }
+
+    /**
+     * Проверка: завершен ли прием.
+     */
+    public function isCompleted(): bool
+    {
+        return $this->status === 'completed';
+    }
+
+    /**
+     * Проверка: отменен ли прием.
+     */
+    public function isCancelled(): bool
+    {
+        return $this->status === 'cancelled';
+    }
+
+    /**
+     * Проверка оплаты.
+     */
+    public function isPaidFully(): bool
+    {
+        return $this->payment_status === 'paid';
+    }
+
+    /**
+     * Расчет остатка к оплате (в рублях).
+     */
+    public function getBalanceDueInRubles(): float
+    {
+        $due = $this->total_price - $this->prepayment_amount;
+        return (float) (max($due, 0) / 100);
+    }
+
+    /**
+     * Получение общей суммы в рублях.
+     */
+    public function getTotalInRubles(): float
+    {
+        return (float) ($this->total_price / 100);
+    }
+
+    /**
+     * Изменение статуса на подтвержден.
+     */
+    public function confirm(): bool
+    {
+        return $this->update(['status' => 'confirmed']);
+    }
+
+    /**
+     * Отмена записи.
+     */
+    public function cancel(string $reason = null): bool
+    {
+        $meta = $this->metadata ?? [];
+        $meta['cancellation_reason'] = $reason;
+        
+        return $this->update([
+            'status' => 'cancelled',
+            'metadata' => $meta,
+        ]);
     }
 }
+

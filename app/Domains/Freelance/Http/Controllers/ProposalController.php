@@ -36,7 +36,7 @@ final class ProposalController
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Error submitting proposal', [
+            Log::channel('audit')->error('Error submitting proposal', [
                 'freelancer_id' => auth()->user()->freelancer->id ?? null,
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
@@ -62,7 +62,7 @@ final class ProposalController
 
             $proposal->update($request->only(['proposed_amount', 'estimated_days', 'proposal_text']));
 
-            $this->log->channel('audit')->info('Proposal updated', [
+            Log::channel('audit')->info('Proposal updated', [
                 'proposal_id' => $id,
                 'correlation_id' => $correlationId,
             ]);
@@ -73,7 +73,7 @@ final class ProposalController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Error updating proposal', [
+            Log::channel('audit')->error('Error updating proposal', [
                 'proposal_id' => $id,
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
@@ -104,7 +104,7 @@ final class ProposalController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Error deleting proposal', [
+            Log::channel('audit')->error('Error deleting proposal', [
                 'proposal_id' => $id,
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
@@ -134,7 +134,7 @@ final class ProposalController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Error accepting proposal', [
+            Log::channel('audit')->error('Error accepting proposal', [
                 'proposal_id' => $id,
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
@@ -163,7 +163,7 @@ final class ProposalController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Error rejecting proposal', [
+            Log::channel('audit')->error('Error rejecting proposal', [
                 'proposal_id' => $id,
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
@@ -190,7 +190,7 @@ final class ProposalController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Error listing my proposals', [
+            Log::channel('audit')->error('Error listing my proposals', [
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
             ]);
@@ -214,7 +214,7 @@ final class ProposalController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Error listing job proposals', [
+            Log::channel('audit')->error('Error listing job proposals', [
                 'job_id' => $jobId,
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),

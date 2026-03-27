@@ -41,7 +41,7 @@ final class CalculateClinicEarningsJob implements ShouldQueue
                 }
             });
         } catch (Throwable $e) {
-            $this->log->channel('audit')->error('Failed to calculate clinic earnings', [
+            Log::channel('audit')->error('Failed to calculate clinic earnings', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $this->correlationId,
             ]);
@@ -63,7 +63,7 @@ final class CalculateClinicEarningsJob implements ShouldQueue
             $totalRevenue = $appointments->sum('price');
             $totalCommission = $appointments->sum('commission_amount');
 
-            $this->log->channel('audit')->info('Monthly clinic earnings calculated', [
+            Log::channel('audit')->info('Monthly clinic earnings calculated', [
                 'clinic_id' => $clinic->id,
                 'month' => $month,
                 'year' => $year,
@@ -73,7 +73,7 @@ final class CalculateClinicEarningsJob implements ShouldQueue
                 'correlation_id' => $this->correlationId,
             ]);
         } catch (Throwable $e) {
-            $this->log->channel('audit')->error('Failed to calculate earnings for clinic', [
+            Log::channel('audit')->error('Failed to calculate earnings for clinic', [
                 'clinic_id' => $clinic->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $this->correlationId,

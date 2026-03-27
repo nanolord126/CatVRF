@@ -1,8 +1,7 @@
-declare(strict_types=1);
-
 <?php
 
 declare(strict_types=1);
+
 
 namespace App\Domains\Beauty\Jobs;
 
@@ -32,22 +31,14 @@ class LowStockNotificationJob implements ShouldQueue
 
     public function __construct(
         private readonly string $correlationId = '',
-    ) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+    ) {}
 
     public function handle(InventoryManagementService $inventory): void
     {
         $lowStockItems = $inventory->checkLowStock();
 
         foreach ($lowStockItems as $item) {
-            $this->log->channel('audit')->warning('Low stock alert', [
+            Log::channel('audit')->warning('Low stock alert', [
                 'item_id' => $item->id,
                 'current_stock' => $item->current_stock,
                 'threshold' => $item->min_stock_threshold,

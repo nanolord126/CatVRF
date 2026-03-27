@@ -17,7 +17,7 @@ final class DeductAppointmentConsumablesListener implements ShouldQueue
     public function handle(AppointmentCompleted $event): void
     {
         try {
-            $this->db->transaction(function () use ($event) {
+            DB::transaction(function () use ($event) {
                 $appointment = $event->appointment;
                 $correlationId = $event->correlationId;
 
@@ -46,7 +46,7 @@ final class DeductAppointmentConsumablesListener implements ShouldQueue
                     ]);
 
                     // Логирование
-                    $this->log->channel('audit')->info('Consumable deducted', [
+                    Log::channel('audit')->info('Consumable deducted', [
                         'appointment_id' => $appointment->id,
                         'product_id' => $product->id,
                         'quantity' => $qty,
@@ -60,7 +60,7 @@ final class DeductAppointmentConsumablesListener implements ShouldQueue
                 }
             });
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('DeductAppointmentConsumablesListener failed', [
+            Log::channel('audit')->error('DeductAppointmentConsumablesListener failed', [
                 'appointment_id' => $event->appointment->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $event->correlationId,

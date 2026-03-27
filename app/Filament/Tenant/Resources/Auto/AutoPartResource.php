@@ -12,69 +12,109 @@ final class AutoPartResource extends Resource
 {
     protected static ?string $model = AutoPart::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-cog';
+    protected static ?string $navigationIcon = 'heroicon-o-cog-6-tooth';
 
-    protected static ?string $navigationGroup = 'Auto';
+    protected static ?string $navigationGroup = 'Автосервис';
+
+    protected static ?string $label = 'Запчасть';
+
+    protected static ?string $pluralLabel = 'Запчасти';
 
     public static function form(Forms\Form $form): Forms\Form
     {
-        return $form->schema([
-            Forms\Components\Grid::make(2)->schema([
-                Forms\Components\TextInput::make('name')
-                    ->required(),
+        return $form
+            ->schema([
+                Forms\Components\Section::make('Основная информация')
+                    ->schema([
+                        Forms\Components\TextInput::make('name')
+                            ->label('Название')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('sku')
+                            ->label('Артикул (SKU)')
+                            ->required()
+                            ->unique(ignoreRecord: true),
+                        Forms\Components\TextInput::make('oem_number')
+                            ->label('OEM Номер')
+                            ->maxLength(100),
+                        Forms\Components\Select::make('auto_catalog_brand_id')
+                            ->label('Бренд')
+                            ->relationship('brand', 'name')
+                            ->searchable()
+                            ->preload()
+                            ->required(),
+                    ])->columns(2),
 
-                Forms\Components\TextInput::make('sku')
-                    ->required(),
+                Forms\Components\Section::make('Цены и Склад')
+                    ->schema([
+                        Forms\Components\TextInput::make('price_kopecks')
+                            ->label('Розничная цена (коп)')
+                            ->numeric()
+                            ->required()
+                            ->suffix('коп'),
+                        Forms\Components\TextInput::make('wholesale_price_kopecks')
+                            ->label('Оптовая цена (коп)')
+                            ->numeric()
+                            ->required()
+                            ->suffix('коп'),
+                        Forms\Components\TextInput::make('stock_quantity')
+                            ->label('Остаток на складе')
+                            ->numeric()
+                            ->default(0)
+                            ->required(),
+                        Forms\Components\TextInput::make('min_threshold')
+                            ->label('Минимальный порог')
+                            ->numeric()
+                            ->default(5)
+                            ->required(),
+                    ])->columns(2),
 
-                Forms\Components\TextInput::make('current_stock')
-                    ->numeric()
-                    ->required(),
-
-                Forms\Components\TextInput::make('price')
-                    ->numeric()
-                    ->required(),
-
-                Forms\Components\TextInput::make('min_stock_threshold')
-                    ->numeric()
-                    ->default(10),
-
-                Forms\Components\Textarea::make('description')
-                    ->columnSpanFull(),
-            ]),
-        ]);
+                Forms\Components\Section::make('Совместимость и Теги')
+                    ->schema([
+                        Forms\Components\TagsInput::make('compatibility_vin')
+                            ->label('Совместимые VIN (маски)')
+                            ->placeholder('Добавить VIN'),
+                        Forms\Components\TagsInput::make('tags')
+                            ->label('Теги'),
+                        Forms\Components\Textarea::make('description')
+                            ->label('Описание')
+                            ->columnSpanFull(),
+                    ]),
+            ]);
     }
 
     public static function table(Tables\Table $table): Tables\Table
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('name')
-                    ->sortable()
-                    ->searchable(),
-
                 Tables\Columns\TextColumn::make('sku')
-                    ->sortable()
-                    ->searchable(),
-
-                Tables\Columns\TextColumn::make('current_stock')
+                    ->label('SKU')
+                    ->searchable()
                     ->sortable(),
-
-                Tables\Columns\TextColumn::make('hold_stock')
-                    ->label('Hold'),
-
-                Tables\Columns\TextColumn::make('price')
-                    ->money('RUB'),
-
-                Tables\Columns\BadgeColumn::make('current_stock')
-                    ->color(fn (int $state): string => $state < 10 ? 'danger' : 'success')
-                    ->label('Stock Status'),
+                Tables\Columns\TextColumn::make('name')
+                    ->label('Название')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('brand.name')
+                    ->label('Бренд')
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('price_kopecks')
+                    ->label('Цена')
+                    ->money('RUB', divideBy: 100),
+                Tables\Columns\TextColumn::make('stock_quantity')
+                    ->label('Склад')
+                    ->numeric()
+                    ->badge()
+                    ->color(fn (AutoPart $record): string => $record->isLowStock() ? 'danger' : 'success'),
             ])
             ->filters([
                 Tables\Filters\TrashedFilter::make(),
+                Tables\Filters\SelectFilter::make('auto_catalog_brand_id')
+                    ->label('Бренд')
+                    ->relationship('brand', 'name'),
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\ViewAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([

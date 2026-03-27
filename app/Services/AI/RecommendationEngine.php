@@ -27,7 +27,7 @@ class RecommendationEngine
     {
         $cacheKey = "engine:recommend:{$user->id}:{$type}:v1";
 
-        $cached = $this->cache->get($cacheKey);
+        $cached = Cache::get($cacheKey);
         if ($cached !== null) {
             return collect($cached);
         }
@@ -36,7 +36,7 @@ class RecommendationEngine
 
         $recommendations = collect([]);
 
-        $this->cache->put($cacheKey, $recommendations->toArray(), 300);
+        Cache::put($cacheKey, $recommendations->toArray(), 300);
 
         return $recommendations;
     }
@@ -78,7 +78,7 @@ class RecommendationEngine
             return [];
         }
 
-        return $this->db->table('users')
+        return DB::table('users')
             ->where('id', '!=', $user->id)
             ->where('category_preference', $preference)
             ->limit($limit)
@@ -93,7 +93,7 @@ class RecommendationEngine
      */
     private function getUserEnrolledCourses(User $user): array
     {
-        return $this->db->table('enrollments')
+        return DB::table('enrollments')
             ->where('user_id', $user->id)
             ->pluck('course_id')
             ->toArray();

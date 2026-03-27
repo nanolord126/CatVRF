@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources;
 
-use App\Domains\Bloggers\Models\BloggerProfile;
+use App\Domains\Content\Bloggers\Models\BloggerProfile;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;

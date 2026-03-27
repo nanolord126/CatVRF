@@ -29,11 +29,16 @@ final class AppServiceProvider extends ServiceProvider
         $this->app->singleton(\App\Services\SearchRankingService::class);
 
         // Channels Domain Services (singleton)
-        $this->app->singleton(\App\Domains\Channels\Services\ChannelService::class);
-        $this->app->singleton(\App\Domains\Channels\Services\PostService::class);
-        $this->app->singleton(\App\Domains\Channels\Services\ReactionService::class);
-        $this->app->singleton(\App\Domains\Channels\Services\ChannelTariffService::class);
-        $this->app->singleton(\App\Domains\Channels\Services\ChannelSubscriptionService::class);
+        $this->app->singleton(\App\Domains\Content\Channels\Services\ChannelService::class);
+        $this->app->singleton(\App\Domains\Content\Channels\Services\PostService::class);
+        $this->app->singleton(\App\Domains\Content\Channels\Services\ReactionService::class);
+        $this->app->singleton(\App\Domains\Content\Channels\Services\ChannelTariffService::class);
+        $this->app->singleton(\App\Domains\Content\Channels\Services\ChannelSubscriptionService::class);
+
+        // Psychology Domain Services
+        $this->app->singleton(\App\Domains\Medical\Psychology\Services\PsychologicalService::class);
+        $this->app->singleton(\App\Domains\Medical\Psychology\Services\AITherapyConstructorService::class);
+        $this->app->singleton(\App\Domains\Medical\Psychology\Services\PsychologicalPricingService::class);
 
         // Fraud Detection
         $this->app->singleton(\App\Services\FraudControlService::class);

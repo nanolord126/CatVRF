@@ -1,16 +1,13 @@
 <?php declare(strict_types=1);
-
 namespace App\Http\Controllers\Api\V1\Channels;
-
-use App\Domains\Channels\Models\BusinessChannel;
-use App\Domains\Channels\Models\Post;
-use App\Domains\Channels\Services\PostService;
+use App\Domains\Content\Channels\Models\BusinessChannel;
+use App\Domains\Content\Channels\Models\Post;
+use App\Domains\Content\Channels\Services\PostService;
 use App\Http\Controllers\Api\V1\BaseApiV1Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
-
 /**
  * API управления постами бизнес-канала.
  *
@@ -28,19 +25,15 @@ final class PostController extends BaseApiV1Controller
     public function __construct(
         private readonly PostService $postService,
     ) {}
-
     /** Лента постов канала (публично) */
     public function index(Request $request, string $slug): JsonResponse
     {
         $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
-
         try {
             $channel  = $this->findPublicChannel($slug);
             $audience = $this->detectAudience($request);
             $page     = (int) $request->query('page', 1);
-
             $posts = $this->postService->getFeed($channel, $audience, 10, $page);
-
             return response()->json([
                 'success'        => true,
                 'data'           => $this->formatPostCollection($posts),
@@ -52,17 +45,14 @@ final class PostController extends BaseApiV1Controller
                 ],
                 'correlation_id' => $correlationId,
             ]);
-
         } catch (\Throwable $e) {
             return $this->errorResponse($e, $correlationId, 404);
         }
     }
-
     /** Просмотр одного поста */
     public function show(Request $request, string $slug, string $postUuid): JsonResponse
     {
         $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
-
         try {
             $post = Post::withoutGlobalScopes()
                 ->where('uuid', $postUuid)
@@ -70,27 +60,22 @@ final class PostController extends BaseApiV1Controller
                 ->whereHas('channel', fn ($q) => $q->where('slug', $slug)->where('status', 'active'))
                 ->with(['media', 'channel:id,name,slug,avatar_url'])
                 ->firstOrFail();
-
             // Инкремент просмотров
             $userHash = md5(($request->user()?->id ?? $request->ip()) . date('YmdHi'));
             $this->postService->incrementViews($post, $userHash);
-
             return response()->json([
                 'success'        => true,
                 'data'           => $this->formatPost($post),
                 'correlation_id' => $correlationId,
             ]);
-
         } catch (\Throwable $e) {
             return $this->errorResponse($e, $correlationId, 404);
         }
     }
-
     /** Создать пост (только бизнес-тенант) */
     public function store(Request $request, string $channelUuid): JsonResponse
     {
         $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
-
         $validated = $request->validate([
             'content'      => ['required', 'string', 'max:10000'],
             'title'        => ['nullable', 'string', 'max:512'],
@@ -101,18 +86,14 @@ final class PostController extends BaseApiV1Controller
             'poll.question' => ['required_with:poll', 'string', 'max:500'],
             'poll.options'  => ['required_with:poll', 'array', 'min:2', 'max:10'],
         ]);
-
         try {
             $channel = BusinessChannel::withoutGlobalScopes()
                 ->where('uuid', $channelUuid)
                 ->firstOrFail();
-
             $this->authorize('createPost', $channel);
-
             $scheduledAt = isset($validated['scheduled_at'])
                 ? Carbon::parse($validated['scheduled_at'])
                 : null;
-
             $post = $this->postService->createPost(
                 channel:       $channel,
                 content:       $validated['content'],
@@ -124,7 +105,6 @@ final class PostController extends BaseApiV1Controller
                 poll:          $validated['poll'] ?? null,
                 correlationId: $correlationId,
             );
-
             return response()->json([
                 'success'        => true,
                 'message'        => match ($post->status) {
@@ -135,105 +115,84 @@ final class PostController extends BaseApiV1Controller
                 'data'           => $this->formatPost($post),
                 'correlation_id' => $correlationId,
             ], 201);
-
         } catch (\Throwable $e) {
             return $this->errorResponse($e, $correlationId, 422);
         }
     }
-
     /** Опубликовать пост (модератор) */
     public function publish(Request $request, string $postUuid): JsonResponse
     {
         $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
-
         try {
             $post = Post::withoutGlobalScopes()->where('uuid', $postUuid)->firstOrFail();
             $this->authorize('publish', $post);
-
             $post = $this->postService->publishPost(
                 $post,
                 $request->user()?->email,
                 $correlationId
             );
-
             return response()->json([
                 'success'        => true,
                 'message'        => 'Пост опубликован.',
                 'data'           => $this->formatPost($post),
                 'correlation_id' => $correlationId,
             ]);
-
         } catch (\Throwable $e) {
             return $this->errorResponse($e, $correlationId);
         }
     }
-
     /** Отклонить пост (модератор) */
     public function reject(Request $request, string $postUuid): JsonResponse
     {
         $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
-
         $validated = $request->validate(['reason' => ['required', 'string', 'max:1000']]);
-
         try {
             $post = Post::withoutGlobalScopes()->where('uuid', $postUuid)->firstOrFail();
             $this->authorize('reject', $post);
-
             $post = $this->postService->rejectPost(
                 $post,
                 $validated['reason'],
                 $request->user()?->email ?? 'system',
                 $correlationId
             );
-
             return response()->json([
                 'success'        => true,
                 'message'        => 'Пост отклонён.',
                 'data'           => $this->formatPost($post),
                 'correlation_id' => $correlationId,
             ]);
-
         } catch (\Throwable $e) {
             return $this->errorResponse($e, $correlationId);
         }
     }
-
     /** Архивировать пост (бизнес) */
     public function destroy(Request $request, string $postUuid): JsonResponse
     {
         $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
-
         try {
             $post = Post::withoutGlobalScopes()->where('uuid', $postUuid)->firstOrFail();
             $this->authorize('delete', $post);
-
             $this->postService->archivePost($post, $correlationId);
-
             return response()->json([
                 'success'        => true,
                 'message'        => 'Пост перенесён в архив.',
                 'correlation_id' => $correlationId,
             ]);
-
         } catch (\Throwable $e) {
             return $this->errorResponse($e, $correlationId);
         }
     }
-
     /** Личная лента пользователя */
     public function feed(Request $request): JsonResponse
     {
         $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
-
         try {
             $userId   = $request->user()->id;
             $audience = $this->detectAudience($request);
             $page     = (int) $request->query('page', 1);
-
-            /** @var \App\Domains\Channels\Services\ChannelSubscriptionService $subService */
-            $subService = app(\App\Domains\Channels\Services\ChannelSubscriptionService::class);
+            /** @var \App\Domains\Content\Channels\Services\ChannelSubscriptionService $subService */
+            $subService = app(\App\Domains\Content\Channels\Services\ChannelSubscriptionService::class);
             $feed       = $subService->getPersonalFeed($userId, $audience, 15);
-
             return response()->json([
                 'success'        => true,
                 'data'           => $this->formatPostCollection($feed),
@@ -245,16 +204,13 @@ final class PostController extends BaseApiV1Controller
                 ],
                 'correlation_id' => $correlationId,
             ]);
-
         } catch (\Throwable $e) {
             return $this->errorResponse($e, $correlationId);
         }
     }
-
     // ──────────────────────────────────────────────────────
     // Private
     // ──────────────────────────────────────────────────────
-
     private function findPublicChannel(string $slug): BusinessChannel
     {
         return BusinessChannel::withoutGlobalScopes()
@@ -262,7 +218,6 @@ final class PostController extends BaseApiV1Controller
             ->where('status', 'active')
             ->firstOrFail();
     }
-
     private function detectAudience(Request $request): string
     {
         // B2B пользователи (tenants) видят b2b + all посты
@@ -271,7 +226,6 @@ final class PostController extends BaseApiV1Controller
         }
         return 'b2c';
     }
-
     private function formatPost(Post $post): array
     {
         return [
@@ -305,7 +259,6 @@ final class PostController extends BaseApiV1Controller
             ] : null,
         ];
     }
-
     private function formatPostCollection($paginator): array
     {
         return array_map(fn ($p) => $this->formatPost($p), iterator_to_array($paginator));

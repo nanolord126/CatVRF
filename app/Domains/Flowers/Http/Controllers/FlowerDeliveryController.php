@@ -27,7 +27,7 @@ final class FlowerDeliveryController
             
             $this->authorize('track', $delivery);
 
-            $this->log->channel('audit')->info('Flower delivery tracked', [
+            Log::channel('audit')->info('Flower delivery tracked', [
                 'delivery_id' => $delivery->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -128,7 +128,7 @@ final class FlowerDeliveryController
                 'correlation_id' => $correlationId,
             ], $this->response->HTTP_CREATED);
         } catch (\Exception $exception) {
-            $this->log->channel('audit')->error('Delivery assignment failed', [
+            Log::channel('audit')->error('Delivery assignment failed', [
                 'error' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
             ]);

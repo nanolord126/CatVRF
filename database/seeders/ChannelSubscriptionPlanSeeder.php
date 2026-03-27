@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use App\Domains\Channels\Models\ChannelSubscriptionPlan;
+use App\Domains\Content\Channels\Models\ChannelSubscriptionPlan;
 
 /**
  * Наполняет таблицу channel_subscription_plans базовыми тарифами.

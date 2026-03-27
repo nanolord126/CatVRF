@@ -187,7 +187,7 @@ protected Guard $guard;
 	{
 		parent::authorizeAccess();
 
-		if (! $this->gate->allows('create', $this->resource::$model)) {
+		if (! Gate::allows('create', $this->resource::$model)) {
 			abort(403, __('Unauthorized'));
 		}
 	}
@@ -195,14 +195,14 @@ protected Guard $guard;
 	protected function handleRecordCreation(array $data): Model
 	{
 		try {
-			return $this->db->transaction(function () use ($data) {
+			return DB::transaction(function () use ($data) {
 				$user = $this->guard->user();
 				$data['tenant_id'] = $user?->tenant_id;
 				$record = parent::handleRecordCreation($data);
 
 				if ($user) {
 					$correlationId = $this->request->header('X-Correlation-ID') ?? (string) Str::uuid();
-					$this->log->channel('audit')->info('Record created', [
+					Log::channel('audit')->info('Record created', [
 						'id' => $record->id,
 						'user_id' => $user->id,
 						'tenant_id' => filament()->getTenant()?->id,
@@ -215,7 +215,7 @@ protected Guard $guard;
 			});
 		} catch (Throwable $e) {
 			$user = $this->guard->user();
-			$this->log->channel('audit')->error('Record creation failed', [
+			Log::channel('audit')->error('Record creation failed', [
 				'error' => $e->getMessage(),
 				'user_id' => $user?->id,
 				'tenant_id' => filament()->getTenant()?->id,
@@ -260,7 +260,7 @@ protected Guard $guard;
 	{
 		parent::authorizeAccess();
 
-		if (! $this->gate->allows('update', $this->record)) {
+		if (! Gate::allows('update', $this->record)) {
 			abort(403, __('Unauthorized'));
 		}
 
@@ -272,14 +272,14 @@ protected Guard $guard;
 	protected function handleRecordUpdate(Model $record, array $data): Model
 	{
 		try {
-			return $this->db->transaction(function () use ($record, $data) {
+			return DB::transaction(function () use ($record, $data) {
 				$user = $this->guard->user();
 				$filtered = array_filter($data, static fn($value) => $value !== null);
 				$record = parent::handleRecordUpdate($record, $filtered);
 
 				if ($user) {
 					$correlationId = $this->request->header('X-Correlation-ID') ?? (string) Str::uuid();
-					$this->log->channel('audit')->info('Record updated', [
+					Log::channel('audit')->info('Record updated', [
 						'id' => $record->id,
 						'user_id' => $user->id,
 						'tenant_id' => filament()->getTenant()?->id,
@@ -292,7 +292,7 @@ protected Guard $guard;
 			});
 		} catch (Throwable $e) {
 			$user = $this->guard->user();
-			$this->log->channel('audit')->error('Record update failed', [
+			Log::channel('audit')->error('Record update failed', [
 				'id' => $record->id,
 				'error' => $e->getMessage(),
 				'user_id' => $user?->id,
@@ -332,7 +332,7 @@ protected Guard $guard;
 		$user = $this->guard->user();
 		if ($user) {
 			$correlationId = $this->request->header('X-Correlation-ID') ?? uniqid('list_', true);
-			$this->log->channel('audit')->info('List accessed', [
+			Log::channel('audit')->info('List accessed', [
 				'user_id' => $user->id,
 				'tenant_id' => filament()->getTenant()?->id,
 				'correlation_id' => $correlationId,
@@ -368,7 +368,7 @@ protected Guard $guard;
 	{
 		parent::authorizeAccess();
 
-		if (! $this->gate->allows('view', $this->record)) {
+		if (! Gate::allows('view', $this->record)) {
 			abort(403, __('Unauthorized'));
 		}
 

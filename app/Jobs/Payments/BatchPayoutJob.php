@@ -37,8 +37,8 @@ final class BatchPayoutJob implements ShouldQueue
     public function handle(): void
     {
         try {
-            $this->db->transaction(function () {
-                $pendingBatchPayouts = $this->db->table('payment_transactions')
+            DB::transaction(function () {
+                $pendingBatchPayouts = DB::table('payment_transactions')
                     ->where('status', 'pending_batch')
                     ->where('tenant_id', filament()->getTenant()->id)
                     ->orderBy('created_at')
@@ -49,7 +49,7 @@ final class BatchPayoutJob implements ShouldQueue
                     try {
                         $this->processSinglePayout($payout);
 
-                        $this->log->channel('audit')->info('Batch payout processed', [
+                        Log::channel('audit')->info('Batch payout processed', [
                             'correlation_id' => $this->correlationId,
                             'payment_transaction_id' => $payout->id,
                             'amount' => $payout->amount,
@@ -57,22 +57,22 @@ final class BatchPayoutJob implements ShouldQueue
                         ]);
                     } catch (\Exception $e) {
                         if ($payout->retry_count < 3) {
-                            $this->db->table('payment_transactions')
+                            DB::table('payment_transactions')
                                 ->where('id', $payout->id)
                                 ->increment('retry_count');
 
-                            $this->log->channel('audit')->warning('Batch payout retry scheduled', [
+                            Log::channel('audit')->warning('Batch payout retry scheduled', [
                                 'correlation_id' => $this->correlationId,
                                 'payment_transaction_id' => $payout->id,
                                 'retry_count' => $payout->retry_count + 1,
                                 'error' => $e->getMessage(),
                             ]);
                         } else {
-                            $this->db->table('payment_transactions')
+                            DB::table('payment_transactions')
                                 ->where('id', $payout->id)
                                 ->update(['status' => 'failed', 'error_message' => $e->getMessage()]);
 
-                            $this->log->channel('audit')->error('Batch payout failed after retries', [
+                            Log::channel('audit')->error('Batch payout failed after retries', [
                                 'correlation_id' => $this->correlationId,
                                 'payment_transaction_id' => $payout->id,
                                 'error' => $e->getMessage(),
@@ -82,7 +82,7 @@ final class BatchPayoutJob implements ShouldQueue
                 }
             });
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Batch payout job failed', [
+            Log::channel('audit')->error('Batch payout job failed', [
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

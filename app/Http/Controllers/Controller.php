@@ -1,7 +1,5 @@
 <?php
-
 namespace App\Http\Con
-
 /**
  * Controller
  * 
@@ -25,7 +23,5 @@ namespace App\Http\Con
  * @see https://github.com/iyegorovskyi_clemny/CatVRF
  */
 trollers;
-
 abstract class Controller {
 }
-

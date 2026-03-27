@@ -1,8 +1,7 @@
-declare(strict_types=1);
-
 <?php
 
 declare(strict_types=1);
+
 
 namespace App\Domains\Beauty\Jobs;
 
@@ -33,15 +32,7 @@ class GenerateWeeklyReportJob implements ShouldQueue
     public function __construct(
         private readonly int $salonId,
         private readonly string $correlationId,
-    ) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+    ) {}
 
     public function handle(): void
     {
@@ -54,7 +45,7 @@ class GenerateWeeklyReportJob implements ShouldQueue
             'revenue' => $salon->appointments()->sum('price'),
         ];
 
-        $this->log->channel('audit')->info('Weekly report generated', [
+        Log::channel('audit')->info('Weekly report generated', [
             'salon_id' => $salon->id,
             'report' => $report,
             'correlation_id' => $this->correlationId,

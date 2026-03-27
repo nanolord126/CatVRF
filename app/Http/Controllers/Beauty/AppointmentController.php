@@ -1,7 +1,5 @@
 <?php declare(strict_types=1);
-
 namespace App\Http\Controllers\Beauty;
-
 use App\Http\Controllers\Controller;
 use App\Domains\Beauty\Models\Appointment;
 use App\Domains\Beauty\Services\AppointmentBookingService;
@@ -12,7 +10,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
-
 /**
  * Контроллер управления записями в вертикали Beauty 2026.
  */
@@ -22,23 +19,30 @@ final class AppointmentController extends Controller
         private readonly AppointmentBookingService $bookingService,
         private readonly AppointmentCancellationService $cancellationService,
         private readonly AppointmentRescheduleService $rescheduleService
-    ) {}
-
+    ) {
+        // PRODUCTION-READY 2026 CANON: Middleware для Beauty вертикали
+         // Авторизация обязательна
+         // 50 запросов/мин для Beauty
+         // Определение режима B2C/B2B
+         // Tenant scoping
+        // Fraud check только для мутаций (бронирование, отмена, перенос)
+        $this->middleware(
+            'fraud-check',
+            ['only' => ['store', 'cancel', 'reschedule']]
+        );
+    }
     /**
      * Отмена бронирования клиентом с расчетом штрафов.
      */
     public function cancel(Request $request, string $uuid): JsonResponse
     {
         $correlationId = $request->header("X-Correlation-ID") ?? (string)Str::uuid();
-        
         try {
             $appointment = Appointment::where("uuid", $uuid)
                 ->where("tenant_id", tenant("id"))
                 ->firstOrFail();
-
             // 1. Расчет условий отмены
             $result = $this->cancellationService->calculateRefund($appointment, Carbon::now());
-
             if (!$result["is_cancellable"]) {
                 return response()->json([
                     "success" => false,
@@ -46,10 +50,8 @@ final class AppointmentController extends Controller
                     "correlation_id" => $correlationId
                 ], 403);
             }
-
             // 2. Выполнение отмены
             $this->bookingService->cancel($appointment, (string)$request->input("reason", "Cancelled by user"));
-
             return response()->json([
                 "success" => true,
                 "message" => "Бронирование успешно отменено.",
@@ -61,14 +63,12 @@ final class AppointmentController extends Controller
                 ],
                 "correlation_id" => $correlationId
             ]);
-
         } catch (\Throwable $e) {
             Log::channel("audit")->error("Failed to cancel appointment", [
                 "uuid" => $uuid,
                 "error" => $e->getMessage(),
                 "correlation_id" => $correlationId
             ]);
-
             return response()->json([
                 "success" => false,
                 "message" => "Не удалось отменить бронирование: " . $e->getMessage(),
@@ -76,28 +76,22 @@ final class AppointmentController extends Controller
             ], 400);
         }
     }
-
     /**
      * Перенос записи (Rescheduling).
      */
     public function reschedule(Request $request, string $uuid): JsonResponse
     {
         $correlationId = $request->header("X-Correlation-ID") ?? (string)Str::uuid();
-
         $request->validate([
             "new_start_time" => "required|date|after:now",
         ]);
-
         try {
             $appointment = Appointment::where("uuid", $uuid)
                 ->where("tenant_id", tenant("id"))
                 ->firstOrFail();
-
             $newStartTime = Carbon::parse($request->get("new_start_time"));
-            
             // Выполняем перенос через сервис
             $rescheduled = $this->bookingService->reschedule($appointment, $newStartTime);
-
             return response()->json([
                 "success" => true,
                 "message" => "Запись успешно перенесена.",
@@ -120,7 +114,6 @@ final class AppointmentController extends Controller
                 "error" => $e->getMessage(),
                 "correlation_id" => $correlationId
             ]);
-
             return response()->json([
                 "success" => false,
                 "message" => "Ошибка при переносе записи: " . $e->getMessage(),
@@ -128,7 +121,6 @@ final class AppointmentController extends Controller
             ], 500);
         }
     }
-
     /**
      * Показать таблицу штрафов и условий для текущей записи.
      */
@@ -136,17 +128,14 @@ final class AppointmentController extends Controller
     {
         try {
             $appointment = Appointment::where("uuid", $uuid)->firstOrFail();
-            
             // Пример расчета если отменить прямо сейчас
             $cancelPreview = $this->cancellationService->calculateRefund($appointment, Carbon::now());
-            
             // Пример расчета если перенести
             $reschedulePreview = $this->rescheduleService->calculateRescheduleFee(
                 $appointment, 
                 (clone $appointment->datetime_start)->addDay(), 
                 Carbon::now()
             );
-
             return response()->json([
                 "success" => true,
                 "policy" => $appointment->cancellation_policy,

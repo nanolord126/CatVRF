@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders\Cosmetics;
 
-use App\Domains\Cosmetics\Models\CosmeticProduct;
+use App\Domains\Beauty\Cosmetics\Models\CosmeticProduct;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 

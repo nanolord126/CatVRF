@@ -28,7 +28,7 @@ final class AutoServiceReminderJob implements ShouldQueue
 
     public function handle(): void
     {
-        $this->log->channel('audit')->info('Auto service reminder job started', [
+        Log::channel('audit')->info('Auto service reminder job started', [
             'correlation_id' => $this->correlationId,
             'type' => $this->type,
         ]);
@@ -54,13 +54,13 @@ final class AutoServiceReminderJob implements ShouldQueue
                 $order->client->notify(new ServiceOrderReminderNotification($order, $this->type));
             }
 
-            $this->log->channel('audit')->info('Auto service reminders sent', [
+            Log::channel('audit')->info('Auto service reminders sent', [
                 'correlation_id' => $this->correlationId,
                 'type' => $this->type,
                 'sent_count' => $orders->count(),
             ]);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Auto service reminder job failed', [
+            Log::channel('audit')->error('Auto service reminder job failed', [
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

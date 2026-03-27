@@ -33,9 +33,9 @@ final class Kernel extends HttpKernel
     protected $middlewareGroups = [
         'web' => [
             \App\Http\Middleware\EncryptCookies::class,
-            \Illuminate\Cookie\Middleware\AddQueuedCookiesTo$this->response->class,
-            \Illuminate\Session\Middleware\Start$this->session->class,
-            \Illuminate\View\Middleware\ShareErrorsFrom$this->session->class,
+            \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+            \Illuminate\Session\Middleware\StartSession::class,
+            \Illuminate\View\Middleware\ShareErrorsFromSession::class,
             \App\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             TenantScoping::class,
@@ -69,8 +69,8 @@ final class Kernel extends HttpKernel
      */
     protected $middlewareAliases = [
         'auth' => \App\Http\Middleware\Authenticate::class,
-        'auth.basic' => \Illuminate\Auth\Middleware\AuthenticateWithBasic$this->auth->class,
-        'auth.session' => \Illuminate\Session\Middleware\Authenticate$this->session->class,
+        'auth.basic' => \Illuminate\Auth\Middleware\AuthenticateWithBasicAuth::class,
+        'auth.session' => \Illuminate\Session\Middleware\AuthenticateSession::class,
         'cache.headers' => \Illuminate\Http\Middleware\SetCacheHeaders::class,
         'can' => \Illuminate\Auth\Middleware\Authorize::class,
         'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
@@ -99,5 +99,9 @@ final class Kernel extends HttpKernel
         'rate-limit' => \App\Http\Middleware\RateLimitingMiddleware::class,
         'validate-webhook' => \App\Http\Middleware\ValidateWebhookSignature::class,
         'rate-limit-auth' => \App\Http\Middleware\RateLimitingMiddleware::class.':auth',
+        'b2c-b2b' => \App\Http\Middleware\B2CB2BMiddleware::class,
+        'age-verify' => \App\Http\Middleware\AgeVerificationMiddleware::class,
+        'correlation-id' => \App\Http\Middleware\CorrelationIdMiddleware::class,
+        'enrich-context' => \App\Http\Middleware\EnrichRequestContextMiddleware::class,
     ];
 }

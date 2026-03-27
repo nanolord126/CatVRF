@@ -35,7 +35,7 @@ final class StaffScheduleService
         );
 
         try {
-            $this->log->channel('audit')->info('Generating master schedule', [
+            Log::channel('audit')->info('Generating master schedule', [
                 'master_id' => $master->id,
                 'from' => $from->toDateString(),
                 'to' => $to->toDateString(),
@@ -61,7 +61,7 @@ final class StaffScheduleService
 
             return $slots;
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Schedule generation failed', [
+            Log::channel('audit')->error('Schedule generation failed', [
                 'master_id' => $master->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

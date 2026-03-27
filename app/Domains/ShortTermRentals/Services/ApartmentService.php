@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\ShortTermRentals\Services;
 
@@ -24,23 +25,15 @@ class ApartmentService
         private readonly FraudControlService $fraud,
         private readonly WalletService $wallet,
         private readonly PaymentService $payment,
-    ) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+    ) {}
 
     public function createBooking(array $data, bool $isB2B): array
     {
         $cid = Str::uuid()->toString();
-        $this->log->channel('audit')->info('Apartment booking', compact('cid', 'isB2B'));
+        Log::channel('audit')->info('Apartment booking', compact('cid', 'isB2B'));
         $this->fraud->check(0, 'apartment_booking', 0, null, null, $cid);
 
-        return $this->db->transaction(function () use ($data, $isB2B, $cid) {
+        return DB::transaction(function () use ($data, $isB2B, $cid) {
             $apt = Apartment::findOrFail($data['apartment_id']);
             $nights = now()->parse($data['check_in'])->diffInDays($data['check_out']);
             $price = $apt->price_per_night * $nights;

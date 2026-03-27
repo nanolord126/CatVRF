@@ -48,13 +48,13 @@ final readonly class CourierService
                 throw new Exception('Rate limit exceeded for courier registration', 429);
             }
 
-            $this->log->channel('audit')->info('Courier registration started', [
+            Log::channel('audit')->info('Courier registration started', [
                 'tenant_id' => $tenantId,
                 'name' => $data['name'] ?? '',
                 'correlation_id' => $correlationId,
             ]);
 
-            $result = $this->db->transaction(function () use ($tenantId, $data, $correlationId) {
+            $result = DB::transaction(function () use ($tenantId, $data, $correlationId) {
                 $courier = Courier::create([
                     'tenant_id' => $tenantId,
                     'uuid' => Str::uuid()->toString(),
@@ -69,7 +69,7 @@ final readonly class CourierService
                     'tags' => ['courier:new', 'source:register'],
                 ]);
 
-                $this->log->channel('audit')->info('Courier registered', [
+                Log::channel('audit')->info('Courier registered', [
                     'tenant_id' => $tenantId,
                     'courier_id' => $courier->id,
                     'correlation_id' => $correlationId,
@@ -83,7 +83,7 @@ final readonly class CourierService
 
             return $result;
         } catch (Throwable $e) {
-            $this->log->channel('audit')->error('Courier registration failed', [
+            Log::channel('audit')->error('Courier registration failed', [
                 'tenant_id' => $tenantId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -115,7 +115,7 @@ final readonly class CourierService
                 'last_updated' => $courier->last_location_at?->toIso8601String() ?? now()->toIso8601String(),
             ];
         } catch (Throwable $e) {
-            $this->log->channel('audit')->error('Courier location request failed', [
+            Log::channel('audit')->error('Courier location request failed', [
                 'courier_id' => $courierId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -149,13 +149,13 @@ final readonly class CourierService
                 'delivery_order_id' => $deliveryOrderId,
             ], $correlationId);
 
-            $this->log->channel('audit')->info('Delivery assignment started', [
+            Log::channel('audit')->info('Delivery assignment started', [
                 'courier_id' => $courierId,
                 'delivery_order_id' => $deliveryOrderId,
                 'correlation_id' => $correlationId,
             ]);
 
-            $result = $this->db->transaction(function () use ($courierId, $deliveryOrderId, $correlationId) {
+            $result = DB::transaction(function () use ($courierId, $deliveryOrderId, $correlationId) {
                 $delivery = DeliveryOrder::findOrFail($deliveryOrderId);
                 $delivery->update([
                     'courier_id' => $courierId,
@@ -163,7 +163,7 @@ final readonly class CourierService
                     'correlation_id' => $correlationId,
                 ]);
 
-                $this->log->channel('audit')->info('Delivery assigned', [
+                Log::channel('audit')->info('Delivery assigned', [
                     'delivery_order_id' => $deliveryOrderId,
                     'courier_id' => $courierId,
                     'correlation_id' => $correlationId,
@@ -178,7 +178,7 @@ final readonly class CourierService
 
             return $result;
         } catch (Throwable $e) {
-            $this->log->channel('audit')->error('Delivery assignment failed', [
+            Log::channel('audit')->error('Delivery assignment failed', [
                 'courier_id' => $courierId,
                 'delivery_order_id' => $deliveryOrderId,
                 'error' => $e->getMessage(),
@@ -215,14 +215,14 @@ final readonly class CourierService
                 'rating' => $ratingScore,
             ], $correlationId);
 
-            $this->log->channel('audit')->info('Delivery completion started', [
+            Log::channel('audit')->info('Delivery completion started', [
                 'courier_id' => $courierId,
                 'delivery_order_id' => $deliveryOrderId,
                 'rating' => $ratingScore,
                 'correlation_id' => $correlationId,
             ]);
 
-            $this->db->transaction(function () use ($courierId, $deliveryOrderId, $ratingScore, $correlationId) {
+            DB::transaction(function () use ($courierId, $deliveryOrderId, $ratingScore, $correlationId) {
                 $delivery = DeliveryOrder::findOrFail($deliveryOrderId);
                 $delivery->update([
                     'status' => 'completed',
@@ -239,7 +239,7 @@ final readonly class CourierService
                     'completed_deliveries' => $courier->completed_deliveries + 1,
                 ]);
 
-                $this->log->channel('audit')->info('Delivery completed', [
+                Log::channel('audit')->info('Delivery completed', [
                     'delivery_order_id' => $deliveryOrderId,
                     'courier_id' => $courierId,
                     'courier_new_rating' => $newRating,
@@ -249,7 +249,7 @@ final readonly class CourierService
 
             return true;
         } catch (Throwable $e) {
-            $this->log->channel('audit')->error('Delivery completion failed', [
+            Log::channel('audit')->error('Delivery completion failed', [
                 'courier_id' => $courierId,
                 'delivery_order_id' => $deliveryOrderId,
                 'error' => $e->getMessage(),

@@ -30,7 +30,7 @@ final class ProcessAppointmentPaymentJob implements ShouldQueue
     {
         $appointment = Appointment::with(['client', 'salon', 'master'])->findOrFail($this->appointmentId);
 
-        $this->db->transaction(function () use ($appointment, $walletService): void {
+        DB::transaction(function () use ($appointment, $walletService): void {
             // Mark as paid and process wallet credit
             $appointment->update([
                 'payment_status' => 'paid',
@@ -49,7 +49,7 @@ final class ProcessAppointmentPaymentJob implements ShouldQueue
                 );
             }
 
-            $this->log->channel('audit')->info('Payment processed', [
+            Log::channel('audit')->info('Payment processed', [
                 'appointment_id' => $appointment->id,
                 'amount' => $appointment->price,
                 'net_amount' => $netAmount,

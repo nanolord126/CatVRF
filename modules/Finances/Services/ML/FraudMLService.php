@@ -26,7 +26,7 @@ final readonly class FraudMLService
         string $correlationId = '',
     ): array {
         try {
-            $this->log->channel('audit')->info('ML fraud scoring started', [
+            Log::channel('audit')->info('ML fraud scoring started', [
                 'operation_type' => $operationType,
                 'feature_count' => count($features),
                 'correlation_id' => $correlationId,
@@ -35,7 +35,7 @@ final readonly class FraudMLService
             // Загрузка ML-модели из storage/models/fraud/
             $modelPath = storage_path('models/fraud/' . $this->getCurrentModelVersion() . '.joblib');
             if (!file_exists($modelPath)) {
-                $this->log->channel('audit')->warning('ML model not found, using fallback rules', [
+                Log::channel('audit')->warning('ML model not found, using fallback rules', [
                     'model_path' => $modelPath,
                     'correlation_id' => $correlationId,
                 ]);
@@ -52,7 +52,7 @@ final readonly class FraudMLService
                 $decision = 'review';
             }
 
-            $this->log->channel('audit')->info('ML fraud scoring completed', [
+            Log::channel('audit')->info('ML fraud scoring completed', [
                 'score' => $score,
                 'decision' => $decision,
                 'correlation_id' => $correlationId,
@@ -65,7 +65,7 @@ final readonly class FraudMLService
                 'decision' => $decision,
             ];
         } catch (Exception $e) {
-            $this->log->channel('audit')->error('ML fraud scoring failed', [
+            Log::channel('audit')->error('ML fraud scoring failed', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'correlation_id' => $correlationId,
@@ -84,7 +84,7 @@ final readonly class FraudMLService
     public function getCurrentModelVersion(): string
     {
         // Получение последней версии модели из БД
-        $latestVersion = \$this->db->table('fraud_model_versions')
+        $latestVersion = \DB::table('fraud_model_versions')
             ->orderBy('trained_at', 'desc')
             ->value('version');
 
@@ -101,12 +101,12 @@ final readonly class FraudMLService
     public function trainModel(string $correlationId = ''): array
     {
         try {
-            $this->log->channel('audit')->info('ML model training started', [
+            Log::channel('audit')->info('ML model training started', [
                 'correlation_id' => $correlationId,
             ]);
 
             // Сбор данных за последние 30 дней из fraud_attempts
-            $trainingData = \$this->db->table('fraud_attempts')
+            $trainingData = \DB::table('fraud_attempts')
                 ->where('created_at', '>=', now()->subDays(30))
                 ->select(['features_json', 'decision'])
                 ->get()
@@ -121,7 +121,7 @@ final readonly class FraudMLService
             }
 
             // Обучение модели через Python subprocess (XGBoost)
-            $version = date('Y-m-d') . '-v' . (\$this->db->table('fraud_model_versions')->whereDate('trained_at', today())->count() + 1);
+            $version = date('Y-m-d') . '-v' . (\DB::table('fraud_model_versions')->whereDate('trained_at', today())->count() + 1);
 
             // Плейсхолдер метрики
             $metrics = [
@@ -132,14 +132,14 @@ final readonly class FraudMLService
                 'mape' => 12.5,
             ];
 
-            $this->log->channel('audit')->info('ML model training completed', [
+            Log::channel('audit')->info('ML model training completed', [
                 'version' => $version,
                 'metrics' => $metrics,
                 'correlation_id' => $correlationId,
             ]);
 
             // Сохранение версии модели в БД
-            \$this->db->table('fraud_model_versions')->insert([
+            \DB::table('fraud_model_versions')->insert([
                 'version' => $version,
                 'trained_at' => now(),
                 'accuracy' => $metrics['accuracy'],
@@ -160,7 +160,7 @@ final readonly class FraudMLService
                 'status' => 'trained',
             ];
         } catch (Exception $e) {
-            $this->log->channel('audit')->error('ML model training failed', [
+            Log::channel('audit')->error('ML model training failed', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'correlation_id' => $correlationId,
@@ -196,7 +196,7 @@ final readonly class FraudMLService
             $score = max($score, 0.75);
         }
 
-        $this->log->channel('audit')->info('ML fraud scoring fallback', [
+        Log::channel('audit')->info('ML fraud scoring fallback', [
             'operation_type' => $operationType,
             'score' => $score,
             'correlation_id' => $correlationId,
@@ -290,7 +290,7 @@ final readonly class FraudMLService
 
             return (float) $result['score'];
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('ML prediction failed, using fallback', [
+            Log::channel('audit')->error('ML prediction failed, using fallback', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);

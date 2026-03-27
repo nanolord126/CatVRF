@@ -1,8 +1,7 @@
-declare(strict_types=1);
-
 <?php
 
 declare(strict_types=1);
+
 
 namespace App\Jobs;
 
@@ -41,12 +40,12 @@ final class AggregateDailyAnalyticsJob implements ShouldQueue
         try {
             $analyticsService->aggregateDailyStats($this->tenantId, $yesterday);
 
-            $this->log->channel('audit')->info('Daily analytics aggregated', [
+            Log::channel('audit')->info('Daily analytics aggregated', [
                 'tenant_id' => $this->tenantId,
                 'date' => $yesterday,
             ]);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Failed to aggregate daily analytics', [
+            Log::channel('audit')->error('Failed to aggregate daily analytics', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);

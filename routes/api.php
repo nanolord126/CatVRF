@@ -189,6 +189,9 @@ require __DIR__ . '/construction_materials.api.php';
 // Toys & Kids
 require __DIR__ . '/toys_kids.api.php';
 
+// Music & Instruments
+require __DIR__ . '/music.api.php';
+
 // Analytics routes (heatmaps, comparisons, custom metrics)
 require __DIR__ . '/analytics.api.php';
 

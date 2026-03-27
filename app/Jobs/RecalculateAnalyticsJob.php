@@ -32,7 +32,7 @@ final class RecalculateAnalyticsJob implements ShouldQueue
         $correlationId = Str::uuid()->toString();
 
         try {
-            $this->log->channel('audit')->info('Analytics recalculation started', [
+            Log::channel('audit')->info('Analytics recalculation started', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $this->tenantId,
             ]);
@@ -53,12 +53,12 @@ final class RecalculateAnalyticsJob implements ShouldQueue
                 );
             }
 
-            $this->log->channel('audit')->info('Analytics recalculation completed', [
+            Log::channel('audit')->info('Analytics recalculation completed', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $this->tenantId,
             ]);
         } catch (\Exception $e) {
-            $this->log->error('Analytics recalculation failed', [
+            Log::error('Analytics recalculation failed', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $this->tenantId,
                 'error' => $e->getMessage(),

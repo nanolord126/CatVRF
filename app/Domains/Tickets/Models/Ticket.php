@@ -1,62 +1,133 @@
-declare(strict_types=1);
+<?php
 
-<?php declare(strict_types=1);
+declare(strict_types=1);
 
 namespace App\Domains\Tickets\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\{BelongsTo, HasOne};
-use Illuminate\Database\Eloquent\Casts\AsCollection;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
+use Illuminate\Support\Str;
 
-final /**
- * Ticket
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
+/**
+ * КАНОН 2026: Билет (Ticket).
+ * Слой 2: Модели.
  */
-class Ticket extends Model
+final class Ticket extends Model
 {
+    use SoftDeletes, LogsActivity;
+
     protected $table = 'tickets';
+
     protected $fillable = [
-        'tenant_id', 'event_id', 'ticket_type_id', 'ticket_number',
-        'status', 'buyer_id', 'sold_at', 'scanned_at', 'qr_code',
-        'checkin_expires_at', 'metadata', 'correlation_id'
+        'uuid', 'tenant_id', 'event_id', 'ticket_type_id', 
+        'user_id', 'order_id', 'price', 'qr_code', 
+        'sector', 'row', 'number', 'status', 
+        'checked_in_at', 'expires_at', 'metadata', 
+        'tags', 'correlation_id'
     ];
 
     protected $casts = [
-        'sold_at' => 'datetime',
-        'scanned_at' => 'datetime',
-        'checkin_expires_at' => 'datetime',
+        'price' => 'integer',
+        'row' => 'integer',
+        'number' => 'integer',
+        'checked_in_at' => 'datetime',
+        'expires_at' => 'datetime',
         'metadata' => 'json',
+        'tags' => 'json'
     ];
 
     protected static function booted(): void
     {
-        static::addGlobalScope('tenant', function ($query) {
-            $query->where('tenant_id', tenant('id'));
+        static::addGlobalScope('tenant', function ($builder) {
+            if (function_exists('tenant') && tenant('id')) {
+                $builder->where('tenant_id', tenant('id'));
+            }
+        });
+
+        static::creating(function ($model) {
+            $model->uuid = (string) Str::uuid();
+            $model->qr_code = $model->qr_code ?? (string) Str::random(16);
+            if (empty($model->tenant_id) && function_exists('tenant')) {
+                $model->tenant_id = tenant('id');
+            }
         });
     }
 
-    public function event(): BelongsTo
+    public function getActivitylogOptions(): LogOptions
     {
-        return $this->belongsTo($this->event->class);
+        return LogOptions::defaults()
+            ->logOnly(['status', 'checked_in_at', 'user_id', 'price'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->useLogName('audit');
     }
 
+    /**
+     * Эвент билета.
+     */
+    public function event(): BelongsTo
+    {
+        return $this->belongsTo(Event::class);
+    }
+
+    /**
+     * Тип билета.
+     */
     public function ticketType(): BelongsTo
     {
         return $this->belongsTo(TicketType::class);
     }
 
-    public function buyer(): BelongsTo
+    /**
+     * Логи чекина.
+     */
+    public function checkInLogs(): HasMany
     {
-        return $this->belongsTo(\App\Models\User::class, 'buyer_id');
+        return $this->hasMany(CheckInLog::class);
     }
 
-    public function checkin(): HasOne
+    /**
+     * Проверка на валидность.
+     */
+    public function isValid(): bool
     {
-        return $this->hasOne(EventCheckin::class);
+        if ($this->status !== 'active') return false;
+        if ($this->expires_at && $this->expires_at->isPast()) return false;
+        return true;
+    }
+
+    /**
+     * Отметка о входе.
+     */
+    public function markAsUsed(): void
+    {
+        $this->update([
+            'status' => 'used',
+            'checked_in_at' => now()
+        ]);
+    }
+
+    /**
+     * Формат места.
+     */
+    public function getSeatStringAttribute(): string
+    {
+        if (!$this->sector) return 'Без места';
+        $res = "Сектор: {$this->sector}";
+        if ($this->row) $res .= ", Ряд: {$this->row}";
+        if ($this->number) $res .= ", Место: {$this->number}";
+        return $res;
+    }
+
+    /**
+     * Проверка на вложенную матаданную.
+     */
+    public function getMetadataValue(string $key, $default = null)
+    {
+        return $this->metadata[$key] ?? $default;
     }
 }

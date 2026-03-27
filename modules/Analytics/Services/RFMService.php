@@ -20,12 +20,12 @@ class RFMService
         $users = User::all();
 
         foreach ($users as $user) {
-            $stats = Behavioral$this->event->where('user_id', $user->id)
+            $stats = BehavioralEvent::where('user_id', $user->id)
                 ->whereIn('event_type', ['order_completed', 'booking_confirmed'])
                 ->select(
-                    $this->db->raw('MAX(occurred_at) as last_order'),
-                    $this->db->raw('COUNT(*) as frequency'),
-                    $this->db->raw('SUM(monetary_value) as total_monetary')
+                    DB::raw('MAX(occurred_at) as last_order'),
+                    DB::raw('COUNT(*) as frequency'),
+                    DB::raw('SUM(monetary_value) as total_monetary')
                 )
                 ->first();
 

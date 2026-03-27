@@ -1,5 +1,3 @@
-declare(strict_types=1);
-
 <?php declare(strict_types=1);
 
 namespace App\Domains\Beauty\Models;
@@ -9,8 +7,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Модель использованных расходников.
- * Production 2026.
+ * КАНОН 2026: Beauty Consumable Model (Layer 2)
  */
 final class BeautyConsumable extends Model
 {
@@ -19,33 +16,34 @@ final class BeautyConsumable extends Model
     protected $table = 'beauty_consumables';
 
     protected $fillable = [
+        'uuid',
         'tenant_id',
-        'appointment_id',
-        'product_id',
-        'quantity_used',
+        'salon_id',
+        'name',
+        'unit',
+        'current_stock',
+        'min_threshold',
+        'unit_cost',
         'correlation_id',
-        'tags',
     ];
 
-    protected $hidden = [];
-
     protected $casts = [
-        'tags' => 'collection',
-        'quantity_used' => 'integer',
+        'current_stock' => 'integer',
+        'min_threshold' => 'integer',
+        'unit_cost' => 'integer',
     ];
 
     protected static function booted(): void
     {
-        static::addGlobalScope('tenant', fn ($query) => $query->where('tenant_id', tenant('id') ?? 0));
+        static::addGlobalScope('tenant_scoping', function ($builder) {
+            if (function_exists('tenant') && tenant('id')) {
+                $builder->where('tenant_id', tenant('id'));
+            }
+        });
     }
 
-    public function appointment(): BelongsTo
+    public function salon(): BelongsTo
     {
-        return $this->belongsTo(Appointment::class, 'appointment_id');
-    }
-
-    public function product(): BelongsTo
-    {
-        return $this->belongsTo(BeautyProduct::class, 'product_id');
+        return $this->belongsTo(BeautySalon::class, 'salon_id');
     }
 }

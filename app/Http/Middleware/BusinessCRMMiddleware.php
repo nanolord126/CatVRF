@@ -28,7 +28,7 @@ final class BusinessCRMMiddleware
         $userRole = $user->role ?? 'employee';
 
         if (!in_array($userRole, $allowedRoles, true)) {
-            \Illuminate\Support\Facades\$this->log->channel('audit')->warning('CRM access denied', [
+            \Illuminate\Support\Facades\Log::channel('audit')->warning('CRM access denied', [
                 'user_id' => $user->id,
                 'role' => $userRole,
                 'path' => $request->path(),
@@ -46,7 +46,7 @@ final class BusinessCRMMiddleware
         $requestTenantId = $request->attributes->get('tenant_id');
 
         if ($requestTenantId && $tenantId && $tenantId !== $requestTenantId) {
-            \Illuminate\Support\Facades\$this->log->channel('audit')->error('Tenant isolation violation', [
+            \Illuminate\Support\Facades\Log::channel('audit')->error('Tenant isolation violation', [
                 'user_tenant' => $tenantId,
                 'request_tenant' => $requestTenantId,
                 'correlation_id' => $request->header('X-Correlation-ID'),

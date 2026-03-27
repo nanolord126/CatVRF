@@ -2,150 +2,128 @@
 
 namespace App\Domains\Beauty\Services;
 
-use App\Domains\Beauty\Models\BeautySalon;
-use App\Domains\Beauty\Models\Master;
-use App\Domains\Beauty\Models\Service as BeautyService;
 use App\Domains\Beauty\Models\Appointment;
+use App\Domains\Beauty\Models\BeautyService as BeautyServiceModel;
+use App\Domains\Beauty\Models\Master;
 use App\Services\FraudControlService;
-use App\Services\InventoryManagementService;
-use App\Services\PaymentService;
 use App\Services\WalletService;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
-use Carbon\Carbon;
 
 /**
- * Сервис записей в индустрии красоты — КАНОН 2026.
- * Полная реализация с онлайн-записью, списанием расходников, портфолио и 14% комиссией.
+ * КАНОН 2026: Appointment Service (Layer 3)
+ * Управление записями клиентов на услуги.
  */
-final class AppointmentService
+final readonly class AppointmentService
 {
     public function __construct(
-        private readonly FraudControlService $fraud,
-        private readonly InventoryManagementService $inventory,
-        private readonly PaymentService $payment,
-        private readonly WalletService $wallet,
+        private FraudControlService $fraudControl,
+        private WalletService $walletService,
+        private ConsumableDeductionService $consumableService,
     ) {}
 
     /**
-     * Создание записи на услугу (Стрижка, Маникюр и т.д.).
+     * Создать запись (бронирование).
      */
-    public function createAppointment(int $salonId, int $masterId, int $serviceId, array $data, string $correlationId = ""): Appointment
+    public function createAppointment(array $data, string $correlationId = null): Appointment
     {
-        $correlationId = $correlationId ?: (string) Str::uuid();
+        $correlationId ??= (string) Str::uuid();
 
-        // 1. Rate Limiting — защита от DOS на записи
-        if (RateLimiter::tooManyAttempts("beauty:book:{$salonId}", 10)) {
-            throw new \RuntimeException("Слишком много попыток записи. Подождите.", 429);
-        }
-        RateLimiter::hit("beauty:book:{$salonId}", 3600);
+        return DB::transaction(function () use ($data, $correlationId) {
+            // 1. Fraud Check (Исправленная сигнатура)
+            $this->fraudControl->check(
+                userId: (int) ($data['user_id'] ?? auth()->id() ?? 0),
+                operationType: 'create_appointment',
+                amount: (int) ($data['price'] ?? 0),
+                correlationId: $correlationId
+            );
 
-        return $this->db->transaction(function () use ($salonId, $masterId, $serviceId, $data, $correlationId) {
-            $salon = BeautySalon::findOrFail($salonId);
-            $master = Master::findOrFail($masterId);
-            $service = BeautyService::findOrFail($serviceId);
+            // 2. Валидация доступности мастера
+            $isAvailable = $this->checkAvailability(
+                (int) $data['master_id'],
+                Carbon::parse($data['datetime_start']),
+                Carbon::parse($data['datetime_end'])
+            );
 
-            // 2. Fraud Check (проверка на подозрительные оплаты бьюти-услуг)
-            $fraud = $this->fraud->check([
-                "user_id" => auth()->id() ?? 0,
-                "operation_type" => "beauty_appointment_create",
-                "correlation_id" => $correlationId,
-                "meta" => ["salon_id" => $salonId, "master_id" => $masterId]
-            ]);
-
-            if ($fraud["decision"] === "block") {
-                $this->log->channel("audit")->error("Beauty Security Block", ["salon_id" => $salonId, "score" => $fraud["score"]]);
-                throw new \RuntimeException("Операция заблокирована системой безопасности.", 403);
+            if (!$isAvailable) {
+                throw new \Exception('Master is not available at the selected time.');
             }
 
             // 3. Создание записи
-            $appointment = Appointment::create([
-                "uuid" => (string) Str::uuid(),
-                "tenant_id" => $salon->tenant_id,
-                "salon_id" => $salonId,
-                "master_id" => $masterId,
-                "service_id" => $serviceId,
-                "client_id" => auth()->id(),
-                "appointment_at" => Carbon::parse($data["appointment_at"]),
-                "status" => "pending",
-                "price_kopecks" => $service->price_kopecks,
-                "correlation_id" => $correlationId,
-                "tags" => ["is_verified:" . ($salon->is_verified ? "yes" : "no")]
+            $appointment = Appointment::create(array_merge($data, [
+                'uuid' => (string) Str::uuid(),
+                'status' => 'pending',
+                'correlation_id' => $correlationId,
+            ]));
+
+            // 4. Reserve Consumables (Hold)
+            $this->consumableService->reserveForAppointment($appointment);
+
+            Log::channel('audit')->info('Beauty appointment created', [
+                'appointment_id' => $appointment->id,
+                'user_id' => $appointment->user_id,
+                'correlation_id' => $correlationId,
             ]);
-
-            // 4. Резервация расходников (перчатки, краска, полотенца)
-            if ($service->consumables_json) {
-                foreach ($service->consumables_json as $itemId => $qty) {
-                    $this->inventory->reserveStock(
-                        itemId: (int) $itemId,
-                        quantity: (int) $qty,
-                        sourceType: "beauty_appointment",
-                        sourceId: $appointment->id
-                    );
-                }
-            }
-
-            $this->log->channel("audit")->info("Beauty: appointment created", ["app_id" => $appointment->id, "master" => $master->id, "corr" => $correlationId]);
 
             return $appointment;
         });
     }
 
     /**
-     * Завершение приема. Списание расходников и выплата мастеру/салону.
+     * Подтвердить выполнение услуги и списать оплату через кошелек.
      */
-    public function completeAppointment(int $appointmentId, string $correlationId = ""): void
+    public function completeAppointment(Appointment $appointment, string $correlationId = null): void
     {
-        $correlationId = $correlationId ?: (string) Str::uuid();
-        $appointment = Appointment::with("salon", "service")->findOrFail($appointmentId);
+        $correlationId ??= $appointment->correlation_id ?? (string) Str::uuid();
 
-        $this->db->transaction(function () use ($appointment, $correlationId) {
+        DB::transaction(function () use ($appointment, $correlationId) {
             $appointment->update([
-                "status" => "completed",
-                "finished_at" => now()
+                'status' => 'completed',
+                'payment_status' => 'captured',
             ]);
 
-            // 5. Списание расходников (InventoryManagementService)
-            if ($appointment->service->consumables_json) {
-                foreach ($appointment->service->consumables_json as $itemId => $qty) {
-                    $this->inventory->deductStock(
-                        itemId: (int) $itemId,
-                        quantity: (int) $qty,
-                        reason: "Appointment completed: {$appointment->id}",
-                        sourceType: "beauty_appointment",
-                        sourceId: $appointment->id
-                    );
-                }
+            // Списание расходников (реальное)
+            $this->consumableService->deductForAppointment($appointment);
+
+            // Финансовая операция через Wallet (исправленная сигнатура debit)
+            // Предполагается, что у пользователя есть кошелек (wallet_id получаем из модели пользователя/тенаната)
+            // Для упрощения ищем кошелек тенанта или пользователя
+            $walletId = $appointment->user->wallet->id ?? 0; 
+            if (!$walletId) {
+                throw new \Exception('User wallet not found');
             }
 
-            // 6. Расчет комиссии платформы (14% стандарт / 10-12% при миграции с Dikidi)
-            $multiplier = $appointment->salon->is_migrated ? 0.12 : 0.14;
-            $total = $appointment->price_kopecks;
-            $platformFee = (int) ($total * $multiplier);
-            $salonPayout = $total - $platformFee;
-
-            // Выплата салону
-            $this->wallet->credit(
-                userId: $appointment->salon->owner_id, 
-                amount: $salonPayout, 
-                type: "beauty_payout", 
-                reason: "Service completed: {$appointment->id}",
-                correlationId: $correlationId
+            $this->walletService->debit(
+                $walletId,
+                (int) $appointment->price,
+                'Service completion: ' . $appointment->uuid,
+                $correlationId
             );
 
-            $this->log->channel("audit")->info("Beauty: appointment finished + payout", ["app_id" => $appointment->id, "payout" => $salonPayout]);
+            Log::channel('audit')->info('Beauty appointment completed', [
+                'appointment_id' => $appointment->id,
+                'correlation_id' => $correlationId,
+            ]);
         });
     }
 
     /**
-     * Напоминание клиенту за 2 ч до визита.
+     * Проверка доступности слота времени.
      */
-    public function sendReminder(int $appointmentId): void
+    private function checkAvailability(int $masterId, Carbon $start, Carbon $end): bool
     {
-        $appointment = Appointment::findOrFail($appointmentId);
-        $this->log->channel("audit")->info("Beauty: notification reminder sent", ["app_id" => $appointmentId]);
-        // Здесь вызов NotificationService
+        return !Appointment::where('master_id', $masterId)
+            ->where('status', '!=', 'cancelled')
+            ->where(function ($query) use ($start, $end) {
+                $query->whereBetween('datetime_start', [$start, $end])
+                    ->orWhereBetween('datetime_end', [$start, $end])
+                    ->orWhere(function ($q) use ($start, $end) {
+                        $q->where('datetime_start', '<=', $start)
+                          ->where('datetime_end', '>=', $end);
+                    });
+            })
+            ->exists();
     }
 }

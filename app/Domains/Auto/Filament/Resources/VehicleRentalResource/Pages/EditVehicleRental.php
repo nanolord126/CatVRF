@@ -19,7 +19,7 @@ final class EditVehicleRental extends EditRecord
         return [
             Actions\DeleteAction::make()
                 ->after(function () {
-                    $this->log->channel('audit')->info('VehicleRental deleted', [
+                    Log::channel('audit')->info('VehicleRental deleted', [
                         'correlation_id' => $this->record->correlation_id,
                         'rental_id' => $this->record->id,
                     ]);
@@ -35,13 +35,13 @@ final class EditVehicleRental extends EditRecord
                         ->required(),
                 ])
                 ->action(function (array $data) {
-                    $this->db->transaction(function () use ($data) {
+                    DB::transaction(function () use ($data) {
                         $this->record->update([
                             'status' => 'completed',
                             'final_mileage' => $data['final_mileage'],
                         ]);
                         
-                        $this->log->channel('audit')->info('VehicleRentalCompleted', [
+                        Log::channel('audit')->info('VehicleRentalCompleted', [
                             'correlation_id' => $this->record->correlation_id,
                             'rental_id' => $this->record->id,
                             'final_mileage' => $data['final_mileage'],
@@ -64,7 +64,7 @@ final class EditVehicleRental extends EditRecord
 
     protected function afterSave(): void
     {
-        $this->log->channel('audit')->info('VehicleRental updated', [
+        Log::channel('audit')->info('VehicleRental updated', [
             'correlation_id' => $this->record->correlation_id,
             'rental_id' => $this->record->id,
             'status' => $this->record->status,

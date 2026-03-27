@@ -1,15 +1,12 @@
 <?php declare(strict_types=1);
-
 namespace App\Http\Controllers\Api\V1\Channels;
-
-use App\Domains\Channels\Models\BusinessChannel;
-use App\Domains\Channels\Services\ChannelService;
-use App\Domains\Channels\Services\ChannelTariffService;
+use App\Domains\Content\Channels\Models\BusinessChannel;
+use App\Domains\Content\Channels\Services\ChannelService;
+use App\Domains\Content\Channels\Services\ChannelTariffService;
 use App\Http\Controllers\Api\V1\BaseApiV1Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-
 /**
  * API управления каналами бизнеса.
  *
@@ -25,16 +22,13 @@ final class ChannelController extends BaseApiV1Controller
         private readonly ChannelService $channelService,
         private readonly ChannelTariffService $tariffService,
     ) {}
-
     /** Получить канал текущего тенанта */
     public function show(Request $request): JsonResponse
     {
         $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
-
         try {
             $tenantId = $request->user()->current_tenant_id ?? $request->user()->id;
             $channel  = $this->channelService->getChannelForTenant((string) $tenantId);
-
             if ($channel === null) {
                 return response()->json([
                     'success' => false,
@@ -42,33 +36,27 @@ final class ChannelController extends BaseApiV1Controller
                     'correlation_id' => $correlationId,
                 ], 404);
             }
-
             return response()->json([
                 'success'        => true,
                 'data'           => $this->formatChannel($channel, true),
                 'correlation_id' => $correlationId,
             ]);
-
         } catch (\Throwable $e) {
             return $this->errorResponse($e, $correlationId);
         }
     }
-
     /** Создать канал */
     public function store(Request $request): JsonResponse
     {
         $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
-
         $validated = $request->validate([
             'name'        => ['required', 'string', 'max:256'],
             'description' => ['nullable', 'string', 'max:2000'],
             'avatar_url'  => ['nullable', 'url', 'max:512'],
             'cover_url'   => ['nullable', 'url', 'max:512'],
         ]);
-
         try {
             $tenantId = $request->user()->current_tenant_id ?? (string) $request->user()->id;
-
             $channel = $this->channelService->createChannel(
                 tenantId:      (string) $tenantId,
                 name:          $validated['name'],
@@ -77,89 +65,71 @@ final class ChannelController extends BaseApiV1Controller
                 coverUrl:      $validated['cover_url'] ?? null,
                 correlationId: $correlationId,
             );
-
             return response()->json([
                 'success'        => true,
                 'message'        => 'Канал успешно создан.',
                 'data'           => $this->formatChannel($channel, true),
                 'correlation_id' => $correlationId,
             ], 201);
-
         } catch (\Throwable $e) {
             return $this->errorResponse($e, $correlationId, 422);
         }
     }
-
     /** Обновить канал */
     public function update(Request $request, string $uuid): JsonResponse
     {
         $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
-
         $validated = $request->validate([
             'name'        => ['sometimes', 'string', 'max:256'],
             'description' => ['nullable', 'string', 'max:2000'],
             'avatar_url'  => ['nullable', 'url', 'max:512'],
             'cover_url'   => ['nullable', 'url', 'max:512'],
         ]);
-
         try {
             $channel = BusinessChannel::withoutGlobalScopes()
                 ->where('uuid', $uuid)
                 ->firstOrFail();
-
             $this->authorize('update', $channel);
-
             $channel = $this->channelService->updateChannel($channel, $validated, $correlationId);
-
             return response()->json([
                 'success'        => true,
                 'message'        => 'Канал обновлён.',
                 'data'           => $this->formatChannel($channel, true),
                 'correlation_id' => $correlationId,
             ]);
-
         } catch (\Throwable $e) {
             return $this->errorResponse($e, $correlationId);
         }
     }
-
     /** Публичный просмотр канала по slug */
     public function publicShow(Request $request, string $slug): JsonResponse
     {
         $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
-
         try {
             $channel = BusinessChannel::withoutGlobalScopes()
                 ->where('slug', $slug)
                 ->where('status', 'active')
                 ->with(['plan'])
                 ->firstOrFail();
-
             return response()->json([
                 'success'        => true,
                 'data'           => $this->formatChannel($channel, false),
                 'correlation_id' => $correlationId,
             ]);
-
         } catch (\Throwable $e) {
             return $this->errorResponse($e, $correlationId, 404);
         }
     }
-
     /** Оформить тарифный план */
     public function subscribeToPlan(Request $request, string $uuid, string $planSlug): JsonResponse
     {
         $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
-
         try {
             $channel = BusinessChannel::withoutGlobalScopes()
                 ->where('uuid', $uuid)
                 ->firstOrFail();
-
             $this->authorize('update', $channel);
-
             $usage = $this->tariffService->subscribe($channel, $planSlug, $correlationId);
-
             return response()->json([
                 'success' => true,
                 'message' => "Тариф «{$usage->plan->name}» успешно активирован.",
@@ -171,12 +141,10 @@ final class ChannelController extends BaseApiV1Controller
                 ],
                 'correlation_id' => $correlationId,
             ]);
-
         } catch (\Throwable $e) {
             return $this->errorResponse($e, $correlationId, 422);
         }
     }
-
     /** Список доступных тарифных планов */
     public function plans(): JsonResponse
     {
@@ -193,15 +161,12 @@ final class ChannelController extends BaseApiV1Controller
             'advanced_stats'  => $p->advanced_stats,
             'scheduled_posts' => $p->scheduled_posts,
         ]);
-
         return response()->json(['success' => true, 'data' => $plans]);
     }
-
     // ──────────────────────────────────────────────────────
     // Private helpers
     // ──────────────────────────────────────────────────────
-
-    private function formatChannel(\App\Domains\Channels\Models\BusinessChannel $channel, bool $isOwner): array
+    private function formatChannel(\App\Domains\Content\Channels\Models\BusinessChannel $channel, bool $isOwner): array
     {
         $data = [
             'id'          => $channel->id,
@@ -214,7 +179,6 @@ final class ChannelController extends BaseApiV1Controller
             'status'      => $channel->status,
             'posts_count' => $channel->posts_count,
         ];
-
         // Число подписчиков видит только владелец
         if ($isOwner) {
             $data['subscribers_count'] = $channel->subscribers_count;
@@ -222,7 +186,6 @@ final class ChannelController extends BaseApiV1Controller
             $data['plan_name']         = $channel->plan?->name;
             $data['plan_expires_at']   = $channel->plan_expires_at?->toIso8601String();
         }
-
         return $data;
     }
 }

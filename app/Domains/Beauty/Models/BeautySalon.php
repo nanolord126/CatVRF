@@ -9,8 +9,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Модель салона красоты.
- * Production 2026.
+ * КАНОН 2026: Beauty Salon Model (Layer 2)
+ * Полная изоляция через tenant_id и business_group_id.
+ * Все изменения через сервисы.
  */
 final class BeautySalon extends Model
 {
@@ -19,6 +20,7 @@ final class BeautySalon extends Model
     protected $table = 'beauty_salons';
 
     protected $fillable = [
+        'uuid',
         'tenant_id',
         'business_group_id',
         'name',
@@ -31,28 +33,43 @@ final class BeautySalon extends Model
         'rating',
         'review_count',
         'is_verified',
-        'correlation_id',
         'tags',
         'metadata',
+        'correlation_id',
     ];
-
-    protected $hidden = [];
 
     protected $casts = [
         'working_hours' => 'json',
         'geo_point' => 'json',
-        'tags' => 'collection',
+        'tags' => 'json',
         'metadata' => 'json',
         'is_verified' => 'boolean',
         'rating' => 'float',
         'review_count' => 'integer',
+        'deleted_at' => 'datetime',
     ];
 
+    /**
+     * Инициальзация модели - глобальные скоупы для изоляции данных.
+     */
     protected static function booted(): void
     {
-        static::addGlobalScope('tenant', fn ($query) => $query->where('tenant_id', tenant('id') ?? 0));
+        static::creating(function (Model $model) {
+            if (empty($model->correlation_id)) {
+                $model->correlation_id = request()->header('X-Correlation-ID') ?? strval(fake()->uuid());
+            }
+        });
+
+        static::addGlobalScope('tenant_scoping', function ($builder) {
+            if (function_exists('tenant') && tenant('id')) {
+                $builder->where('tenant_id', tenant('id'));
+            }
+        });
     }
 
+    /**
+     * Отношения (Relationships)
+     */
     public function masters(): HasMany
     {
         return $this->hasMany(Master::class, 'salon_id');
@@ -68,6 +85,11 @@ final class BeautySalon extends Model
         return $this->hasMany(Appointment::class, 'salon_id');
     }
 
+    public function consumables(): HasMany
+    {
+        return $this->hasMany(BeautyConsumable::class, 'salon_id');
+    }
+
     public function products(): HasMany
     {
         return $this->hasMany(BeautyProduct::class, 'salon_id');
@@ -76,5 +98,15 @@ final class BeautySalon extends Model
     public function reviews(): HasMany
     {
         return $this->hasMany(Review::class, 'salon_id');
+    }
+
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Tenant::class, 'tenant_id');
+    }
+
+    public function businessGroup(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\BusinessGroup::class, 'business_group_id');
     }
 }

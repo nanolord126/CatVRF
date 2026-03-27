@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Flowers\Jobs;
 
@@ -29,7 +30,7 @@ class ProcessFlowerOrderStatusJob implements ShouldQueue
     public function handle(): void
     {
         try {
-            $this->db->transaction(function () {
+            DB::transaction(function () {
                 $orders = FlowerOrder::query()
                     ->where('status', 'confirmed')
                     ->where('delivery_date', '>=', now()->toDateString())
@@ -40,7 +41,7 @@ class ProcessFlowerOrderStatusJob implements ShouldQueue
                     if ($order->items()->count() > 0) {
                         $order->update(['status' => 'preparing']);
 
-                        $this->log->channel('audit')->info('Flower order marked as preparing', [
+                        Log::channel('audit')->info('Flower order marked as preparing', [
                             'order_id' => $order->id,
                             'shop_id' => $order->shop_id,
                             'correlation_id' => $order->correlation_id,
@@ -49,7 +50,7 @@ class ProcessFlowerOrderStatusJob implements ShouldQueue
                 }
             });
         } catch (\Exception $exception) {
-            $this->log->channel('audit')->error('Flower order status processing failed', [
+            Log::channel('audit')->error('Flower order status processing failed', [
                 'error' => $exception->getMessage(),
             ]);
             throw $exception;

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Factories\Jewelry;
 
-use App\Domains\Jewelry\Models\JewelryItem;
+use App\Domains\Luxury\Jewelry\Models\JewelryItem;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 final class JewelryItemFactory extends Factory

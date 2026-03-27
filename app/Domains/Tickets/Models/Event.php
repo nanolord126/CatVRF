@@ -1,47 +1,88 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Tickets\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\{HasMany, BelongsTo};
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Casts\AsCollection;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
+use Illuminate\Support\Str;
 
+/**
+ * КАНОН 2026: Модель эвента.
+ * Слой 2: Модели.
+ */
 final class Event extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, LogsActivity;
 
     protected $table = 'events';
+
     protected $fillable = [
-        'tenant_id', 'organizer_id', 'title', 'description', 'category',
-        'status', 'starts_at', 'ends_at', 'venue_name', 'venue_address',
-        'geo_point', 'amenities', 'ticket_price_from', 'ticket_price_to',
-        'total_capacity', 'tickets_sold', 'rating', 'review_count',
-        'banner_url', 'tags', 'metadata', 'correlation_id', 'is_live'
+        'uuid', 'tenant_id', 'venue_id', 'seat_map_id', 
+        'title', 'description', 'slug', 'start_at', 
+        'end_at', 'status', 'category', 'max_tickets_per_user', 
+        'is_b2b', 'tags', 'correlation_id'
     ];
 
     protected $casts = [
-        'starts_at' => 'datetime',
-        'ends_at' => 'datetime',
-        'amenities' => AsCollection::class,
-        'tags' => AsCollection::class,
-        'metadata' => 'json',
-        'ticket_price_from' => 'float',
-        'ticket_price_to' => 'float',
-        'rating' => 'float',
-        'is_live' => 'boolean',
+        'uuid' => 'string',
+        'is_b2b' => 'boolean',
+        'start_at' => 'datetime',
+        'end_at' => 'datetime',
+        'tags' => 'json',
+        'max_tickets_per_user' => 'integer',
+        'status' => 'string'
     ];
 
+    /**
+     * Глобальные правила эвента.
+     */
     protected static function booted(): void
     {
-        static::addGlobalScope('tenant', function ($query) {
-            $query->where('tenant_id', tenant('id'));
+        // 1. Фильтрация по текущему тенанту (multi-tenancy)
+        static::addGlobalScope('tenant', function ($builder) {
+            if (function_exists('tenant') && tenant('id')) {
+                $builder->where('tenant_id', tenant('id'));
+            }
+        });
+
+        // 2. Авто-генерация UUID при создании
+        static::creating(function ($model) {
+            $model->uuid = (string) Str::uuid();
+            if (empty($model->tenant_id) && function_exists('tenant')) {
+                $model->tenant_id = tenant('id');
+            }
         });
     }
 
-    public function organizer(): BelongsTo
+    public function getActivitylogOptions(): LogOptions
     {
-        return $this->belongsTo(\App\Models\User::class, 'organizer_id');
+        return LogOptions::defaults()
+            ->logOnly([
+                'title', 'status', 'start_at', 'venue_id', 
+                'category', 'max_tickets_per_user'
+            ])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->useLogName('audit');
+    }
+
+    /**
+     * Отношения.
+     */
+    public function venue(): BelongsTo
+    {
+        return $this->belongsTo(Venue::class);
+    }
+
+    public function seatMap(): BelongsTo
+    {
+        return $this->belongsTo(SeatMap::class);
     }
 
     public function ticketTypes(): HasMany
@@ -54,23 +95,35 @@ final class Event extends Model
         return $this->hasMany(Ticket::class);
     }
 
-    public function sales(): HasMany
+    /**
+     * Скоуп активных эвентов.
+     */
+    public function scopeActive($query)
     {
-        return $this->hasMany(TicketSale::class);
+        return $query->where('status', 'published')
+            ->where('start_at', '>', now());
     }
 
-    public function reviews(): HasMany
+    /**
+     * Проверка на наличие доступных билетов.
+     */
+    public function hasAvailableTickets(): bool
     {
-        return $this->hasMany(EventReview::class);
+        return $this->ticketTypes()->sum('quantity') > $this->ticketTypes()->sum('sold_count');
     }
 
-    public function organizerEarnings(): HasMany
+    /**
+     * Название категории.
+     */
+    public function getCategoryLabelAttribute(): string
     {
-        return $this->hasMany(OrganizerEarning::class);
-    }
-
-    public function checkins(): HasMany
-    {
-        return $this->hasMany(EventCheckin::class);
+        return match ($this->category) {
+            'concert' => 'Концерт',
+            'theater' => 'Театр',
+            'sport' => 'Спорт',
+            'conference' => 'Конференция',
+            'festival' => 'Фестиваль',
+            default => 'Другое',
+        };
     }
 }

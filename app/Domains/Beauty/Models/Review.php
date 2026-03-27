@@ -3,45 +3,45 @@
 namespace App\Domains\Beauty\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Модель отзыва о мастере/услуге.
- * Production 2026.
+ * КАНОН 2026: Beauty Review Model (Layer 2)
  */
 final class Review extends Model
 {
-    use HasUuids;
+    use HasUuids, SoftDeletes;
 
-    protected $table = 'reviews';
+    protected $table = 'beauty_reviews';
 
     protected $fillable = [
+        'uuid',
         'tenant_id',
+        'user_id',
         'salon_id',
         'master_id',
         'appointment_id',
-        'author_id',
         'rating',
-        'text',
+        'comment',
         'photos',
         'correlation_id',
-        'tags',
-        'metadata',
     ];
 
-    protected $hidden = [];
-
     protected $casts = [
-        'photos' => 'collection',
-        'tags' => 'collection',
-        'metadata' => 'json',
         'rating' => 'integer',
+        'photos' => 'json',
+        'deleted_at' => 'datetime',
     ];
 
     protected static function booted(): void
     {
-        static::addGlobalScope('tenant', fn ($query) => $query->where('tenant_id', tenant('id') ?? 0));
+        static::addGlobalScope('tenant_scoping', function ($builder) {
+            if (function_exists('tenant') && tenant('id')) {
+                $builder->where('tenant_id', tenant('id'));
+            }
+        });
     }
 
     public function salon(): BelongsTo
@@ -54,13 +54,13 @@ final class Review extends Model
         return $this->belongsTo(Master::class, 'master_id');
     }
 
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\User::class, 'user_id');
+    }
+
     public function appointment(): BelongsTo
     {
         return $this->belongsTo(Appointment::class, 'appointment_id');
-    }
-
-    public function author(): BelongsTo
-    {
-        return $this->belongsTo(related: \App\Models\User::class, foreignKey: 'author_id');
     }
 }

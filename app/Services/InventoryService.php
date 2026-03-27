@@ -41,8 +41,8 @@ final class InventoryService
         int $sourceId,
         string $correlationId
     ): bool {
-        return $this->db->transaction(function () use ($inventoryItemId, $quantity, $reason, $sourceType, $sourceId, $correlationId) {
-            $item = $this->db->table('inventory_items')
+        return DB::transaction(function () use ($inventoryItemId, $quantity, $reason, $sourceType, $sourceId, $correlationId) {
+            $item = DB::table('inventory_items')
                 ->where('id', $inventoryItemId)
                 ->lockForUpdate()
                 ->first();
@@ -58,12 +58,12 @@ final class InventoryService
             }
 
             // Deduct from inventory
-            $this->db->table('inventory_items')
+            DB::table('inventory_items')
                 ->where('id', $inventoryItemId)
                 ->decrement('current_stock', $quantity);
 
             // Log movement
-            $this->db->table('stock_movements')->insert([
+            DB::table('stock_movements')->insert([
                 'inventory_item_id' => $inventoryItemId,
                 'type' => 'out',
                 'quantity' => -$quantity,
@@ -74,7 +74,7 @@ final class InventoryService
                 'created_at' => now(),
             ]);
 
-            $this->log->channel('audit')->info('Inventory decreased', [
+            Log::channel('audit')->info('Inventory decreased', [
                 'correlation_id' => $correlationId,
                 'inventory_item_id' => $inventoryItemId,
                 'quantity' => $quantity,
@@ -104,8 +104,8 @@ final class InventoryService
         string $sourceType = 'manual',
         string $correlationId = ''
     ): bool {
-        return $this->db->transaction(function () use ($inventoryItemId, $quantity, $reason, $sourceType, $correlationId) {
-            $item = $this->db->table('inventory_items')
+        return DB::transaction(function () use ($inventoryItemId, $quantity, $reason, $sourceType, $correlationId) {
+            $item = DB::table('inventory_items')
                 ->where('id', $inventoryItemId)
                 ->lockForUpdate()
                 ->first();
@@ -115,12 +115,12 @@ final class InventoryService
             }
 
             // Add to inventory
-            $this->db->table('inventory_items')
+            DB::table('inventory_items')
                 ->where('id', $inventoryItemId)
                 ->increment('current_stock', $quantity);
 
             // Log movement
-            $this->db->table('stock_movements')->insert([
+            DB::table('stock_movements')->insert([
                 'inventory_item_id' => $inventoryItemId,
                 'type' => 'in',
                 'quantity' => $quantity,
@@ -131,7 +131,7 @@ final class InventoryService
                 'created_at' => now(),
             ]);
 
-            $this->log->channel('audit')->info('Inventory increased', [
+            Log::channel('audit')->info('Inventory increased', [
                 'correlation_id' => $correlationId,
                 'inventory_item_id' => $inventoryItemId,
                 'quantity' => $quantity,
@@ -152,7 +152,7 @@ final class InventoryService
      */
     public static function checkAvailability(int $inventoryItemId, int $requiredQuantity): bool
     {
-        $item = $this->db->table('inventory_items')
+        $item = DB::table('inventory_items')
             ->where('id', $inventoryItemId)
             ->first();
 
@@ -171,7 +171,7 @@ final class InventoryService
      */
     public static function getInventoryLevel(int $inventoryItemId): int
     {
-        $item = $this->db->table('inventory_items')
+        $item = DB::table('inventory_items')
             ->where('id', $inventoryItemId)
             ->first();
 
@@ -186,7 +186,7 @@ final class InventoryService
      */
     public static function isLow(int $inventoryItemId): bool
     {
-        $item = $this->db->table('inventory_items')
+        $item = DB::table('inventory_items')
             ->where('id', $inventoryItemId)
             ->first();
 
@@ -214,8 +214,8 @@ final class InventoryService
         int $userId,
         string $correlationId
     ): bool {
-        return $this->db->transaction(function () use ($inventoryItemId, $newQuantity, $reason, $userId, $correlationId) {
-            $item = $this->db->table('inventory_items')
+        return DB::transaction(function () use ($inventoryItemId, $newQuantity, $reason, $userId, $correlationId) {
+            $item = DB::table('inventory_items')
                 ->where('id', $inventoryItemId)
                 ->lockForUpdate()
                 ->first();
@@ -228,12 +228,12 @@ final class InventoryService
             $delta = $newQuantity - $oldQuantity;
 
             // Update inventory
-            $this->db->table('inventory_items')
+            DB::table('inventory_items')
                 ->where('id', $inventoryItemId)
                 ->update(['current_stock' => $newQuantity]);
 
             // Log adjustment
-            $this->db->table('stock_movements')->insert([
+            DB::table('stock_movements')->insert([
                 'inventory_item_id' => $inventoryItemId,
                 'type' => 'adjust',
                 'quantity' => $delta,
@@ -244,7 +244,7 @@ final class InventoryService
                 'created_at' => now(),
             ]);
 
-            $this->log->channel('audit')->info('Inventory adjusted', [
+            Log::channel('audit')->info('Inventory adjusted', [
                 'correlation_id' => $correlationId,
                 'inventory_item_id' => $inventoryItemId,
                 'old_quantity' => $oldQuantity,
@@ -266,7 +266,7 @@ final class InventoryService
      */
     public static function getLowStockItems(int $tenantId): array
     {
-        return $this->db->table('inventory_items')
+        return DB::table('inventory_items')
             ->where('tenant_id', $tenantId)
             ->whereRaw('current_stock <= min_stock_threshold')
             ->get()
@@ -282,7 +282,7 @@ final class InventoryService
      */
     public static function getMovementHistory(int $inventoryItemId, int $limit = 50): array
     {
-        return $this->db->table('stock_movements')
+        return DB::table('stock_movements')
             ->where('inventory_item_id', $inventoryItemId)
             ->orderBy('created_at', 'desc')
             ->limit($limit)

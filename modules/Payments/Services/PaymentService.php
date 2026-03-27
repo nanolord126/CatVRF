@@ -32,14 +32,14 @@ final class PaymentService
         $correlationId ??= Str::uuid();
 
         try {
-            $this->log->channel('audit')->info('payment.service.init.start', [
+            Log::channel('audit')->info('payment.service.init.start', [
                 'correlation_id' => $correlationId,
                 'user_id' => $userId,
                 'amount' => $amount,
                 'idempotency_key' => $idempotencyKey,
             ]);
 
-            $transaction = $this->db->transaction(function () use (
+            $transaction = DB::transaction(function () use (
                 $userId,
                 $tenantId,
                 $amount,
@@ -56,7 +56,7 @@ final class PaymentService
                     ->first();
 
                 if ($existing) {
-                    $this->log->channel('audit')->info('payment.service.init.idempotent', [
+                    Log::channel('audit')->info('payment.service.init.idempotent', [
                         'correlation_id' => $correlationId,
                         'existing_id' => $existing->id,
                     ]);
@@ -77,7 +77,7 @@ final class PaymentService
                 ]);
             });
 
-            $this->log->channel('audit')->info('payment.service.init.success', [
+            Log::channel('audit')->info('payment.service.init.success', [
                 'correlation_id' => $correlationId,
                 'transaction_id' => $transaction->id,
                 'amount' => $amount,
@@ -85,7 +85,7 @@ final class PaymentService
 
             return $transaction;
         } catch (Throwable $e) {
-            $this->log->channel('audit')->critical('payment.service.init.error', [
+            Log::channel('audit')->critical('payment.service.init.error', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -108,12 +108,12 @@ final class PaymentService
                 throw new DomainException("Cannot capture transaction with status: {$transaction->status}");
             }
 
-            $this->log->channel('audit')->info('payment.service.capture.start', [
+            Log::channel('audit')->info('payment.service.capture.start', [
                 'correlation_id' => $correlationId,
                 'transaction_id' => $transaction->id,
             ]);
 
-            $updated = $this->db->transaction(function () use ($transaction, $correlationId) {
+            $updated = DB::transaction(function () use ($transaction, $correlationId) {
                 $transaction->update([
                     'status' => 'captured',
                     'captured_at' => now(),
@@ -121,14 +121,14 @@ final class PaymentService
                 return $transaction->fresh();
             });
 
-            $this->log->channel('audit')->info('payment.service.capture.success', [
+            Log::channel('audit')->info('payment.service.capture.success', [
                 'correlation_id' => $correlationId,
                 'transaction_id' => $updated->id,
             ]);
 
             return $updated;
         } catch (Throwable $e) {
-            $this->log->channel('audit')->critical('payment.service.capture.error', [
+            Log::channel('audit')->critical('payment.service.capture.error', [
                 'correlation_id' => $correlationId,
                 'transaction_id' => $transaction->id,
                 'error' => $e->getMessage(),
@@ -148,13 +148,13 @@ final class PaymentService
         $correlationId ??= Str::uuid();
 
         try {
-            $this->log->channel('audit')->info('payment.service.refund.start', [
+            Log::channel('audit')->info('payment.service.refund.start', [
                 'correlation_id' => $correlationId,
                 'transaction_id' => $transaction->id,
                 'reason' => $reason,
             ]);
 
-            $refunded = $this->db->transaction(function () use ($transaction, $reason, $correlationId) {
+            $refunded = DB::transaction(function () use ($transaction, $reason, $correlationId) {
                 $transaction->update([
                     'status' => 'refunded',
                     'refunded_at' => now(),
@@ -163,14 +163,14 @@ final class PaymentService
                 return $transaction->fresh();
             });
 
-            $this->log->channel('audit')->info('payment.service.refund.success', [
+            Log::channel('audit')->info('payment.service.refund.success', [
                 'correlation_id' => $correlationId,
                 'transaction_id' => $refunded->id,
             ]);
 
             return $refunded;
         } catch (Throwable $e) {
-            $this->log->channel('audit')->critical('payment.service.refund.error', [
+            Log::channel('audit')->critical('payment.service.refund.error', [
                 'correlation_id' => $correlationId,
                 'transaction_id' => $transaction->id,
                 'error' => $e->getMessage(),
@@ -189,7 +189,7 @@ final class PaymentService
         $correlationId ??= Str::uuid();
 
         try {
-            $this->log->channel('audit')->info('payment.service.status.check', [
+            Log::channel('audit')->info('payment.service.status.check', [
                 'correlation_id' => $correlationId,
                 'transaction_id' => $transaction->id,
             ]);
@@ -201,7 +201,7 @@ final class PaymentService
                 'currency' => $transaction->currency,
             ];
         } catch (Throwable $e) {
-            $this->log->channel('audit')->critical('payment.service.status.error', [
+            Log::channel('audit')->critical('payment.service.status.error', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);

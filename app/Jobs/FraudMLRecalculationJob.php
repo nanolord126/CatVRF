@@ -43,7 +43,7 @@ final class FraudMLRecalculationJob implements ShouldQueue
     public function handle(): void
     {
         try {
-            $this->log->channel('audit')->info('FraudML recalculation started', [
+            Log::channel('audit')->info('FraudML recalculation started', [
                 'correlation_id' => $this->correlationId,
                 'timestamp' => now()->toIso8601String(),
             ]);
@@ -52,7 +52,7 @@ final class FraudMLRecalculationJob implements ShouldQueue
             $trainingData = $this->collectTrainingData();
 
             if (count($trainingData) < 100) {
-                $this->log->warning('Insufficient training data for FraudML', [
+                Log::warning('Insufficient training data for FraudML', [
                     'correlation_id' => $this->correlationId,
                     'data_count' => count($trainingData),
                 ]);
@@ -75,7 +75,7 @@ final class FraudMLRecalculationJob implements ShouldQueue
             if ($metrics['auc_roc'] > 0.92 && $metrics['precision'] > 0.85) {
                 $this->activateModelVersion($modelVersion);
 
-                $this->log->channel('audit')->info('New FraudML model activated', [
+                Log::channel('audit')->info('New FraudML model activated', [
                     'correlation_id' => $this->correlationId,
                     'model_version' => $modelVersion,
                     'auc_roc' => $metrics['auc_roc'],
@@ -83,7 +83,7 @@ final class FraudMLRecalculationJob implements ShouldQueue
                     'recall' => $metrics['recall'],
                 ]);
             } else {
-                $this->log->warning('New FraudML model did not meet quality threshold', [
+                Log::warning('New FraudML model did not meet quality threshold', [
                     'correlation_id' => $this->correlationId,
                     'auc_roc' => $metrics['auc_roc'],
                     'precision' => $metrics['precision'],
@@ -94,7 +94,7 @@ final class FraudMLRecalculationJob implements ShouldQueue
             $this->cleanupOldModels();
 
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('FraudML recalculation failed', [
+            Log::channel('audit')->error('FraudML recalculation failed', [
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -148,7 +148,7 @@ final class FraudMLRecalculationJob implements ShouldQueue
 
         // Здесь вызвать Python скрипт или ML сервис для обучения
         // Для демо: просто логируем
-        $this->log->channel('audit')->info('FraudML model training started', [
+        Log::channel('audit')->info('FraudML model training started', [
             'correlation_id' => $this->correlationId,
             'model_version' => $version,
             'training_samples' => count($features),
@@ -179,7 +179,7 @@ final class FraudMLRecalculationJob implements ShouldQueue
      */
     private function saveModelVersion(string $version, array $metrics): void
     {
-        $this->db->transaction(function () use ($version, $metrics) {
+        DB::transaction(function () use ($version, $metrics) {
             FraudModelVersion::create([
                 'version' => $version,
                 'trained_at' => now(),
@@ -221,7 +221,7 @@ final class FraudMLRecalculationJob implements ShouldQueue
             // Удалить запись из БД
             $model->delete();
 
-            $this->log->info('Deleted old FraudML model', [
+            Log::info('Deleted old FraudML model', [
                 'version' => $model->version,
             ]);
         }
@@ -229,7 +229,7 @@ final class FraudMLRecalculationJob implements ShouldQueue
 
     public function failed(\Exception $exception): void
     {
-        $this->log->channel('audit')->error('FraudMLRecalculationJob failed permanently', [
+        Log::channel('audit')->error('FraudMLRecalculationJob failed permanently', [
             'correlation_id' => $this->correlationId,
             'error' => $exception->getMessage(),
         ]);

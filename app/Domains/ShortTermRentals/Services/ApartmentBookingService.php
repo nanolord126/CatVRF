@@ -35,7 +35,7 @@ final class ApartmentBookingService
         }
         RateLimiter::hit("str:booking:".$userId, 60);
 
-        return $this->db->transaction(function () use ($apartmentId, $userId, $dates, $correlationId) {
+        return DB::transaction(function () use ($apartmentId, $userId, $dates, $correlationId) {
             $apartment = Apartment::findOrFail($apartmentId);
             
             // 1. Fraud Check (подозрительные брони)
@@ -79,7 +79,7 @@ final class ApartmentBookingService
                 $correlationId
             );
 
-            $this->log->channel("audit")->info("STR: Booking created and held", [
+            Log::channel("audit")->info("STR: Booking created and held", [
                 "booking_uuid" => $booking->uuid,
                 "user_id" => $userId,
                 "total_held" => $totalAmount
@@ -98,7 +98,7 @@ final class ApartmentBookingService
         $correlationId = $correlationId ?: (string) Str::uuid();
         $booking = ApartmentBooking::with(['apartment', 'user'])->findOrFail($bookingId);
 
-        $this->db->transaction(function () use ($booking, $isClaims, $correlationId) {
+        DB::transaction(function () use ($booking, $isClaims, $correlationId) {
             if ($booking->status !== "checked_in") {
                 // В реальности статус меняется после заезда, тут упростим
             }
@@ -106,11 +106,11 @@ final class ApartmentBookingService
             // Обработка депозита
             if ($isClaims) {
                 // Если есть претензии - депозит остается замороженным до арбитража
-                $this->log->channel("audit")->warning("STR: Deposit held due to damage claims", ["booking_id" => $booking->id]);
+                Log::channel("audit")->warning("STR: Deposit held due to damage claims", ["booking_id" => $booking->id]);
             } else {
                 // Возврат депозита гостю
                 $this->wallet->releaseHold($booking->user_id, $booking->deposit_amount, $correlationId);
-                $this->log->channel("audit")->info("STR: Deposit released to guest", ["user_id" => $booking->user_id]);
+                Log::channel("audit")->info("STR: Deposit released to guest", ["user_id" => $booking->user_id]);
             }
 
             // Выплата владельцу за вычетом комиссии (отложенная по канону в 2026, но тут инициируем процесс)
@@ -128,7 +128,7 @@ final class ApartmentBookingService
 
             $booking->update(["status" => "completed", "completed_at" => now()]);
 
-            $this->log->channel("audit")->info("STR: Booking checkout completed", [
+            Log::channel("audit")->info("STR: Booking checkout completed", [
                 "booking_id" => $bookingId,
                 "payout" => $payout
             ]);

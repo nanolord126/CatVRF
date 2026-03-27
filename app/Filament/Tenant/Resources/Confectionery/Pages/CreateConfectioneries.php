@@ -1,6 +1,7 @@
-declare(strict_types=1);
+<?php
 
-<?php declare(strict_types=1); namespace App\Filament\Tenant\Resources\Confectionery\Pages; use App\Filament\Tenant\Resources\ConfectioneryResource; use Filament\Resources\Pages\CreateRecord; final /**
+declare(strict_types=1);
+ namespace App\Filament\Tenant\Resources\Confectionery\Pages; use App\Filament\Tenant\Resources\ConfectioneryResource; use Filament\Resources\Pages\CreateRecord; final /**
  * CreateConfectioneries
  * 
  * Основной класс для работы с платформой CatVRF.

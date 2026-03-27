@@ -1,58 +1,115 @@
-declare(strict_types=1);
+<?php
 
-<?php declare(strict_types=1);
+declare(strict_types=1);
 
 namespace App\Domains\Tickets\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\{BelongsTo, HasMany};
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
+use Illuminate\Support\Str;
 
-final /**
- * TicketType
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
+/**
+ * КАНОН 2026: Тип билета для конкретного эвента.
  */
-class TicketType extends Model
+final class TicketType extends Model
 {
+    use SoftDeletes, LogsActivity;
+
     protected $table = 'ticket_types';
+
     protected $fillable = [
-        'tenant_id', 'event_id', 'name', 'description', 'price',
-        'total_quantity', 'sold_quantity', 'reserved_quantity',
-        'sale_starts_at', 'sale_ends_at', 'max_per_buyer',
-        'is_active', 'restrictions', 'correlation_id'
+        'uuid', 'tenant_id', 'event_id', 'name', 
+        'description', 'price', 'quantity', 'sold_count', 
+        'max_per_order', 'is_active', 'settings', 
+        'tags', 'correlation_id'
     ];
 
     protected $casts = [
-        'price' => 'float',
-        'sale_starts_at' => 'datetime',
-        'sale_ends_at' => 'datetime',
+        'price' => 'integer',
+        'quantity' => 'integer',
+        'sold_count' => 'integer',
+        'max_per_order' => 'integer',
         'is_active' => 'boolean',
-        'restrictions' => 'json',
+        'settings' => 'json',
+        'tags' => 'json'
     ];
 
     protected static function booted(): void
     {
-        static::addGlobalScope('tenant', function ($query) {
-            $query->where('tenant_id', tenant('id'));
+        static::addGlobalScope('tenant', function ($builder) {
+            if (function_exists('tenant') && tenant('id')) {
+                $builder->where('tenant_id', tenant('id'));
+            }
+        });
+
+        static::creating(function ($model) {
+            $model->uuid = (string) Str::uuid();
+            if (empty($model->tenant_id) && function_exists('tenant')) {
+                $model->tenant_id = tenant('id');
+            }
         });
     }
 
-    public function event(): BelongsTo
+    public function getActivitylogOptions(): LogOptions
     {
-        return $this->belongsTo($this->event->class);
+        return LogOptions::defaults()
+            ->logOnly(['name', 'price', 'quantity', 'sold_count', 'is_active'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->useLogName('audit');
     }
 
-    public function tickets(): HasMany
+    /**
+     * Эвент типа.
+     */
+    public function event(): BelongsTo
+    {
+        return $this->belongsTo(Event::class);
+    }
+
+    /**
+     * Проданные билеты.
+     */
+    public function soldTickets(): HasMany
     {
         return $this->hasMany(Ticket::class);
     }
 
-    public function getAvailableCount(): int
+    /**
+     * Осталось в продаже.
+     */
+    public function getAvailableQuantityAttribute(): int
     {
-        return $this->total_quantity - $this->sold_quantity - $this->reserved_quantity;
+        return max(0, $this->quantity - $this->sold_count);
+    }
+
+    /**
+     * Проверка возможности покупки.
+     */
+    public function canBuy(int $count): bool
+    {
+        if (!$this->is_active) return false;
+        if ($count > $this->max_per_order) return false;
+        return $this->available_quantity >= $count;
+    }
+
+    /**
+     * Увеличение счетчика продаж.
+     */
+    public function incrementSold(int $count = 1): void
+    {
+        $this->increment('sold_count', $count);
+    }
+
+    /**
+     * Возврат счетчика при отмене.
+     */
+    public function decrementSold(int $count = 1): void
+    {
+        $this->decrement('sold_count', $count);
     }
 }

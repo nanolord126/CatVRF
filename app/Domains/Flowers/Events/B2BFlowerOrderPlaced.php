@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Flowers\Events;
 
@@ -25,13 +26,5 @@ class B2BFlowerOrderPlaced
     public function __construct(
         public readonly B2BFlowerOrder $order,
         public readonly string $correlationId,
-    ) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+    ) {}
 }

@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Food\Events;
 
@@ -20,13 +21,5 @@ final class LowConsumableStock
     public function __construct(
         public FoodConsumable $consumable,
         public string $correlationId = '',
-    ) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+    ) {}
 }

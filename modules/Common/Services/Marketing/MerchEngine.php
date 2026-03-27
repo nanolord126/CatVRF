@@ -23,7 +23,7 @@ class MerchEngine
         protected LoyaltyEngine $loyalty
     ) {
         $this->correlationId = Str::uuid();
-        $this->tenantId = $this->auth->guard('tenant')?->id();
+        $this->tenantId = Auth::guard('tenant')?->id();
     }
 
     /**
@@ -34,13 +34,13 @@ class MerchEngine
         $this->correlationId = Str::uuid();
 
         try {
-            $this->log->channel('merch')->info('MerchEngine: redeeming merch', [
+            Log::channel('merch')->info('MerchEngine: redeeming merch', [
                 'correlation_id' => $this->correlationId,
                 'user_id' => $user->id,
                 'merch_id' => $merchId,
             ]);
 
-            return $this->db->transaction(function () use ($user, $merchId, $deliveryDetails) {
+            return DB::transaction(function () use ($user, $merchId, $deliveryDetails) {
                 $merch = ExclusiveMerch::lockForUpdate()->find($merchId);
 
                 if (!$merch || !$merch->is_available || $merch->stock_quantity <= 0) {
@@ -86,11 +86,11 @@ class MerchEngine
                 ]);
 
                 // Логирование
-                Audit$this->log->create([
+                AuditLog::create([
                     'entity_type' => MerchRedemption::class,
                     'entity_id' => $redemption->id,
                     'action' => 'created',
-                    'user_id' => $this->auth->id(),
+                    'user_id' => Auth::id(),
                     'tenant_id' => $this->tenantId,
                     'correlation_id' => $this->correlationId,
                     'changes' => [],
@@ -102,7 +102,7 @@ class MerchEngine
                     ],
                 ]);
 
-                $this->log->channel('merch')->info('MerchEngine: merch redeemed successfully', [
+                Log::channel('merch')->info('MerchEngine: merch redeemed successfully', [
                     'correlation_id' => $this->correlationId,
                     'redemption_id' => $redemption->id,
                     'user_id' => $user->id,
@@ -112,7 +112,7 @@ class MerchEngine
                 return $redemption;
             });
         } catch (Throwable $e) {
-            $this->log->error('MerchEngine: redemption failed', [
+            Log::error('MerchEngine: redemption failed', [
                 'correlation_id' => $this->correlationId,
                 'user_id' => $user->id,
                 'merch_id' => $merchId,
@@ -129,7 +129,7 @@ class MerchEngine
     public function generateCustomPrint(User $user, string $baseItem): string
     {
         try {
-            $this->log->channel('merch')->info('MerchEngine: generating custom print', [
+            Log::channel('merch')->info('MerchEngine: generating custom print', [
                 'correlation_id' => $this->correlationId,
                 'user_id' => $user->id,
                 'base_item' => $baseItem,
@@ -138,7 +138,7 @@ class MerchEngine
             // Здесь мы можем использовать DALL-E 3 для создания уникального принта
             $customUrl = "https://ai-studio.catvrf.ru/custom-prints/{$user->id}-{$baseItem}.png";
 
-            $this->log->channel('merch')->info('MerchEngine: custom print generated', [
+            Log::channel('merch')->info('MerchEngine: custom print generated', [
                 'correlation_id' => $this->correlationId,
                 'user_id' => $user->id,
                 'url' => $customUrl,
@@ -146,7 +146,7 @@ class MerchEngine
 
             return $customUrl;
         } catch (Throwable $e) {
-            $this->log->error('MerchEngine: custom print generation failed', [
+            Log::error('MerchEngine: custom print generation failed', [
                 'correlation_id' => $this->correlationId,
                 'user_id' => $user->id,
                 'error' => $e->getMessage(),

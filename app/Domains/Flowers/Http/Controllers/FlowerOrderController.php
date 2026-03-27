@@ -52,7 +52,7 @@ final class FlowerOrderController
                 'correlation_id' => $correlationId,
             ], $this->response->HTTP_CREATED);
         } catch (\Exception $exception) {
-            $this->log->channel('audit')->error('Order creation failed', [
+            Log::channel('audit')->error('Order creation failed', [
                 'error' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -132,10 +132,10 @@ final class FlowerOrderController
                 ], $this->response->HTTP_UNPROCESSABLE_ENTITY);
             }
 
-            $order = $this->db->transaction(function () use ($order, $correlationId) {
+            $order = DB::transaction(function () use ($order, $correlationId) {
                 $order->update(['status' => 'cancelled']);
 
-                $this->log->channel('audit')->info('Flower order cancelled', [
+                Log::channel('audit')->info('Flower order cancelled', [
                     'order_id' => $order->id,
                     'correlation_id' => $correlationId,
                 ]);

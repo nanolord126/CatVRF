@@ -49,7 +49,7 @@ final readonly class PromoCampaignService
             ]);
 
             // 2. TRANSACTION с логированием
-            $campaign = $this->db->transaction(function () use ($data, $tenantId, $userId, $correlationId) {
+            $campaign = DB::transaction(function () use ($data, $tenantId, $userId, $correlationId) {
                 $campaign = PromoCampaign::create([
                     'tenant_id' => $tenantId,
                     'type' => $data['type'],
@@ -65,7 +65,7 @@ final readonly class PromoCampaignService
                 ]);
 
                 // 3. AUDIT LOG внутри транзакции
-                $this->log->channel('audit')->info('Promo: Campaign created', [
+                Log::channel('audit')->info('Promo: Campaign created', [
                     'correlation_id' => $correlationId,
                     'promo_id' => $campaign->id,
                     'tenant_id' => $tenantId,
@@ -79,7 +79,7 @@ final readonly class PromoCampaignService
 
             return $campaign;
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Promo: Campaign creation failed', [
+            Log::channel('audit')->error('Promo: Campaign creation failed', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
                 'user_id' => $userId,
@@ -109,7 +109,7 @@ final readonly class PromoCampaignService
             ]);
 
             // 2. TRANSACTION с логированием
-            $result = $this->db->transaction(function () use ($code, $tenantId, $userId, $amount, $correlationId) {
+            $result = DB::transaction(function () use ($code, $tenantId, $userId, $amount, $correlationId) {
                 $campaign = PromoCampaign::where('code', $code)
                     ->where('tenant_id', $tenantId)
                     ->where('status', 'active')
@@ -117,7 +117,7 @@ final readonly class PromoCampaignService
                     ->first();
 
                 if (!$campaign) {
-                    $this->log->channel('audit')->warning('Promo: Invalid code', [
+                    Log::channel('audit')->warning('Promo: Invalid code', [
                         'correlation_id' => $correlationId,
                         'code' => $code,
                         'tenant_id' => $tenantId,
@@ -129,7 +129,7 @@ final readonly class PromoCampaignService
 
                 // Проверка бюджета
                 if ($campaign->spent_budget >= $campaign->budget) {
-                    $this->log->channel('audit')->warning('Promo: Budget exhausted', [
+                    Log::channel('audit')->warning('Promo: Budget exhausted', [
                         'correlation_id' => $correlationId,
                         'promo_id' => $campaign->id,
                         'spent' => $campaign->spent_budget,
@@ -169,7 +169,7 @@ final readonly class PromoCampaignService
                 }
 
                 // 3. AUDIT LOG внутри транзакции
-                $this->log->channel('audit')->info('Promo: Code applied', [
+                Log::channel('audit')->info('Promo: Code applied', [
                     'correlation_id' => $correlationId,
                     'promo_id' => $campaign->id,
                     'code' => $campaign->code,
@@ -183,7 +183,7 @@ final readonly class PromoCampaignService
 
             return $result;
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Promo: Apply failed', [
+            Log::channel('audit')->error('Promo: Apply failed', [
                 'correlation_id' => $correlationId,
                 'code' => $code,
                 'tenant_id' => $tenantId,
@@ -225,7 +225,7 @@ final readonly class PromoCampaignService
 
             $campaigns = $query->get();
 
-            $this->log->channel('audit')->info('Promo: Active campaigns listed', [
+            Log::channel('audit')->info('Promo: Active campaigns listed', [
                 'tenant_id' => $tenantId,
                 'count' => $campaigns->count(),
                 'vertical' => $vertical,
@@ -241,7 +241,7 @@ final readonly class PromoCampaignService
                 'status' => $c->status,
             ])->toArray();
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Promo: List active failed', [
+            Log::channel('audit')->error('Promo: List active failed', [
                 'tenant_id' => $tenantId,
                 'error' => $e->getMessage(),
             ]);
@@ -264,7 +264,7 @@ final readonly class PromoCampaignService
                 ->first();
 
             if (!$campaign) {
-                $this->log->channel('audit')->info('Promo: Validation failed', [
+                Log::channel('audit')->info('Promo: Validation failed', [
                     'correlation_id' => $correlationId,
                     'code' => $code,
                     'reason' => 'not_found_or_inactive',
@@ -274,7 +274,7 @@ final readonly class PromoCampaignService
             }
 
             if ($campaign->spent_budget >= $campaign->budget) {
-                $this->log->channel('audit')->info('Promo: Validation failed', [
+                Log::channel('audit')->info('Promo: Validation failed', [
                     'correlation_id' => $correlationId,
                     'code' => $code,
                     'reason' => 'budget_exhausted',
@@ -292,7 +292,7 @@ final readonly class PromoCampaignService
                 'code' => $campaign->code,
             ];
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Promo: Validation error', [
+            Log::channel('audit')->error('Promo: Validation error', [
                 'correlation_id' => $correlationId,
                 'code' => $code,
                 'error' => $e->getMessage(),
@@ -318,7 +318,7 @@ final readonly class PromoCampaignService
             ]);
 
             // 2. TRANSACTION
-            $result = $this->db->transaction(function () use ($useId, $correlationId) {
+            $result = DB::transaction(function () use ($useId, $correlationId) {
                 $use = PromoUse::findOrFail($useId);
                 $campaign = $use->campaign;
 
@@ -334,7 +334,7 @@ final readonly class PromoCampaignService
                 $use->delete();
 
                 // 3. AUDIT LOG
-                $this->log->channel('audit')->info('Promo: Use cancelled', [
+                Log::channel('audit')->info('Promo: Use cancelled', [
                     'correlation_id' => $correlationId,
                     'use_id' => $useId,
                     'promo_id' => $campaign->id,
@@ -346,7 +346,7 @@ final readonly class PromoCampaignService
 
             return $result;
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Promo: Cancel failed', [
+            Log::channel('audit')->error('Promo: Cancel failed', [
                 'correlation_id' => $correlationId,
                 'use_id' => $useId,
                 'user_id' => $userId,
@@ -373,7 +373,7 @@ final readonly class PromoCampaignService
             $totalDiscount = PromoUse::where('promo_campaign_id', $campaignId)
                 ->sum('discount_amount') ?? 0;
 
-            $this->log->channel('audit')->info('Promo: Stats retrieved', [
+            Log::channel('audit')->info('Promo: Stats retrieved', [
                 'correlation_id' => $correlationId,
                 'promo_id' => $campaignId,
                 'uses' => $uses,
@@ -390,7 +390,7 @@ final readonly class PromoCampaignService
                 'status' => $campaign->status,
             ];
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Promo: Stats retrieval failed', [
+            Log::channel('audit')->error('Promo: Stats retrieval failed', [
                 'correlation_id' => $correlationId,
                 'campaign_id' => $campaignId,
                 'error' => $e->getMessage(),

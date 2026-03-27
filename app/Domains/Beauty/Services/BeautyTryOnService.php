@@ -32,7 +32,7 @@ final class BeautyTryOnService
         );
 
         try {
-            $this->log->channel('audit')->info('AR session initiated', [
+            Log::channel('audit')->info('AR session initiated', [
                 'user_id' => $userId,
                 'service_type' => $serviceType,
                 'correlation_id' => $correlationId,
@@ -46,7 +46,7 @@ final class BeautyTryOnService
                 'correlation_id' => $correlationId,
             ];
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('AR session failed', [
+            Log::channel('audit')->error('AR session failed', [
                 'user_id' => $userId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -63,7 +63,7 @@ final class BeautyTryOnService
     {
         $correlationId = $correlationId ?: Str::uuid()->toString();
 
-        $this->log->channel('audit')->info('Try-on result requested', [
+        Log::channel('audit')->info('Try-on result requested', [
             'session_id' => $sessionId,
             'correlation_id' => $correlationId,
         ]);

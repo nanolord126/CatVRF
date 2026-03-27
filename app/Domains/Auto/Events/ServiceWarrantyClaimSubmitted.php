@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Auto\Events;
 
@@ -29,7 +30,7 @@ class ServiceWarrantyClaimSubmitted implements ShouldBroadcast
         public readonly ServiceWarranty $warranty,
         public readonly string $correlationId
     ) {
-        $this->log->channel('audit')->info('ServiceWarrantyClaimSubmitted event dispatched', [
+        Log::channel('audit')->info('ServiceWarrantyClaimSubmitted event dispatched', [
             'correlation_id' => $this->correlationId,
             'warranty_id' => $this->warranty->id,
             'warranty_number' => $this->warranty->warranty_number,

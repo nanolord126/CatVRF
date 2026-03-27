@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Policies;
 
 use App\Models\User;
-use App\Domains\Channels\Models\Post;
+use App\Domains\Content\Channels\Models\Post;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
 final class PostPolicy

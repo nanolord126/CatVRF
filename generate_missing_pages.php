@@ -184,14 +184,14 @@ final class List{RESOURCE_NAME} extends ListRecords
         try {
             $correlationId = Str::uuid()->toString();
             
-            $this->log->channel('audit')->info('List Page Accessed', [
+            Log::channel('audit')->info('List Page Accessed', [
                 'resource' => static::$resource,
                 'correlation_id' => $correlationId,
                 'tenant_id' => auth()->user()?->getTenantKey(),
                 'user_id' => auth()->id(),
             ]);
         } catch (\Exception $e) {
-            $this->log->channel('errors')->error('List Page Mount Error', [
+            Log::channel('errors')->error('List Page Mount Error', [
                 'resource' => static::$resource,
                 'error' => $e->getMessage(),
                 'file' => $e->getFile(),
@@ -245,14 +245,14 @@ final class Create{RESOURCE_NAME} extends CreateRecord
         try {
             $correlationId = Str::uuid()->toString();
             
-            $this->log->channel('audit')->info('Create Page Accessed', [
+            Log::channel('audit')->info('Create Page Accessed', [
                 'resource' => static::$resource,
                 'correlation_id' => $correlationId,
                 'tenant_id' => auth()->user()?->getTenantKey(),
                 'user_id' => auth()->id(),
             ]);
         } catch (\Exception $e) {
-            $this->log->channel('errors')->error('Create Page Mount Error', [
+            Log::channel('errors')->error('Create Page Mount Error', [
                 'resource' => static::$resource,
                 'error' => $e->getMessage(),
                 'file' => $e->getFile(),
@@ -273,13 +273,13 @@ final class Create{RESOURCE_NAME} extends CreateRecord
                 throw new \Exception('No tenant context found');
             }
             
-            $this->log->channel('audit')->info('Record Create Initiated', [
+            Log::channel('audit')->info('Record Create Initiated', [
                 'resource' => static::$resource,
                 'correlation_id' => $correlationId,
                 'tenant_id' => auth()->user()?->getTenantKey(),
             ]);
         } catch (\Exception $e) {
-            $this->log->channel('errors')->error('Create Before Hook Error', [
+            Log::channel('errors')->error('Create Before Hook Error', [
                 'resource' => static::$resource,
                 'error' => $e->getMessage(),
             ]);
@@ -292,7 +292,7 @@ final class Create{RESOURCE_NAME} extends CreateRecord
         try {
             $correlationId = Str::uuid()->toString();
             
-            $this->log->channel('audit')->info('Record Created Successfully', [
+            Log::channel('audit')->info('Record Created Successfully', [
                 'resource' => static::$resource,
                 'record_id' => $this->record?->getKey(),
                 'correlation_id' => $correlationId,
@@ -300,7 +300,7 @@ final class Create{RESOURCE_NAME} extends CreateRecord
                 'user_id' => auth()->id(),
             ]);
         } catch (\Exception $e) {
-            $this->log->channel('errors')->error('Create After Hook Error', [
+            Log::channel('errors')->error('Create After Hook Error', [
                 'resource' => static::$resource,
                 'error' => $e->getMessage(),
             ]);
@@ -351,7 +351,7 @@ final class Edit{RESOURCE_NAME} extends EditRecord
         try {
             $correlationId = Str::uuid()->toString();
             
-            $this->log->channel('audit')->info('Edit Page Accessed', [
+            Log::channel('audit')->info('Edit Page Accessed', [
                 'resource' => static::$resource,
                 'record_id' => $record,
                 'correlation_id' => $correlationId,
@@ -359,7 +359,7 @@ final class Edit{RESOURCE_NAME} extends EditRecord
                 'user_id' => auth()->id(),
             ]);
         } catch (\Exception $e) {
-            $this->log->channel('errors')->error('Edit Page Mount Error', [
+            Log::channel('errors')->error('Edit Page Mount Error', [
                 'resource' => static::$resource,
                 'record_id' => $record ?? null,
                 'error' => $e->getMessage(),
@@ -374,14 +374,14 @@ final class Edit{RESOURCE_NAME} extends EditRecord
         try {
             $correlationId = Str::uuid()->toString();
             
-            $this->log->channel('audit')->info('Record Save Initiated', [
+            Log::channel('audit')->info('Record Save Initiated', [
                 'resource' => static::$resource,
                 'record_id' => $this->record?->getKey(),
                 'correlation_id' => $correlationId,
                 'tenant_id' => auth()->user()?->getTenantKey(),
             ]);
         } catch (\Exception $e) {
-            $this->log->channel('errors')->error('Edit Before Save Error', [
+            Log::channel('errors')->error('Edit Before Save Error', [
                 'resource' => static::$resource,
                 'error' => $e->getMessage(),
             ]);
@@ -394,7 +394,7 @@ final class Edit{RESOURCE_NAME} extends EditRecord
         try {
             $correlationId = Str::uuid()->toString();
             
-            $this->log->channel('audit')->info('Record Updated Successfully', [
+            Log::channel('audit')->info('Record Updated Successfully', [
                 'resource' => static::$resource,
                 'record_id' => $this->record?->getKey(),
                 'correlation_id' => $correlationId,
@@ -402,7 +402,7 @@ final class Edit{RESOURCE_NAME} extends EditRecord
                 'user_id' => auth()->id(),
             ]);
         } catch (\Exception $e) {
-            $this->log->channel('errors')->error('Edit After Save Error', [
+            Log::channel('errors')->error('Edit After Save Error', [
                 'resource' => static::$resource,
                 'error' => $e->getMessage(),
             ]);
@@ -452,7 +452,7 @@ final class View{RESOURCE_NAME} extends ViewRecord
         try {
             $correlationId = Str::uuid()->toString();
             
-            $this->log->channel('audit')->info('View Page Accessed', [
+            Log::channel('audit')->info('View Page Accessed', [
                 'resource' => static::$resource,
                 'record_id' => $record,
                 'correlation_id' => $correlationId,
@@ -460,7 +460,7 @@ final class View{RESOURCE_NAME} extends ViewRecord
                 'user_id' => auth()->id(),
             ]);
         } catch (\Exception $e) {
-            $this->log->channel('errors')->error('View Page Mount Error', [
+            Log::channel('errors')->error('View Page Mount Error', [
                 'resource' => static::$resource,
                 'record_id' => $record ?? null,
                 'error' => $e->getMessage(),

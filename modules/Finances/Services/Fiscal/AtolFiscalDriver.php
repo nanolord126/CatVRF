@@ -127,7 +127,7 @@ class AtolFiscalDriver implements FiscalDriverInterface
 
             return $response['token'] ?? throw new Exception('Token not received from Atol');
         } catch (Exception $e) {
-            $this->log->error('Atol getToken failed', ['error' => $e->getMessage()]);
+            Log::error('Atol getToken failed', ['error' => $e->getMessage()]);
             throw $e;
         }
     }
@@ -164,7 +164,7 @@ class AtolFiscalDriver implements FiscalDriverInterface
             $status = $response['status'] ?? 'sent';
             $receiptUrl = $response['receipt_url'] ?? null;
 
-            $this->log->info('Atol receipt sent', [
+            Log::info('Atol receipt sent', [
                 'fiscal_id' => $fiscalId,
                 'status' => $status,
                 'payment_id' => $tx['payment_id'],
@@ -179,7 +179,7 @@ class AtolFiscalDriver implements FiscalDriverInterface
                 'error' => null,
             ];
         } catch (Exception $e) {
-            $this->log->error('Atol sendReceipt failed', [
+            Log::error('Atol sendReceipt failed', [
                 'error' => $e->getMessage(),
                 'payment_id' => $tx['payment_id'],
                 'correlation_id' => $tx['correlation_id'],
@@ -210,7 +210,7 @@ class AtolFiscalDriver implements FiscalDriverInterface
                 'error' => null,
             ];
         } catch (Exception $e) {
-            $this->log->error('Atol getReceiptStatus failed', [
+            Log::error('Atol getReceiptStatus failed', [
                 'error' => $e->getMessage(),
                 'fiscal_id' => $fiscalId,
             ]);
@@ -239,7 +239,7 @@ class AtolFiscalDriver implements FiscalDriverInterface
                 ->throw()
                 ->json();
 
-            $this->log->info('Atol refund sent', [
+            Log::info('Atol refund sent', [
                 'original_fiscal_id' => $fiscalId,
                 'refund_fiscal_id' => $response['uuid'] ?? null,
                 'correlation_id' => $data['correlation_id'] ?? null,
@@ -253,7 +253,7 @@ class AtolFiscalDriver implements FiscalDriverInterface
                 'error' => null,
             ];
         } catch (Exception $e) {
-            $this->log->error('Atol refundReceipt failed', [
+            Log::error('Atol refundReceipt failed', [
                 'error' => $e->getMessage(),
                 'fiscal_id' => $fiscalId,
                 'correlation_id' => $data['correlation_id'] ?? null,
@@ -272,10 +272,10 @@ class AtolFiscalDriver implements FiscalDriverInterface
                 ->head($this->endpoint)
                 ->successful();
             
-            $this->log->info('Atol availability check', ['available' => $response]);
+            Log::info('Atol availability check', ['available' => $response]);
             return $response;
         } catch (Exception $e) {
-            $this->log->warning('Atol availability check failed', ['error' => $e->getMessage()]);
+            Log::warning('Atol availability check failed', ['error' => $e->getMessage()]);
             return false;
         }
     }
@@ -286,7 +286,7 @@ class AtolFiscalDriver implements FiscalDriverInterface
     public function resendReceipt(string $fiscalId): array
     {
         try {
-            $this->log->info('Atol: resending receipt', ['fiscal_id' => $fiscalId]);
+            Log::info('Atol: resending receipt', ['fiscal_id' => $fiscalId]);
 
             // Atol не имеет прямого метода переотправки
             // Возвращаем статус существующего чека
@@ -303,7 +303,7 @@ class AtolFiscalDriver implements FiscalDriverInterface
                 'sent_at' => Carbon::now()->toIso8601String(),
             ];
         } catch (Exception $e) {
-            $this->log->error('Atol resendReceipt failed', [
+            Log::error('Atol resendReceipt failed', [
                 'error' => $e->getMessage(),
                 'fiscal_id' => $fiscalId,
             ]);
@@ -319,7 +319,7 @@ class AtolFiscalDriver implements FiscalDriverInterface
         try {
             // Atol не предоставляет метод истории через API
             // Возвращаем пустой результат или можно добавить логику через данные БД
-            $this->log->info('Atol: getReceiptHistory not implemented in API');
+            Log::info('Atol: getReceiptHistory not implemented in API');
             
             return [
                 'total' => 0,
@@ -327,7 +327,7 @@ class AtolFiscalDriver implements FiscalDriverInterface
                 'items' => [],
             ];
         } catch (Exception $e) {
-            $this->log->error('Atol getReceiptHistory failed', [
+            Log::error('Atol getReceiptHistory failed', [
                 'error' => $e->getMessage(),
             ]);
             throw $e;

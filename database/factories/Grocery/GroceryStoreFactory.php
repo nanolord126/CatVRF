@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Factories\Grocery;
 
-use App\Domains\Grocery\Models\GroceryStore;
+use App\Domains\Food\Grocery\Models\GroceryStore;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 

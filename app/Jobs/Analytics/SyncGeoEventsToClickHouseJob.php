@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\Analytics;
 
-use App\Domains\Analytics\Services\ClickHouseService;
+use App\Domains\Consulting\Analytics\Services\ClickHouseService;
 use App\Domains\Geo\Models\GeoActivity;
 use App\Events\Analytics\GeoEventsSyncedToClickHouse;
 use Exception;
@@ -50,7 +50,7 @@ final class SyncGeoEventsToClickHouseJob implements ShouldQueue
 
             $duration = microtime(true) - $startTime;
 
-            $this->log->channel('audit')->info('[SyncGeoEventsToClickHouse] Sync completed', [
+            Log::channel('audit')->info('[SyncGeoEventsToClickHouse] Sync completed', [
                 'correlation_id' => $this->correlationId,
                 'events_synced' => $totalEvents,
                 'duration_seconds' => round($duration, 2),
@@ -69,7 +69,7 @@ final class SyncGeoEventsToClickHouseJob implements ShouldQueue
                 );
             }
         } catch (Exception $e) {
-            $this->log->channel('error')->error('[SyncGeoEventsToClickHouse] Sync failed', [
+            Log::channel('error')->error('[SyncGeoEventsToClickHouse] Sync failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $this->correlationId,
                 'stacktrace' => $e->getTraceAsString(),
@@ -89,12 +89,12 @@ final class SyncGeoEventsToClickHouseJob implements ShouldQueue
             $ids = $chunk->pluck('id')->toArray();
             GeoActivity::whereIn('id', $ids)->update(['synced_to_ch' => true]);
 
-            $this->log->channel('analytics')->debug('[SyncGeoEventsToClickHouse] Chunk synced', [
+            Log::channel('analytics')->debug('[SyncGeoEventsToClickHouse] Chunk synced', [
                 'count' => count($ids),
                 'correlation_id' => $this->correlationId,
             ]);
         } catch (Exception $e) {
-            $this->log->channel('error')->error('[SyncGeoEventsToClickHouse] Chunk sync failed', [
+            Log::channel('error')->error('[SyncGeoEventsToClickHouse] Chunk sync failed', [
                 'error' => $e->getMessage(),
                 'count' => count($chunk),
                 'correlation_id' => $this->correlationId,
@@ -107,7 +107,7 @@ final class SyncGeoEventsToClickHouseJob implements ShouldQueue
 
     public function failed(Exception $exception): void
     {
-        $this->log->channel('error')->error('[SyncGeoEventsToClickHouse] Job failed permanently', [
+        Log::channel('error')->error('[SyncGeoEventsToClickHouse] Job failed permanently', [
             'error' => $exception->getMessage(),
             'correlation_id' => $this->correlationId,
             'attempts' => $this->attempts(),

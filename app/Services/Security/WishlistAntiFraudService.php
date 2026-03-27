@@ -18,7 +18,7 @@ final class WishlistAntiFraudService
 
         // Check 1: Unusual time pattern
         if ($this->isUnusualTimePattern($userId)) {
-            $this->log->channel('fraud_alert')->warning('Wishlist fraud: unusual time pattern', [
+            Log::channel('fraud_alert')->warning('Wishlist fraud: unusual time pattern', [
                 'user_id' => $userId,
                 'correlation_id' => $correlationId,
             ]);
@@ -27,7 +27,7 @@ final class WishlistAntiFraudService
 
         // Check 2: Rapid add-to-cart and pay
         if ($this->isRapidAddAndPay($userId)) {
-            $this->log->channel('fraud_alert')->warning('Wishlist fraud: rapid add and pay', [
+            Log::channel('fraud_alert')->warning('Wishlist fraud: rapid add and pay', [
                 'user_id' => $userId,
                 'correlation_id' => $correlationId,
             ]);
@@ -36,7 +36,7 @@ final class WishlistAntiFraudService
 
         // Check 3: Item price manipulation
         if ($this->isPriceManipulation($items)) {
-            $this->log->channel('fraud_alert')->warning('Wishlist fraud: price manipulation', [
+            Log::channel('fraud_alert')->warning('Wishlist fraud: price manipulation', [
                 'items' => count($items),
                 'correlation_id' => $correlationId,
             ]);
@@ -45,7 +45,7 @@ final class WishlistAntiFraudService
 
         // Check 4: High-value items from unknown sellers
         if ($this->isHighValueFromUnknownSellers($items, $userId)) {
-            $this->log->channel('fraud_alert')->warning('Wishlist fraud: high value from unknown sellers', [
+            Log::channel('fraud_alert')->warning('Wishlist fraud: high value from unknown sellers', [
                 'user_id' => $userId,
                 'correlation_id' => $correlationId,
             ]);
@@ -54,7 +54,7 @@ final class WishlistAntiFraudService
 
         // Check 5: Bulk wishlist payment (>50 items at once)
         if (count($items) > 50) {
-            $this->log->channel('fraud_alert')->warning('Wishlist fraud: bulk payment attempt', [
+            Log::channel('fraud_alert')->warning('Wishlist fraud: bulk payment attempt', [
                 'user_id' => $userId,
                 'item_count' => count($items),
                 'correlation_id' => $correlationId,
@@ -72,7 +72,7 @@ final class WishlistAntiFraudService
         
         if ($hour >= 0 && $hour <= 6) {
             // Check if user ever shops at night
-            $nightPurchases = $this->db->table('orders')
+            $nightPurchases = DB::table('orders')
                 ->where('user_id', $userId)
                 ->whereRaw('HOUR(created_at) BETWEEN 0 AND 6')
                 ->count();
@@ -86,7 +86,7 @@ final class WishlistAntiFraudService
     private function isRapidAddAndPay(int $userId): bool
     {
         // Get wishlist items added in last 5 minutes
-        $recentWishlist = $this->db->table('wishlist_items')
+        $recentWishlist = DB::table('wishlist_items')
             ->where('user_id', $userId)
             ->where('created_at', '>', now()->subMinutes(5))
             ->count();
@@ -97,7 +97,7 @@ final class WishlistAntiFraudService
         }
 
         // Check if user is trying to buy those items immediately
-        $recentOrders = $this->db->table('orders')
+        $recentOrders = DB::table('orders')
             ->where('user_id', $userId)
             ->where('created_at', '>', now()->subMinutes(10))
             ->count();
@@ -108,7 +108,7 @@ final class WishlistAntiFraudService
     private function isPriceManipulation(array $items): bool
     {
         foreach ($items as $item) {
-            $product = $this->db->table('products')
+            $product = DB::table('products')
                 ->where('id', $item['product_id'] ?? null)
                 ->first();
 
@@ -135,7 +135,7 @@ final class WishlistAntiFraudService
 
             // Check if user has purchased from this seller before
             $sellerId = $item['seller_id'] ?? null;
-            $previousPurchases = $this->db->table('orders')
+            $previousPurchases = DB::table('orders')
                 ->where('user_id', $userId)
                 ->where('seller_id', $sellerId)
                 ->count();

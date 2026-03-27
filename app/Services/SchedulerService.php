@@ -30,7 +30,7 @@ final class SchedulerService
      */
     public static function scheduleHotelPayout(int $bookingId, int $amount, string $correlationId): bool
     {
-        $this->db->table('scheduled_payouts')->insert([
+        DB::table('scheduled_payouts')->insert([
             'bookable_type' => 'booking',
             'bookable_id' => $bookingId,
             'amount' => $amount,
@@ -40,7 +40,7 @@ final class SchedulerService
             'created_at' => now(),
         ]);
 
-        $this->log->channel('audit')->info('Hotel payout scheduled', [
+        Log::channel('audit')->info('Hotel payout scheduled', [
             'correlation_id' => $correlationId,
             'booking_id' => $bookingId,
             'amount' => $amount,
@@ -62,7 +62,7 @@ final class SchedulerService
     public static function scheduleLowStockAlert(int $inventoryItemId, int $currentStock, int $minThreshold, string $correlationId): bool
     {
         if ($currentStock <= $minThreshold) {
-            $this->db->table('scheduled_notifications')->insert([
+            DB::table('scheduled_notifications')->insert([
                 'type' => 'low_stock',
                 'target_type' => 'inventory_item',
                 'target_id' => $inventoryItemId,
@@ -75,7 +75,7 @@ final class SchedulerService
                 'created_at' => now(),
             ]);
 
-            $this->log->channel('audit')->info('Low stock alert scheduled', [
+            Log::channel('audit')->info('Low stock alert scheduled', [
                 'correlation_id' => $correlationId,
                 'inventory_item_id' => $inventoryItemId,
                 'current_stock' => $currentStock,
@@ -98,7 +98,7 @@ final class SchedulerService
      */
     public static function scheduleReferralQualificationCheck(int $referralId, int $referrerId, string $correlationId): bool
     {
-        $this->db->table('scheduled_jobs')->insert([
+        DB::table('scheduled_jobs')->insert([
             'type' => 'referral_qualify',
             'target_id' => $referralId,
             'data' => json_encode([
@@ -110,7 +110,7 @@ final class SchedulerService
             'created_at' => now(),
         ]);
 
-        $this->log->channel('audit')->info('Referral qualification check scheduled', [
+        Log::channel('audit')->info('Referral qualification check scheduled', [
             'correlation_id' => $correlationId,
             'referral_id' => $referralId,
             'scheduled_for' => now()->addHours(24),
@@ -129,7 +129,7 @@ final class SchedulerService
      */
     public static function schedulePromoExpirationWarning(int $campaignId, int $daysBeforeExpiry = 3, string $correlationId = ''): bool
     {
-        $campaign = $this->db->table('promo_campaigns')->find($campaignId);
+        $campaign = DB::table('promo_campaigns')->find($campaignId);
 
         if (!$campaign || !$campaign->end_at) {
             return false;
@@ -141,7 +141,7 @@ final class SchedulerService
             return false; // Already past
         }
 
-        $this->db->table('scheduled_notifications')->insert([
+        DB::table('scheduled_notifications')->insert([
             'type' => 'promo_expiring',
             'target_type' => 'promo_campaign',
             'target_id' => $campaignId,
@@ -154,7 +154,7 @@ final class SchedulerService
             'created_at' => now(),
         ]);
 
-        $this->log->channel('audit')->info('Promo expiration warning scheduled', [
+        Log::channel('audit')->info('Promo expiration warning scheduled', [
             'correlation_id' => $correlationId,
             'campaign_id' => $campaignId,
             'scheduled_for' => $scheduledFor,
@@ -171,7 +171,7 @@ final class SchedulerService
      */
     public static function getPendingOperations(string $type = ''): array
     {
-        $query = $this->db->table('scheduled_payouts')
+        $query = DB::table('scheduled_payouts')
             ->where('status', 'pending')
             ->where('scheduled_for', '<=', now());
 
@@ -191,7 +191,7 @@ final class SchedulerService
      */
     public static function markCompleted(int $operationId, string $table): bool
     {
-        $this->db->table($table)
+        DB::table($table)
             ->where('id', $operationId)
             ->update([
                 'status' => 'completed',

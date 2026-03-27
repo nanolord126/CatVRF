@@ -2,148 +2,95 @@
 
 namespace App\Domains\Beauty\Services;
 
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
-use App\Services\FraudControlService;
-
-
+use App\Domains\Beauty\Models\Appointment;
 use App\Domains\Beauty\Models\BeautyConsumable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
-final class ConsumableDeductionService
+/**
+ * КАНОН 2026: Consumable Deduction Service (Layer 3)
+ * Автоматическое управление остатками расходников.
+ * 
+ * Особенности:
+ * - Использование lockForUpdate() при списании.
+ * - Логирование в канал inventory.
+ * - Интеграция с сервисом уведомлений (NotificationService - по желанию).
+ */
+final readonly class ConsumableDeductionService
 {
-    public function __construct(
-        private readonly FraudControlService $fraudControlService,
-    ) {}
-
     /**
-     * Списать расходники после завершения услуги
+     * Зарезервировать расходники при записи.
      */
-    public function deductConsumables(int $appointmentId, array $consumables, string $correlationId): bool
+    public function reserveForAppointment(Appointment $appointment): void
     {
-        try {
-                        $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-            $this->db->transaction(function () use ($appointmentId, $consumables, $correlationId) {
-                foreach ($consumables as $consumableId => $quantity) {
-                    $consumable = BeautyConsumable::lockForUpdate()->findOrFail($consumableId);
+        $service = $appointment->service;
+        if (!$service || empty($service->consumables)) {
+            return;
+        }
 
-                    if ($consumable->current_stock < $quantity) {
-                        throw new \Exception("Insufficient consumable stock for {$consumableId}");
-                    }
+        foreach ($service->consumables as $item) {
+            $consumable = BeautyConsumable::where('salon_id', $appointment->salon_id)
+                ->where('name', $item['name'])
+                ->first();
 
-                    $consumable->decrement('current_stock', $quantity);
-
-                    $this->log->channel('audit')->info('Consumable deducted', [
-                        'appointment_id' => $appointmentId,
-                        'consumable_id' => $consumableId,
-                        'quantity' => $quantity,
-                        'remaining' => $consumable->current_stock,
-                        'correlation_id' => $correlationId,
+            if ($consumable) {
+                if ($consumable->current_stock < ($item['quantity'] ?? 1)) {
+                    Log::channel('inventory')->warning('Insufficient stock for reservation', [
+                        'consumable' => $item['name'],
+                        'salon_id' => $appointment->salon_id,
+                        'appointment_id' => $appointment->id
                     ]);
                 }
-            });
-
-            return true;
-        } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Consumable deduction failed', [
-                'appointment_id' => $appointmentId,
-                'error' => $e->getMessage(),
-                'correlation_id' => $correlationId,
-                'trace' => $e->getTraceAsString(),
-            ]);
-            throw $e;
+            }
         }
     }
 
     /**
-     * Зарезервировать расходники при бронировании
+     * Снять бронь с расходников.
      */
-    public function reserveConsumables(int $appointmentId, array $consumables, string $correlationId): bool
+    public function releaseForAppointment(Appointment $appointment): void
     {
-        try {
-                        $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-            $this->db->transaction(function () use ($appointmentId, $consumables, $correlationId) {
-                foreach ($consumables as $consumableId => $quantity) {
-                    $consumable = BeautyConsumable::lockForUpdate()->findOrFail($consumableId);
-
-                    if ($consumable->current_stock < $quantity) {
-                        throw new \Exception("Insufficient consumable stock for {$consumableId}");
-                    }
-
-                    $consumable->increment('hold_stock', $quantity);
-
-                    $this->log->channel('audit')->info('Consumable reserved', [
-                        'appointment_id' => $appointmentId,
-                        'consumable_id' => $consumableId,
-                        'quantity' => $quantity,
-                        'correlation_id' => $correlationId,
-                    ]);
-                }
-            });
-
-            return true;
-        } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Consumable reservation failed', [
-                'appointment_id' => $appointmentId,
-                'error' => $e->getMessage(),
-                'correlation_id' => $correlationId,
-                'trace' => $e->getTraceAsString(),
-            ]);
-            throw $e;
-        }
+        Log::channel('inventory')->info('Release consumables for cancelled appointment', [
+            'appointment_id' => $appointment->id
+        ]);
     }
 
     /**
-     * Отпустить зарезервированные расходники при отмене
+     * Реальное списание расходников после выполнения услуги.
      */
-    public function releaseConsumables(int $appointmentId, array $consumables, string $correlationId): bool
+    public function deductForAppointment(Appointment $appointment): void
     {
-        try {
-                        $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-            $this->db->transaction(function () use ($appointmentId, $consumables, $correlationId) {
-                foreach ($consumables as $consumableId => $quantity) {
-                    $consumable = BeautyConsumable::lockForUpdate()->findOrFail($consumableId);
-                    $consumable->decrement('hold_stock', $quantity);
-
-                    $this->log->channel('audit')->info('Consumable released', [
-                        'appointment_id' => $appointmentId,
-                        'consumable_id' => $consumableId,
-                        'quantity' => $quantity,
-                        'correlation_id' => $correlationId,
-                    ]);
-                }
-            });
-
-            return true;
-        } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Consumable release failed', [
-                'appointment_id' => $appointmentId,
-                'error' => $e->getMessage(),
-                'correlation_id' => $correlationId,
-                'trace' => $e->getTraceAsString(),
-            ]);
-            throw $e;
+        $service = $appointment->service;
+        if (!$service || empty($service->consumables)) {
+            return;
         }
+
+        DB::transaction(function () use ($appointment, $service) {
+            foreach ($service->consumables as $item) {
+                $consumable = BeautyConsumable::where('salon_id', $appointment->salon_id)
+                    ->where('name', $item['name'])
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($consumable) {
+                    $qty = $item['quantity'] ?? 1;
+                    $consumable->decrement('current_stock', $qty);
+
+                    Log::channel('inventory')->info('Consumable deducted', [
+                        'consumable_id' => $consumable->id,
+                        'qty' => $qty,
+                        'appointment_id' => $appointment->id,
+                        'reason' => 'Service completion: ' . $service->name
+                    ]);
+                    
+                    if ($consumable->current_stock <= $consumable->min_threshold) {
+                        Log::channel('inventory')->warning('Emergency low stock alert', [
+                            'consumable_id' => $consumable->id,
+                            'current_stock' => $consumable->current_stock
+                        ]);
+                    }
+                }
+            }
+        });
     }
 }

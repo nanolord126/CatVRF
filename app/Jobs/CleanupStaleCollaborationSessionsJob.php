@@ -1,8 +1,7 @@
-declare(strict_types=1);
-
 <?php
 
 declare(strict_types=1);
+
 
 namespace App\Jobs;
 
@@ -33,11 +32,11 @@ class CleanupStaleCollaborationSessionsJob implements ShouldQueue
             // Очищаем устаревшие сессии редактирования
             // В продакшене можно использовать более оптимизированный подход с Redis SCAN
 
-            $this->log->channel('audit')->info('Cleanup stale collaboration sessions job completed', [
+            Log::channel('audit')->info('Cleanup stale collaboration sessions job completed', [
                 'timestamp' => now()->toIso8601String(),
             ]);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Failed to cleanup stale collaboration sessions', [
+            Log::channel('audit')->error('Failed to cleanup stale collaboration sessions', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);

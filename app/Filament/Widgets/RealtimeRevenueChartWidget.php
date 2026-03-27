@@ -38,7 +38,7 @@ final class RealtimeRevenueChartWidget extends ChartWidget
             $hour = now()->subHours($i);
             $labels[] = $hour->format('H:i');
             $key = "stats:revenue:hour:{$tenantId}:{$hour->format('Y-m-d-H')}";
-            $data[] = $this->cache->get($key, 0) / 100; // Convert to rubles
+            $data[] = Cache::get($key, 0) / 100; // Convert to rubles
         }
 
         return [

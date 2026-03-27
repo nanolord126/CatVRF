@@ -26,7 +26,7 @@ final class SurgeRecalculationJob implements ShouldQueue
 
     public function handle(SurgeService $surgeService): void
     {
-        $this->log->channel('audit')->info('Surge recalculation started', [
+        Log::channel('audit')->info('Surge recalculation started', [
             'correlation_id' => $this->correlationId,
             'job' => self::class,
         ]);
@@ -46,12 +46,12 @@ final class SurgeRecalculationJob implements ShouldQueue
                 ]);
             }
 
-            $this->log->channel('audit')->info('Surge recalculation completed', [
+            Log::channel('audit')->info('Surge recalculation completed', [
                 'correlation_id' => $this->correlationId,
                 'zones_updated' => $activeZones->count(),
             ]);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Surge recalculation failed', [
+            Log::channel('audit')->error('Surge recalculation failed', [
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

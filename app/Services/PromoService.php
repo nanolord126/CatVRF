@@ -41,14 +41,14 @@ final class PromoService
         ]);
 
 
-        $this->log->channel('audit')->info('Method applyPromo() called', [
+        Log::channel('audit')->info('Method applyPromo() called', [
             'correlation_id' => $correlationId ?? Str::uuid(),
         ]);
 
 
-        return $this->db->transaction(function () use ($code, $orderAmount, $vertical, $userId, $correlationId): array {
+        return DB::transaction(function () use ($code, $orderAmount, $vertical, $userId, $correlationId): array {
             // Get campaign
-            $campaign = $this->db->table('promo_campaigns')
+            $campaign = DB::table('promo_campaigns')
                 ->where('code', strtoupper($code))
                 ->where('tenant_id', tenant()->id)
                 ->lockForUpdate()
@@ -85,7 +85,7 @@ final class PromoService
             }
 
             // Check per-user usage limit
-            $userUsageCount = $this->db->table('promo_uses')
+            $userUsageCount = DB::table('promo_uses')
                 ->where('promo_campaign_id', $campaign->id)
                 ->where('user_id', $userId)
                 ->count();
@@ -113,7 +113,7 @@ final class PromoService
             }
 
             // Record usage
-            $this->db->table('promo_uses')->insert([
+            DB::table('promo_uses')->insert([
                 'promo_campaign_id' => $campaign->id,
                 'tenant_id' => tenant()->id,
                 'user_id' => $userId,
@@ -123,7 +123,7 @@ final class PromoService
             ]);
 
             // Update campaign budget
-            $this->db->table('promo_campaigns')
+            DB::table('promo_campaigns')
                 ->where('id', $campaign->id)
                 ->update([
                     'spent_budget' => $campaign->spent_budget + $discountAmount,
@@ -131,7 +131,7 @@ final class PromoService
                     'status' => $campaign->spent_budget + $discountAmount >= $campaign->budget ? 'exhausted' : 'active',
                 ]);
 
-            $this->log->channel('promo')->info('Promo applied', [
+            Log::channel('promo')->info('Promo applied', [
                 'correlation_id' => $correlationId,
                 'code' => $code,
                 'user_id' => $userId,
@@ -159,12 +159,12 @@ final class PromoService
      */
     public function validatePromo(string $code, int $orderAmount, string $vertical): array
     {
-        $this->log->channel('audit')->info('Method validatePromo() called', [
+        Log::channel('audit')->info('Method validatePromo() called', [
             'correlation_id' => $correlationId ?? Str::uuid(),
         ]);
 
 
-        $campaign = $this->db->table('promo_campaigns')
+        $campaign = DB::table('promo_campaigns')
             ->where('code', strtoupper($code))
             ->where('tenant_id', tenant()->id)
             ->first();
@@ -235,17 +235,17 @@ final class PromoService
      */
     public function cancelPromoUse(int $useId, string $correlationId): bool
     {
-        $this->log->channel('audit')->info('Method cancelPromoUse() called', [
+        Log::channel('audit')->info('Method cancelPromoUse() called', [
             'correlation_id' => $correlationId ?? Str::uuid(),
         ]);
 
 
-        return $this->db->transaction(function () use ($useId, $correlationId): bool {
-            $use = $this->db->table('promo_uses')->findOrFail($useId);
-            $campaign = $this->db->table('promo_campaigns')->findOrFail($use->promo_campaign_id);
+        return DB::transaction(function () use ($useId, $correlationId): bool {
+            $use = DB::table('promo_uses')->findOrFail($useId);
+            $campaign = DB::table('promo_campaigns')->findOrFail($use->promo_campaign_id);
 
             // Return discount to budget
-            $this->db->table('promo_campaigns')
+            DB::table('promo_campaigns')
                 ->where('id', $campaign->id)
                 ->update([
                     'spent_budget' => max(0, $campaign->spent_budget - $use->discount_amount),
@@ -254,13 +254,13 @@ final class PromoService
                 ]);
 
             // Mark use as cancelled
-            $this->db->table('promo_uses')
+            DB::table('promo_uses')
                 ->where('id', $useId)
                 ->update([
                     'cancelled_at' => now(),
                 ]);
 
-            $this->log->channel('promo')->info('Promo use cancelled', [
+            Log::channel('promo')->info('Promo use cancelled', [
                 'correlation_id' => $correlationId,
                 'promo_use_id' => $useId,
                 'discount_refunded' => $use->discount_amount,

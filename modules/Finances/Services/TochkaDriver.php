@@ -60,7 +60,7 @@ class TochkaDriver implements PaymentGatewayInterface
                 throw new Exception("Tochka payment init failed: {$response['message']}");
             }
 
-            $this->log->info('Tochka payment initiated', [
+            Log::info('Tochka payment initiated', [
                 'order_id' => $data['order_id'],
                 'amount' => $data['amount'],
                 'payment_id' => $response['data']['payment_id'] ?? null,
@@ -72,7 +72,7 @@ class TochkaDriver implements PaymentGatewayInterface
                 'gateway' => 'tochka',
             ];
         } catch (Exception $e) {
-            $this->log->error('Tochka initPayment failed', [
+            Log::error('Tochka initPayment failed', [
                 'error' => $e->getMessage(),
                 'order_id' => $data['order_id'] ?? null,
             ]);
@@ -94,14 +94,14 @@ class TochkaDriver implements PaymentGatewayInterface
                 ->throw()
                 ->json();
 
-            $this->log->info('Tochka payment captured', ['payment_id' => $paymentId]);
+            Log::info('Tochka payment captured', ['payment_id' => $paymentId]);
 
             return [
                 'status' => 'settled',
                 'confirmation_id' => $response['data']['confirmation_id'] ?? null,
             ];
         } catch (Exception $e) {
-            $this->log->error('Tochka capture failed', ['error' => $e->getMessage()]);
+            Log::error('Tochka capture failed', ['error' => $e->getMessage()]);
             throw $e;
         }
     }
@@ -122,7 +122,7 @@ class TochkaDriver implements PaymentGatewayInterface
                 ->throw()
                 ->json();
 
-            $this->log->info('Tochka refund processed', [
+            Log::info('Tochka refund processed', [
                 'payment_id' => $paymentId,
                 'amount' => $amount,
             ]);
@@ -132,7 +132,7 @@ class TochkaDriver implements PaymentGatewayInterface
                 'refund_id' => $response['data']['refund_id'] ?? null,
             ];
         } catch (Exception $e) {
-            $this->log->error('Tochka refund failed', ['error' => $e->getMessage()]);
+            Log::error('Tochka refund failed', ['error' => $e->getMessage()]);
             throw $e;
         }
     }
@@ -169,7 +169,7 @@ class TochkaDriver implements PaymentGatewayInterface
                 throw new Exception("Tochka payout failed: {$response['message']}");
             }
 
-            $this->log->info('Tochka payout initiated', [
+            Log::info('Tochka payout initiated', [
                 'amount' => $amount,
                 'recipient_account' => $recipient['account'],
                 'payout_id' => $response['data']['payout_id'] ?? null,
@@ -180,7 +180,7 @@ class TochkaDriver implements PaymentGatewayInterface
                 'payout_id' => $response['data']['payout_id'] ?? null,
             ];
         } catch (Exception $e) {
-            $this->log->error('Tochka payout failed', ['error' => $e->getMessage()]);
+            Log::error('Tochka payout failed', ['error' => $e->getMessage()]);
             throw $e;
         }
     }
@@ -205,7 +205,7 @@ class TochkaDriver implements PaymentGatewayInterface
                 'amount' => ($response['data']['amount'] ?? 0) / 100,
             ];
         } catch (Exception $e) {
-            $this->log->error('Get payment status failed', ['error' => $e->getMessage()]);
+            Log::error('Get payment status failed', ['error' => $e->getMessage()]);
             throw $e;
         }
     }
@@ -270,7 +270,7 @@ class TochkaDriver implements PaymentGatewayInterface
                 throw new Exception('Invalid webhook signature');
             }
 
-            $this->log->info('Tochka webhook processed', [
+            Log::info('Tochka webhook processed', [
                 'payment_id' => $payload['payment_id'] ?? null,
                 'status' => $payload['status'] ?? null,
             ]);
@@ -281,7 +281,7 @@ class TochkaDriver implements PaymentGatewayInterface
                 'status' => $payload['status'] ?? null,
             ];
         } catch (Exception $e) {
-            $this->log->error('Webhook processing failed', ['error' => $e->getMessage()]);
+            Log::error('Webhook processing failed', ['error' => $e->getMessage()]);
             throw $e;
         }
     }
@@ -296,10 +296,10 @@ class TochkaDriver implements PaymentGatewayInterface
                 ->head($this->endpoint . 'status')
                 ->successful();
 
-            $this->log->info('Tochka health check', ['available' => $response]);
+            Log::info('Tochka health check', ['available' => $response]);
             return $response;
         } catch (Exception $e) {
-            $this->log->warning('Tochka health check failed', ['error' => $e->getMessage()]);
+            Log::warning('Tochka health check failed', ['error' => $e->getMessage()]);
             return false;
         }
     }
@@ -330,7 +330,7 @@ class TochkaDriver implements PaymentGatewayInterface
      */
     private function getAccessToken(): string
     {
-        return \Illuminate\Support\Facades\$this->cache->remember('tochka_token', 3600, function () {
+        return \Illuminate\Support\Facades\Cache::remember('tochka_token', 3600, function () {
             $response = Http::asForm()
                 ->timeout(10)
                 ->post('https://auth.tochka.com/oauth/token', [

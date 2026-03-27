@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Domains\ConstructionMaterials\Models\ConstructionMaterial;
+use App\Domains\ConstructionAndRepair\ConstructionAndRepair\ConstructionMaterials\Models\ConstructionMaterial;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 

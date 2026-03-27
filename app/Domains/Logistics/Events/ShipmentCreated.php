@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Logistics\Events;
 
@@ -25,13 +26,5 @@ class ShipmentCreated
     public function __construct(
         public Shipment $shipment,
         public string $correlationId,
-    ) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+    ) {}
 }

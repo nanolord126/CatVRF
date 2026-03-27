@@ -29,7 +29,7 @@ final class WalletService
     }
     /**
      * Зачислить средства на кошелёк.
-     * Согласно КАНОН 2026: $this->db->transaction(), correlation_id, audit-логи, FraudCheck.
+     * Согласно КАНОН 2026: DB::transaction(), correlation_id, audit-логи, FraudCheck.
      *
      * @param int $walletId  ID кошелька
      * @param int $amount    Сумма в копейках
@@ -52,7 +52,7 @@ final class WalletService
     ): bool {
         $correlationId = $correlationId ?? Str::uuid()->toString();
 
-        return $this->db->transaction(function () use (
+        return DB::transaction(function () use (
             $walletId,
             $amount,
             $type,
@@ -65,7 +65,7 @@ final class WalletService
             }
 
             // Получить кошелёк с локировкой
-            $wallet = $this->db->table('wallets')->where('id', $walletId)->lockForUpdate()->first();
+            $wallet = DB::table('wallets')->where('id', $walletId)->lockForUpdate()->first();
 
             if (!$wallet) {
                 throw new \RuntimeException("Wallet {$walletId} not found");
@@ -75,7 +75,7 @@ final class WalletService
             $balanceAfter = $balanceBefore + $amount;
 
             // Обновить баланс в кошельке
-            $this->db->table('wallets')->where('id', $walletId)->update([
+            DB::table('wallets')->where('id', $walletId)->update([
                 'balance' => $balanceAfter,
                 'available_balance' => $balanceAfter - (int) ($wallet->hold_amount ?? 0),
                 'cached_balance' => $balanceAfter,
@@ -83,7 +83,7 @@ final class WalletService
             ]);
 
             // Создать запись в balance_transactions
-            $this->db->table('balance_transactions')->insert([
+            DB::table('balance_transactions')->insert([
                 'uuid' => Str::uuid(),
                 'correlation_id' => $correlationId,
                 'tenant_id' => $wallet->tenant_id,
@@ -105,7 +105,7 @@ final class WalletService
             ]);
 
             // Логирование в audit-канал
-            $this->log->channel('audit')->info('Wallet credited', [
+            Log::channel('audit')->info('Wallet credited', [
                 'wallet_id' => $walletId,
                 'amount' => $amount,
                 'type' => $type,
@@ -126,7 +126,7 @@ final class WalletService
 
     /**
      * Списать средства с кошелька.
-     * Согласно КАНОН 2026: $this->db->transaction(), lockForUpdate(), проверка баланса, audit-логи.
+     * Согласно КАНОН 2026: DB::transaction(), lockForUpdate(), проверка баланса, audit-логи.
      *
      * @param int $walletId        ID кошелька
      * @param int $amount          Сумма в копейках
@@ -149,7 +149,7 @@ final class WalletService
     ): bool {
         $correlationId = $correlationId ?? Str::uuid()->toString();
 
-        return $this->db->transaction(function () use (
+        return DB::transaction(function () use (
             $walletId,
             $amount,
             $type,
@@ -162,7 +162,7 @@ final class WalletService
             }
 
             // Получить кошелёк с локировкой
-            $wallet = $this->db->table('wallets')->where('id', $walletId)->lockForUpdate()->first();
+            $wallet = DB::table('wallets')->where('id', $walletId)->lockForUpdate()->first();
 
             if (!$wallet) {
                 throw new \RuntimeException("Wallet {$walletId} not found");
@@ -172,7 +172,7 @@ final class WalletService
 
             // Проверка баланса
             if ($balanceBefore < $amount) {
-                $this->log->channel('audit')->warning('Insufficient funds for debit', [
+                Log::channel('audit')->warning('Insufficient funds for debit', [
                     'wallet_id' => $walletId,
                     'required_amount' => $amount,
                     'available_balance' => $balanceBefore,
@@ -187,7 +187,7 @@ final class WalletService
             $balanceAfter = $balanceBefore - $amount;
 
             // Обновить баланс
-            $this->db->table('wallets')->where('id', $walletId)->update([
+            DB::table('wallets')->where('id', $walletId)->update([
                 'balance' => $balanceAfter,
                 'available_balance' => $balanceAfter - (int) ($wallet->hold_amount ?? 0),
                 'cached_balance' => $balanceAfter,
@@ -195,7 +195,7 @@ final class WalletService
             ]);
 
             // Создать запись в balance_transactions
-            $this->db->table('balance_transactions')->insert([
+            DB::table('balance_transactions')->insert([
                 'uuid' => Str::uuid(),
                 'correlation_id' => $correlationId,
                 'tenant_id' => $wallet->tenant_id,
@@ -217,7 +217,7 @@ final class WalletService
             ]);
 
             // Логирование
-            $this->log->channel('audit')->info('Wallet debited', [
+            Log::channel('audit')->info('Wallet debited', [
                 'wallet_id' => $walletId,
                 'amount' => $amount,
                 'type' => $type,
@@ -260,7 +260,7 @@ final class WalletService
         $correlationId = $correlationId ?? Str::uuid()->toString();
         $holdUuid = Str::uuid()->toString();
 
-        return $this->db->transaction(function () use (
+        return DB::transaction(function () use (
             $walletId,
             $amount,
             $sourceType,
@@ -273,7 +273,7 @@ final class WalletService
             }
 
             // Получить кошелёк с локировкой
-            $wallet = $this->db->table('wallets')->where('id', $walletId)->lockForUpdate()->first();
+            $wallet = DB::table('wallets')->where('id', $walletId)->lockForUpdate()->first();
 
             if (!$wallet) {
                 throw new \RuntimeException("Wallet {$walletId} not found");
@@ -294,7 +294,7 @@ final class WalletService
             $holdAfter = $holdBefore + $amount;
             $availableBalance = $balanceBefore - $holdAfter;
 
-            $this->db->table('wallets')->where('id', $walletId)->update([
+            DB::table('wallets')->where('id', $walletId)->update([
                 'hold_amount' => $holdAfter,
                 'available_balance' => max(0, $availableBalance),
                 'cached_balance' => $balanceBefore, // Общий баланс не меняется
@@ -302,7 +302,7 @@ final class WalletService
             ]);
 
             // Создать запись холда в wallet_holds
-            $this->db->table('wallet_holds')->insert([
+            DB::table('wallet_holds')->insert([
                 'uuid' => $holdUuid,
                 'correlation_id' => $correlationId,
                 'tenant_id' => $wallet->tenant_id,
@@ -319,7 +319,7 @@ final class WalletService
             ]);
 
             // Логирование
-            $this->log->channel('audit')->info('Wallet hold created', [
+            Log::channel('audit')->info('Wallet hold created', [
                 'hold_uuid' => $holdUuid,
                 'wallet_id' => $walletId,
                 'amount' => $amount,
@@ -353,9 +353,9 @@ final class WalletService
     {
         $correlationId = $correlationId ?? Str::uuid()->toString();
 
-        return $this->db->transaction(function () use ($holdUuid, $correlationId): bool {
+        return DB::transaction(function () use ($holdUuid, $correlationId): bool {
             // Получить запись холда
-            $hold = $this->db->table('wallet_holds')->where('uuid', $holdUuid)->lockForUpdate()->first();
+            $hold = DB::table('wallet_holds')->where('uuid', $holdUuid)->lockForUpdate()->first();
 
             if (!$hold) {
                 throw new \RuntimeException("Hold {$holdUuid} not found");
@@ -366,25 +366,25 @@ final class WalletService
             }
 
             // Получить кошелёк с локировкой
-            $wallet = $this->db->table('wallets')->where('id', $hold->wallet_id)->lockForUpdate()->first();
+            $wallet = DB::table('wallets')->where('id', $hold->wallet_id)->lockForUpdate()->first();
 
             // Уменьшить hold_amount
             $holdAfter = max(0, (int) $wallet->hold_amount - (int) $hold->amount);
 
-            $this->db->table('wallets')->where('id', $hold->wallet_id)->update([
+            DB::table('wallets')->where('id', $hold->wallet_id)->update([
                 'hold_amount' => $holdAfter,
                 'available_balance' => (int) $wallet->balance - $holdAfter,
                 'cached_at' => now(),
             ]);
 
             // Отметить холд как released
-            $this->db->table('wallet_holds')->where('uuid', $holdUuid)->update([
+            DB::table('wallet_holds')->where('uuid', $holdUuid)->update([
                 'status' => 'released',
                 'released_at' => now(),
             ]);
 
             // Логирование
-            $this->log->channel('audit')->info('Wallet hold released', [
+            Log::channel('audit')->info('Wallet hold released', [
                 'hold_uuid' => $holdUuid,
                 'wallet_id' => $hold->wallet_id,
                 'amount' => $hold->amount,
@@ -411,9 +411,9 @@ final class WalletService
      */
     public function capture(string $holdUuid, string $correlationId): bool
     {
-        return $this->db->transaction(function () use ($holdUuid, $correlationId): bool {
+        return DB::transaction(function () use ($holdUuid, $correlationId): bool {
             // Получить запись холда
-            $hold = $this->db->table('wallet_holds')->where('uuid', $holdUuid)->lockForUpdate()->first();
+            $hold = DB::table('wallet_holds')->where('uuid', $holdUuid)->lockForUpdate()->first();
 
             if (!$hold) {
                 throw new \RuntimeException("Hold {$holdUuid} not found");
@@ -424,13 +424,13 @@ final class WalletService
             }
 
             // Отметить холд как captured
-            $this->db->table('wallet_holds')->where('uuid', $holdUuid)->update([
+            DB::table('wallet_holds')->where('uuid', $holdUuid)->update([
                 'status' => 'captured',
                 'captured_at' => now(),
             ]);
 
             // Создать запись в balance_transactions (withdrawal)
-            $this->db->table('balance_transactions')->insert([
+            DB::table('balance_transactions')->insert([
                 'uuid' => Str::uuid(),
                 'correlation_id' => $correlationId,
                 'tenant_id' => $hold->tenant_id,
@@ -441,8 +441,8 @@ final class WalletService
                 'status' => 'completed',
                 'source_type' => $hold->source_type,
                 'source_id' => $hold->source_id,
-                'balance_before' => $this->db->table('wallets')->where('id', $hold->wallet_id)->first()->balance,
-                'balance_after' => $this->db->table('wallets')->where('id', $hold->wallet_id)->first()->balance - $hold->amount,
+                'balance_before' => DB::table('wallets')->where('id', $hold->wallet_id)->first()->balance,
+                'balance_after' => DB::table('wallets')->where('id', $hold->wallet_id)->first()->balance - $hold->amount,
                 'hold_before' => (int) $hold->wallet_id,
                 'hold_after' => 0, // После захвата холда он снят
                 'description' => "Hold capture for {$hold->source_type}:{$hold->source_id}",
@@ -452,7 +452,7 @@ final class WalletService
             ]);
 
             // Логирование
-            $this->log->channel('audit')->info('Wallet hold captured', [
+            Log::channel('audit')->info('Wallet hold captured', [
                 'hold_uuid' => $holdUuid,
                 'wallet_id' => $hold->wallet_id,
                 'amount' => $hold->amount,
@@ -481,7 +481,7 @@ final class WalletService
         }
 
         // Получить из БД
-        $wallet = $this->db->table('wallets')->where('id', $walletId)->first();
+        $wallet = DB::table('wallets')->where('id', $walletId)->first();
 
         if (!$wallet) {
             throw new \RuntimeException("Wallet {$walletId} not found");
@@ -498,7 +498,7 @@ final class WalletService
      */
     public function getAvailableBalance(int $walletId): int
     {
-        $wallet = $this->db->table('wallets')->where('id', $walletId)->first();
+        $wallet = DB::table('wallets')->where('id', $walletId)->first();
 
         if (!$wallet) {
             throw new \RuntimeException("Wallet {$walletId} not found");

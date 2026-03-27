@@ -18,7 +18,7 @@ class GamificationService
     public function __construct()
     {
         $this->correlationId = Str::uuid();
-        $this->tenantId = $this->auth->guard('tenant')?->id();
+        $this->tenantId = Auth::guard('tenant')?->id();
     }
 
     /**
@@ -34,7 +34,7 @@ class GamificationService
                 throw new \RuntimeException("User {$userId} not found");
             }
 
-            $this->log->channel('marketing')->info('Gamification: tracking weekly achievement', [
+            Log::channel('marketing')->info('Gamification: tracking weekly achievement', [
                 'correlation_id' => $this->correlationId,
                 'user_id' => $userId,
             ]);
@@ -47,13 +47,13 @@ class GamificationService
                 $this->applyAchievementReward($user, 'WEEKLY_HERO');
             }
 
-            $this->log->channel('marketing')->info('Gamification: weekly achievement tracked', [
+            Log::channel('marketing')->info('Gamification: weekly achievement tracked', [
                 'correlation_id' => $this->correlationId,
                 'user_id' => $userId,
                 'order_count' => $weeklyOrderCount,
             ]);
         } catch (Throwable $e) {
-            $this->log->error('Gamification: weekly achievement tracking failed', [
+            Log::error('Gamification: weekly achievement tracking failed', [
                 'correlation_id' => $this->correlationId,
                 'user_id' => $userId,
                 'error' => $e->getMessage(),
@@ -67,7 +67,7 @@ class GamificationService
         try {
             $reward = 250.0;
 
-            $this->log->channel('marketing')->info('Gamification: applying achievement reward', [
+            Log::channel('marketing')->info('Gamification: applying achievement reward', [
                 'correlation_id' => $this->correlationId,
                 'user_id' => $user->id,
                 'achievement' => $achievementType,
@@ -81,11 +81,11 @@ class GamificationService
             }
 
             // Логирование в audit
-            Audit$this->log->create([
+            AuditLog::create([
                 'entity_type' => 'Achievement',
                 'entity_id' => $achievementType,
                 'action' => 'reward_applied',
-                'user_id' => $this->auth->id(),
+                'user_id' => Auth::id(),
                 'tenant_id' => $this->tenantId,
                 'correlation_id' => $this->correlationId,
                 'changes' => [],
@@ -96,13 +96,13 @@ class GamificationService
                 ],
             ]);
 
-            $this->log->channel('marketing')->info('Gamification: achievement reward applied', [
+            Log::channel('marketing')->info('Gamification: achievement reward applied', [
                 'correlation_id' => $this->correlationId,
                 'user_id' => $user->id,
                 'achievement' => $achievementType,
             ]);
         } catch (Throwable $e) {
-            $this->log->error('Gamification: reward application failed', [
+            Log::error('Gamification: reward application failed', [
                 'correlation_id' => $this->correlationId,
                 'user_id' => $user->id,
                 'achievement' => $achievementType,

@@ -3,8 +3,8 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
-use App\Domains\Finances\Models\PaymentTransaction;
-use App\Domains\Finances\Models\RecurringModels;
+use App\Domains\Consulting\Finances\Models\PaymentTransaction;
+use App\Domains\Consulting\Finances\Models\RecurringModels;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;

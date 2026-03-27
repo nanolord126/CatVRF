@@ -1,12 +1,8 @@
 <?php
-
 declare(strict_types=1);
-
 namespace App\Http\Controllers\Api;
-
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
-
 /**
  * OpenApiController — OpenAPI спецификация.
  */
@@ -204,7 +200,6 @@ final class OpenApiController extends Controller
             ],
         ]);
     }
-
     /**
      * UI для Swagger.
      */
@@ -214,7 +209,6 @@ final class OpenApiController extends Controller
             'specUrl' => route('api.openapi.spec'),
         ]);
     }
-
     /**
      * Postman коллекция
      */
@@ -382,7 +376,6 @@ final class OpenApiController extends Controller
                 ['key' => 'correlation_id', 'value' => ''],
             ],
         ];
-
         return response()
             ->json($collection)
             ->header('Content-Disposition', 'attachment; filename="CatVRF-Marketplace-API.postman_collection.json"');

@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Taxi\Events;
 
@@ -27,13 +28,5 @@ class SurgeUpdated
         public readonly float $oldMultiplier,
         public readonly float $newMultiplier,
         public readonly string $correlationId,
-    ) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+    ) {}
 }

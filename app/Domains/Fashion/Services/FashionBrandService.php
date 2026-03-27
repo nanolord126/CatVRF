@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace Modules\Fashion\Services;
 
@@ -22,15 +23,7 @@ class FashionBrandService
 {
     public function __construct(
         private readonly FraudControlService $fraudControlService,
-    ) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+    ) {}
 
     public function createBrand(array $data, int $tenantId, string $correlationId): FashionBrand
     {
@@ -44,8 +37,8 @@ class FashionBrandService
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-$this->db->transaction(function () use ($data, $tenantId, $correlationId) {
-            $this->log->channel('audit')->info('Creating fashion brand', ['correlation_id' => $correlationId]);
+DB::transaction(function () use ($data, $tenantId, $correlationId) {
+            Log::channel('audit')->info('Creating fashion brand', ['correlation_id' => $correlationId]);
 
             return FashionBrand::create([
                 'tenant_id' => $tenantId,

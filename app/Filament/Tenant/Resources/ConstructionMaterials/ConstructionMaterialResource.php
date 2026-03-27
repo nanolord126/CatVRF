@@ -2,7 +2,7 @@
 
 namespace App\Filament\Tenant\Resources\ConstructionMaterials;
 
-use App\Domains\ConstructionMaterials\Models\ConstructionMaterial;
+use App\Domains\ConstructionAndRepair\ConstructionAndRepair\ConstructionMaterials\Models\ConstructionMaterial;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables\Table;

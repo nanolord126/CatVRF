@@ -2,195 +2,125 @@
 
 namespace App\Domains\Beauty\Http\Controllers;
 
+use App\Domains\Beauty\Http\Requests\CreateAppointmentRequest;
 use App\Domains\Beauty\Models\Appointment;
 use App\Domains\Beauty\Services\AppointmentService;
-use App\Services\FraudControlService;
+use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
-final class AppointmentController
+/**
+ * КАНОН 2026: Beauty Appointment Controller (Layer 4)
+ * 
+ * Особенности:
+ * - Использование Str::uuid() для correlation_id.
+ * - Логирование всех API-запросов в канал audit.
+ * - Обработка исключений с возвращением понятных JSON ответов.
+ * - Валидация через FormRequest (Layer 4).
+ */
+final class AppointmentController extends Controller
 {
     public function __construct(
-        private readonly AppointmentService $appointmentService,
-        private readonly FraudControlService $fraudControlService,
+        private readonly AppointmentService $service
     ) {}
 
-    public function index(): JsonResponse
+    /**
+     * Создать запись (POST /appointments).
+     */
+    public function store(CreateAppointmentRequest $request): JsonResponse
     {
+        $correlationId = (string) Str::uuid();
+        
         try {
-            $appointments = Appointment::where('user_id', auth()->id())
-                ->with('service', 'master', 'salon')
-                ->paginate(20);
-
-            $correlationId = Str::uuid()->toString();
-            $this->log->channel('audit')->info('Beauty appointments listed', [
-                'user_id' => auth()->id(),
-                'count' => $appointments->count(),
+            Log::channel('audit')->info('API Request: Create Appointment', [
                 'correlation_id' => $correlationId,
+                'data' => $request->validated()
             ]);
 
-            return response()->json([
-                'success' => true,
-                'data' => $appointments,
-                'correlation_id' => $correlationId,
-            ]);
-        } catch (\Throwable $e) {
-            $correlationId = Str::uuid()->toString();
-            $this->log->error('Beauty appointment listing failed', [
-                'error' => $e->getMessage(),
-                'correlation_id' => $correlationId,
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-                'correlation_id' => $correlationId,
-            ], 500);
-        }
-    }
-
-    public function show(int $id): JsonResponse
-    {
-        try {
-            $appointment = Appointment::with('service', 'master', 'salon')->findOrFail($id);
-
-            if ($appointment->user_id !== auth()->id()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Unauthorized',
-                    'correlation_id' => Str::uuid(),
-                ], 403);
-            }
+            $appointment = $this->service->createAppointment(
+                data: $request->validated(),
+                correlationId: $correlationId
+            );
 
             return response()->json([
                 'success' => true,
                 'data' => $appointment,
-                'correlation_id' => Str::uuid(),
-            ]);
-        } catch (\Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Appointment not found',
-                'correlation_id' => Str::uuid(),
-            ], 404);
-        }
-    }
-
-    public function store(): JsonResponse
-    {
-        $correlationId = Str::uuid()->toString();
-
-        $fraudResult = $this->fraudControlService->check(
-            auth()->id() ?? 0,
-            'create_appointment',
-            0,
-            request()->ip(),
-            request()->header('X-Device-Fingerprint'),
-            $correlationId,
-        );
-
-        if ($fraudResult['decision'] === 'block') {
-            $this->log->channel('fraud_alert')->warning('Operation blocked by fraud control', [
-                'correlation_id' => $correlationId,
-                'user_id'        => auth()->id(),
-                'score'          => $fraudResult['score'],
-            ]);
-            return response()->json([
-                'success'        => false,
-                'error'          => 'Операция заблокирована.',
-                'correlation_id' => $correlationId,
-            ], 403);
-        }
-
-        try {
-            $appointment = $this->db->transaction(function () use ($correlationId) {
-                return Appointment::create([
-                    'uuid' => Str::uuid(),
-                    'tenant_id' => tenant('id'),
-                    'user_id' => auth()->id(),
-                    'service_id' => request('service_id'),
-                    'master_id' => request('master_id'),
-                    'salon_id' => request('salon_id'),
-                    'appointment_date' => request('appointment_date'),
-                    'appointment_time' => request('appointment_time'),
-                    'status' => 'pending',
-                    'price' => request('price'),
-                    'notes' => request('notes'),
-                    'correlation_id' => $correlationId,
-                ]);
-            });
-
-            $this->log->channel('audit')->info('Beauty appointment created', [
-                'appointment_id' => $appointment->id,
-                'user_id' => auth()->id(),
-                'correlation_id' => $correlationId,
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'data' => $appointment,
-                'correlation_id' => $correlationId,
+                'correlation_id' => $correlationId
             ], 201);
+
         } catch (\Throwable $e) {
-            $correlationId = Str::uuid()->toString();
-            $this->log->error('Beauty appointment creation failed', [
-                'error' => $e->getMessage(),
+            Log::channel('audit')->error('API Error: Create Appointment Failed', [
                 'correlation_id' => $correlationId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage(),
-                'correlation_id' => $correlationId,
-            ], 500);
+                'message' => 'Не удалось создать запись: ' . $e->getMessage(),
+                'correlation_id' => $correlationId
+            ], 400);
         }
     }
 
-    public function cancel(int $id): JsonResponse
+    /**
+     * Завершить запись (PATCH /appointments/{appointment}/complete).
+     */
+    public function complete(Appointment $appointment): JsonResponse
     {
+        $correlationId = (string) Str::uuid();
+
         try {
-            $correlationId = Str::uuid()->toString();
-            $appointment = Appointment::findOrFail($id);
-
-            if ($appointment->user_id !== auth()->id()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Unauthorized',
-                    'correlation_id' => $correlationId,
-                ], 403);
-            }
-
-            $this->db->transaction(function () use ($appointment, $correlationId) {
-                $appointment->update([
-                    'status' => 'cancelled',
-                    'correlation_id' => $correlationId,
-                ]);
-            });
-
-            $this->log->channel('audit')->info('Beauty appointment cancelled', [
-                'appointment_id' => $id,
-                'correlation_id' => $correlationId,
-            ]);
+            $this->service->completeAppointment($appointment, $correlationId);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Appointment cancelled',
-                'correlation_id' => $correlationId,
+                'message' => 'Запись успешно завершена и оплачена.',
+                'correlation_id' => $correlationId
             ]);
+
         } catch (\Throwable $e) {
-            $correlationId = Str::uuid()->toString();
-            $this->log->error('Beauty appointment cancellation failed', [
-                'error' => $e->getMessage(),
+            Log::channel('audit')->error('API Error: Complete Appointment Failed', [
                 'correlation_id' => $correlationId,
+                'error' => $e->getMessage()
             ]);
 
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
+                'correlation_id' => $correlationId
+            ], 400);
+        }
+    }
+
+    /**
+     * Отменить запись (POST /appointments/{appointment}/cancel).
+     */
+    public function cancel(Appointment $appointment): JsonResponse
+    {
+        $correlationId = (string) Str::uuid();
+
+        try {
+            $this->service->cancelAppointment($appointment, $correlationId);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Запись успешно отменена.',
+                'correlation_id' => $correlationId
+            ]);
+
+        } catch (\Throwable $e) {
+            Log::channel('audit')->error('API Error: Cancel Appointment Failed', [
                 'correlation_id' => $correlationId,
-            ], 500);
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Ошибка при отмене: ' . $e->getMessage(),
+                'correlation_id' => $correlationId
+            ], 400);
         }
     }
 }

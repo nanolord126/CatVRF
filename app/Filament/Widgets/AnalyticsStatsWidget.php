@@ -1,8 +1,7 @@
-declare(strict_types=1);
-
 <?php
 
 declare(strict_types=1);
+
 
 namespace App\Filament\Widgets;
 
@@ -19,7 +18,7 @@ final class AnalyticsStatsWidget extends BaseWidget
     {
         $tenantId = auth()->user()->tenant_id;
         
-        $stats = $this->cache->remember(
+        $stats = Cache::remember(
             "stats_overview:{$tenantId}",
             1800,
             function () {

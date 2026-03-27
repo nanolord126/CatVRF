@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Auto\Events;
 
@@ -30,7 +31,7 @@ class VehicleRentalCompleted implements ShouldBroadcast
         public readonly int $finalMileage,
         public readonly string $correlationId
     ) {
-        $this->log->channel('audit')->info('VehicleRentalCompleted event dispatched', [
+        Log::channel('audit')->info('VehicleRentalCompleted event dispatched', [
             'correlation_id' => $this->correlationId,
             'rental_id' => $this->rental->id,
             'final_mileage' => $this->finalMileage,

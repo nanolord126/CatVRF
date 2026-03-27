@@ -1,71 +1,57 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Freelance\Models;
 
-use App\Models\BaseModel;
-use App\Models\User;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
-final class FreelanceReview extends BaseModel
+/**
+ * КАНОН 2026 — FREELANCE REVIEW
+ * Отзыв по итогам работы на бирже.
+ */
+final class FreelanceReview extends Model
 {
-    use SoftDeletes;
-
     protected $table = 'freelance_reviews';
 
     protected $fillable = [
+        'uuid',
         'tenant_id',
-        'contract_id',
+        'order_id',
         'reviewer_id',
         'freelancer_id',
-        'client_id',
-        'review_type',
-        'communication_rating',
-        'work_quality_rating',
-        'timeliness_rating',
-        'overall_rating',
+        'rating',
         'comment',
-        'review_aspects',
-        'verified_contract',
-        'would_hire_again',
-        'status',
-        'helpful_count',
-        'unhelpful_count',
+        'metrics',
         'correlation_id',
     ];
 
     protected $casts = [
-        'review_aspects' => 'json',
-        'verified_contract' => 'boolean',
-        'would_hire_again' => 'boolean',
+        'rating' => 'integer',
+        'metrics' => 'json',
     ];
 
-    public function contract(): BelongsTo
+    protected static function booted(): void
     {
-        return $this->belongsTo(FreelanceContract::class);
+        static::creating(function (self $model) {
+            $model->uuid = (string) Str::uuid();
+            $model->correlation_id = $model->correlation_id ?? (string) Str::uuid();
+        });
+
+        static::addGlobalScope('tenant', function ($builder) {
+            $builder->where('tenant_id', tenant()->id ?? 1);
+        });
     }
 
-    public function reviewer(): BelongsTo
+    public function order(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'reviewer_id');
+        return $this->belongsTo(FreelanceOrder::class);
     }
 
     public function freelancer(): BelongsTo
     {
         return $this->belongsTo(Freelancer::class);
-    }
-
-    public function client(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'client_id');
-    }
-
-    protected static function booted(): void
-    {
-        static::addGlobalScope('tenant', function ($query) {
-            if ($tenantId = tenant()?->id) {
-                $query->where('tenant_id', $tenantId);
-            }
-        });
     }
 }

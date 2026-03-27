@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Cosmetics;
 
-use App\Domains\Cosmetics\Models\CosmeticProduct;
+use App\Domains\Beauty\Cosmetics\Models\CosmeticProduct;
 use App\Filament\Tenant\Resources\Cosmetics\CosmeticProductResource\Pages;
 use Filament\Forms;
 use Filament\Forms\Form;

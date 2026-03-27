@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace Modules\Sports\Services;
 
@@ -23,20 +24,12 @@ class SportVenueService
 {
     public function __construct(
         private readonly FraudControlService $fraudControlService,
-    ) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+    ) {}
 
     public function createVenue(array $data, int $tenantId, string $correlationId): SportVenue
     {
         $correlationId = Str::uuid()->toString();
-        $this->log->channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
+        Log::channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
 
         $this->fraudControlService->check(
             auth()->id() ?? 0,
@@ -46,8 +39,8 @@ class SportVenueService
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-$this->db->transaction(function () use ($data, $tenantId, $correlationId) {
-            $this->log->channel('audit')->info('Creating sport venue', [
+DB::transaction(function () use ($data, $tenantId, $correlationId) {
+            Log::channel('audit')->info('Creating sport venue', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
             ]);

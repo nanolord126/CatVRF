@@ -29,7 +29,7 @@ final class HomeServicesService
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-$this->db->transaction(function () use ($data, $userId, $tenantId) {
+DB::transaction(function () use ($data, $userId, $tenantId) {
         $job = HomeServiceJob::create([
             'tenant_id' => $tenantId,
             'uuid' => Str::uuid(),
@@ -43,7 +43,7 @@ $this->db->transaction(function () use ($data, $userId, $tenantId) {
             'status' => 'pending',
         ]);
 
-        $this->log->channel('audit')->info('Home service job booked', [
+        Log::channel('audit')->info('Home service job booked', [
             'correlation_id' => $this->correlationId,
             'job_id' => $job->id,
         ]);
@@ -67,7 +67,7 @@ $this->db->transaction(function () use ($data, $userId, $tenantId) {
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-$this->db->transaction(function () use ($callback) {
+DB::transaction(function () use ($callback) {
             return $callback();
         });
     }

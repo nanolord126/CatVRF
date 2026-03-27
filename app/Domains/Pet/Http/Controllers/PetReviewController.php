@@ -38,7 +38,7 @@ final class PetReviewController extends Controller
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Throwable $e) {
-            $this->log->error('Failed to create review', ['error' => $e->getMessage()]);
+            Log::error('Failed to create review', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create review',

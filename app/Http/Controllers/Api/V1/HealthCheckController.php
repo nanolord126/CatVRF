@@ -1,15 +1,11 @@
 <?php
-
 declare(strict_types=1);
-
 namespace App\Http\Controllers\Api\V1;
-
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Redis;
-
 /**
  * HealthCheckController — проверка здоровья системы.
  * Доступен без аутентификации для Kubernetes probes.
@@ -27,16 +23,14 @@ final class HealthCheckController extends BaseApiV1Controller
         $timestamp = now()->toIso8601String();
         $status = 'ok';
         $components = [];
-
         // Check database connectivity
         try {
-            $this->db->connection()->getPdo();
+            DB::connection()->getPdo();
             $components['database'] = ['status' => 'ok', 'checked_at' => $timestamp];
         } catch (\Exception $e) {
             $components['database'] = ['status' => 'error', 'message' => 'Connection failed', 'checked_at' => $timestamp];
             $status = 'degraded';
         }
-
         // Check Redis connectivity (rate limiting, cache)
         try {
             Redis::ping();
@@ -45,11 +39,10 @@ final class HealthCheckController extends BaseApiV1Controller
             $components['redis'] = ['status' => 'error', 'message' => 'Connection failed', 'checked_at' => $timestamp];
             $status = 'degraded';
         }
-
         // Check Cache system
         try {
-            $this->cache->put('health_check_test', 'ok', 60);
-            $cached = $this->cache->get('health_check_test');
+            Cache::put('health_check_test', 'ok', 60);
+            $cached = Cache::get('health_check_test');
             if ($cached === 'ok') {
                 $components['cache'] = ['status' => 'ok', 'checked_at' => $timestamp];
             } else {
@@ -59,7 +52,6 @@ final class HealthCheckController extends BaseApiV1Controller
             $components['cache'] = ['status' => 'error', 'message' => 'Get/put failed', 'checked_at' => $timestamp];
             $status = 'degraded';
         }
-
         // Check Sanctum token model
         try {
             if (class_exists(\App\Models\PersonalAccessToken::class)) {
@@ -76,7 +68,6 @@ final class HealthCheckController extends BaseApiV1Controller
             $components['sanctum'] = ['status' => 'error', 'message' => $e->getMessage(), 'checked_at' => $timestamp];
             $status = 'degraded';
         }
-
         // Check API services
         try {
             if (class_exists(\App\Services\Security\TenantAwareRateLimiter::class)) {
@@ -92,10 +83,8 @@ final class HealthCheckController extends BaseApiV1Controller
             $components['api_services'] = ['status' => 'error', 'message' => $e->getMessage(), 'checked_at' => $timestamp];
             $status = 'degraded';
         }
-
         // Response code based on status
         $httpCode = $status === 'ok' ? 200 : 503;
-
         return response()->json([
             'status' => $status,
             'timestamp' => $timestamp,

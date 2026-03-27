@@ -19,7 +19,7 @@ final class EditTowingRequest extends EditRecord
         return [
             Actions\DeleteAction::make()
                 ->after(function () {
-                    $this->log->channel('audit')->info('TowingRequest deleted', [
+                    Log::channel('audit')->info('TowingRequest deleted', [
                         'correlation_id' => $this->record->correlation_id,
                         'request_id' => $this->record->id,
                     ]);
@@ -29,10 +29,10 @@ final class EditTowingRequest extends EditRecord
                 ->visible(fn () => $this->record->status === 'in_progress')
                 ->requiresConfirmation()
                 ->action(function () {
-                    $this->db->transaction(function () {
+                    DB::transaction(function () {
                         $this->record->update(['status' => 'completed']);
                         
-                        $this->log->channel('audit')->info('TowingCompleted', [
+                        Log::channel('audit')->info('TowingCompleted', [
                             'correlation_id' => $this->record->correlation_id,
                             'request_id' => $this->record->id,
                         ]);
@@ -53,7 +53,7 @@ final class EditTowingRequest extends EditRecord
 
     protected function afterSave(): void
     {
-        $this->log->channel('audit')->info('TowingRequest updated', [
+        Log::channel('audit')->info('TowingRequest updated', [
             'correlation_id' => $this->record->correlation_id,
             'request_id' => $this->record->id,
             'status' => $this->record->status,

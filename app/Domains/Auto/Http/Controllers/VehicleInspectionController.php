@@ -34,7 +34,7 @@ final class VehicleInspectionController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Vehicle inspection index failed', [
+            Log::channel('audit')->error('Vehicle inspection index failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -67,7 +67,7 @@ final class VehicleInspectionController extends Controller
                 'amount' => $validated['price'],
             ]);
 
-            $inspection = $this->db->transaction(function () use ($validated, $correlationId) {
+            $inspection = DB::transaction(function () use ($validated, $correlationId) {
                 return VehicleInspection::create([
                     ...$validated,
                     'tenant_id' => tenant()->id,
@@ -78,7 +78,7 @@ final class VehicleInspectionController extends Controller
                 ]);
             });
 
-            $this->log->channel('audit')->info('Vehicle inspection created', [
+            Log::channel('audit')->info('Vehicle inspection created', [
                 'correlation_id' => $correlationId,
                 'inspection_id' => $inspection->id,
             ]);
@@ -89,7 +89,7 @@ final class VehicleInspectionController extends Controller
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Vehicle inspection creation failed', [
+            Log::channel('audit')->error('Vehicle inspection creation failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -115,7 +115,7 @@ final class VehicleInspectionController extends Controller
         $correlationId = Str::uuid()->toString();
 
         try {
-            $this->db->transaction(function () use ($inspection) {
+            DB::transaction(function () use ($inspection) {
                 $inspection->update([
                     'status' => 'completed',
                     'result' => 'passed',
@@ -125,7 +125,7 @@ final class VehicleInspectionController extends Controller
                 ]);
             });
 
-            $this->log->channel('audit')->info('Vehicle inspection passed', [
+            Log::channel('audit')->info('Vehicle inspection passed', [
                 'correlation_id' => $correlationId,
                 'inspection_id' => $inspection->id,
             ]);
@@ -136,7 +136,7 @@ final class VehicleInspectionController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Vehicle inspection pass failed', [
+            Log::channel('audit')->error('Vehicle inspection pass failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -158,7 +158,7 @@ final class VehicleInspectionController extends Controller
         ]);
 
         try {
-            $this->db->transaction(function () use ($inspection, $validated) {
+            DB::transaction(function () use ($inspection, $validated) {
                 $inspection->update([
                     'status' => 'completed',
                     'result' => 'failed',
@@ -167,7 +167,7 @@ final class VehicleInspectionController extends Controller
                 ]);
             });
 
-            $this->log->channel('audit')->info('Vehicle inspection failed', [
+            Log::channel('audit')->info('Vehicle inspection failed', [
                 'correlation_id' => $correlationId,
                 'inspection_id' => $inspection->id,
             ]);
@@ -178,7 +178,7 @@ final class VehicleInspectionController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Vehicle inspection fail recording failed', [
+            Log::channel('audit')->error('Vehicle inspection fail recording failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -202,11 +202,11 @@ final class VehicleInspectionController extends Controller
         ]);
 
         try {
-            $this->db->transaction(function () use ($inspection, $validated) {
+            DB::transaction(function () use ($inspection, $validated) {
                 $inspection->update($validated);
             });
 
-            $this->log->channel('audit')->info('Vehicle inspection updated', [
+            Log::channel('audit')->info('Vehicle inspection updated', [
                 'correlation_id' => $correlationId,
                 'inspection_id' => $inspection->id,
             ]);
@@ -217,7 +217,7 @@ final class VehicleInspectionController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Vehicle inspection update failed', [
+            Log::channel('audit')->error('Vehicle inspection update failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -237,7 +237,7 @@ final class VehicleInspectionController extends Controller
         try {
             $inspection->delete();
 
-            $this->log->channel('audit')->info('Vehicle inspection deleted', [
+            Log::channel('audit')->info('Vehicle inspection deleted', [
                 'correlation_id' => $correlationId,
                 'inspection_id' => $inspection->id,
             ]);
@@ -248,7 +248,7 @@ final class VehicleInspectionController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Vehicle inspection deletion failed', [
+            Log::channel('audit')->error('Vehicle inspection deletion failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);

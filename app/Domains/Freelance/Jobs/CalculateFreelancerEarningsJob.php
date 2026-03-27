@@ -26,10 +26,10 @@ final class CalculateFreelancerEarningsJob implements ShouldQueue
 
     public function handle(): void
     {
-        $this->db->transaction(function () {
+        DB::transaction(function () {
             $freelancer = Freelancer::find($this->freelancerId);
             if (!$freelancer) {
-                $this->log->channel('audit')->warning('Freelancer not found for earnings calculation', [
+                Log::channel('audit')->warning('Freelancer not found for earnings calculation', [
                     'freelancer_id' => $this->freelancerId,
                     'correlation_id' => $this->correlationId,
                 ]);
@@ -49,7 +49,7 @@ final class CalculateFreelancerEarningsJob implements ShouldQueue
                 'jobs_completed' => $completedJobs,
             ]);
 
-            $this->log->channel('audit')->info('Freelancer earnings calculated', [
+            Log::channel('audit')->info('Freelancer earnings calculated', [
                 'freelancer_id' => $this->freelancerId,
                 'total_earned' => $totalEarned,
                 'jobs_completed' => $completedJobs,

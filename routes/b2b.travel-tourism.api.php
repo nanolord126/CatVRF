@@ -1,7 +1,7 @@
 <?php declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
-use App\Domains\TravelTourism\Http\Controllers\B2BTravelController;
+use App\Domains\Travel\TravelTourism\Http\Controllers\B2BTravelController;
 
 Route::middleware(['auth:sanctum', 'tenant'])->prefix('api/b2b/travel-tourism')->group(function () {
     Route::get('/', [B2BTravelController::class, 'storefronts'])->name('b2b.travel-tourism.index');

@@ -19,7 +19,7 @@ final class ReferralService
         $code = Str::upper(Str::random(8));
         $link = route('referral.register', ['code' => $code]);
 
-        $this->log->channel('referral')->info('Referral link generated', [
+        Log::channel('referral')->info('Referral link generated', [
             'referrer_id' => $referrerId,
             'type' => $type,
             'code' => $code,
@@ -30,7 +30,7 @@ final class ReferralService
 
     public function registerReferral(string $code, int $newUserId): bool
     {
-        return $this->db->transaction(function () use ($code, $newUserId) {
+        return DB::transaction(function () use ($code, $newUserId) {
             $referral = Referral::where('referral_code', $code)->first();
 
             if (!$referral) {
@@ -42,7 +42,7 @@ final class ReferralService
                 'status' => 'registered',
             ]);
 
-            $this->log->channel('referral')->info('Referral registered', [
+            Log::channel('referral')->info('Referral registered', [
                 'referral_id' => $referral->id,
                 'referee_id' => $newUserId,
             ]);
@@ -55,7 +55,7 @@ final class ReferralService
     {
         $referral = Referral::findOrFail($referralId);
 
-        $turnover = $this->db->table('orders')
+        $turnover = DB::table('orders')
             ->where('user_id', $referral->referee_id)
             ->sum('total_price');
 
@@ -77,7 +77,7 @@ final class ReferralService
 
     public function awardBonus(int $referralId, int $recipientId, string $correlationId = ''): bool
     {
-        return $this->db->transaction(function () use ($referralId, $recipientId, $correlationId) {
+        return DB::transaction(function () use ($referralId, $recipientId, $correlationId) {
             $referral = Referral::findOrFail($referralId);
 
             ReferralReward::create([
@@ -92,7 +92,7 @@ final class ReferralService
 
             $referral->update(['status' => 'rewarded']);
 
-            $this->log->channel('referral')->info('Bonus awarded', [
+            Log::channel('referral')->info('Bonus awarded', [
                 'correlation_id' => $correlationId,
                 'referral_id' => $referralId,
                 'amount' => $referral->bonus_amount,
@@ -108,7 +108,7 @@ final class ReferralService
             ->where('status', 'qualified')
             ->count();
 
-        $totalTurnover = $this->db->table('orders')
+        $totalTurnover = DB::table('orders')
             ->whereIn('user_id', function ($query) use ($referrerId) {
                 $query->select('referee_id')
                     ->from('referrals')

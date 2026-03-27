@@ -1,6 +1,7 @@
-declare(strict_types=1);
+<?php
 
-<?php namespace App\Models\Domains\Beauty; use Illuminate\Database\Eloquent\Model; use Illuminate\Database\Eloquent\Factories\HasFactory; /**
+declare(strict_types=1);
+namespace App\Models\Domains\Beauty; use Illuminate\Database\Eloquent\Model; use Illuminate\Database\Eloquent\Factories\HasFactory; /**
  * Salon
  * 
  * Основной класс для работы с платформой CatVRF.

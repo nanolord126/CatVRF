@@ -32,7 +32,7 @@ final class JobService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-            $this->db->transaction(function () use ($serviceListingId, $clientId, $address, $description, $correlationId) {
+            DB::transaction(function () use ($serviceListingId, $clientId, $address, $description, $correlationId) {
                 $listing = \App\Domains\HomeServices\Models\ServiceListing::findOrFail($serviceListingId);
                 
                 $baseAmount = $listing->base_price;
@@ -56,7 +56,7 @@ final class JobService
 
                 ServiceJobCreated::dispatch($job, $correlationId);
 
-                \$this->log->channel('audit')->info('Service job created', [
+                \Log::channel('audit')->info('Service job created', [
                     'job_id' => $job->id,
                     'contractor_id' => $listing->contractor_id,
                     'client_id' => $clientId,
@@ -67,7 +67,7 @@ final class JobService
                 return $job;
             });
         } catch (\Throwable $e) {
-            \$this->log->channel('audit')->error('Failed to create service job', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+            \Log::channel('audit')->error('Failed to create service job', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
             throw $e;
         }
     }
@@ -85,7 +85,7 @@ final class JobService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-            $this->db->transaction(function () use ($job, $correlationId) {
+            DB::transaction(function () use ($job, $correlationId) {
                 $job->update([
                     'status' => 'completed',
                     'completed_at' => now(),
@@ -93,13 +93,13 @@ final class JobService
                     'correlation_id' => $correlationId,
                 ]);
 
-                \$this->log->channel('audit')->info('Service job completed', [
+                \Log::channel('audit')->info('Service job completed', [
                     'job_id' => $job->id,
                     'correlation_id' => $correlationId,
                 ]);
             });
         } catch (\Throwable $e) {
-            \$this->log->channel('audit')->error('Failed to complete job', ['error' => $e->getMessage()]);
+            \Log::channel('audit')->error('Failed to complete job', ['error' => $e->getMessage()]);
             throw $e;
         }
     }
@@ -117,21 +117,21 @@ final class JobService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-            $this->db->transaction(function () use ($job, $reason, $correlationId) {
+            DB::transaction(function () use ($job, $reason, $correlationId) {
                 $job->update([
                     'status' => 'cancelled',
                     'correlation_id' => $correlationId,
                     'notes' => $reason,
                 ]);
 
-                \$this->log->channel('audit')->info('Service job cancelled', [
+                \Log::channel('audit')->info('Service job cancelled', [
                     'job_id' => $job->id,
                     'reason' => $reason,
                     'correlation_id' => $correlationId,
                 ]);
             });
         } catch (\Throwable $e) {
-            \$this->log->channel('audit')->error('Failed to cancel job', ['error' => $e->getMessage()]);
+            \Log::channel('audit')->error('Failed to cancel job', ['error' => $e->getMessage()]);
             throw $e;
         }
     }

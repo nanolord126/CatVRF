@@ -43,7 +43,7 @@ class BookingObserver
 
             // Логируем автоматизацию для аудита
             // Используем модель AuditLog (создана ранее)
-            \App\Models\Audit$this->log->create([
+            \App\Models\AuditLog::create([
                 'user_id' => 0, // 0 for System Action
                 'action' => 'AUTO_TASK_GENERATION',
                 'resource_id' => $booking->id,

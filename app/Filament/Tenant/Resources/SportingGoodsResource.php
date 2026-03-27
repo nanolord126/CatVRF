@@ -1,14 +1,14 @@
+<?php
+
 declare(strict_types=1);
 
-<?php
-declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources;
 
 use Filament\Resources\Resource;
 use Filament\Tables\Table;
 use Filament\Forms\Form;
-use App\Domains\SportingGoods\Models\SportProduct;
+use App\Domains\Sports\SportingGoods\Models\SportProduct;
 
 /**
  * SportingGoodsResource

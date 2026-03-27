@@ -47,13 +47,13 @@ final readonly class HRService
                 throw new Exception('Rate limit exceeded for employee creation', 429);
             }
 
-            $this->log->channel('audit')->info('Employee creation started', [
+            Log::channel('audit')->info('Employee creation started', [
                 'tenant_id' => $tenantId,
                 'name' => $data['name'] ?? '',
                 'correlation_id' => $correlationId,
             ]);
 
-            $result = $this->db->transaction(function () use ($tenantId, $data, $correlationId) {
+            $result = DB::transaction(function () use ($tenantId, $data, $correlationId) {
                 $employee = Employee::create([
                     'tenant_id' => $tenantId,
                     'uuid' => Str::uuid()->toString(),
@@ -67,7 +67,7 @@ final readonly class HRService
                     'tags' => $data['tags'] ?? ['hr:new'],
                 ]);
 
-                $this->log->channel('audit')->info('Employee created successfully', [
+                Log::channel('audit')->info('Employee created successfully', [
                     'tenant_id' => $tenantId,
                     'employee_id' => $employee->id,
                     'correlation_id' => $correlationId,
@@ -82,7 +82,7 @@ final readonly class HRService
 
             return $result;
         } catch (Throwable $e) {
-            $this->log->channel('audit')->error('Employee creation failed', [
+            Log::channel('audit')->error('Employee creation failed', [
                 'tenant_id' => $tenantId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -124,14 +124,14 @@ final readonly class HRService
                 throw new Exception('Rate limit exceeded for salary calculation', 429);
             }
 
-            $this->log->channel('audit')->info('Salary calculation started', [
+            Log::channel('audit')->info('Salary calculation started', [
                 'tenant_id' => $tenantId,
                 'year' => $year,
                 'month' => $month,
                 'correlation_id' => $correlationId,
             ]);
 
-            $result = $this->db->transaction(function () use ($tenantId, $year, $month, $correlationId) {
+            $result = DB::transaction(function () use ($tenantId, $year, $month, $correlationId) {
                 $employees = Employee::where('tenant_id', $tenantId)
                     ->where('is_active', true)
                     ->get();
@@ -144,7 +144,7 @@ final readonly class HRService
                     $employeeCount++;
                 }
 
-                $this->log->channel('audit')->info('Salary processed', [
+                Log::channel('audit')->info('Salary processed', [
                     'tenant_id' => $tenantId,
                     'employee_count' => $employeeCount,
                     'total_amount' => $totalAmount,
@@ -160,7 +160,7 @@ final readonly class HRService
 
             return $result;
         } catch (Throwable $e) {
-            $this->log->channel('audit')->error('Salary calculation failed', [
+            Log::channel('audit')->error('Salary calculation failed', [
                 'tenant_id' => $tenantId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -197,7 +197,7 @@ final readonly class HRService
                 'employees' => $employees->count(),
             ];
         } catch (Throwable $e) {
-            $this->log->channel('audit')->error('Schedule request failed', [
+            Log::channel('audit')->error('Schedule request failed', [
                 'tenant_id' => $tenantId,
                 'date' => $date,
                 'error' => $e->getMessage(),

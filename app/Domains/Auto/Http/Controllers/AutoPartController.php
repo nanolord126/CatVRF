@@ -55,7 +55,7 @@ final class AutoPartController
         );
 
         if ($fraudResult['decision'] === 'block') {
-            $this->log->channel('fraud_alert')->warning('Operation blocked by fraud control', [
+            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'score'          => $fraudResult['score'],
@@ -80,7 +80,7 @@ final class AutoPartController
             ]);
 
             $validated = $request->all();
-            $part = $this->db->transaction(function () use ($validated) {
+            $part = DB::transaction(function () use ($validated) {
                 return AutoPart::create([
                     'tenant_id' => tenant('id'),
                     'sku' => ($validated['sku'] ?? null),
@@ -128,7 +128,7 @@ final class AutoPartController
         );
 
         if ($fraudResult['decision'] === 'block') {
-            $this->log->channel('fraud_alert')->warning('Operation blocked by fraud control', [
+            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'score'          => $fraudResult['score'],

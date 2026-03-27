@@ -40,7 +40,7 @@ final class ElectronicProductController
 
             return response()->json(['success' => true, 'data' => $products, 'correlation_id' => $correlationId]);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Electronics: index error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+            Log::channel('audit')->error('Electronics: index error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
             return response()->json(['success' => false, 'message' => 'Ошибка загрузки', 'correlation_id' => $correlationId], 500);
         }
     }
@@ -94,7 +94,7 @@ final class ElectronicProductController
                 'delivery_address' => 'required|string',
             ]);
 
-            $order = $this->db->transaction(function () use ($validated, $userId, $correlationId): ElectronicOrder {
+            $order = DB::transaction(function () use ($validated, $userId, $correlationId): ElectronicOrder {
                 $product = ElectronicProduct::findOrFail($validated['product_id']);
                 $order   = ElectronicOrder::create([
                     'uuid'             => Str::uuid(),
@@ -108,7 +108,7 @@ final class ElectronicProductController
                     'correlation_id'   => $correlationId,
                 ]);
 
-                $this->log->channel('audit')->info('Electronics: Order created', [
+                Log::channel('audit')->info('Electronics: Order created', [
                     'order_id' => $order->id, 'user_id' => $userId, 'correlation_id' => $correlationId,
                 ]);
 
@@ -119,7 +119,7 @@ final class ElectronicProductController
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Electronics: order error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+            Log::channel('audit')->error('Electronics: order error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
             return response()->json(['success' => false, 'message' => 'Ошибка заказа', 'correlation_id' => $correlationId], 500);
         }
     }

@@ -1,8 +1,7 @@
-declare(strict_types=1);
-
 <?php
 
 declare(strict_types=1);
+
 
 namespace App\Domains\Beauty\Jobs;
 
@@ -35,21 +34,13 @@ class DeductConsumablesJob implements ShouldQueue
     public function __construct(
         private readonly int $appointmentId,
         private readonly string $correlationId,
-    ) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+    ) {}
 
     public function handle(InventoryManagementService $inventory): void
     {
         $appointment = Appointment::findOrFail($this->appointmentId);
 
-        $this->db->transaction(function () use ($appointment, $inventory): void {
+        DB::transaction(function () use ($appointment, $inventory): void {
             $consumables = $appointment->service->consumables_json ?? [];
 
             foreach ($consumables as $consumable) {
@@ -62,7 +53,7 @@ class DeductConsumablesJob implements ShouldQueue
                 );
             }
 
-            $this->log->channel('audit')->info('Consumables deducted', [
+            Log::channel('audit')->info('Consumables deducted', [
                 'appointment_id' => $appointment->id,
                 'correlation_id' => $this->correlationId,
             ]);

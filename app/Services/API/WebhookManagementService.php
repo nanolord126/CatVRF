@@ -48,7 +48,7 @@ final class WebhookManagementService
             'failed_attempts' => 0,
         ];
 
-        $this->log->channel('webhooks')->info('Webhook registered', [
+        Log::channel('webhooks')->info('Webhook registered', [
             'webhook_id' => $webhookId,
             'url' => $url,
             'events_count' => count($events),
@@ -89,7 +89,7 @@ final class WebhookManagementService
             $results[] = self::deliverWebhook($webhook, $event);
         }
 
-        $this->log->channel('webhooks')->info('Event triggered', [
+        Log::channel('webhooks')->info('Event triggered', [
             'event' => $eventName,
             'webhooks_triggered' => count($webhooks),
             'correlation_id' => $correlationId,
@@ -129,7 +129,7 @@ final class WebhookManagementService
 
             $status = $response->successful() ? 'success' : 'failed';
 
-            $this->log->channel('webhooks')->info('Webhook delivery', [
+            Log::channel('webhooks')->info('Webhook delivery', [
                 'webhook_id' => $webhook['id'],
                 'delivery_id' => $deliveryId,
                 'status' => $status,
@@ -144,7 +144,7 @@ final class WebhookManagementService
                 'timestamp' => now()->toDateTimeString(),
             ];
         } catch (\Throwable $e) {
-            $this->log->channel('webhooks')->warning('Webhook delivery failed', [
+            Log::channel('webhooks')->warning('Webhook delivery failed', [
                 'webhook_id' => $webhook['id'],
                 'error' => $e->getMessage(),
             ]);
@@ -180,7 +180,7 @@ final class WebhookManagementService
      */
     public static function retryDelivery(string $deliveryId): array
     {
-        $this->log->channel('webhooks')->info('Webhook retry requested', [
+        Log::channel('webhooks')->info('Webhook retry requested', [
             'delivery_id' => $deliveryId,
         ]);
 
@@ -225,7 +225,7 @@ final class WebhookManagementService
      */
     public static function disableWebhook(string $webhookId): void
     {
-        $this->log->channel('webhooks')->info('Webhook disabled', [
+        Log::channel('webhooks')->info('Webhook disabled', [
             'webhook_id' => $webhookId,
         ]);
     }

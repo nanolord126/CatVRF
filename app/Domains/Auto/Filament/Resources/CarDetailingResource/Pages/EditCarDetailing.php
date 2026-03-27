@@ -19,7 +19,7 @@ final class EditCarDetailing extends EditRecord
         return [
             Actions\DeleteAction::make()
                 ->after(function () {
-                    $this->log->channel('audit')->info('CarDetailing deleted', [
+                    Log::channel('audit')->info('CarDetailing deleted', [
                         'correlation_id' => $this->record->correlation_id,
                         'detailing_id' => $this->record->id,
                     ]);
@@ -29,10 +29,10 @@ final class EditCarDetailing extends EditRecord
                 ->visible(fn () => $this->record->status === 'in_progress')
                 ->requiresConfirmation()
                 ->action(function () {
-                    $this->db->transaction(function () {
+                    DB::transaction(function () {
                         $this->record->update(['status' => 'completed']);
                         
-                        $this->log->channel('audit')->info('DetailingCompleted', [
+                        Log::channel('audit')->info('DetailingCompleted', [
                             'correlation_id' => $this->record->correlation_id,
                             'detailing_id' => $this->record->id,
                         ]);
@@ -53,7 +53,7 @@ final class EditCarDetailing extends EditRecord
 
     protected function afterSave(): void
     {
-        $this->log->channel('audit')->info('CarDetailing updated', [
+        Log::channel('audit')->info('CarDetailing updated', [
             'correlation_id' => $this->record->correlation_id,
             'detailing_id' => $this->record->id,
             'status' => $this->record->status,

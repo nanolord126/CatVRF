@@ -30,7 +30,7 @@ final class FlowerProductController
                 ->with('shop')
                 ->paginate(15);
 
-            $this->log->channel('audit')->info('Flower products listed', [
+            Log::channel('audit')->info('Flower products listed', [
                 'count' => $products->count(),
                 'correlation_id' => $correlationId,
             ]);
@@ -41,7 +41,7 @@ final class FlowerProductController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Exception $exception) {
-            $this->log->channel('audit')->error('Product listing failed', [
+            Log::channel('audit')->error('Product listing failed', [
                 'error' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -65,7 +65,7 @@ final class FlowerProductController
                 ->with('shop')
                 ->firstOrFail();
 
-            $this->log->channel('audit')->info('Flower product viewed', [
+            Log::channel('audit')->info('Flower product viewed', [
                 'product_id' => $product->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -119,7 +119,7 @@ final class FlowerProductController
                 ->limit(20)
                 ->get();
 
-            $this->log->channel('audit')->info('Flower products searched', [
+            Log::channel('audit')->info('Flower products searched', [
                 'query' => $query,
                 'results' => $products->count(),
                 'correlation_id' => $correlationId,
@@ -162,7 +162,7 @@ final class FlowerProductController
                 ], $this->response->HTTP_FORBIDDEN);
             }
 
-            $product = $this->db->transaction(function () use ($validated, $shop, $correlationId) {
+            $product = DB::transaction(function () use ($validated, $shop, $correlationId) {
                 $product = FlowerProduct::query()->create([
                     'tenant_id' => filament()->getTenant()->id,
                     'shop_id' => $shop->id,
@@ -170,7 +170,7 @@ final class FlowerProductController
                     ...$validated,
                 ]);
 
-                $this->log->channel('audit')->info('Flower product created', [
+                Log::channel('audit')->info('Flower product created', [
                     'product_id' => $product->id,
                     'shop_id' => $shop->id,
                     'correlation_id' => $correlationId,
@@ -185,7 +185,7 @@ final class FlowerProductController
                 'correlation_id' => $correlationId,
             ], $this->response->HTTP_CREATED);
         } catch (\Exception $exception) {
-            $this->log->channel('audit')->error('Product creation failed', [
+            Log::channel('audit')->error('Product creation failed', [
                 'error' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -215,10 +215,10 @@ final class FlowerProductController
                 'stock' => 'integer|min:0',
             ]);
 
-            $product = $this->db->transaction(function () use ($product, $validated, $correlationId) {
+            $product = DB::transaction(function () use ($product, $validated, $correlationId) {
                 $product->update([...$validated, 'correlation_id' => $correlationId]);
 
-                $this->log->channel('audit')->info('Flower product updated', [
+                Log::channel('audit')->info('Flower product updated', [
                     'product_id' => $product->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -250,10 +250,10 @@ final class FlowerProductController
             
             $this->authorize('delete', $product);
 
-            $this->db->transaction(function () use ($product, $correlationId) {
+            DB::transaction(function () use ($product, $correlationId) {
                 $product->delete();
 
-                $this->log->channel('audit')->info('Flower product deleted', [
+                Log::channel('audit')->info('Flower product deleted', [
                     'product_id' => $product->id,
                     'correlation_id' => $correlationId,
                 ]);

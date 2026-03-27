@@ -10,94 +10,146 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * РЕЖИМ ЛЮТЫЙ 2026: PET CLINIC MODEL
+ * 
+ * Модель ветеринарной клиники, груминг-салона или зооцентра.
+ * Scoping: tenant_id, business_group_id.
+ * Канон: 60+ строк, UUID, correlation_id, JSONB tags.
+ */
 final class PetClinic extends Model
 {
-    use HasFactory;
-    use SoftDeletes;
+    use HasFactory, SoftDeletes;
 
     protected $table = 'pet_clinics';
 
+    /**
+     * Поля, доступные для массового заполнения.
+     */
     protected $fillable = [
+        'uuid',
         'tenant_id',
         'business_group_id',
-        'owner_id',
         'name',
-        'description',
+        'type', // clinic, grooming, shop, hotel
         'address',
         'geo_point',
-        'phone',
-        'email',
-        'services',
-        'schedule',
-        'logo_url',
+        'schedule_json',
         'rating',
         'review_count',
-        'vet_count',
         'is_verified',
-        'is_active',
-        'license_number',
+        'has_emergency',
         'correlation_id',
-        'uuid',
+        'tags',
     ];
 
+    /**
+     * Приведение типов.
+     */
     protected $casts = [
-        'services' => 'collection',
-        'schedule' => 'collection',
+        'geo_point' => 'json',
+        'schedule_json' => 'json',
+        'tags' => 'json',
         'rating' => 'float',
         'review_count' => 'integer',
-        'vet_count' => 'integer',
         'is_verified' => 'boolean',
-        'is_active' => 'boolean',
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
+        'has_emergency' => 'boolean',
         'deleted_at' => 'datetime',
     ];
 
+    /**
+     * Скрытые поля.
+     */
     protected $hidden = ['correlation_id'];
 
-    public function booted(): void
+    /**
+     * Инициализация модели.
+     */
+    protected static function booted(): void
     {
+        // Global scope для изоляции тенантов и филиалов
         static::addGlobalScope('tenant', function ($query) {
-            if (auth()->check()) {
+            if (function_exists('tenant') && tenant()) {
                 $query->where('tenant_id', tenant()->id);
+            }
+        });
+
+        // Автогенерация UUID и correlation_id
+        static::creating(function (PetClinic $model) {
+            $model->uuid = $model->uuid ?? (string) \Illuminate\Support\Str::uuid();
+            $model->correlation_id = $model->correlation_id ?? request()->header('X-Correlation-ID', (string) \Illuminate\Support\Str::uuid());
+            
+            if (function_exists('tenant') && tenant()) {
+                $model->tenant_id = $model->tenant_id ?? tenant()->id;
             }
         });
     }
 
-    public function owner(): BelongsTo
-    {
-        return $this->belongsTo(User::class);
-    }
-
+    /**
+     * Персонал клиники (ветеринары/специалисты).
+     */
     public function vets(): HasMany
     {
-        return $this->hasMany(PetVet::class, 'clinic_id');
+        return $this->hasMany(Veterinarian::class, 'clinic_id');
     }
 
+    /**
+     * Услуги, предоставляемые клиникой.
+     */
     public function services(): HasMany
     {
-        return $this->hasMany(PetGroomingService::class, 'clinic_id');
+        return $this->hasMany(PetService::class, 'clinic_id');
     }
 
+    /**
+     * Записи на прием в эту клинику.
+     */
     public function appointments(): HasMany
     {
         return $this->hasMany(PetAppointment::class, 'clinic_id');
     }
 
+    /**
+     * Зоотовары в этой клинике/магазине.
+     */
     public function products(): HasMany
     {
         return $this->hasMany(PetProduct::class, 'clinic_id');
     }
 
-    public function boardingReservations(): HasMany
+    /**
+     * Проверка: является ли объект только груминг-салоном.
+     */
+    public function isGroomingOnly(): bool
     {
-        return $this->hasMany(PetBoardingReservation::class, 'clinic_id');
+        return $this->type === 'grooming';
     }
 
-    public function medicalRecords(): HasMany
+    /**
+     * Проверка: работает ли клиника в режиме 24/7.
+     */
+    public function isEmergencyReady(): bool
     {
-        return $this->hasMany(PetMedicalRecord::class, 'clinic_id');
+        return $this->has_emergency;
     }
+
+    /**
+     * Получить средний рейтинг (для UI).
+     */
+    public function getFormattedRating(): string
+    {
+        return number_format($this->rating, 1) . ' ★';
+    }
+
+    /**
+     * Проверка верификации клиники.
+     */
+    public function isVerifiedClinic(): bool
+    {
+        return $this->is_verified;
+    }
+}
+
 
     public function reviews(): HasMany
     {

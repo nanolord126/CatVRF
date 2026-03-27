@@ -1,8 +1,7 @@
-declare(strict_types=1);
-
 <?php
 
 declare(strict_types=1);
+
 
 namespace App\Domains\Flowers\Services;
 
@@ -25,15 +24,7 @@ class ConsumableDeductionService
     // Add private readonly properties here
     public function __construct(
         private InventoryManagementService $inventoryService
-    ) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+    ) {}
 
     public function deductForBouquet(
         int $bouquetId,
@@ -51,7 +42,7 @@ class ConsumableDeductionService
                 sourceId: $bouquetId
             );
 
-            $this->log->channel('audit')->info('Consumable deducted', [
+            Log::channel('audit')->info('Consumable deducted', [
                 'consumable_id' => $consumable->id,
                 'bouquet_id' => $bouquetId,
                 'correlation_id' => $correlationId,

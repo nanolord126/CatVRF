@@ -33,7 +33,7 @@ final class TravelBookingController extends Controller
             ]);
 
             $validated = $request->all();
-            $booking = $this->db->transaction(function () use ($validated, $correlationId) {
+            $booking = DB::transaction(function () use ($validated, $correlationId) {
                 $tour = \App\Domains\Travel\Models\TravelTour::findOrFail(($validated['tour_id'] ?? null));
 
                 return $this->bookingService->createBooking(
@@ -51,7 +51,7 @@ final class TravelBookingController extends Controller
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (Throwable $e) {
-            $this->log->channel('audit')->error('Booking creation failed', [
+            Log::channel('audit')->error('Booking creation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -96,7 +96,7 @@ final class TravelBookingController extends Controller
             $this->authorize('update', $booking);
 
             $validated = $request->all();
-            $booking = $this->db->transaction(function () use ($validated, $booking, $correlationId) {
+            $booking = DB::transaction(function () use ($validated, $booking, $correlationId) {
                 $booking->update([
                     'participants_count' => ($validated['participants_count'] ?? $booking->participants_count),
                     'participants_data' => ($validated['participants_data'] ?? $booking->participants_data),
@@ -106,7 +106,7 @@ final class TravelBookingController extends Controller
                 return $booking;
             });
 
-            $this->log->channel('audit')->info('Booking updated', [
+            Log::channel('audit')->info('Booking updated', [
                 'booking_id' => $booking->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -135,11 +135,11 @@ final class TravelBookingController extends Controller
 
             $this->authorize('delete', $booking);
 
-            $this->db->transaction(function () use ($booking, $correlationId) {
+            DB::transaction(function () use ($booking, $correlationId) {
                 $booking->delete();
             });
 
-            $this->log->channel('audit')->info('Booking deleted', [
+            Log::channel('audit')->info('Booking deleted', [
                 'booking_id' => $booking->id,
                 'correlation_id' => $correlationId,
             ]);

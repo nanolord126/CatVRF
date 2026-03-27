@@ -1,8 +1,7 @@
-declare(strict_types=1);
-
 <?php
 
 declare(strict_types=1);
+
 
 namespace App\Domains\Beauty\Events;
 
@@ -29,13 +28,5 @@ class AppointmentConfirmed
     public function __construct(
         public readonly Appointment $appointment,
         public readonly string $correlationId,
-    ) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+    ) {}
 }

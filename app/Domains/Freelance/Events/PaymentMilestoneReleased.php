@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Freelance\Events;
 
@@ -27,13 +28,5 @@ class PaymentMilestoneReleased
         public readonly float $amount,
         public readonly int $milestoneNumber,
         public readonly string $correlationId,
-    ) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+    ) {}
 }

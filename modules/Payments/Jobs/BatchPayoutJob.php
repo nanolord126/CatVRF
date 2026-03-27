@@ -29,7 +29,7 @@ final class BatchPayoutJob implements ShouldQueue
     public function handle(MassPayoutService $payoutService): void
     {
         try {
-            $this->log->channel('audit')->info('BatchPayoutJob запущена', [
+            Log::channel('audit')->info('BatchPayoutJob запущена', [
                 'batch_id' => $this->batchId,
                 'correlation_id' => $this->correlationId,
             ]);
@@ -50,7 +50,7 @@ final class BatchPayoutJob implements ShouldQueue
                     // Задержка между платежами (anti-DDoS)
                     sleep(5);
                 } catch (Exception $e) {
-                    $this->log->channel('audit')->error('Ошибка при выплате в batch', [
+                    Log::channel('audit')->error('Ошибка при выплате в batch', [
                         'payment_id' => $payment->id,
                         'batch_id' => $this->batchId,
                         'error' => $e->getMessage(),
@@ -64,12 +64,12 @@ final class BatchPayoutJob implements ShouldQueue
                 }
             }
 
-            $this->log->channel('audit')->info('BatchPayoutJob завершена', [
+            Log::channel('audit')->info('BatchPayoutJob завершена', [
                 'batch_id' => $this->batchId,
                 'correlation_id' => $this->correlationId,
             ]);
         } catch (Exception $e) {
-            $this->log->channel('audit')->error('Критическая ошибка BatchPayoutJob', [
+            Log::channel('audit')->error('Критическая ошибка BatchPayoutJob', [
                 'batch_id' => $this->batchId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -82,7 +82,7 @@ final class BatchPayoutJob implements ShouldQueue
 
     public function failed(Exception $exception): void
     {
-        $this->log->channel('audit')->error('BatchPayoutJob failed', [
+        Log::channel('audit')->error('BatchPayoutJob failed', [
             'batch_id' => $this->batchId,
             'error' => $exception->getMessage(),
             'correlation_id' => $this->correlationId,

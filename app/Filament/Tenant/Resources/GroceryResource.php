@@ -2,7 +2,7 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use App\Domains\Grocery\Models\GroceryStore;
+use App\Domains\Food\Grocery\Models\GroceryStore;
 use Filament\Forms\Components\{Section, Grid, TextInput, Toggle};
 use Filament\Forms\Form;
 use Filament\Resources\Resource;

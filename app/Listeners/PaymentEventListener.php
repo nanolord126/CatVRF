@@ -49,9 +49,9 @@ final class PaymentEventListener
 
             $this->notificationService->send($user, $notification, $event->correlationId);
         } catch (\Throwable $e) {
-            $this->log->channel('notifications')
+            Log::channel('notifications')
                 ->error('Failed to send PaymentInitiatedNotification', [
-                    'event' => PaymentInitiated$this->event->class,
+                    'event' => PaymentInitiatedEvent::class,
                     'error' => $e->getMessage(),
                     'correlation_id' => $event->correlationId,
                 ]);
@@ -78,7 +78,7 @@ final class PaymentEventListener
 
             $this->notificationService->send($user, $notification, $event->correlationId);
         } catch (\Throwable $e) {
-            $this->log->channel('notifications')
+            Log::channel('notifications')
                 ->error('Failed to send PaymentAuthorizedNotification', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $event->correlationId,
@@ -109,7 +109,7 @@ final class PaymentEventListener
 
             $this->notificationService->send($user, $notification, $event->correlationId);
         } catch (\Throwable $e) {
-            $this->log->channel('notifications')
+            Log::channel('notifications')
                 ->error('Failed to send PaymentCapturedNotification', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $event->correlationId,
@@ -139,7 +139,7 @@ final class PaymentEventListener
 
             $this->notificationService->send($user, $notification, $event->correlationId);
         } catch (\Throwable $e) {
-            $this->log->channel('notifications')
+            Log::channel('notifications')
                 ->error('Failed to send PaymentFailedNotification', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $event->correlationId,
@@ -169,7 +169,7 @@ final class PaymentEventListener
 
             $this->notificationService->send($user, $notification, $event->correlationId);
         } catch (\Throwable $e) {
-            $this->log->channel('notifications')
+            Log::channel('notifications')
                 ->error('Failed to send PaymentRefundedNotification', [
                     'error' => $e->getMessage(),
                     'correlation_id' => $event->correlationId,

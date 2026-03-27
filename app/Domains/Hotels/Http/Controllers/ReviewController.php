@@ -62,7 +62,7 @@ final class ReviewController extends Controller
                 correlationId: $correlationId,
             );
 
-            $this->log->channel('audit')->info('Hotel review created', [
+            Log::channel('audit')->info('Hotel review created', [
                 'correlation_id' => $correlationId,
                 'hotel_id' => $hotelId,
                 'user_id' => auth()->id(),

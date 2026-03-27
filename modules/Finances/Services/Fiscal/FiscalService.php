@@ -66,13 +66,13 @@ class FiscalService implements FiscalServiceInterface
             $driver = $this->getDriver($this->defaultDriver);
             
             if (!$driver->isAvailable()) {
-                $this->log->warning("Primary fiscal driver {$this->defaultDriver} unavailable, trying fallback");
+                Log::warning("Primary fiscal driver {$this->defaultDriver} unavailable, trying fallback");
                 return $this->sendReceiptWithFallback($tx, $items);
             }
 
             $result = $driver->sendReceipt($tx, $items);
             
-            $this->log->info('Fiscal receipt sent successfully', [
+            Log::info('Fiscal receipt sent successfully', [
                 'driver' => $this->defaultDriver,
                 'payment_id' => $tx['payment_id'] ?? null,
                 'fiscal_id' => $result['fiscal_id'] ?? null,
@@ -80,7 +80,7 @@ class FiscalService implements FiscalServiceInterface
 
             return $result;
         } catch (Exception $e) {
-            $this->log->warning("Primary fiscal driver failed: {$e->getMessage()}", [
+            Log::warning("Primary fiscal driver failed: {$e->getMessage()}", [
                 'payment_id' => $tx['payment_id'] ?? null,
             ]);
             
@@ -104,7 +104,7 @@ class FiscalService implements FiscalServiceInterface
 
             $result = $driver->sendReceipt($tx, $items);
             
-            $this->log->info('Fiscal receipt sent via fallback driver', [
+            Log::info('Fiscal receipt sent via fallback driver', [
                 'driver' => $fallbackDriver,
                 'payment_id' => $tx['payment_id'] ?? null,
                 'fiscal_id' => $result['fiscal_id'] ?? null,
@@ -112,7 +112,7 @@ class FiscalService implements FiscalServiceInterface
 
             return $result;
         } catch (Exception $e) {
-            $this->log->error('Both fiscal drivers failed', [
+            Log::error('Both fiscal drivers failed', [
                 'primary' => $this->defaultDriver,
                 'fallback' => $fallbackDriver,
                 'payment_id' => $tx['payment_id'] ?? null,
@@ -130,12 +130,12 @@ class FiscalService implements FiscalServiceInterface
     {
         try {
             // Кэшируем результат на 5 минут
-            return $this->cache->remember("fiscal_status_{$fiscalId}", 300, function () use ($fiscalId) {
+            return Cache::remember("fiscal_status_{$fiscalId}", 300, function () use ($fiscalId) {
                 $driver = $this->getDriver($this->defaultDriver);
                 return $driver->getReceiptStatus($fiscalId);
             });
         } catch (Exception $e) {
-            $this->log->error('Get receipt status failed', [
+            Log::error('Get receipt status failed', [
                 'fiscal_id' => $fiscalId,
                 'error' => $e->getMessage(),
             ]);
@@ -162,7 +162,7 @@ class FiscalService implements FiscalServiceInterface
 
             $result = $driver->refundReceipt($fiscalId, $amount, $data);
             
-            $this->log->info('Fiscal refund sent', [
+            Log::info('Fiscal refund sent', [
                 'original_fiscal_id' => $fiscalId,
                 'amount' => $amount,
                 'refund_fiscal_id' => $result['refund_fiscal_id'] ?? null,
@@ -170,11 +170,11 @@ class FiscalService implements FiscalServiceInterface
             ]);
 
             // Инвалидируем кэш статуса оригинального чека
-            $this->cache->forget("fiscal_status_{$fiscalId}");
+            Cache::forget("fiscal_status_{$fiscalId}");
 
             return $result;
         } catch (Exception $e) {
-            $this->log->error('Refund receipt failed', [
+            Log::error('Refund receipt failed', [
                 'fiscal_id' => $fiscalId,
                 'amount' => $amount,
                 'error' => $e->getMessage(),
@@ -196,10 +196,10 @@ class FiscalService implements FiscalServiceInterface
                 return $driver->getReceiptHistory($filters);
             }
 
-            $this->log->info('Receipt history not available in fiscal driver');
+            Log::info('Receipt history not available in fiscal driver');
             return [];
         } catch (Exception $e) {
-            $this->log->error('Get receipt history failed', [
+            Log::error('Get receipt history failed', [
                 'error' => $e->getMessage(),
             ]);
             throw $e;
@@ -212,12 +212,12 @@ class FiscalService implements FiscalServiceInterface
     public function resendReceipt(string $fiscalId): array
     {
         try {
-            $this->log->info('Resending fiscal receipt', [
+            Log::info('Resending fiscal receipt', [
                 'fiscal_id' => $fiscalId,
             ]);
 
             // Инвалидируем кэш
-            $this->cache->forget("fiscal_status_{$fiscalId}");
+            Cache::forget("fiscal_status_{$fiscalId}");
 
             $driver = $this->getDriver($this->defaultDriver);
             if (!method_exists($driver, 'resendReceipt')) {
@@ -226,7 +226,7 @@ class FiscalService implements FiscalServiceInterface
 
             return $driver->resendReceipt($fiscalId);
         } catch (Exception $e) {
-            $this->log->error('Resend fiscal receipt failed', [
+            Log::error('Resend fiscal receipt failed', [
                 'fiscal_id' => $fiscalId,
                 'error' => $e->getMessage(),
             ]);
@@ -249,7 +249,7 @@ class FiscalService implements FiscalServiceInterface
                     'info' => $driver->getInfo(),
                 ];
             } catch (Exception $e) {
-                $this->log->warning("Health check failed for {$name}", ['error' => $e->getMessage()]);
+                Log::warning("Health check failed for {$name}", ['error' => $e->getMessage()]);
                 $results[$name] = [
                     'available' => false,
                     'error' => $e->getMessage(),

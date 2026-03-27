@@ -31,7 +31,7 @@ final class ServiceJobController
                 'scheduled_at' => 'nullable|date',
             ]);
 
-            $job = \$this->db->transaction(fn() => $this->jobService->createJob(
+            $job = \DB::transaction(fn() => $this->jobService->createJob(
                 $validated['service_listing_id'],
                 auth()->id(),
                 $validated['address'],
@@ -39,7 +39,7 @@ final class ServiceJobController
                 $correlationId
             ));
 
-            $this->log->channel('audit')->info('HomeService job created', [
+            Log::channel('audit')->info('HomeService job created', [
                 'correlation_id' => $correlationId,
                 'job_id'         => $job->id ?? null,
                 'user_id'        => auth()->id(),
@@ -90,7 +90,7 @@ final class ServiceJobController
             $this->fraudControlService->check(auth()->id() ?? 0, 'job_accept', 0, request()->ip(), null, $correlationId);
             $job->update(['status' => 'accepted', 'correlation_id' => $correlationId]);
 
-            $this->log->channel('audit')->info('HomeService job accepted', [
+            Log::channel('audit')->info('HomeService job accepted', [
                 'correlation_id' => $correlationId,
                 'job_id'         => $job->id,
                 'user_id'        => auth()->id(),
@@ -111,7 +111,7 @@ final class ServiceJobController
             $this->fraudControlService->check(auth()->id() ?? 0, 'job_start', 0, request()->ip(), null, $correlationId);
             $job->update(['status' => 'in_progress', 'started_at' => now(), 'correlation_id' => $correlationId]);
 
-            $this->log->channel('audit')->info('HomeService job started', [
+            Log::channel('audit')->info('HomeService job started', [
                 'correlation_id' => $correlationId,
                 'job_id'         => $job->id,
                 'user_id'        => auth()->id(),
@@ -129,7 +129,7 @@ final class ServiceJobController
             $job = ServiceJob::findOrFail($id);
             $correlationId = Str::uuid()->toString();
 
-            \$this->db->transaction(fn() => $this->jobService->completeJob($job, $correlationId));
+            \DB::transaction(fn() => $this->jobService->completeJob($job, $correlationId));
 
             return response()->json(['success' => true, 'data' => $job, 'correlation_id' => $correlationId]);
         } catch (\Throwable $e) {
@@ -144,7 +144,7 @@ final class ServiceJobController
             $this->authorize('cancel', $job);
 
             $correlationId = Str::uuid()->toString();
-            \$this->db->transaction(fn() => $this->jobService->cancelJob($job, request()->input('reason', 'User cancelled'), $correlationId));
+            \DB::transaction(fn() => $this->jobService->cancelJob($job, request()->input('reason', 'User cancelled'), $correlationId));
 
             return response()->json(['success' => true, 'message' => 'Job cancelled', 'correlation_id' => $correlationId]);
         } catch (\Throwable $e) {

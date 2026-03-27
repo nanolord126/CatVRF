@@ -41,7 +41,7 @@ final class PharmacyController
 
             return response()->json(['success' => true, 'data' => $medicines, 'correlation_id' => $correlationId]);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Pharmacy: index error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+            Log::channel('audit')->error('Pharmacy: index error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
             return response()->json(['success' => false, 'message' => 'Ошибка загрузки', 'correlation_id' => $correlationId], 500);
         }
     }
@@ -81,7 +81,7 @@ final class PharmacyController
                 'delivery_address'  => 'required|string',
             ]);
 
-            $order = $this->db->transaction(function () use ($validated, $userId, $correlationId): PharmacyOrder {
+            $order = DB::transaction(function () use ($validated, $userId, $correlationId): PharmacyOrder {
                 $totalKopecks = 0;
                 foreach ($validated['items'] as $item) {
                     $med = Medicine::findOrFail($item['medicine_id']);
@@ -103,7 +103,7 @@ final class PharmacyController
                     'correlation_id'   => $correlationId,
                 ]);
 
-                $this->log->channel('audit')->info('Pharmacy: Order created', [
+                Log::channel('audit')->info('Pharmacy: Order created', [
                     'order_id' => $order->id, 'user_id' => $userId, 'correlation_id' => $correlationId,
                 ]);
 
@@ -116,7 +116,7 @@ final class PharmacyController
         } catch (\RuntimeException $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => $correlationId], 422);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Pharmacy: order error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+            Log::channel('audit')->error('Pharmacy: order error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
             return response()->json(['success' => false, 'message' => 'Ошибка заказа', 'correlation_id' => $correlationId], 500);
         }
     }

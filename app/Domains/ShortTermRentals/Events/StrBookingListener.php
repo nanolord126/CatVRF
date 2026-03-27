@@ -1,0 +1,42 @@
+<?php declare(strict_types=1);
+
+namespace App\Domains\ShortTermRentals\Events;
+
+use App\Domains\ShortTermRentals\Models\StrBooking;
+use Illuminate\Support\Facades\Log;
+
+/**
+ * КАНОН 2026: Слушатель для логирования и системных действий
+ */
+final readonly class StrBookingListener
+{
+    public function __construct() {}
+
+    /**
+     * Создание записи в аудит-логе при новом бронировании
+     */
+    public function onCreated(StrBookingCreated $event): void
+    {
+        Log::channel('audit')->info('ShortTermRental: New Booking Event Recieved', [
+            'booking_id' => $event->booking->id,
+            'user_id' => $event->booking->user_id,
+            'correlation_id' => $event->correlationId,
+        ]);
+
+        // Здесь может быть вызов сервиса нотификаций или планирование тасок
+    }
+
+    /**
+     * Действия при завершении проживания
+     */
+    public function onCompleted(StrBookingCompleted $event): void
+    {
+        Log::channel('audit')->info('ShortTermRental: Booking Completed Event Recieved', [
+            'booking_id' => $event->booking->id,
+            'correlation_id' => $event->correlationId,
+        ]);
+
+        // Запуск процесса автоматического возврата залога через 24 часа (если нет споров)
+        // \App\Domains\ShortTermRentals\Jobs\AutoReleaseDepositJob::dispatch($event->booking->id)->delay(now()->addDay());
+    }
+}

@@ -18,7 +18,7 @@ final class ClassController
     public function byStudio(int $studioId): JsonResponse
     {
         try {
-            $classes = Class$this->session->where('studio_id', $studioId)->where('is_active', true)->paginate(20);
+            $classes = ClassSession::where('studio_id', $studioId)->where('is_active', true)->paginate(20);
             return response()->json(['success' => true, 'data' => $classes, 'correlation_id' => Str::uuid()]);
         } catch (\Throwable $e) {
             return response()->json(['success' => false, 'message' => 'Failed to list classes'], 500);
@@ -28,7 +28,7 @@ final class ClassController
     public function show(int $id): JsonResponse
     {
         try {
-            $class = Class$this->session->with(['studio', 'trainer', 'bookings'])->findOrFail($id);
+            $class = ClassSession::with(['studio', 'trainer', 'bookings'])->findOrFail($id);
             return response()->json(['success' => true, 'data' => $class, 'correlation_id' => Str::uuid()]);
         } catch (\Throwable $e) {
             return response()->json(['success' => false, 'message' => 'Class not found'], 404);
@@ -53,7 +53,7 @@ final class ClassController
                 'max_participants' => 'required|integer|min:1',
             ]);
 
-            $class = Class$this->session->create([
+            $class = ClassSession::create([
                 'tenant_id' => tenant('id'),
                 'studio_id' => $studioId,
                 'trainer_id' => $validated['trainer_id'],
@@ -65,7 +65,7 @@ final class ClassController
                 'is_active' => true,
             ]);
 
-            $this->log->channel('audit')->info('Sports class created', [
+            Log::channel('audit')->info('Sports class created', [
                 'correlation_id' => $correlationId,
                 'class_id'       => $class->id,
                 'studio_id'      => $studioId,
@@ -85,14 +85,14 @@ final class ClassController
         $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
-            $class = Class$this->session->findOrFail($id);
+            $class = ClassSession::findOrFail($id);
             $this->authorize('update', $class);
 
             $validated = request()->validate(['name' => 'sometimes|string', 'price' => 'sometimes|numeric']);
             $before = $class->getAttributes();
             $class->update($validated);
 
-            $this->log->channel('audit')->info('Sports class updated', [
+            Log::channel('audit')->info('Sports class updated', [
                 'correlation_id' => $correlationId,
                 'class_id'       => $class->id,
                 'user_id'        => auth()->id(),
@@ -111,12 +111,12 @@ final class ClassController
         $correlationId = Str::uuid()->toString();
 
         try {
-            $class = Class$this->session->findOrFail($id);
+            $class = ClassSession::findOrFail($id);
             $this->authorize('delete', $class);
             $this->fraudControlService->check(auth()->id() ?? 0, 'class_delete', 0, request()->ip(), null, $correlationId);
             $class->delete();
 
-            $this->log->channel('audit')->info('Sports class deleted', [
+            Log::channel('audit')->info('Sports class deleted', [
                 'correlation_id' => $correlationId,
                 'class_id'       => $class->id,
                 'user_id'        => auth()->id(),

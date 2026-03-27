@@ -42,7 +42,7 @@ final class ProductService
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
 
-            $product = $this->db->transaction(function () use (
+            $product = DB::transaction(function () use (
                 $tenantId,
                 $storeId,
                 $categoryId,
@@ -69,7 +69,7 @@ final class ProductService
                     'correlation_id' => $correlationId,
                 ]);
 
-                $this->log->channel('audit')->info('Fashion product created', [
+                Log::channel('audit')->info('Fashion product created', [
                     'product_id' => $product->id,
                     'store_id' => $storeId,
                     'sku' => $sku,
@@ -82,7 +82,7 @@ final class ProductService
 
             return $product;
         } catch (Throwable $e) {
-            $this->log->channel('audit')->error('Failed to create fashion product', [
+            Log::channel('audit')->error('Failed to create fashion product', [
                 'error' => $e->getMessage(),
                 'sku' => $sku,
                 'correlation_id' => $correlationId ?? 'unknown',
@@ -107,16 +107,16 @@ final class ProductService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-$this->db->transaction(function () use ($product, $data, $correlationId) {
+DB::transaction(function () use ($product, $data, $correlationId) {
                 $product->update([...$data, 'correlation_id' => $correlationId]);
 
-                $this->log->channel('audit')->info('Fashion product updated', [
+                Log::channel('audit')->info('Fashion product updated', [
                     'product_id' => $product->id,
                     'correlation_id' => $correlationId,
                 ]);
             });
         } catch (Throwable $e) {
-            $this->log->channel('audit')->error('Failed to update fashion product', [
+            Log::channel('audit')->error('Failed to update fashion product', [
                 'product_id' => $product->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId ?? 'unknown',
@@ -141,20 +141,20 @@ $this->db->transaction(function () use ($product, $data, $correlationId) {
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-$this->db->transaction(function () use ($product, $quantity, $correlationId) {
+DB::transaction(function () use ($product, $quantity, $correlationId) {
                 $product->update([
                     'current_stock' => $quantity,
                     'correlation_id' => $correlationId,
                 ]);
 
-                $this->log->channel('audit')->info('Fashion product stock updated', [
+                Log::channel('audit')->info('Fashion product stock updated', [
                     'product_id' => $product->id,
                     'quantity' => $quantity,
                     'correlation_id' => $correlationId,
                 ]);
             });
         } catch (Throwable $e) {
-            $this->log->channel('audit')->error('Failed to update fashion product stock', [
+            Log::channel('audit')->error('Failed to update fashion product stock', [
                 'product_id' => $product->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId ?? 'unknown',

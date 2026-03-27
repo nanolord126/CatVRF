@@ -1,92 +1,94 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Freelance\Models;
 
-use App\Models\BaseModel;
-use App\Models\User;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\User;
+use Illuminate\Support\Str;
 
-final class Freelancer extends BaseModel
+/**
+ * КАНОН 2026 — FREELANCER MODEL
+ * Профиль специалиста на бирже фриланса.
+ */
+final class Freelancer extends Model
 {
-    use SoftDeletes;
+    use HasFactory, SoftDeletes;
 
     protected $table = 'freelancers';
 
     protected $fillable = [
+        'uuid',
         'tenant_id',
         'user_id',
-        'business_group_id',
         'full_name',
+        'specialization',
         'bio',
-        'hourly_rate',
-        'skills',
-        'specializations',
-        'languages',
+        'hourly_rate_kopecks',
         'experience_years',
-        'portfolio_url',
-        'website',
-        'certifications',
+        'skills',
+        'languages',
         'rating',
-        'review_count',
-        'jobs_completed',
-        'active_jobs',
+        'completed_orders_count',
+        'status',
         'is_verified',
-        'is_active',
-        'last_active_at',
-        'correlation_id',
         'tags',
+        'correlation_id',
     ];
 
     protected $casts = [
         'skills' => 'json',
-        'specializations' => 'json',
         'languages' => 'json',
-        'certifications' => 'json',
-        'rating' => 'float',
-        'is_verified' => 'boolean',
-        'is_active' => 'boolean',
-        'last_active_at' => 'datetime',
         'tags' => 'json',
+        'is_verified' => 'boolean',
+        'hourly_rate_kopecks' => 'integer',
+        'rating' => 'float',
+        'experience_years' => 'integer',
+        'completed_orders_count' => 'integer',
     ];
+
+    /**
+     * Авто-генерация UUID и привязка к тенанту.
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (self $model) {
+            $model->uuid = (string) Str::uuid();
+            $model->correlation_id = $model->correlation_id ?? (string) Str::uuid();
+        });
+
+        static::addGlobalScope('tenant', function ($builder) {
+            $builder->where('tenant_id', tenant()->id ?? 1);
+        });
+    }
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-    public function services(): HasMany
+    public function offers(): HasMany
     {
-        return $this->hasMany(FreelanceService::class);
+        return $this->hasMany(FreelanceServiceOffer::class, 'freelancer_id');
     }
 
-    public function proposals(): HasMany
+    public function orders(): HasMany
     {
-        return $this->hasMany(FreelanceProposal::class);
+        return $this->hasMany(FreelanceOrder::class, 'freelancer_id');
     }
 
-    public function contracts(): HasMany
+    public function portfolios(): HasMany
     {
-        return $this->hasMany(FreelanceContract::class, 'freelancer_id');
-    }
-
-    public function deliverables(): HasMany
-    {
-        return $this->hasMany(FreelanceDeliverable::class);
+        return $this->hasMany(FreelancePortfolio::class, 'freelancer_id');
     }
 
     public function reviews(): HasMany
     {
         return $this->hasMany(FreelanceReview::class, 'freelancer_id');
-    }
-
-    protected static function booted(): void
-    {
-        static::addGlobalScope('tenant', function ($query) {
-            if ($tenantId = tenant()?->id) {
-                $query->where('tenant_id', $tenantId);
-            }
-        });
     }
 }

@@ -35,7 +35,7 @@ final class RideReminderJob implements ShouldQueue
     public function handle(): void
     {
         try {
-            $this->log->channel('audit')->info('Ride reminder job started', [
+            Log::channel('audit')->info('Ride reminder job started', [
                 'ride_id' => $this->ride->id,
                 'correlation_id' => $this->correlationId,
             ]);
@@ -43,7 +43,7 @@ final class RideReminderJob implements ShouldQueue
             // Проверить, что поездка ещё в статусе waiting
             $ride = TaxiRide::query()->find($this->ride->id);
             if (!$ride || $ride->status !== 'waiting') {
-                $this->log->channel('audit')->notice('Ride not in waiting status, skipping reminder', [
+                Log::channel('audit')->notice('Ride not in waiting status, skipping reminder', [
                     'ride_id' => $this->ride->id,
                     'status' => $ride?->status,
                 ]);
@@ -52,13 +52,13 @@ final class RideReminderJob implements ShouldQueue
             }
             // Notification::send($ride->passenger, new RideReminderNotification($ride));
 
-            $this->log->channel('audit')->info('Ride reminder sent', [
+            Log::channel('audit')->info('Ride reminder sent', [
                 'ride_id' => $ride->id,
                 'passenger_id' => $ride->passenger_id,
                 'correlation_id' => $this->correlationId,
             ]);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Ride reminder job failed', [
+            Log::channel('audit')->error('Ride reminder job failed', [
                 'ride_id' => $this->ride->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

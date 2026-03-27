@@ -27,7 +27,7 @@ class HighLoadTrafficOrchestrator
             $key = "ad_impressions_buffer";
             Redis::hincrby($key, (string)$bannerId, 1);
             
-            $this->log->channel('performance')->debug('HighLoadTrafficOrchestrator: impression buffered', [
+            Log::channel('performance')->debug('HighLoadTrafficOrchestrator: impression buffered', [
                 'correlation_id' => $this->correlationId,
                 'banner_id' => $bannerId,
             ]);
@@ -38,7 +38,7 @@ class HighLoadTrafficOrchestrator
                 $this->flushImpressionsToDb($bannerId);
             }
         } catch (Throwable $e) {
-            $this->log->error('HighLoadTrafficOrchestrator: impression buffering failed', [
+            Log::error('HighLoadTrafficOrchestrator: impression buffering failed', [
                 'correlation_id' => $this->correlationId,
                 'banner_id' => $bannerId,
                 'error' => $e->getMessage(),
@@ -59,7 +59,7 @@ class HighLoadTrafficOrchestrator
             $count = Redis::hget($key, (string)$bannerId);
             
             if ($count && $count > 0) {
-                $this->log->channel('performance')->info('HighLoadTrafficOrchestrator: flushing impressions', [
+                Log::channel('performance')->info('HighLoadTrafficOrchestrator: flushing impressions', [
                     'correlation_id' => $this->correlationId,
                     'banner_id' => $bannerId,
                     'count' => $count,
@@ -68,14 +68,14 @@ class HighLoadTrafficOrchestrator
                 AdBanner::where('id', $bannerId)->increment('impressions_count', $count);
                 Redis::hdel($key, (string)$bannerId);
 
-                $this->log->channel('performance')->info('HighLoadTrafficOrchestrator: impressions flushed', [
+                Log::channel('performance')->info('HighLoadTrafficOrchestrator: impressions flushed', [
                     'correlation_id' => $this->correlationId,
                     'banner_id' => $bannerId,
                     'flushed_count' => $count,
                 ]);
             }
         } catch (Throwable $e) {
-            $this->log->error('HighLoadTrafficOrchestrator: flush failed', [
+            Log::error('HighLoadTrafficOrchestrator: flush failed', [
                 'correlation_id' => $this->correlationId,
                 'banner_id' => $bannerId,
                 'error' => $e->getMessage(),
@@ -91,16 +91,16 @@ class HighLoadTrafficOrchestrator
     public function getCachedPlacement(string $code, callable $callback)
     {
         try {
-            $this->log->channel('performance')->debug('HighLoadTrafficOrchestrator: getting cached placement', [
+            Log::channel('performance')->debug('HighLoadTrafficOrchestrator: getting cached placement', [
                 'correlation_id' => $this->correlationId,
                 'placement_code' => $code,
             ]);
 
             // Redis tag-based caching для мгновенного обновления аукциона
-            return \Illuminate\Support\Facades\$this->cache->tags(['ad_placements', "placement_{$code}"])
+            return \Illuminate\Support\Facades\Cache::tags(['ad_placements', "placement_{$code}"])
                 ->remember("ad_data_{$code}", 300, $callback);
         } catch (Throwable $e) {
-            $this->log->error('HighLoadTrafficOrchestrator: placement cache failed', [
+            Log::error('HighLoadTrafficOrchestrator: placement cache failed', [
                 'correlation_id' => $this->correlationId,
                 'placement_code' => $code,
                 'error' => $e->getMessage(),
@@ -117,14 +117,14 @@ class HighLoadTrafficOrchestrator
     public function invalidatePlacementCache(string $code): void
     {
         try {
-            \Illuminate\Support\Facades\$this->cache->tags(["placement_{$code}"])->flush();
+            \Illuminate\Support\Facades\Cache::tags(["placement_{$code}"])->flush();
 
-            $this->log->channel('performance')->info('HighLoadTrafficOrchestrator: placement cache invalidated', [
+            Log::channel('performance')->info('HighLoadTrafficOrchestrator: placement cache invalidated', [
                 'correlation_id' => $this->correlationId,
                 'placement_code' => $code,
             ]);
         } catch (Throwable $e) {
-            $this->log->error('HighLoadTrafficOrchestrator: cache invalidation failed', [
+            Log::error('HighLoadTrafficOrchestrator: cache invalidation failed', [
                 'correlation_id' => $this->correlationId,
                 'placement_code' => $code,
                 'error' => $e->getMessage(),

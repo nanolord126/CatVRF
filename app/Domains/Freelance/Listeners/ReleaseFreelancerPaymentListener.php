@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Freelance\Listeners;
 
@@ -26,25 +27,17 @@ class ReleaseFreelancerPaymentListener implements ShouldQueue
 
     public function __construct(
         private readonly BalanceTransactionService $balanceService,
-    ) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+    ) {}
 
     public function handle(PaymentMilestoneReleased $event): void
     {
-        $this->db->transaction(function () use ($event) {
+        DB::transaction(function () use ($event) {
             $contract = $event->contract->load('freelancer', 'client');
             $freelancer = $contract->freelancer;
 
             $amountInCents = (int)($event->amount * 100);
 
-            $this->log->channel('audit')->info('Freelance payment milestone released to freelancer', [
+            Log::channel('audit')->info('Freelance payment milestone released to freelancer', [
                 'contract_id' => $contract->id,
                 'freelancer_id' => $freelancer->id,
                 'client_id' => $contract->client_id,

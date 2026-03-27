@@ -27,12 +27,12 @@ final class RealtimeOrderStatsWidget extends BaseWidget
 
         try {
             // Get real-time stats from cache (updated via events)
-            $todayOrders = $this->cache->get("stats:orders:today:{$tenantId}", 0);
-            $todayRevenue = $this->cache->get("stats:revenue:today:{$tenantId}", 0);
-            $pendingOrders = $this->cache->get("stats:orders:pending:{$tenantId}", 0);
+            $todayOrders = Cache::get("stats:orders:today:{$tenantId}", 0);
+            $todayRevenue = Cache::get("stats:revenue:today:{$tenantId}", 0);
+            $pendingOrders = Cache::get("stats:orders:pending:{$tenantId}", 0);
 
             // Trending data
-            $yesterdayOrders = $this->cache->get("stats:orders:yesterday:{$tenantId}", 1);
+            $yesterdayOrders = Cache::get("stats:orders:yesterday:{$tenantId}", 1);
             $orderTrend = $yesterdayOrders > 0 
                 ? (($todayOrders - $yesterdayOrders) / $yesterdayOrders) * 100 
                 : 0;

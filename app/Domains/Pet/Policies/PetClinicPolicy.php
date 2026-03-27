@@ -1,33 +1,66 @@
-declare(strict_types=1);
+<?php
 
-<?php declare(strict_types=1);
+declare(strict_types=1);
 
 namespace App\Domains\Pet\Policies;
 
-use App\Domains\Pet\Models\PetClinic;
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
+use App\Domains\Pet\Models\PetClinic;
+use Illuminate\Auth\Access\HandlesAuthorization;
 
-final /**
- * PetClinicPolicy
+/**
+ * КАНЬОН 2026 — ПОЛИТИКА ДОСТУПА ДЛЯ КЛИНИК
  * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
+ * Изоляция данных на уровне tenant_id и проверка прав через FraudControlService.
  */
-class PetClinicPolicy
+final class PetClinicPolicy
 {
-    public function viewAny(User $user): Response
+    use HandlesAuthorization;
+
+    /**
+     * Проверка доступа к просмотру списка (только текущий тенант)
+     */
+    public function viewAny(User $user): bool
     {
-        return $this->response->allow();
+        return $user->can('view_pet_clinics');
     }
 
-    public function view(User $user, PetClinic $clinic): Response
+    /**
+     * Просмотр конкретной клиники
+     */
+    public function view(User $user, PetClinic $clinic): bool
     {
-        return $clinic->tenant_id === $user->current_tenant_id
-            ? $this->response->allow()
+        return $clinic->tenant_id === $user->tenant_id && $user->can('view_pet_clinics');
+    }
+
+    /**
+     * Создание клиники — требует Fraud Check
+     */
+    public function create(User $user): bool
+    {
+        if (!app(\App\Services\FraudControlService::class)->shouldBlock(0.1, 'create_clinic')) {
+             return $user->can('manage_pet_clinics');
+        }
+
+        return false;
+    }
+
+    /**
+     * Обновление — строгая проверка владельца тенанта
+     */
+    public function update(User $user, PetClinic $clinic): bool
+    {
+        return $clinic->tenant_id === $user->tenant_id && $user->can('manage_pet_clinics');
+    }
+
+    /**
+     * Удаление — SoftDelete рекомендуется
+     */
+    public function delete(User $user, PetClinic $clinic): bool
+    {
+        return $clinic->tenant_id === $user->tenant_id && $user->can('delete_pet_clinics');
+    }
+}
             : $this->response->deny('Unauthorized');
     }
 

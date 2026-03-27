@@ -2,7 +2,7 @@
 
 namespace Database\Factories\Jewelry;
 
-use App\Domains\Jewelry\Models\Jewelry3DModel;
+use App\Domains\Luxury\Jewelry\Models\Jewelry3DModel;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 

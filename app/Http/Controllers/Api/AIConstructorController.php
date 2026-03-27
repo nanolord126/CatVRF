@@ -1,7 +1,5 @@
 declare(strict_types=1);
-
 namespace App\Http\Controllers\API;
-
 use App\Http\Requests\AIConstructorRequest;
 use App\Models\AIConstruction;
 use App\Services\AI\AIConstructorService;
@@ -9,7 +7,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-
 /**
  * API Controller для AI-конструкторов
  * CANON 2026: DB::transaction(), JsonResponse с correlation_id, audit-log
@@ -19,7 +16,6 @@ final class AIConstructorController extends \App\Http\Controllers\Controller
     public function __construct(
         private readonly AIConstructorService $constructorService,
     ) {}
-
     /**
      * Запустить конструктор
      */
@@ -32,7 +28,6 @@ final class AIConstructorController extends \App\Http\Controllers\Controller
                 photo: $request->file('photo'),
                 params: $request->validated('params', []),
             ));
-
             return response()->json([
                 'success' => true,
                 'correlation_id' => $result['correlation_id'],
@@ -51,27 +46,23 @@ final class AIConstructorController extends \App\Http\Controllers\Controller
                 'user_id' => $request->user()?->id,
                 'error' => $e->getMessage(),
             ]);
-
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),
             ], 500);
         }
     }
-
     /**
      * Получить конструкцию по ID
      */
     public function show(AIConstruction $construction): JsonResponse
     {
         $this->authorize('view', $construction);
-
         return response()->json([
             'success' => true,
             'construction' => $this->formatConstruction($construction),
         ]);
     }
-
     /**
      * Получить сохранённые конструкции
      */
@@ -82,119 +73,98 @@ final class AIConstructorController extends \App\Http\Controllers\Controller
             $request->query('type'),
             $request->query('limit', 20),
         );
-
         return response()->json([
             'success' => true,
             'data' => $constructions,
             'count' => \count($constructions),
         ]);
     }
-
     /**
      * Получить статистику
      */
     public function statistics(Request $request): JsonResponse
     {
         $stats = $this->constructorService->getStatistics($request->user());
-
         return response()->json([
             'success' => true,
             'statistics' => $stats,
         ]);
     }
-
     /**
      * Сохранить конструкцию в избранное
      */
     public function save(AIConstruction $construction): JsonResponse
     {
         $this->authorize('update', $construction);
-
         $construction->markAsSaved();
-
         return response()->json([
             'success' => true,
             'message' => 'Construction saved',
         ]);
     }
-
     /**
      * Удалить из избранного
      */
     public function unsave(AIConstruction $construction): JsonResponse
     {
         $this->authorize('update', $construction);
-
         $construction->unmarkAsSaved();
-
         return response()->json([
             'success' => true,
             'message' => 'Construction removed from saved',
         ]);
     }
-
     /**
      * Добавить отзыв
      */
     public function review(Request $request, AIConstruction $construction): JsonResponse
     {
         $this->authorize('update', $construction);
-
         $validated = $request->validate([
             'rating' => 'required|integer|min:1|max:5',
             'feedback' => 'nullable|string|max:500',
         ]);
-
         $construction->addFeedback(
             $validated['rating'],
             $validated['feedback'] ?? null,
         );
-
         return response()->json([
             'success' => true,
             'message' => 'Review added',
         ]);
     }
-
     /**
      * Удалить конструкцию
      */
     public function destroy(AIConstruction $construction): JsonResponse
     {
         $this->authorize('delete', $construction);
-
         $this->constructorService->deleteConstruction($construction);
-
         return response()->json([
             'success' => true,
             'message' => 'Construction deleted',
         ]);
     }
-
     /**
      * Записать покупку товаров из конструкции
      */
     public function recordPurchase(Request $request, AIConstruction $construction): JsonResponse
     {
         $this->authorize('update', $construction);
-
         $validated = $request->validate([
             'items_count' => 'required|integer|min:1',
             'total_amount' => 'required|integer|min:1',
         ]);
-
         $construction->recordPurchase(
             $validated['items_count'],
             $validated['total_amount'],
         );
-
         return response()->json([
             'success' => true,
             'message' => 'Purchase recorded',
             'conversion_rate' => $construction->getConversionRate(),
         ]);
     }
-
     /**
      * Форматировать конструкцию для ответа
      */

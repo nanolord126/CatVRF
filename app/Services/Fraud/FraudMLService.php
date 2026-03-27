@@ -81,11 +81,11 @@ final readonly class FraudMLService
 
             // 8. Invalidate cache if blocking
             if ($decision === 'block') {
-                $this->cache->forget("fraud:profile:user:{$userId}");
+                Cache::forget("fraud:profile:user:{$userId}");
             }
 
             // 9. Audit log (before DB write, in transaction)
-            $this->db->transaction(function () use (
+            DB::transaction(function () use (
                 $correlationId,
                 $userId,
                 $operationType,
@@ -100,7 +100,7 @@ final readonly class FraudMLService
                 $profile,
                 $velocityCheck,
             ) {
-                $this->db->table('fraud_attempts')->insert([
+                DB::table('fraud_attempts')->insert([
                     'user_id' => $userId,
                     'operation_type' => $operationType,
                     'ip_address' => $ipAddress,
@@ -116,7 +116,7 @@ final readonly class FraudMLService
                     'created_at' => now(),
                 ]);
 
-                $this->log->channel('audit')->info('FraudML: operation scored', [
+                Log::channel('audit')->info('FraudML: operation scored', [
                     'correlation_id' => $correlationId,
                     'user_id' => $userId,
                     'operation_type' => $operationType,
@@ -144,7 +144,7 @@ final readonly class FraudMLService
                 'correlation_id' => $correlationId,
             ];
         } catch (\Throwable $e) {
-            $this->log->channel('fraud_alert')->error('FraudML: scoring error', [
+            Log::channel('fraud_alert')->error('FraudML: scoring error', [
                 'correlation_id' => $correlationId,
                 'user_id' => $userId,
                 'operation_type' => $operationType,
@@ -506,9 +506,9 @@ final readonly class FraudMLService
     {
         $cacheKey = "fraud:profile:user:{$userId}";
 
-        return $this->cache->remember($cacheKey, 3600, function () use ($userId) {
+        return Cache::remember($cacheKey, 3600, function () use ($userId) {
             try {
-                $attempts = $this->db->table('fraud_attempts')
+                $attempts = DB::table('fraud_attempts')
                     ->where('user_id', $userId)
                     ->where('created_at', '>=', now()->subDays(30))
                     ->get();
@@ -556,7 +556,7 @@ final readonly class FraudMLService
         $shouldBlock = $score > $threshold;
 
         if ($shouldBlock) {
-            $this->log->channel('fraud_alert')->warning('FraudML: block decision', [
+            Log::channel('fraud_alert')->warning('FraudML: block decision', [
                 'correlation_id' => $correlationId,
                 'operation_type' => $operationType,
                 'score' => $score,
@@ -580,13 +580,13 @@ final readonly class FraudMLService
         $correlationId ??= Str::uuid()->toString();
 
         try {
-            $this->db->transaction(function () use (
+            DB::transaction(function () use (
                 $userId,
                 $operationType,
                 $reason,
                 $correlationId,
             ) {
-                $this->db->table('fraud_attempts')->insert([
+                DB::table('fraud_attempts')->insert([
                     'user_id' => $userId,
                     'operation_type' => $operationType,
                     'ml_score' => 1.0,  // Manual report = definite fraud
@@ -599,7 +599,7 @@ final readonly class FraudMLService
                     'created_at' => now(),
                 ]);
 
-                $this->log->channel('audit')->warning('FraudML: fraud reported manually', [
+                Log::channel('audit')->warning('FraudML: fraud reported manually', [
                     'user_id' => $userId,
                     'operation_type' => $operationType,
                     'reason' => $reason,
@@ -608,9 +608,9 @@ final readonly class FraudMLService
             });
 
             // Invalidate user's fraud profile cache
-            $this->cache->forget("fraud:profile:user:{$userId}");
+            Cache::forget("fraud:profile:user:{$userId}");
         } catch (\Throwable $e) {
-            $this->log->channel('fraud_alert')->error('FraudML: failed to report fraud', [
+            Log::channel('fraud_alert')->error('FraudML: failed to report fraud', [
                 'user_id' => $userId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -627,7 +627,7 @@ final readonly class FraudMLService
      */
     public function getModelAccuracy(int $days = 30): array
     {
-        $attempts = $this->db->table('fraud_attempts')
+        $attempts = DB::table('fraud_attempts')
             ->where('created_at', '>=', now()->subDays($days))
             ->where('ml_version', '!=', 'none')
             ->get();
@@ -677,7 +677,7 @@ final readonly class FraudMLService
      */
     public function getFraudStatistics(int $days = 30): array
     {
-        $attempts = $this->db->table('fraud_attempts')
+        $attempts = DB::table('fraud_attempts')
             ->where('created_at', '>=', now()->subDays($days))
             ->get();
 
@@ -700,7 +700,7 @@ final readonly class FraudMLService
      */
     public function getUserFraudHistory(int $userId, int $limit = 50): array
     {
-        $attempts = $this->db->table('fraud_attempts')
+        $attempts = DB::table('fraud_attempts')
             ->where('user_id', $userId)
             ->orderByDesc('created_at')
             ->limit($limit)

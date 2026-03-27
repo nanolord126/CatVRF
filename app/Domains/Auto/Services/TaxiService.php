@@ -1,158 +1,123 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Auto\Services;
 
-use App\Domains\Auto\Models\TaxiDriver;
 use App\Domains\Auto\Models\TaxiRide;
-use App\Domains\Auto\Models\TaxiSurgeZone;
-use App\Domains\Auto\Models\TaxiVehicle;
-use App\Services\FraudControlService;
-use App\Services\GeoService;
-use App\Services\PaymentService;
-use App\Services\WalletService;
+use App\Domains\Auto\Models\Vehicle;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
-use Carbon\Carbon;
 
 /**
- * Сервис такси и мобильности — КАНОН 2026.
- * Полная реализация с Surge Pricing, GPS-трекингом и фрод-контролем.
+ * КАНОН 2026: TaxiService.
+ * Управление поездками.
  */
-final class TaxiService
+final readonly class TaxiService
 {
-    public function __construct(
-        private readonly FraudControlService $fraud,
-        private readonly GeoService $geo,
-        private readonly PaymentService $payment,
-        private readonly WalletService $wallet,
-    ) {}
-
     /**
-     * Заказ такси с расчетом цены и Surge коэффициента.
+     * Создание поездки (Booking).
      */
-    public function createRide(int $passengerId, array $pickup, array $dropoff, string $class = "economy", string $correlationId = ""): TaxiRide
+    public function createRide(int $passengerId, array $data, string $correlationId): TaxiRide
     {
-        $correlationId = $correlationId ?: (string) Str::uuid();
+        return DB::transaction(function () use ($passengerId, $data, $correlationId) {
+            $data['uuid'] = (string) Str::uuid();
+            $data['tenant_id'] = tenant()->id;
+            $data['passenger_id'] = $passengerId;
+            $data['status'] = 'searching';
+            $data['correlation_id'] = $correlationId;
 
-        // 1. Rate Limiting — защита от DOS на заказ такси
-        if (RateLimiter::tooManyAttempts("taxi:order:{$passengerId}", 3)) {
-            throw new \RuntimeException("Слишком много попыток заказа. Подождите.", 429);
-        }
-        RateLimiter::hit("taxi:order:{$passengerId}", 3600);
+            $ride = TaxiRide::create($data);
 
-        return $this->db->transaction(function () use ($passengerId, $pickup, $dropoff, $class, $correlationId) {
-            // 2. Расчет Surge Pricing на основе гео-зоны
-            $surge = TaxiSurgeZone::where("geo_hash", $this->geo->getHash($pickup["lat"], $pickup["lng"]))->first();
-            $multiplier = $surge ? $surge->multiplier : 1.0;
-
-            // 3. Базовая цена + расчет расстояния через OSRM
-            $distanceData = $this->geo->calculateDistance($pickup, $dropoff);
-            $basePriceKopecks = (int) (15000 + ($distanceData["km"] * 4500) * $multiplier);
-
-            // 4. Подбор ближайшего свободного водителя
-            $driver = TaxiDriver::where("status", "online")
-                ->where("is_busy", false)
-                ->whereHas("vehicle", fn($q) => $q->where("class", $class))
-                ->lockForUpdate()
-                ->first();
-
-            if (!$driver) {
-                $this->log->channel("audit")->warning("Taxi: no drivers available", ["class" => $class, "pos" => $pickup]);
-                throw new \RuntimeException("Нет свободных машин выбранного класса. Попробуйте сменить класс.", 404);
-            }
-
-            // 5. Fraud Check (проверка на подозрительные поездки/тестовые оплаты)
-            $this->fraud->check([
-                "user_id" => $passengerId,
-                "operation_type" => "taxi_ride_create",
-                "correlation_id" => $correlationId,
-                "meta" => ["price" => $basePriceKopecks, "driver_id" => $driver->id]
+            Log::channel('audit')->info('Taxi ride searching driver', [
+                'ride_uuid' => $ride->uuid,
+                'passenger_id' => $passengerId,
+                'pickup' => $data['pickup_point'] ?? 'N/A',
+                'correlation_id' => $correlationId,
             ]);
-
-            // 6. Создание поездки
-            $ride = TaxiRide::create([
-                "uuid" => (string) Str::uuid(),
-                "tenant_id" => $driver->tenant_id,
-                "passenger_id" => $passengerId,
-                "driver_id" => $driver->id,
-                "vehicle_id" => $driver->vehicle->id,
-                "pickup_point" => "POINT({$pickup["lng"]} {$pickup["lat"]})",
-                "dropoff_point" => "POINT({$dropoff["lng"]} {$dropoff["lat"]})",
-                "status" => "assigned",
-                "price_kopecks" => $basePriceKopecks,
-                "surge_multiplier" => $multiplier,
-                "correlation_id" => $correlationId,
-                "tags" => ["class:{$class}", "distance:{$distanceData["km"]}"]
-            ]);
-
-            $driver->update(["is_busy" => true]);
-
-            $this->log->channel("audit")->info("Taxi: ride assigned", ["ride_id" => $ride->id, "driver_id" => $driver->id, "corr" => $correlationId]);
 
             return $ride;
         });
     }
 
     /**
-     * Завершение поездки и расчет выплат (Комиссия 15% + 5% таксопарку).
+     * Назначение водителя (Accepting).
      */
-    public function finishRide(int $rideId, array $finalGeo, string $correlationId = ""): void
+    public function assignDriver(TaxiRide $ride, Vehicle $vehicle, int $driverId, string $correlationId): void
     {
-        $correlationId = $correlationId ?: (string) Str::uuid();
-        $ride = TaxiRide::with("driver.fleet")->findOrFail($rideId);
-
-        $this->db->transaction(function () use ($ride, $finalGeo, $correlationId) {
+        DB::transaction(function () use ($ride, $vehicle, $driverId, $correlationId) {
             $ride->update([
-                "status" => "completed",
-                "finished_at" => now(),
-                "actual_dropoff" => "POINT({$finalGeo["lng"]} {$finalGeo["lat"]})"
+                'driver_id' => $driverId,
+                'vehicle_id' => $vehicle->id,
+                'status' => 'accepted',
+                'correlation_id' => $correlationId,
+                'accepted_at' => now(),
             ]);
 
-            $ride->driver->update(["is_busy" => false]);
+            // Резервация автомобиля под поездку
+            $vehicle->update(['status' => 'busy']);
 
-            // 7. Расчет комиссии платформы (15%стандарт + 5% таксопарк = 20% удержание)
-            $total = $ride->price_kopecks;
-            $platformFee = (int) ($total * 0.15);
-            $fleetFee = (int) ($total * 0.05);
-            $driverPayout = $total - $platformFee - $fleetFee;
-
-            // Выплата водителю
-            $this->wallet->credit(
-                userId: $ride->driver->user_id,
-                amount: $driverPayout,
-                type: "taxi_driver_payout",
-                reason: "Ride completed: {$ride->id}",
-                correlationId: $correlationId
-            );
-
-            // Выплата таксопарку (если есть)
-            if ($ride->driver->fleet_id) {
-                $this->wallet->credit(
-                    userId: $ride->driver->fleet->owner_user_id,
-                    amount: $fleetFee,
-                    type: "taxi_fleet_commission",
-                    reason: "Fleet commission for ride: {$ride->id}",
-                    correlationId: $correlationId
-                );
-            }
-
-            $this->log->channel("audit")->info("Taxi: ride payout completed", [
-                "ride_id" => $ride->id, 
-                "payout" => $driverPayout, 
-                "total" => $total
+            Log::channel('audit')->info('Taxi ride accepted', [
+                'ride_uuid' => $ride->uuid,
+                'vehicle_uuid' => $vehicle->uuid,
+                'driver_id' => $driverId,
+                'correlation_id' => $correlationId,
             ]);
         });
     }
 
     /**
-     * Пересчет Surge Pricing для зоны (вызывается каждые 5 минут).
+     * Завершение поездки.
      */
-    public function recalculateSurge(string $geoHash): float
+    public function completeRide(TaxiRide $ride, string $correlationId): void
     {
-        // Логика: если спрос (запросы) > предложения (курьеры) в 1.5 раза -> multiplier 1.2
-        $this->log->channel("audit")->info("Taxi: surge recalculated", ["geo" => $geoHash]);
-        return 1.2; 
+        DB::transaction(function () use ($ride, $correlationId) {
+            $ride->update([
+                'status' => 'finished',
+                'finished_at' => now(),
+                'correlation_id' => $correlationId,
+            ]);
+
+            // Освобождение автомобиля
+            if ($ride->vehicle) {
+                $ride->vehicle->update(['status' => 'active']);
+            }
+
+            Log::channel('audit')->info('Taxi ride completed', [
+                'ride_uuid' => $ride->uuid,
+                'final_cost' => $ride->total_cost_kopecks,
+                'correlation_id' => $correlationId,
+            ]);
+        });
+    }
+
+    /**
+     * Отмена заказа такси (idempotent).
+     */
+    public function cancelRide(TaxiRide $ride, string $reason, string $correlationId): void
+    {
+        DB::transaction(function () use ($ride, $reason, $correlationId) {
+            if (in_array($ride->status, ['finished', 'cancelled'])) {
+                return;
+            }
+
+            $ride->update([
+                'status' => 'cancelled',
+                'cancel_reason' => $reason,
+                'correlation_id' => $correlationId,
+            ]);
+
+            if ($ride->vehicle) {
+                $ride->vehicle->update(['status' => 'active']);
+            }
+
+            Log::channel('audit')->warning('Taxi ride cancelled', [
+                'ride_uuid' => $ride->uuid,
+                'reason' => $reason,
+                'correlation_id' => $correlationId,
+            ]);
+        });
     }
 }

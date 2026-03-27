@@ -39,7 +39,7 @@ class EmailChannel
     {
         // Проверить, что объект имеет метод toMail
         if (!method_exists($notification, 'toMail')) {
-            $this->log->warning('Notification does not have toMail method', [
+            Log::warning('Notification does not have toMail method', [
                 'notification_class' => get_class($notification),
                 'notifiable_id' => $notifiable->id,
             ]);
@@ -67,7 +67,7 @@ class EmailChannel
                 tenantId: $notification->getTenantId(),
             );
 
-            $this->log->channel('audit')->info('Email notification sent', [
+            Log::channel('audit')->info('Email notification sent', [
                 'type' => $notification->getType(),
                 'email' => $email,
                 'correlation_id' => $notification->getCorrelationId(),
@@ -75,7 +75,7 @@ class EmailChannel
             ]);
 
         } catch (\Exception $e) {
-            $this->log->channel('notifications')->error('Failed to send email notification', [
+            Log::channel('notifications')->error('Failed to send email notification', [
                 'notification_class' => get_class($notification),
                 'notifiable_id' => $notifiable->id,
                 'error' => $e->getMessage(),

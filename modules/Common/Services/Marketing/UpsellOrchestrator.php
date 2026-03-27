@@ -18,7 +18,7 @@ class UpsellOrchestrator
     public function __construct(private WalletService $wallet)
     {
         $this->correlationId = Str::uuid();
-        $this->tenantId = $this->auth->guard('tenant')?->id();
+        $this->tenantId = Auth::guard('tenant')?->id();
     }
 
     /**
@@ -29,7 +29,7 @@ class UpsellOrchestrator
         $this->correlationId = Str::uuid();
 
         try {
-            $this->log->channel('marketing')->info('UpsellOrchestrator: generating upsell suggestions', [
+            Log::channel('marketing')->info('UpsellOrchestrator: generating upsell suggestions', [
                 'correlation_id' => $this->correlationId,
                 'item_count' => count($currentItems),
                 'current_total' => $currentTotal,
@@ -59,11 +59,11 @@ class UpsellOrchestrator
                 }
             }
 
-            Audit$this->log->create([
+            AuditLog::create([
                 'entity_type' => 'UpsellSuggestion',
-                'entity_id' => $this->auth->id() ?? 'anonymous',
+                'entity_id' => Auth::id() ?? 'anonymous',
                 'action' => 'suggestions_generated',
-                'user_id' => $this->auth->id(),
+                'user_id' => Auth::id(),
                 'tenant_id' => $this->tenantId,
                 'correlation_id' => $this->correlationId,
                 'changes' => [],
@@ -74,7 +74,7 @@ class UpsellOrchestrator
                 ],
             ]);
 
-            $this->log->channel('marketing')->info('UpsellOrchestrator: suggestions generated', [
+            Log::channel('marketing')->info('UpsellOrchestrator: suggestions generated', [
                 'correlation_id' => $this->correlationId,
                 'suggestion_count' => count($suggestions),
                 'current_total' => $currentTotal,
@@ -82,7 +82,7 @@ class UpsellOrchestrator
 
             return $suggestions;
         } catch (Throwable $e) {
-            $this->log->error('UpsellOrchestrator: suggestion generation failed', [
+            Log::error('UpsellOrchestrator: suggestion generation failed', [
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -99,7 +99,7 @@ class UpsellOrchestrator
         $this->correlationId = Str::uuid();
 
         try {
-            $this->log->channel('marketing')->info('UpsellOrchestrator: triggering abandoned cart recovery', [
+            Log::channel('marketing')->info('UpsellOrchestrator: triggering abandoned cart recovery', [
                 'correlation_id' => $this->correlationId,
                 'user_id' => $userId,
                 'cart_total' => $cartTotal,
@@ -108,11 +108,11 @@ class UpsellOrchestrator
             // Выдача персонального промокода на 5% для закрытия сделки
             $discountCode = $this->generatePersonalPromoCode($userId, 5);
 
-            Audit$this->log->create([
+            AuditLog::create([
                 'entity_type' => 'AbandonedCart',
                 'entity_id' => $userId,
                 'action' => 'recovery_triggered',
-                'user_id' => $this->auth->id(),
+                'user_id' => Auth::id(),
                 'tenant_id' => $this->tenantId,
                 'correlation_id' => $this->correlationId,
                 'changes' => [],
@@ -124,13 +124,13 @@ class UpsellOrchestrator
                 ],
             ]);
 
-            $this->log->channel('marketing')->info('UpsellOrchestrator: abandoned cart recovery triggered', [
+            Log::channel('marketing')->info('UpsellOrchestrator: abandoned cart recovery triggered', [
                 'correlation_id' => $this->correlationId,
                 'user_id' => $userId,
                 'promo_code' => $discountCode,
             ]);
         } catch (Throwable $e) {
-            $this->log->error('UpsellOrchestrator: cart recovery failed', [
+            Log::error('UpsellOrchestrator: cart recovery failed', [
                 'correlation_id' => $this->correlationId,
                 'user_id' => $userId,
                 'error' => $e->getMessage(),

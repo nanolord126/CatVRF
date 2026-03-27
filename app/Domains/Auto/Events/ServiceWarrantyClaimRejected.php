@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Auto\Events;
 
@@ -30,7 +31,7 @@ class ServiceWarrantyClaimRejected implements ShouldBroadcast
         public readonly string $rejectionReason,
         public readonly string $correlationId
     ) {
-        $this->log->channel('audit')->info('ServiceWarrantyClaimRejected event dispatched', [
+        Log::channel('audit')->info('ServiceWarrantyClaimRejected event dispatched', [
             'correlation_id' => $this->correlationId,
             'warranty_id' => $this->warranty->id,
             'warranty_number' => $this->warranty->warranty_number,

@@ -13,33 +13,29 @@ final class MedicalPrescription extends Model
     protected $table = 'medical_prescriptions';
 
     protected $fillable = [
+        'uuid',
         'tenant_id',
-        'appointment_id',
-        'doctor_id',
+        'record_id',
         'patient_id',
-        'prescription_number',
+        'doctor_id',
         'medications',
-        'notes',
-        'issued_at',
-        'expires_at',
-        'status',
+        'valid_until',
+        'is_digital_signed',
         'correlation_id',
     ];
 
-    protected $hidden = ['deleted_at'];
+    protected $hidden = ['deleted_at', 'correlation_id'];
 
     protected $casts = [
-        'medications' => 'collection',
-        'issued_at' => 'datetime',
-        'expires_at' => 'datetime',
+        'medications' => 'array',
+        'valid_until' => 'datetime',
+        'is_digital_signed' => 'boolean',
     ];
 
     protected static function booted(): void
     {
         static::addGlobalScope('tenant', function ($query) {
-            if ($tenantId = auth()?->user()?->tenant_id ?? filament()?->getTenant()?->id) {
-                $query->where('tenant_id', $tenantId);
-            }
+            $query->where('tenant_id', tenant()->id ?? 0);
         });
     }
 

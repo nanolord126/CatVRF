@@ -1,8 +1,7 @@
-declare(strict_types=1);
-
 <?php
 
 declare(strict_types=1);
+
 
 namespace App\Domains\Photography\Listeners;
 
@@ -28,10 +27,10 @@ class DeductSessionCommissionListener implements ShouldQueue
 	public function handle(SessionCreated $event): void
 	{
 		try {
-			$this->db->transaction(function () use ($event) {
+			DB::transaction(function () use ($event) {
 				$commission = (int) ($event->session->total_amount * 0.14);
 
-				$this->log->channel('audit')->info('Photography: Commission deducted', [
+				Log::channel('audit')->info('Photography: Commission deducted', [
 					'session_id' => $event->session->id,
 					'tenant_id' => $event->session->tenant_id,
 					'commission_amount' => $commission,
@@ -39,7 +38,7 @@ class DeductSessionCommissionListener implements ShouldQueue
 				]);
 			});
 		} catch (\Exception $e) {
-			$this->log->channel('audit')->error('Photography: Commission deduction failed', [
+			Log::channel('audit')->error('Photography: Commission deduction failed', [
 				'session_id' => $event->session->id,
 				'error' => $e->getMessage(),
 				'correlation_id' => $event->correlationId,

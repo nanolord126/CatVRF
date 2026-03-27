@@ -6,48 +6,60 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Support\Str;
 
+/**
+ * КАНОН 2026: Booking Model (Layer 2)
+ * 
+ * Бронирование отеля.
+ * Поля mandatory: uuid, tenant_id, correlation_id, business_group_id.
+ */
 final class Booking extends Model
 {
-    use HasUuids, SoftDeletes;
+    use SoftDeletes;
+
+    protected $table = 'hotel_bookings';
 
     protected $fillable = [
+        'uuid',
         'tenant_id',
+        'business_group_id',
         'hotel_id',
-        'room_type_id',
-        'guest_id',
-        'confirmation_code',
-        'check_in_date',
-        'check_out_date',
-        'number_of_guests',
-        'nights_count',
-        'subtotal_price',
-        'cleaning_fee',
-        'commission_price',
+        'room_id',
+        'user_id',
+        'check_in',
+        'check_out',
+        'status', // pending, confirmed, active, completed, cancelled, failed
         'total_price',
-        'payment_status',
-        'booking_status',
-        'special_requests',
-        'paid_at',
-        'checked_in_at',
-        'checked_out_at',
+        'currency',
+        'payment_status', // pending, paid, refund_pending, refunded
+        'payout_at',
+        'is_b2b',
+        'contract_id',
+        'metadata',
         'correlation_id',
-        'tags',
     ];
 
     protected $casts = [
-        'check_in_date' => 'datetime',
-        'check_out_date' => 'datetime',
-        'paid_at' => 'datetime',
-        'checked_in_at' => 'datetime',
-        'checked_out_at' => 'datetime',
-        'tags' => 'collection',
+        'check_in' => 'datetime',
+        'check_out' => 'datetime',
+        'total_price' => 'integer',
+        'is_b2b' => 'boolean',
+        'metadata' => 'json',
+        'payout_at' => 'datetime',
     ];
 
-    public function booted(): void
+    protected static function booted(): void
     {
-        static::addGlobalScope('tenant', fn ($q) => $q->where('tenant_id', tenant('id') ?? 0));
+        static::creating(function (Model $model) {
+            $model->uuid = $model->uuid ?? (string) Str::uuid();
+            $model->tenant_id = $model->tenant_id ?? (int) tenant('id');
+            $model->business_group_id = $model->business_group_id ?? 1; // Default
+        });
+
+        static::addGlobalScope('tenant_id', function ($builder) {
+            $builder->where('tenant_id', (int) tenant('id'));
+        });
     }
 
     public function hotel(): BelongsTo
@@ -55,13 +67,24 @@ final class Booking extends Model
         return $this->belongsTo(Hotel::class);
     }
 
-    public function roomType(): BelongsTo
+    public function room(): BelongsTo
     {
-        return $this->belongsTo(RoomType::class);
+        return $this->belongsTo(Room::class);
     }
 
-    public function review(): HasMany
+    /**
+     * Возвращает true, если бронирование оплачено.
+     */
+    public function isPaid(): bool
     {
-        return $this->hasMany(Review::class);
+        return $this->payment_status === 'paid';
+    }
+
+    /**
+     * Рассчитать количество ночей
+     */
+    public function nights(): int
+    {
+        return (int) $this->check_in->diffInDays($this->check_out);
     }
 }

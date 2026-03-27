@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Taxi\Listeners;
 
@@ -22,9 +23,9 @@ class ProcessRideCompletedPayout
     public function handle(RideCompleted $event): void
     {
         try {
-            $this->db->transaction(function () use ($event) {
+            DB::transaction(function () use ($event) {
                 // Update driver wallet with ride earnings
-                $this->log->channel('audit')->info('Ride payout processed', [
+                Log::channel('audit')->info('Ride payout processed', [
                     'ride_id' => $event->rideId,
                     'driver_id' => $event->driverId,
                     'amount' => $event->priceAmount,
@@ -34,7 +35,7 @@ class ProcessRideCompletedPayout
                 // WalletService::credit($driver_id, $event->priceAmount)
             });
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Failed to process ride payout', [
+            Log::channel('audit')->error('Failed to process ride payout', [
                 'correlation_id' => $event->correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

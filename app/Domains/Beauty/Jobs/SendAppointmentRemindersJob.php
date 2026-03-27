@@ -1,8 +1,7 @@
-declare(strict_types=1);
-
 <?php
 
 declare(strict_types=1);
+
 
 namespace App\Domains\Beauty\Jobs;
 
@@ -33,15 +32,7 @@ class SendAppointmentRemindersJob implements ShouldQueue
 
     public function __construct(
         private readonly string $correlationId,
-    ) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+    ) {}
 
     public function handle(): void
     {
@@ -62,11 +53,11 @@ class SendAppointmentRemindersJob implements ShouldQueue
             
             if ($client && $client->email) {
                 // Real email notification
-                \Illuminate\Support\Facades\$this->mail->to($client->email)
+                \Illuminate\Support\Facades\Mail::to($client->email)
                     ->send(new \App\Mail\AppointmentReminderMail($appointment));
             }
 
-            $this->log->channel('audit')->info('Reminder sent', [
+            Log::channel('audit')->info('Reminder sent', [
                 'appointment_id' => $appointment->id,
                 'client_id' => $client?->id,
                 'methods' => ['sms' => (bool)$client?->phone, 'email' => (bool)$client?->email],

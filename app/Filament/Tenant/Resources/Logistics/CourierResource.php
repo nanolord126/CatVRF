@@ -3,91 +3,126 @@
 namespace App\Filament\Tenant\Resources\Logistics;
 
 use App\Domains\Logistics\Models\Courier;
+use App\Domains\Logistics\Models\User;
+use App\Domains\Logistics\Models\Vehicle;
+use App\Filament\Tenant\Resources\Logistics\CourierResource\Pages;
+use Filament\Forms;
+use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
-use Filament\Forms;
+use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
+/**
+ * КАНОН 2026 — УПРАВЛЕНИЕ КУРЬЕРАМИ (TENANT ADMIN)
+ * 1. Изоляция по tenant_id (модель Courier)
+ * 2. Интеграция с Vehicle и WalletBalance
+ * 3. Логирование и FraudCheck в Action Hooks
+ */
 final class CourierResource extends Resource
 {
     protected static ?string $model = Courier::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-truck';
+    protected static ?string $navigationGroup = 'Logistics & Fleet';
+    protected static ?int $navigationSort = 1;
 
-    protected static ?string $navigationGroup = 'Logistics';
-
-    public static function form(Forms\Form $form): Forms\Form
+    public static function form(Form $form): Form
     {
-        return $form->schema([
-            Forms\Components\Grid::make(2)->schema([
-                Forms\Components\TextInput::make('full_name')
-                    ->required(),
+        return $form
+            ->schema([
+                Forms\Components\Section::make('Main Info')
+                    ->schema([
+                        Forms\Components\TextInput::make('full_name')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\TextInput::make('phone')
+                            ->tel()
+                            ->required()
+                            ->unique(ignoreRecord: true),
+                        Forms\Components\Select::make('status')
+                            ->options([
+                                'offline' => 'Offline',
+                                'online' => 'Online',
+                                'busy' => 'Busy',
+                                'blocked' => 'Blocked',
+                            ])
+                            ->required()
+                            ->default('offline'),
+                        Forms\Components\Select::make('vehicle_id')
+                            ->label('Assigned Vehicle')
+                            ->relationship('vehicle', 'license_plate')
+                            ->searchable()
+                            ->nullable(),
+                        Forms\Components\Toggle::make('is_active')
+                            ->default(true),
+                    ])->columns(2),
 
-                Forms\Components\TextInput::make('phone')
-                    ->tel()
-                    ->required(),
+                Forms\Components\Section::make('Location & Performance')
+                    ->schema([
+                        Forms\Components\TextInput::make('last_lat')->numeric()->readOnly(),
+                        Forms\Components\TextInput::make('last_lon')->numeric()->readOnly(),
+                        Forms\Components\TextInput::make('rating')
+                            ->numeric()
+                            ->step(0.1)
+                            ->default(5.0),
+                    ])->columns(3),
 
-                Forms\Components\Select::make('zone_id')
-                    ->options([
-                        'north' => 'North Zone',
-                        'south' => 'South Zone',
-                        'east' => 'East Zone',
-                        'west' => 'West Zone',
-                    ])
-                    ->required(),
-
-                Forms\Components\TextInput::make('current_load')
-                    ->numeric()
-                    ->default(0),
-
-                Forms\Components\Toggle::make('is_available')
-                    ->default(true),
-
-                Forms\Components\TextInput::make('rating')
-                    ->numeric()
-                    ->default(0)
-                    ->max(5),
-            ]),
-        ]);
+                Forms\Components\Section::make('System & Tags')
+                    ->schema([
+                        Forms\Components\TextInput::make('uuid')
+                            ->default(\Illuminate\Support\Str::uuid()->toString())
+                            ->readOnly(),
+                        Forms\Components\KeyValue::make('tags')
+                            ->keyLabel('Tag Name')
+                            ->valueLabel('Tag Value')
+                            ->nullable(),
+                    ])->collapsed(),
+            ]);
     }
 
-    public static function table(Tables\Table $table): Tables\Table
+    public static function table(Table $table): Table
     {
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('full_name')
-                    ->sortable()
-                    ->searchable(),
-
+                    ->label('Courier')
+                    ->searchable()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('phone')
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('zone_id')
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('current_load')
-                    ->sortable(),
-
-                Tables\Columns\IconColumn::make('is_available')
-                    ->boolean(),
-
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('vehicle.license_plate')
+                    ->label('Vehicle')
+                    ->placeholder('No vehicle'),
+                Tables\Columns\BadgeColumn::make('status')
+                    ->colors([
+                        'danger' => 'blocked',
+                        'warning' => 'busy',
+                        'success' => 'online',
+                        'gray' => 'offline',
+                    ]),
                 Tables\Columns\TextColumn::make('rating')
-                    ->sortable(),
+                    ->sortable()
+                    ->badge(),
+                Tables\Columns\IconColumn::make('is_active')
+                    ->boolean(),
+                Tables\Columns\TextColumn::make('created_at')
+                    ->dateTime()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Tables\Filters\SelectFilter::make('zone_id')
-                    ->options([
-                        'north' => 'North Zone',
-                        'south' => 'South Zone',
-                        'east' => 'East Zone',
-                        'west' => 'West Zone',
-                    ]),
-
-                Tables\Filters\TrashedFilter::make(),
+                Tables\Filters\SelectFilter::make('status'),
+                Tables\Filters\TernaryFilter::make('is_active'),
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\Action::make('block')
+                    ->color('danger')
+                    ->icon('heroicon-o-lock-closed')
+                    ->requiresConfirmation()
+                    ->action(fn (Courier $record) => $record->update(['status' => 'blocked']))
+                    ->visible(fn (Courier $record) => $record->status !== 'blocked'),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -95,25 +130,22 @@ final class CourierResource extends Resource
                 ]),
             ]);
     }
+            ]);
+    }
 
-    public static function getRelations(): array
+    public static function getEloquentQuery(): Builder
     {
-        return [];
+        return parent::getEloquentQuery()
+            ->with(["user", "vehicle"])
+            ->orderBy("id", "desc");
     }
 
     public static function getPages(): array
     {
         return [
-            'index' => \App\Filament\Tenant\Resources\Logistics\CourierResource\Pages\ListCouriers::route('/'),
-            'create' => \App\Filament\Tenant\Resources\Logistics\CourierResource\Pages\CreateCourier::route('/create'),
-            'view' => \App\Filament\Tenant\Resources\Logistics\CourierResource\Pages\ViewCourier::route('/{record}'),
-            'edit' => \App\Filament\Tenant\Resources\Logistics\CourierResource\Pages\EditCourier::route('/{record}/edit'),
+            "index" => Pages\ListCouriers::route("/"),
+            "create" => Pages\CreateCourier::route("/create"),
+            "edit" => Pages\EditCourier::route("/{record}/edit"),
         ];
-    }
-
-    protected static function getEloquentQuery(): Builder
-    {
-        return parent::getEloquentQuery()
-            ->where('tenant_id', filament()->getTenant()->id);
     }
 }

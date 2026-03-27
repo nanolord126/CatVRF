@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources;
 
@@ -9,7 +10,7 @@ use Filament\Tables;
 use Filament\Resources\Resource;
 use Filament\Tables\Table;
 use Filament\Forms\Form;
-use App\Domains\Courses\Models\B2BCoursesOrder;
+use App\Domains\Education\Courses\Models\B2BCoursesOrder;
 use Illuminate\Database\Eloquent\Builder;
 
 /**

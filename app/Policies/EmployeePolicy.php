@@ -40,7 +40,7 @@ final class EmployeePolicy
         // CANON 2026 FRAUD: Predict/check operation before mutating
         $fraudScore = 0; // fraud check at service layer
         if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-            \Illuminate\Support\Facades\$this->log->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+            \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                 'user_id' => $user->id,
                 'score' => $fraudScore
             ]);
@@ -58,7 +58,7 @@ final class EmployeePolicy
         // CANON 2026 FRAUD: Predict/check operation before mutating
         $fraudScore = 0; // fraud check at service layer
         if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-            \Illuminate\Support\Facades\$this->log->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+            \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                 'user_id' => $user->id,
                 'score' => $fraudScore
             ]);
@@ -76,7 +76,7 @@ final class EmployeePolicy
         // CANON 2026 FRAUD: Predict/check operation before mutating
         $fraudScore = 0; // fraud check at service layer
         if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-            \Illuminate\Support\Facades\$this->log->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+            \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                 'user_id' => $user->id,
                 'score' => $fraudScore
             ]);

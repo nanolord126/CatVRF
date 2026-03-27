@@ -40,7 +40,7 @@ final class MeatService
         }
         RateLimiter::hit("meat:order:".auth()->id(), 3600);
 
-        return $this->db->transaction(function () use ($supplierId, $items, $correlationId) {
+        return DB::transaction(function () use ($supplierId, $items, $correlationId) {
             $supplier = MeatSupplier::findOrFail($supplierId);
             
             // 2. Fraud Check - проверка поставщика и клиента
@@ -76,7 +76,7 @@ final class MeatService
                 "tags" => ["halal:yes", "fresh:premium", "vacuum_packed:yes"]
             ]);
 
-            $this->log->channel("audit")->info("Meat: order sent to butcher", ["order_id" => $order->id, "total" => $totalPrice]);
+            Log::channel("audit")->info("Meat: order sent to butcher", ["order_id" => $order->id, "total" => $totalPrice]);
 
             return $order;
         });
@@ -90,7 +90,7 @@ final class MeatService
         $correlationId = $correlationId ?: (string) Str::uuid();
         $order = MeatOrder::findOrFail($orderId);
 
-        $this->db->transaction(function () use ($order, $finalWeightGrams, $correlationId) {
+        DB::transaction(function () use ($order, $finalWeightGrams, $correlationId) {
             // Корректировка цены по реальному весу (если отличается от планового)
             $product = MeatProduct::find($order->product_id);
             $finalPrice = $finalWeightGrams * ($product->price_per_gram ?? 0);
@@ -110,7 +110,7 @@ final class MeatService
                 sourceId: $order->id
             );
 
-            $this->log->channel("audit")->info("Meat: order weighed and ready", ["order_id" => $order->id, "weight" => $finalWeightGrams]);
+            Log::channel("audit")->info("Meat: order weighed and ready", ["order_id" => $order->id, "weight" => $finalWeightGrams]);
         });
     }
 
@@ -122,7 +122,7 @@ final class MeatService
         $correlationId = $correlationId ?: (string) Str::uuid();
         $order = MeatOrder::with("supplier")->findOrFail($orderId);
 
-        $this->db->transaction(function () use ($order, $correlationId) {
+        DB::transaction(function () use ($order, $correlationId) {
             $total = $order->total_price_kopecks;
             $fee = (int) ($total * 0.14);
             $payout = $total - $fee;
@@ -137,7 +137,7 @@ final class MeatService
 
             $order->update(["status" => "completed", "payout_released_at" => now()]);
 
-            $this->log->channel("audit")->info("Meat: final payout", ["order_id" => $order->id, "payout" => $payout]);
+            Log::channel("audit")->info("Meat: final payout", ["order_id" => $order->id, "payout" => $payout]);
         });
     }
 }

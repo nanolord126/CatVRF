@@ -1,8 +1,7 @@
-declare(strict_types=1);
-
 <?php
 
 declare(strict_types=1);
+
 
 namespace App\Filament\Widgets;
 
@@ -44,7 +43,7 @@ class TeamPresenceWidget extends Widget
             $this->onlineCount = 0;
             $this->totalCount = 0;
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\$this->log->channel('audit')->error('Failed to load team presence data', [
+            \Illuminate\Support\Facades\Log::channel('audit')->error('Failed to load team presence data', [
                 'error' => $e->getMessage(),
             ]);
         }

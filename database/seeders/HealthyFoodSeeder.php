@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Domains\HealthyFood\Models\HealthyFood;
+use App\Domains\Food\HealthyFood\Models\HealthyFood;
 use Illuminate\Database\Seeder;
 
 final class HealthyFoodSeeder extends Seeder

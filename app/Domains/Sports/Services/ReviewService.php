@@ -29,7 +29,7 @@ final readonly class ReviewService
         ?string $correlationId = null,
     ): Review {
         $correlationId = Str::uuid()->toString();
-        $this->log->channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
+        Log::channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
 
         try {
             $correlationId = $correlationId ?? Str::uuid()->toString();
@@ -38,14 +38,14 @@ final readonly class ReviewService
                 throw new \Exception('Rating must be between 1 and 5');
             }
 
-            $this->log->channel('audit')->info('Creating review', [
+            Log::channel('audit')->info('Creating review', [
                 'studio_id' => $studioId,
                 'trainer_id' => $trainerId,
                 'rating' => $rating,
                 'correlation_id' => $correlationId,
             ]);
 
-            $review = $this->db->transaction(function () use (
+            $review = DB::transaction(function () use (
                 $studioId,
                 $trainerId,
                 $reviewerId,
@@ -95,14 +95,14 @@ final readonly class ReviewService
                 return $review;
             });
 
-            $this->log->channel('audit')->info('Review created successfully', [
+            Log::channel('audit')->info('Review created successfully', [
                 'review_id' => $review->id,
                 'correlation_id' => $correlationId,
             ]);
 
             return $review;
         } catch (Throwable $e) {
-            $this->log->channel('audit')->error('Failed to create review', [
+            Log::channel('audit')->error('Failed to create review', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId ?? null,
             ]);
@@ -119,7 +119,7 @@ final readonly class ReviewService
         ?string $correlationId = null,
     ): Review {
         $correlationId = Str::uuid()->toString();
-        $this->log->channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
+        Log::channel('audit')->info('Service method called in Sports', ['correlation_id' => $correlationId]);
 
         try {
             $correlationId = $correlationId ?? Str::uuid()->toString();
@@ -128,7 +128,7 @@ final readonly class ReviewService
                 throw new \Exception('Rating must be between 1 and 5');
             }
 
-            $this->log->channel('audit')->info('Updating review', [
+            Log::channel('audit')->info('Updating review', [
                 'review_id' => $review->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -150,14 +150,14 @@ final readonly class ReviewService
                 ]);
             }
 
-            $this->log->channel('audit')->info('Review updated', [
+            Log::channel('audit')->info('Review updated', [
                 'review_id' => $review->id,
                 'correlation_id' => $correlationId,
             ]);
 
             return $review;
         } catch (Throwable $e) {
-            $this->log->channel('audit')->error('Failed to update review', [
+            Log::channel('audit')->error('Failed to update review', [
                 'error' => $e->getMessage(),
             ]);
             throw $e;

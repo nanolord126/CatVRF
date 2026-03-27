@@ -58,7 +58,7 @@ final class RoomTypeController extends Controller
                 'correlation_id' => \Illuminate\Support\Str::uuid(),
             ]);
 
-            $this->log->channel('audit')->info('RoomType created', [
+            Log::channel('audit')->info('RoomType created', [
                 'correlation_id' => $correlationId,
                 'room_type_id' => $room->id,
                 'hotel_id' => $hotelId,
@@ -96,7 +96,7 @@ final class RoomTypeController extends Controller
             $before = $room->getAttributes();
             $room->update($data);
 
-            $this->log->channel('audit')->info('RoomType updated', [
+            Log::channel('audit')->info('RoomType updated', [
                 'correlation_id' => $correlationId,
                 'room_type_id' => $room->id,
                 'user_id' => auth()->id(),
@@ -127,7 +127,7 @@ final class RoomTypeController extends Controller
 
             $room->delete();
 
-            $this->log->channel('audit')->info('RoomType deleted', [
+            Log::channel('audit')->info('RoomType deleted', [
                 'correlation_id' => $correlationId,
                 'room_type_id' => $room->id,
                 'user_id' => auth()->id(),

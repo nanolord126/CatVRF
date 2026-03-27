@@ -33,13 +33,13 @@ final class CalculateCourierEarningsJob implements ShouldQueue
                     }
                 });
 
-            $this->log->channel('audit')->info('Courier earnings calculated', [
+            Log::channel('audit')->info('Courier earnings calculated', [
                 'month' => $month,
                 'year' => $year,
                 'correlation_id' => $this->correlationId,
             ]);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Failed to calculate courier earnings', [
+            Log::channel('audit')->error('Failed to calculate courier earnings', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
@@ -57,7 +57,7 @@ final class CalculateCourierEarningsJob implements ShouldQueue
 
         $totalEarnings = $deliveredShipments->sum('shipping_cost');
 
-        $this->log->channel('audit')->info('Earnings calculated for courier', [
+        Log::channel('audit')->info('Earnings calculated for courier', [
             'courier_id' => $courier->id,
             'total_earnings' => $totalEarnings,
             'shipment_count' => $deliveredShipments->count(),

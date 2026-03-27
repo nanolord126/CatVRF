@@ -62,7 +62,7 @@ final class HotelController extends Controller
         $fraudResult   = $this->fraudControlService->check(auth()->id() ?? 0, 'hotel_create', 0, request()->ip(), null, $correlationId);
 
         if ($fraudResult['decision'] === 'block') {
-            $this->log->channel('fraud_alert')->warning('Hotel create blocked', [
+            Log::channel('fraud_alert')->warning('Hotel create blocked', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'score'          => $fraudResult['score'],
@@ -70,7 +70,7 @@ final class HotelController extends Controller
             return response()->json(['success' => false, 'error' => 'Операция заблокирована.', 'correlation_id' => $correlationId], 403);
         }
 
-        $this->log->channel('audit')->info('Hotel create start', ['correlation_id' => $correlationId, 'user_id' => auth()->id()]);
+        Log::channel('audit')->info('Hotel create start', ['correlation_id' => $correlationId, 'user_id' => auth()->id()]);
 
         try {
             $data = request()->validate([
@@ -88,7 +88,7 @@ final class HotelController extends Controller
                 'correlation_id' => $correlationId,
             ]);
 
-            $this->log->channel('audit')->info('Hotel created', [
+            Log::channel('audit')->info('Hotel created', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'hotel_id'       => $hotel->id,
@@ -96,7 +96,7 @@ final class HotelController extends Controller
 
             return response()->json(['success' => true, 'data' => $hotel, 'correlation_id' => $correlationId], 201);
         } catch (\Throwable $e) {
-            $this->log->error('Hotel create failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            Log::error('Hotel create failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
     }
@@ -107,7 +107,7 @@ final class HotelController extends Controller
         $fraudResult   = $this->fraudControlService->check(auth()->id() ?? 0, 'hotel_update', 0, request()->ip(), null, $correlationId);
 
         if ($fraudResult['decision'] === 'block') {
-            $this->log->channel('fraud_alert')->warning('Hotel update blocked', [
+            Log::channel('fraud_alert')->warning('Hotel update blocked', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'score'          => $fraudResult['score'],
@@ -131,7 +131,7 @@ final class HotelController extends Controller
 
             $hotel->update($data);
 
-            $this->log->channel('audit')->info('Hotel updated', [
+            Log::channel('audit')->info('Hotel updated', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'hotel_id'       => $id,
@@ -141,7 +141,7 @@ final class HotelController extends Controller
 
             return response()->json(['success' => true, 'data' => $hotel, 'correlation_id' => $correlationId]);
         } catch (\Throwable $e) {
-            $this->log->error('Hotel update failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            Log::error('Hotel update failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
     }
@@ -152,7 +152,7 @@ final class HotelController extends Controller
         $fraudResult   = $this->fraudControlService->check(auth()->id() ?? 0, 'hotel_delete', 0, request()->ip(), null, $correlationId);
 
         if ($fraudResult['decision'] === 'block') {
-            $this->log->channel('fraud_alert')->warning('Hotel destroy blocked', [
+            Log::channel('fraud_alert')->warning('Hotel destroy blocked', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'score'          => $fraudResult['score'],
@@ -166,7 +166,7 @@ final class HotelController extends Controller
 
             $hotel->delete();
 
-            $this->log->channel('audit')->info('Hotel deleted', [
+            Log::channel('audit')->info('Hotel deleted', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'hotel_id'       => $id,
@@ -174,7 +174,7 @@ final class HotelController extends Controller
 
             return response()->json(['success' => true, 'correlation_id' => $correlationId]);
         } catch (\Throwable $e) {
-            $this->log->error('Hotel destroy failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            Log::error('Hotel destroy failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
     }
@@ -214,7 +214,7 @@ final class HotelController extends Controller
         $fraudResult   = $this->fraudControlService->check(auth()->id() ?? 0, 'hotel_verify', 0, request()->ip(), null, $correlationId);
 
         if ($fraudResult['decision'] === 'block') {
-            $this->log->channel('fraud_alert')->warning('Hotel verify blocked', [
+            Log::channel('fraud_alert')->warning('Hotel verify blocked', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'score'          => $fraudResult['score'],
@@ -228,7 +228,7 @@ final class HotelController extends Controller
 
             $hotel->update(['is_verified' => true]);
 
-            $this->log->channel('audit')->info('Hotel verified', [
+            Log::channel('audit')->info('Hotel verified', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'hotel_id'       => $id,
@@ -236,7 +236,7 @@ final class HotelController extends Controller
 
             return response()->json(['success' => true, 'data' => $hotel, 'correlation_id' => $correlationId]);
         } catch (\Throwable $e) {
-            $this->log->error('Hotel verify failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            Log::error('Hotel verify failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json(['success' => false, 'error' => $e->getMessage()], 500);
         }
     }

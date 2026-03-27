@@ -42,7 +42,7 @@ final readonly class SearchRankingService
 
             // Rate limiting
             if (!$this->rateLimiterService->allowTenant($userId, 'search_ranking', 1000)) {
-                $this->log->channel('audit')->warning('Search ranking rate limit exceeded', [
+                Log::channel('audit')->warning('Search ranking rate limit exceeded', [
                     'user_id' => $userId,
                     'correlation_id' => $correlationId,
                 ]);
@@ -64,7 +64,7 @@ final readonly class SearchRankingService
             // Обычные пользователи → embeddings + поведение + гео
             return $this->rankByEmbeddings($items, $userProfile, $context);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Search ranking failed', [
+            Log::channel('audit')->error('Search ranking failed', [
                 'user_id' => $userId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -78,8 +78,8 @@ final readonly class SearchRankingService
     {
         $cacheKey = "user_profile:{$userId}";
 
-        return $this->cache->remember($cacheKey, 3600, function () use ($userId) {
-            $user = $this->db->table('users')->find($userId);
+        return Cache::remember($cacheKey, 3600, function () use ($userId) {
+            $user = DB::table('users')->find($userId);
 
             if (!$user) {
                 return ['is_new' => true];
@@ -88,11 +88,11 @@ final readonly class SearchRankingService
             return [
                 'is_new' => now()->diffInDays($user->created_at) < 7,
                 'personalization_disabled' => (bool)($user->personalization_disabled ?? false),
-                'purchase_count' => $this->db->table('orders')
+                'purchase_count' => DB::table('orders')
                     ->where('user_id', $userId)
                     ->where('status', 'completed')
                     ->count(),
-                'avg_order_value' => (int)$this->db->table('orders')
+                'avg_order_value' => (int)DB::table('orders')
                     ->where('user_id', $userId)
                     ->where('status', 'completed')
                     ->avg('total') ?? 0,
@@ -216,7 +216,7 @@ final readonly class SearchRankingService
 
     private function getUserPreferences(int $userId): array
     {
-        return $this->db->table('orders')
+        return DB::table('orders')
             ->where('user_id', $userId)
             ->where('status', 'completed')
             ->select('category')

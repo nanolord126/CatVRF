@@ -39,13 +39,13 @@ final class UpdateOrderStatusJob implements ShouldQueue
                 $order->update(['delivered_at' => now()]);
             }
 
-            $this->log->channel('audit')->info('Fashion order status updated via job', [
+            Log::channel('audit')->info('Fashion order status updated via job', [
                 'order_id' => $this->orderId,
                 'status' => $this->status,
                 'correlation_id' => $this->correlationId,
             ]);
         } catch (Throwable $e) {
-            $this->log->channel('audit')->error('Failed to update fashion order status', [
+            Log::channel('audit')->error('Failed to update fashion order status', [
                 'order_id' => $this->orderId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $this->correlationId,

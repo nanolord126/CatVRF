@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Domains\HealthyFood\Models\HealthyFood;
+use App\Domains\Food\HealthyFood\Models\HealthyFood;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 final class HealthyFoodFactory extends Factory

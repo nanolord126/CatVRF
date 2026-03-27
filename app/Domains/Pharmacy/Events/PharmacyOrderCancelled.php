@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Pharmacy\Events;
 
@@ -19,13 +20,5 @@ final /**
 class PharmacyOrderCancelled
 {
     use Dispatchable, SerializesModels;
-    public function __construct(public readonly string $correlationId, public readonly mixed $order) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+    public function __construct(public readonly string $correlationId, public readonly mixed $order) {}
 }

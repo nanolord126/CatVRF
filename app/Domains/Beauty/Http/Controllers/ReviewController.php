@@ -24,7 +24,7 @@ final class ReviewController
                 ->paginate(20);
 
             $correlationId = Str::uuid()->toString();
-            $this->log->channel('audit')->info('Beauty reviews listed', [
+            Log::channel('audit')->info('Beauty reviews listed', [
                 'service_id' => $serviceId,
                 'count' => $reviews->count(),
                 'correlation_id' => $correlationId,
@@ -37,7 +37,7 @@ final class ReviewController
             ]);
         } catch (\Throwable $e) {
             $correlationId = Str::uuid()->toString();
-            $this->log->error('Beauty review listing failed', [
+            Log::error('Beauty review listing failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -62,7 +62,7 @@ final class ReviewController
         );
 
         if ($fraudResult['decision'] === 'block') {
-            $this->log->channel('fraud_alert')->warning('Operation blocked by fraud control', [
+            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'score'          => $fraudResult['score'],
@@ -77,7 +77,7 @@ final class ReviewController
         try {
             $correlationId = Str::uuid()->toString();
 
-            $review = $this->db->transaction(function () use ($serviceId, $correlationId) {
+            $review = DB::transaction(function () use ($serviceId, $correlationId) {
                 return Review::create([
                     'uuid' => Str::uuid(),
                     'tenant_id' => tenant('id'),
@@ -93,7 +93,7 @@ final class ReviewController
                 ]);
             });
 
-            $this->log->channel('audit')->info('Beauty review created', [
+            Log::channel('audit')->info('Beauty review created', [
                 'review_id' => $review->id,
                 'service_id' => $serviceId,
                 'user_id' => auth()->id(),
@@ -107,7 +107,7 @@ final class ReviewController
             ], 201);
         } catch (\Throwable $e) {
             $correlationId = Str::uuid()->toString();
-            $this->log->error('Beauty review creation failed', [
+            Log::error('Beauty review creation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -132,7 +132,7 @@ final class ReviewController
         );
 
         if ($fraudResult['decision'] === 'block') {
-            $this->log->channel('fraud_alert')->warning('Operation blocked by fraud control', [
+            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'score'          => $fraudResult['score'],
@@ -156,12 +156,12 @@ final class ReviewController
                 ], 403);
             }
 
-            $this->db->transaction(function () use ($review, $correlationId) {
+            DB::transaction(function () use ($review, $correlationId) {
                 $review->update(['status' => 'deleted', 'correlation_id' => $correlationId]);
                 $review->delete();
             });
 
-            $this->log->channel('audit')->info('Beauty review deleted', [
+            Log::channel('audit')->info('Beauty review deleted', [
                 'review_id' => $reviewId,
                 'correlation_id' => $correlationId,
             ]);
@@ -173,7 +173,7 @@ final class ReviewController
             ]);
         } catch (\Throwable $e) {
             $correlationId = Str::uuid()->toString();
-            $this->log->error('Beauty review deletion failed', [
+            Log::error('Beauty review deletion failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);

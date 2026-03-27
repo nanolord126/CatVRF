@@ -31,7 +31,7 @@ class ExclusiveMerch extends Model implements HasMedia
     {
         static::creating(function (ExclusiveMerch $model) {
             $model->correlation_id ??= Str::uuid();
-            $model->tenant_id ??= $this->auth->guard('tenant')->id();
+            $model->tenant_id ??= Auth::guard('tenant')->id();
             $model->is_available ??= true;
             $model->redeemed_count ??= 0;
 
@@ -43,7 +43,7 @@ class ExclusiveMerch extends Model implements HasMedia
                 throw new \InvalidArgumentException('Merch stock_quantity cannot be negative');
             }
 
-            $this->log->channel('merch')->info('ExclusiveMerch creating', [
+            Log::channel('merch')->info('ExclusiveMerch creating', [
                 'correlation_id' => $model->correlation_id,
                 'name' => $model->name ?? 'Unknown',
                 'points_price' => $model->points_price,
@@ -53,11 +53,11 @@ class ExclusiveMerch extends Model implements HasMedia
 
         static::created(function (ExclusiveMerch $model) {
             try {
-                Audit$this->log->create([
+                AuditLog::create([
                     'entity_type' => ExclusiveMerch::class,
                     'entity_id' => $model->id,
                     'action' => 'created',
-                    'user_id' => $this->auth->id(),
+                    'user_id' => Auth::id(),
                     'tenant_id' => $model->tenant_id,
                     'correlation_id' => $model->correlation_id,
                     'changes' => $model->getAttributes(),
@@ -67,12 +67,12 @@ class ExclusiveMerch extends Model implements HasMedia
                     ],
                 ]);
 
-                $this->log->channel('merch')->info('ExclusiveMerch created', [
+                Log::channel('merch')->info('ExclusiveMerch created', [
                     'correlation_id' => $model->correlation_id,
                     'merch_id' => $model->id,
                 ]);
             } catch (Throwable $e) {
-                $this->log->error('ExclusiveMerch audit creation failed', [
+                Log::error('ExclusiveMerch audit creation failed', [
                     'correlation_id' => $model->correlation_id,
                     'error' => $e->getMessage(),
                 ]);
@@ -90,7 +90,7 @@ class ExclusiveMerch extends Model implements HasMedia
                 throw new \InvalidArgumentException('Merch stock_quantity cannot be negative');
             }
 
-            $this->log->channel('merch')->info('ExclusiveMerch updating', [
+            Log::channel('merch')->info('ExclusiveMerch updating', [
                 'correlation_id' => $model->correlation_id,
                 'merch_id' => $model->id,
             ]);
@@ -98,11 +98,11 @@ class ExclusiveMerch extends Model implements HasMedia
 
         static::updated(function (ExclusiveMerch $model) {
             try {
-                Audit$this->log->create([
+                AuditLog::create([
                     'entity_type' => ExclusiveMerch::class,
                     'entity_id' => $model->id,
                     'action' => 'updated',
-                    'user_id' => $this->auth->id(),
+                    'user_id' => Auth::id(),
                     'tenant_id' => $model->tenant_id,
                     'correlation_id' => $model->correlation_id,
                     'changes' => $model->getChanges(),
@@ -113,12 +113,12 @@ class ExclusiveMerch extends Model implements HasMedia
                     ],
                 ]);
 
-                $this->log->channel('merch')->info('ExclusiveMerch updated', [
+                Log::channel('merch')->info('ExclusiveMerch updated', [
                     'correlation_id' => $model->correlation_id,
                     'merch_id' => $model->id,
                 ]);
             } catch (Throwable $e) {
-                $this->log->error('ExclusiveMerch audit update failed', [
+                Log::error('ExclusiveMerch audit update failed', [
                     'correlation_id' => $model->correlation_id,
                     'error' => $e->getMessage(),
                 ]);
@@ -146,7 +146,7 @@ class MerchRedemption extends Model
     {
         static::creating(function (MerchRedemption $model) {
             $model->correlation_id ??= Str::uuid();
-            $model->tenant_id ??= $this->auth->guard('tenant')->id();
+            $model->tenant_id ??= Auth::guard('tenant')->id();
             $model->delivery_status ??= 'pending';
             $model->redeemed_at ??= now();
 
@@ -154,7 +154,7 @@ class MerchRedemption extends Model
                 throw new \InvalidArgumentException('MerchRedemption points_spent must be greater than 0');
             }
 
-            $this->log->channel('merch')->info('MerchRedemption creating', [
+            Log::channel('merch')->info('MerchRedemption creating', [
                 'correlation_id' => $model->correlation_id,
                 'user_id' => $model->user_id,
                 'merch_id' => $model->merch_id,
@@ -164,11 +164,11 @@ class MerchRedemption extends Model
 
         static::created(function (MerchRedemption $model) {
             try {
-                Audit$this->log->create([
+                AuditLog::create([
                     'entity_type' => MerchRedemption::class,
                     'entity_id' => $model->id,
                     'action' => 'created',
-                    'user_id' => $this->auth->id(),
+                    'user_id' => Auth::id(),
                     'tenant_id' => $model->tenant_id,
                     'correlation_id' => $model->correlation_id,
                     'changes' => $model->getAttributes(),
@@ -180,13 +180,13 @@ class MerchRedemption extends Model
                     ],
                 ]);
 
-                $this->log->channel('merch')->info('MerchRedemption created', [
+                Log::channel('merch')->info('MerchRedemption created', [
                     'correlation_id' => $model->correlation_id,
                     'redemption_id' => $model->id,
                     'points_spent' => $model->points_spent,
                 ]);
             } catch (Throwable $e) {
-                $this->log->error('MerchRedemption audit creation failed', [
+                Log::error('MerchRedemption audit creation failed', [
                     'correlation_id' => $model->correlation_id,
                     'error' => $e->getMessage(),
                 ]);
@@ -196,7 +196,7 @@ class MerchRedemption extends Model
         static::updating(function (MerchRedemption $model) {
             $model->correlation_id ??= Str::uuid();
 
-            $this->log->channel('merch')->info('MerchRedemption updating', [
+            Log::channel('merch')->info('MerchRedemption updating', [
                 'correlation_id' => $model->correlation_id,
                 'redemption_id' => $model->id,
             ]);
@@ -204,11 +204,11 @@ class MerchRedemption extends Model
 
         static::updated(function (MerchRedemption $model) {
             try {
-                Audit$this->log->create([
+                AuditLog::create([
                     'entity_type' => MerchRedemption::class,
                     'entity_id' => $model->id,
                     'action' => 'updated',
-                    'user_id' => $this->auth->id(),
+                    'user_id' => Auth::id(),
                     'tenant_id' => $model->tenant_id,
                     'correlation_id' => $model->correlation_id,
                     'changes' => $model->getChanges(),
@@ -217,12 +217,12 @@ class MerchRedemption extends Model
                     ],
                 ]);
 
-                $this->log->channel('merch')->info('MerchRedemption updated', [
+                Log::channel('merch')->info('MerchRedemption updated', [
                     'correlation_id' => $model->correlation_id,
                     'redemption_id' => $model->id,
                 ]);
             } catch (Throwable $e) {
-                $this->log->error('MerchRedemption audit update failed', [
+                Log::error('MerchRedemption audit update failed', [
                     'correlation_id' => $model->correlation_id,
                     'error' => $e->getMessage(),
                 ]);

@@ -1,8 +1,7 @@
-declare(strict_types=1);
-
 <?php
 
 declare(strict_types=1);
+
 
 namespace App\Domains\Tickets\Controllers;
 
@@ -20,15 +19,7 @@ final class TicketBookingController extends Controller
 {
     public function __construct(
         private readonly TicketService $ticketService
-    ) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+    ) {}
 
     /**
      * Покупка билета (Раздел 1: Туризм + Эвенты)
@@ -51,7 +42,7 @@ final class TicketBookingController extends Controller
             ]);
 
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Ticket purchase failed', [
+            Log::channel('audit')->error('Ticket purchase failed', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'correlation_id' => $correlationId

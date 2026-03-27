@@ -53,7 +53,7 @@ final class FlowerShopController
                 ->with(['products' => fn ($q) => $q->where('is_available', true)])
                 ->firstOrFail();
 
-            $this->log->channel('audit')->info('Flower shop viewed', [
+            Log::channel('audit')->info('Flower shop viewed', [
                 'shop_id' => $shop->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -115,7 +115,7 @@ final class FlowerShopController
                 'delivery_radius_km' => 'integer|min:1|max:50',
             ]);
 
-            $shop = $this->db->transaction(function () use ($validated, $correlationId) {
+            $shop = DB::transaction(function () use ($validated, $correlationId) {
                 $shop = FlowerShop::query()->create([
                     'tenant_id' => filament()->getTenant()->id,
                     'user_id' => auth()->id(),
@@ -123,7 +123,7 @@ final class FlowerShopController
                     ...$validated,
                 ]);
 
-                $this->log->channel('audit')->info('Flower shop created', [
+                Log::channel('audit')->info('Flower shop created', [
                     'shop_id' => $shop->id,
                     'user_id' => auth()->id(),
                     'correlation_id' => $correlationId,
@@ -138,7 +138,7 @@ final class FlowerShopController
                 'correlation_id' => $correlationId,
             ], $this->response->HTTP_CREATED);
         } catch (\Exception $exception) {
-            $this->log->channel('audit')->error('Shop creation failed', [
+            Log::channel('audit')->error('Shop creation failed', [
                 'error' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -168,10 +168,10 @@ final class FlowerShopController
                 'delivery_radius_km' => 'integer|min:1|max:50',
             ]);
 
-            $shop = $this->db->transaction(function () use ($shop, $validated, $correlationId) {
+            $shop = DB::transaction(function () use ($shop, $validated, $correlationId) {
                 $shop->update([...$validated, 'correlation_id' => $correlationId]);
 
-                $this->log->channel('audit')->info('Flower shop updated', [
+                Log::channel('audit')->info('Flower shop updated', [
                     'shop_id' => $shop->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -245,7 +245,7 @@ final class FlowerShopController
         $correlationId = (string)Str::uuid()->toString();
 
         try {
-            $shop = $this->db->transaction(function () use ($id, $correlationId) {
+            $shop = DB::transaction(function () use ($id, $correlationId) {
                 $shop = FlowerShop::query()
                     ->where('id', $id)
                     ->lockForUpdate()
@@ -253,7 +253,7 @@ final class FlowerShopController
 
                 $shop->update(['is_verified' => true]);
 
-                $this->log->channel('audit')->info('Flower shop verified', [
+                Log::channel('audit')->info('Flower shop verified', [
                     'shop_id' => $shop->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -280,11 +280,11 @@ final class FlowerShopController
         $correlationId = (string)Str::uuid()->toString();
 
         try {
-            $this->db->transaction(function () use ($id, $correlationId) {
+            DB::transaction(function () use ($id, $correlationId) {
                 $shop = FlowerShop::query()->findOrFail($id);
                 $shop->delete();
 
-                $this->log->channel('audit')->info('Flower shop deleted', [
+                Log::channel('audit')->info('Flower shop deleted', [
                     'shop_id' => $shop->id,
                     'correlation_id' => $correlationId,
                 ]);

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders\Jewelry;
 
-use App\Domains\Jewelry\Models\JewelryItem;
+use App\Domains\Luxury\Jewelry\Models\JewelryItem;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 

@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Beauty\Http\Controllers;
 
@@ -25,15 +26,7 @@ class PortfolioController extends Controller
     public function __construct(
         private readonly PortfolioService $portfolioService,
         private readonly FraudControlService $fraudControl
-    ) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+    ) {}
 
     public function index(Request $request): JsonResponse
     {

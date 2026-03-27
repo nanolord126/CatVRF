@@ -27,7 +27,7 @@ final class FashionStoreController
 
             return response()->json(['success' => true, 'data' => $stores, 'correlation_id' => Str::uuid()]);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Failed to fetch stores', ['error' => $e->getMessage()]);
+            Log::channel('audit')->error('Failed to fetch stores', ['error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
         }
     }
@@ -70,7 +70,7 @@ final class FashionStoreController
         $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
-            $this->db->transaction(function () use ($correlationId) {
+            DB::transaction(function () use ($correlationId) {
                 FashionStore::create([
                     'uuid' => Str::uuid(),
                     'tenant_id' => tenant('id'),
@@ -82,7 +82,7 @@ final class FashionStoreController
                     'correlation_id' => $correlationId,
                 ]);
 
-                $this->log->channel('audit')->info('Fashion store created', [
+                Log::channel('audit')->info('Fashion store created', [
                     'owner_id' => auth()->id(),
                     'name' => request('name'),
                     'correlation_id' => $correlationId,
@@ -113,9 +113,9 @@ final class FashionStoreController
         try {
             $store = FashionStore::findOrFail($id);
 
-            $this->db->transaction(function () use ($store, $correlationId) {
+            DB::transaction(function () use ($store, $correlationId) {
                 $store->update([...request()->except(['id', 'tenant_id', 'business_group_id', 'correlation_id']), 'correlation_id' => $correlationId]);
-                $this->log->channel('audit')->info('Fashion store updated', ['store_id' => $id, 'correlation_id' => $correlationId]);
+                Log::channel('audit')->info('Fashion store updated', ['store_id' => $id, 'correlation_id' => $correlationId]);
             });
 
             return response()->json(['success' => true, 'data' => $store, 'correlation_id' => $correlationId]);
@@ -130,9 +130,9 @@ final class FashionStoreController
             $store = FashionStore::findOrFail($id);
             $correlationId = Str::uuid()->toString();
 
-            $this->db->transaction(function () use ($store, $correlationId) {
+            DB::transaction(function () use ($store, $correlationId) {
                 $store->delete();
-                $this->log->channel('audit')->info('Fashion store deleted', ['store_id' => $id, 'correlation_id' => $correlationId]);
+                Log::channel('audit')->info('Fashion store deleted', ['store_id' => $id, 'correlation_id' => $correlationId]);
             });
 
             return response()->json(['success' => true, 'data' => null, 'correlation_id' => $correlationId]);
@@ -147,9 +147,9 @@ final class FashionStoreController
             $store = FashionStore::findOrFail($id);
             $correlationId = Str::uuid()->toString();
 
-            $this->db->transaction(function () use ($store, $correlationId) {
+            DB::transaction(function () use ($store, $correlationId) {
                 $store->update(['is_verified' => true, 'correlation_id' => $correlationId]);
-                $this->log->channel('audit')->info('Fashion store verified', ['store_id' => $id, 'correlation_id' => $correlationId]);
+                Log::channel('audit')->info('Fashion store verified', ['store_id' => $id, 'correlation_id' => $correlationId]);
             });
 
             return response()->json(['success' => true, 'data' => $store, 'correlation_id' => $correlationId]);

@@ -53,7 +53,7 @@ final class InventoryManagementService
                 $correlationId
             );
 
-            return $this->db->transaction(function () use ($productId, $quantity, $reason, $correlationId) {
+            return DB::transaction(function () use ($productId, $quantity, $reason, $correlationId) {
                 $product = BeautyProduct::query()->lockForUpdate()->find($productId);
 
                 if (!$product || $product->current_stock < $quantity) {
@@ -63,7 +63,7 @@ final class InventoryManagementService
                 // Списать из текущего в зарезервированное
                 $product->decrement('current_stock', $quantity);
 
-                $this->log->channel('audit')->info('Stock reserved', [
+                Log::channel('audit')->info('Stock reserved', [
                     'product_id' => $productId,
                     'quantity' => $quantity,
                     'reason' => $reason,
@@ -73,7 +73,7 @@ final class InventoryManagementService
                 return true;
             });
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Stock reservation failed', [
+            Log::channel('audit')->error('Stock reservation failed', [
                 'product_id' => $productId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -102,7 +102,7 @@ final class InventoryManagementService
                 $correlationId
             );
 
-            return $this->db->transaction(function () use ($productId, $quantity, $reason, $correlationId) {
+            return DB::transaction(function () use ($productId, $quantity, $reason, $correlationId) {
                 $product = BeautyProduct::query()->lockForUpdate()->find($productId);
 
                 if (!$product) {
@@ -111,7 +111,7 @@ final class InventoryManagementService
 
                 $product->increment('current_stock', $quantity);
 
-                $this->log->channel('audit')->info('Stock released', [
+                Log::channel('audit')->info('Stock released', [
                     'product_id' => $productId,
                     'quantity' => $quantity,
                     'reason' => $reason,
@@ -121,7 +121,7 @@ final class InventoryManagementService
                 return true;
             });
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Stock release failed', [
+            Log::channel('audit')->error('Stock release failed', [
                 'product_id' => $productId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -150,7 +150,7 @@ final class InventoryManagementService
                 $correlationId
             );
 
-            return $this->db->transaction(function () use ($productId, $quantity, $reason, $correlationId) {
+            return DB::transaction(function () use ($productId, $quantity, $reason, $correlationId) {
                 $product = BeautyProduct::query()->lockForUpdate()->find($productId);
 
                 if (!$product) {
@@ -159,7 +159,7 @@ final class InventoryManagementService
 
                 $product->increment('current_stock', $quantity);
 
-                $this->log->channel('audit')->info('Stock added', [
+                Log::channel('audit')->info('Stock added', [
                     'product_id' => $productId,
                     'quantity' => $quantity,
                     'reason' => $reason,
@@ -169,7 +169,7 @@ final class InventoryManagementService
                 return true;
             });
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Stock addition failed', [
+            Log::channel('audit')->error('Stock addition failed', [
                 'product_id' => $productId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

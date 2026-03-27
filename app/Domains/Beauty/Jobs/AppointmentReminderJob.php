@@ -37,7 +37,7 @@ final class AppointmentReminderJob implements ShouldQueue
 
             // Проверить, что запись ещё актуальна и не отменена
             if ($appointment->status === 'cancelled' || $appointment->deleted_at) {
-                $this->log->channel('audit')->info('Appointment reminder skipped (cancelled)', [
+                Log::channel('audit')->info('Appointment reminder skipped (cancelled)', [
                     'appointment_id' => $appointment->id,
                     'correlation_id' => $this->correlationId,
                 ]);
@@ -52,7 +52,7 @@ final class AppointmentReminderJob implements ShouldQueue
             // Можно использовать SMS, Email, Push-notification
             // Notification::send($client, new AppointmentReminderNotification($appointment, $this->hoursBeforeAppointment));
 
-            $this->log->channel('audit')->info('Appointment reminder sent', [
+            Log::channel('audit')->info('Appointment reminder sent', [
                 'appointment_id' => $appointment->id,
                 'client_id' => $client->id,
                 'hours_before' => $this->hoursBeforeAppointment,
@@ -63,7 +63,7 @@ final class AppointmentReminderJob implements ShouldQueue
                 'correlation_id' => $this->correlationId,
             ]);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('AppointmentReminderJob failed', [
+            Log::channel('audit')->error('AppointmentReminderJob failed', [
                 'appointment_id' => $this->appointment->id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -76,7 +76,7 @@ final class AppointmentReminderJob implements ShouldQueue
 
     public function failed(\Throwable $exception): void
     {
-        $this->log->channel('audit')->error('AppointmentReminderJob permanently failed', [
+        Log::channel('audit')->error('AppointmentReminderJob permanently failed', [
             'appointment_id' => $this->appointment->id,
             'error' => $exception->getMessage(),
             'correlation_id' => $this->correlationId,

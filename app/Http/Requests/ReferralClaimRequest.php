@@ -1,7 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php
-declare(strict_types=1);
 
 namespace App\Http\Requests;
 
@@ -30,7 +30,7 @@ class ReferralClaimRequest extends BaseApiRequest
                 $correlationId,
             );
             if ($fraudResult['decision'] === 'block') {
-                \Illuminate\Support\Facades\$this->log->channel('fraud_alert')->warning('FormRequest blocked', [
+                \Illuminate\Support\Facades\Log::channel('fraud_alert')->warning('FormRequest blocked', [
                     'class'          => __CLASS__,
                     'correlation_id' => $correlationId,
                     'score'          => $fraudResult['score'],

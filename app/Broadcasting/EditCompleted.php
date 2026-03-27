@@ -26,7 +26,7 @@ final class EditCompleted implements ShouldBroadcast
         public readonly array $editData,
         public readonly string $correlationId
     ) {
-        $this->log->channel('audit')->info('EditCompleted event broadcasted', [
+        Log::channel('audit')->info('EditCompleted event broadcasted', [
             'user_id' => $this->userId,
             'tenant_id' => $this->tenantId,
             'document_type' => $this->documentType,

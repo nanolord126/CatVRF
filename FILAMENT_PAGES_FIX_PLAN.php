@@ -66,7 +66,7 @@ final class {CLASS_NAME} extends CreateRecord
     {
         parent::authorizeAccess();
 
-        if (! $this->gate->allows('create', {MODEL_CLASS}::class)) {
+        if (! Gate::allows('create', {MODEL_CLASS}::class)) {
             abort(403, __('Unauthorized'));
         }
     }
@@ -88,14 +88,14 @@ final class {CLASS_NAME} extends CreateRecord
         $this->rateLimiter->hit($key, 3600);
 
         try {
-            return $this->db->transaction(function () use ($data, $user) {
+            return DB::transaction(function () use ($data, $user) {
                 $filtered = array_filter($data, static fn($value) => $value !== null);
                 $record = parent::handleRecordCreation($filtered);
 
                 if ($record && $user) {
                     $correlationId = $this->request->header('X-Correlation-ID') ?? (string) Str::uuid();
 
-                    $this->log->channel('audit')->info('{entity} created', [
+                    Log::channel('audit')->info('{entity} created', [
                         'id' => $record->id,
                         'user_id' => $user->id,
                         'tenant_id' => filament()->getTenant()?->id,
@@ -114,7 +114,7 @@ final class {CLASS_NAME} extends CreateRecord
         } catch (Throwable $e) {
             $user = $this->guard->user();
             
-            $this->log->channel('audit')->error('{entity} creation failed', [
+            Log::channel('audit')->error('{entity} creation failed', [
                 'error' => $e->getMessage(),
                 'user_id' => $user?->id,
                 'tenant_id' => filament()->getTenant()?->id,
@@ -190,7 +190,7 @@ final class {CLASS_NAME} extends EditRecord
     {
         parent::authorizeAccess();
 
-        if (! $this->gate->allows('update', $this->record)) {
+        if (! Gate::allows('update', $this->record)) {
             abort(403, __('Unauthorized'));
         }
 
@@ -202,7 +202,7 @@ final class {CLASS_NAME} extends EditRecord
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
         try {
-            return $this->db->transaction(function () use ($record, $data) {
+            return DB::transaction(function () use ($record, $data) {
                 $user = $this->guard->user();
                 $filtered = array_filter($data, static fn($value) => $value !== null);
                 
@@ -211,7 +211,7 @@ final class {CLASS_NAME} extends EditRecord
                 if ($user) {
                     $correlationId = $this->request->header('X-Correlation-ID') ?? (string) Str::uuid();
 
-                    $this->log->channel('audit')->info('{entity} updated', [
+                    Log::channel('audit')->info('{entity} updated', [
                         'id' => $record->id,
                         'user_id' => $user->id,
                         'tenant_id' => filament()->getTenant()?->id,
@@ -230,7 +230,7 @@ final class {CLASS_NAME} extends EditRecord
         } catch (Throwable $e) {
             $user = $this->guard->user();
 
-            $this->log->channel('audit')->error('{entity} update failed', [
+            Log::channel('audit')->error('{entity} update failed', [
                 'id' => $record->id,
                 'error' => $e->getMessage(),
                 'user_id' => $user?->id,
@@ -298,7 +298,7 @@ final class {CLASS_NAME} extends ViewRecord
     {
         parent::authorizeAccess();
 
-        if (! $this->gate->allows('view', $this->record)) {
+        if (! Gate::allows('view', $this->record)) {
             abort(403, __('Unauthorized'));
         }
 
@@ -307,7 +307,7 @@ final class {CLASS_NAME} extends ViewRecord
         }
 
         $user = $this->guard->user();
-        $this->log->channel('audit')->info('{entity} viewed', [
+        Log::channel('audit')->info('{entity} viewed', [
             'id' => $this->record?->id,
             'user_id' => $user?->id,
             'tenant_id' => filament()->getTenant()?->id,
@@ -365,12 +365,12 @@ final class {CLASS_NAME} extends ListRecords
     {
         parent::authorizeAccess();
 
-        if (! $this->gate->allows('viewAny', {MODEL_CLASS}::class)) {
+        if (! Gate::allows('viewAny', {MODEL_CLASS}::class)) {
             abort(403, __('Unauthorized'));
         }
 
         $user = $this->guard->user();
-        $this->log->channel('audit')->info('{entity} list accessed', [
+        Log::channel('audit')->info('{entity} list accessed', [
             'user_id' => $user?->id,
             'tenant_id' => filament()->getTenant()?->id,
             'ip' => $this->request->ip(),

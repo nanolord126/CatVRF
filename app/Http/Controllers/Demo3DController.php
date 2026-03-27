@@ -1,9 +1,6 @@
 <?php declare(strict_types=1);
-
 namespace App\Http\Controllers;
-
 use Illuminate\View\View;
-
 final class Demo3DController extends Controller
 {
     public function index(): View
@@ -64,13 +61,11 @@ final class Demo3DController extends Controller
                 'tags' => ['furniture', 'chair', '3d', 'design'],
             ],
         ];
-
         return view('3d-demo', [
             'products' => $demoProducts,
             'title' => 'CatVRF 3D Visualization Demo',
         ]);
     }
-
     public function product(int $id): View
     {
         $product = match ($id) {
@@ -82,7 +77,6 @@ final class Demo3DController extends Controller
             6 => ['name' => 'Chair', 'model' => '/storage/3d-models/Furniture/chair.glb'],
             default => ['name' => 'Unknown', 'model' => ''],
         };
-
         return view('3d-product-detail', $product);
     }
 }

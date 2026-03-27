@@ -32,7 +32,7 @@ final class TrackingService
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-$this->db->transaction(function () use (
+DB::transaction(function () use (
             $shipment,
             $eventType,
             $location,
@@ -49,7 +49,7 @@ $this->db->transaction(function () use (
                 'correlation_id' => $correlationId,
             ]);
 
-            $this->log->channel('audit')->info('Tracking event added', [
+            Log::channel('audit')->info('Tracking event added', [
                 'shipment_id' => $shipment->id,
                 'event_type' => $eventType,
                 'correlation_id' => $correlationId,

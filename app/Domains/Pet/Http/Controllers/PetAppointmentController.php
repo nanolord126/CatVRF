@@ -33,7 +33,7 @@ final class PetAppointmentController extends Controller
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Throwable $e) {
-            $this->log->error('Failed to get appointments', ['error' => $e->getMessage()]);
+            Log::error('Failed to get appointments', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve appointments',
@@ -75,7 +75,7 @@ final class PetAppointmentController extends Controller
                 $correlationId
             );
 
-            $this->log->channel('audit')->info('Pet appointment created', [
+            Log::channel('audit')->info('Pet appointment created', [
                 'correlation_id' => $correlationId,
                 'appointment_id' => $appointment->id ?? null,
                 'tenant_id'      => $appointment->tenant_id ?? null,
@@ -88,7 +88,7 @@ final class PetAppointmentController extends Controller
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Throwable $e) {
-            $this->log->error('Failed to create appointment', ['error' => $e->getMessage()]);
+            Log::error('Failed to create appointment', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create appointment',
@@ -113,7 +113,7 @@ final class PetAppointmentController extends Controller
                 'correlation_id' => $correlationId,
             ]);
 
-            $this->log->channel('audit')->info('Pet appointment updated', [
+            Log::channel('audit')->info('Pet appointment updated', [
                 'correlation_id' => $correlationId,
                 'appointment_id' => $appointment->id,
                 'tenant_id'      => $appointment->tenant_id,
@@ -146,7 +146,7 @@ final class PetAppointmentController extends Controller
 
             $appointment->delete();
 
-            $this->log->channel('audit')->info('Pet appointment deleted', [
+            Log::channel('audit')->info('Pet appointment deleted', [
                 'correlation_id' => $correlationId,
                 'appointment_id' => $appointment->id,
                 'tenant_id'      => $appointment->tenant_id,
@@ -227,7 +227,7 @@ final class PetAppointmentController extends Controller
                 'recorded_at' => now(),
             ]);
 
-            $this->log->channel('audit')->info('Pet medical record created', [
+            Log::channel('audit')->info('Pet medical record created', [
                 'correlation_id' => $correlationId,
                 'record_id'      => $record->id,
                 'tenant_id'      => $record->tenant_id,

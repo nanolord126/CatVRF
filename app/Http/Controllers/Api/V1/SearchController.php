@@ -1,7 +1,5 @@
 <?php declare(strict_types=1);
-
 namespace App\Http\Controllers\Api\V1;
-
 use App\Services\Search\SearchService;
 use App\Services\Search\ElasticsearchService;
 use App\Services\Security\RateLimiterService;
@@ -10,7 +8,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use OpenApi\Annotations as OA;
-
 /**
  * @OA\Tag(
  *     name="Search",
@@ -24,7 +21,6 @@ final class SearchController extends BaseApiV1Controller
         private readonly ElasticsearchService $elasticsearchService,
         private readonly RateLimiterService $rateLimiterService,
     ) {}
-
     /**
      * Global search across all verticals
      *
@@ -130,7 +126,6 @@ final class SearchController extends BaseApiV1Controller
     public function index(Request $request): JsonResponse
     {
         $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
-        
         try {
             $validated = $request->validate([
                 'q' => 'required|string|min:2|max:255',
@@ -143,10 +138,8 @@ final class SearchController extends BaseApiV1Controller
                 'page' => 'nullable|integer|min:1',
                 'per_page' => 'nullable|integer|min:1|max:100',
             ]);
-
             $tenantId = (int) tenant('id');
             $userId = $request->user()?->id;
-            
             // Rate limiting check (different for light vs heavy searches)
             $isHeavySearch = !empty($validated['geo']) || !empty($validated['category']);
             $rateLimitKey = $isHeavySearch ? 'search:heavy' : 'search:light';
@@ -156,9 +149,8 @@ final class SearchController extends BaseApiV1Controller
                 window: 3600, // 1 hour
                 correlationId: $correlationId,
             );
-
             if (!$rateLimitPassed) {
-                $this->log->channel('fraud_alert')->warning('Search rate limit exceeded', [
+                Log::channel('fraud_alert')->warning('Search rate limit exceeded', [
                     'correlation_id' => $correlationId,
                     'user_id' => $userId,
                     'query' => $validated['q'],
@@ -170,7 +162,6 @@ final class SearchController extends BaseApiV1Controller
                     'correlation_id' => $correlationId,
                 ], 429);
             }
-
             // Execute search
             $results = $this->elasticsearchService->search(
                 query: $validated['q'],
@@ -186,8 +177,7 @@ final class SearchController extends BaseApiV1Controller
                 page: $validated['page'] ?? 1,
                 perPage: $validated['per_page'] ?? 20,
             );
-
-            $this->log->channel('audit')->info('Search executed', [
+            Log::channel('audit')->info('Search executed', [
                 'correlation_id' => $correlationId,
                 'user_id' => $userId,
                 'tenant_id' => $tenantId,
@@ -195,13 +185,11 @@ final class SearchController extends BaseApiV1Controller
                 'results_count' => $results['total'],
                 'vertical' => $validated['vertical'],
             ]);
-
             return response()->json([
                 'success' => true,
                 'data' => $results,
                 'correlation_id' => $correlationId,
             ], 200);
-
         } catch (\Illuminate\Validation\ValidationException $e) {
             return $this->errorResponse(
                 message: 'Ошибка валидации',
@@ -209,7 +197,7 @@ final class SearchController extends BaseApiV1Controller
                 errors: $e->errors(),
             );
         } catch (\Throwable $e) {
-            $this->log->channel('error')->error('Search error', [
+            Log::channel('error')->error('Search error', [
                 'correlation_id' => $correlationId,
                 'exception' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -220,7 +208,6 @@ final class SearchController extends BaseApiV1Controller
             );
         }
     }
-
     /**
      * Autocomplete search suggestions
      *
@@ -266,29 +253,25 @@ final class SearchController extends BaseApiV1Controller
     public function suggestions(Request $request): JsonResponse
     {
         $correlationId = Str::uuid()->toString();
-        
         try {
             $validated = $request->validate([
                 'q' => 'required|string|min:1|max:50',
                 'vertical' => 'nullable|string',
                 'limit' => 'nullable|integer|min:1|max:10',
             ]);
-
             $suggestions = $this->elasticsearchService->suggestions(
                 query: $validated['q'],
                 vertical: $validated['vertical'],
                 limit: $validated['limit'] ?? 5,
                 tenantId: (int) tenant('id'),
             );
-
             return response()->json([
                 'success' => true,
                 'data' => $suggestions,
                 'correlation_id' => $correlationId,
             ], 200);
-
         } catch (\Throwable $e) {
-            $this->log->channel('error')->error('Search suggestions error', [
+            Log::channel('error')->error('Search suggestions error', [
                 'correlation_id' => $correlationId,
                 'exception' => $e->getMessage(),
             ]);

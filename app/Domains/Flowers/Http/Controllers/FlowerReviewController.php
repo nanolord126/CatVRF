@@ -41,7 +41,7 @@ final class FlowerReviewController
                 'comment' => 'nullable|string|max:1000',
             ]);
 
-            $review = $this->db->transaction(function () use ($order, $validated, $correlationId) {
+            $review = DB::transaction(function () use ($order, $validated, $correlationId) {
                 $overallRating = round(
                     ($validated['quality_rating'] + $validated['delivery_rating'] + $validated['freshness_rating']) / 3,
                     1
@@ -61,7 +61,7 @@ final class FlowerReviewController
                     'correlation_id' => $correlationId,
                 ]);
 
-                $this->log->channel('audit')->info('Flower review created', [
+                Log::channel('audit')->info('Flower review created', [
                     'review_id' => $review->id,
                     'order_id' => $order->id,
                     'correlation_id' => $correlationId,
@@ -76,7 +76,7 @@ final class FlowerReviewController
                 'correlation_id' => $correlationId,
             ], $this->response->HTTP_CREATED);
         } catch (\Exception $exception) {
-            $this->log->channel('audit')->error('Review creation failed', [
+            Log::channel('audit')->error('Review creation failed', [
                 'error' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -137,10 +137,10 @@ final class FlowerReviewController
                 'comment' => 'nullable|string|max:1000',
             ]);
 
-            $review = $this->db->transaction(function () use ($review, $validated, $correlationId) {
+            $review = DB::transaction(function () use ($review, $validated, $correlationId) {
                 $review->update([...$validated, 'correlation_id' => $correlationId]);
 
-                $this->log->channel('audit')->info('Flower review updated', [
+                Log::channel('audit')->info('Flower review updated', [
                     'review_id' => $review->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -178,10 +178,10 @@ final class FlowerReviewController
                 ], $this->response->HTTP_FORBIDDEN);
             }
 
-            $this->db->transaction(function () use ($review, $correlationId) {
+            DB::transaction(function () use ($review, $correlationId) {
                 $review->delete();
 
-                $this->log->channel('audit')->info('Flower review deleted', [
+                Log::channel('audit')->info('Flower review deleted', [
                     'review_id' => $review->id,
                     'correlation_id' => $correlationId,
                 ]);

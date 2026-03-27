@@ -1,8 +1,6 @@
 <?php
 declare(strict_types=1);
-
 namespace App\Http\Controllers\Api\V1;
-
 use App\Http\Requests\PaymentInitRequest;
 use App\Services\FraudControlService;
 use App\Services\Security\IdempotencyService;
@@ -12,7 +10,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use OpenApi\Annotations as OA;
-
 /**
  * @OA\Tag(
  *     name="Payments",
@@ -27,7 +24,6 @@ final class PaymentController extends BaseApiV1Controller
         private readonly RateLimiterService $rateLimiterService,
     ) {
     }
-
     /**
      * Initialize payment
      *
@@ -86,13 +82,11 @@ final class PaymentController extends BaseApiV1Controller
                 null,
                 $correlationId
             );
-
-            $this->log->channel('audit')->info('PaymentController::init called', [
+            Log::channel('audit')->info('PaymentController::init called', [
                 'user_id' => auth()->id(),
                 'amount' => $request->get('amount'),
                 'correlation_id' => $correlationId,
             ]);
-
             // Rate limiting check
             if (!$this->rateLimiterService->checkPaymentInit(
                 auth()->id() ?? 0,
@@ -100,20 +94,16 @@ final class PaymentController extends BaseApiV1Controller
             )) {
                 throw new AuthorizationException('Rate limit exceeded');
             }
-
             // Idempotency check
             $payload = json_encode($request->only(['order_id', 'amount', 'currency']));
             $idempotencyKey = $request->header('Idempotency-Key') ?? uniqid();
-
             if (!$this->idempotencyService->check($idempotencyKey, $payload)) {
                 return $this->respondWithError('Duplicate payment', 409);
             }
-
             $validated = $request->all();
-            return $this->db->transaction(function () use ($validated, $correlationId) {
+            return DB::transaction(function () use ($validated, $correlationId) {
                 $paymentId = \Str::uuid()->toString();
-                
-                $payment = \App\Domains\Finances\Models\PaymentTransaction::create([
+                $payment = \App\Domains\Consulting\Finances\Models\PaymentTransaction::create([
                     'uuid' => $paymentId,
                     'tenant_id' => (int) tenant('id'),
                     'correlation_id' => $correlationId,
@@ -126,12 +116,10 @@ final class PaymentController extends BaseApiV1Controller
                         'api_version' => 'v1',
                     ],
                 ]);
-
-                \Illuminate\Support\Facades\$this->log->channel('audit')->info('Payment initiated V1', [
+                \Illuminate\Support\Facades\Log::channel('audit')->info('Payment initiated V1', [
                     'payment_id' => $payment->id,
                     'correlation_id' => $paymentId,
                 ]);
-
                 return $this->respondWithSuccess(
                     [
                         'payment_id' => $paymentId,
@@ -146,37 +134,31 @@ final class PaymentController extends BaseApiV1Controller
             return $this->respondWithError($e->getMessage(), 429);
         }
     }
-
     /**
      * Получить платёж по ID
      */
     public function show(string $paymentId): \Illuminate\Routing\ResponseFactory
     {
         $correlationId = (string) \Illuminate\Support\Str::uuid()->toString();
-
         try {
-            $payment = \App\Domains\Finances\Models\PaymentTransaction::where('uuid', $paymentId)
+            $payment = \App\Domains\Consulting\Finances\Models\PaymentTransaction::where('uuid', $paymentId)
                 ->where('tenant_id', (int) tenant('id'))
                 ->firstOrFail();
-
-            \Illuminate\Support\Facades\$this->log->channel('audit')->info('Payment retrieved', [
+            \Illuminate\Support\Facades\Log::channel('audit')->info('Payment retrieved', [
                 'payment_id' => $payment->id,
                 'correlation_id' => $correlationId,
             ]);
-
             return $this->respondWithSuccess([
                 'payment_id' => $paymentId,
                 'status' => $payment->status,
                 'amount' => $payment->amount,
                 'created_at' => $payment->created_at,
             ]);
-
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\$this->log->channel('audit')->error('Payment retrieval failed', [
+            \Illuminate\Support\Facades\Log::channel('audit')->error('Payment retrieval failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
-
             return $this->respondWithError('Payment not found', 404);
         }
     }

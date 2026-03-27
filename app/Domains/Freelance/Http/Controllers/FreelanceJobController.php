@@ -37,7 +37,7 @@ final class FreelanceJobController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Error listing jobs', [
+            Log::channel('audit')->error('Error listing jobs', [
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
             ]);
@@ -61,7 +61,7 @@ final class FreelanceJobController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Error showing job', [
+            Log::channel('audit')->error('Error showing job', [
                 'job_id' => $id,
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
@@ -82,7 +82,7 @@ final class FreelanceJobController
 
         try {
             $validated = $request->all();
-            return $this->db->transaction(function () use ($validated, $correlationId) {
+            return DB::transaction(function () use ($validated, $correlationId) {
                 $job = FreelanceJob::create([
                     'tenant_id' => tenant()->id,
                     'client_id' => auth()->id(),
@@ -100,7 +100,7 @@ final class FreelanceJobController
                     'correlation_id' => $correlationId,
                 ]);
 
-                $this->log->channel('audit')->info('Freelance job posted', [
+                Log::channel('audit')->info('Freelance job posted', [
                     'job_id' => $job->id,
                     'client_id' => auth()->id(),
                     'budget_min' => ($validated['budget_min'] ?? null),
@@ -115,7 +115,7 @@ final class FreelanceJobController
                 ], 201);
             });
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Error posting job', [
+            Log::channel('audit')->error('Error posting job', [
                 'client_id' => auth()->id(),
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
@@ -140,13 +140,13 @@ final class FreelanceJobController
             $this->authorize('update', $job);
 
             $validated = $request->all();
-            return $this->db->transaction(function () use ($validated, $job, $correlationId) {
+            return DB::transaction(function () use ($validated, $job, $correlationId) {
                 $job->update($request->only([
                     'title', 'description', 'categories', 'skills_required',
                     'budget_min', 'budget_max', 'duration_days',
                 ]));
 
-                $this->log->channel('audit')->info('Freelance job updated', [
+                Log::channel('audit')->info('Freelance job updated', [
                     'job_id' => $job->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -158,7 +158,7 @@ final class FreelanceJobController
                 ]);
             });
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Error updating job', [
+            Log::channel('audit')->error('Error updating job', [
                 'job_id' => $id,
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
@@ -182,10 +182,10 @@ final class FreelanceJobController
 
             $this->authorize('delete', $job);
 
-            return $this->db->transaction(function () use ($job, $correlationId) {
+            return DB::transaction(function () use ($job, $correlationId) {
                 $job->delete();
 
-                $this->log->channel('audit')->info('Freelance job deleted', [
+                Log::channel('audit')->info('Freelance job deleted', [
                     'job_id' => $job->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -196,7 +196,7 @@ final class FreelanceJobController
                 ]);
             });
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Error deleting job', [
+            Log::channel('audit')->error('Error deleting job', [
                 'job_id' => $id,
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
@@ -218,10 +218,10 @@ final class FreelanceJobController
 
             $this->authorize('close', $job);
 
-            return $this->db->transaction(function () use ($job, $correlationId) {
+            return DB::transaction(function () use ($job, $correlationId) {
                 $job->update(['status' => 'closed']);
 
-                $this->log->channel('audit')->info('Freelance job closed', [
+                Log::channel('audit')->info('Freelance job closed', [
                     'job_id' => $job->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -232,7 +232,7 @@ final class FreelanceJobController
                 ]);
             });
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Error closing job', [
+            Log::channel('audit')->error('Error closing job', [
                 'job_id' => $id,
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
@@ -258,7 +258,7 @@ final class FreelanceJobController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Error listing my jobs', [
+            Log::channel('audit')->error('Error listing my jobs', [
                 'client_id' => auth()->id(),
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
@@ -278,7 +278,7 @@ final class FreelanceJobController
             $totalJobs = FreelanceJob::count();
             $openJobs = FreelanceJob::where('status', 'open')->count();
             $completedJobs = FreelanceJob::where('status', 'closed')->count();
-            $totalBudget = FreelanceJob::sum($this->db->raw('(budget_min + budget_max) / 2'));
+            $totalBudget = FreelanceJob::sum(DB::raw('(budget_min + budget_max) / 2'));
 
             return response()->json([
                 'success' => true,
@@ -291,7 +291,7 @@ final class FreelanceJobController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Error getting freelance stats', [
+            Log::channel('audit')->error('Error getting freelance stats', [
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
             ]);

@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Domains\FreshProduce\Http\Controllers\FreshProductController;
-use App\Domains\FreshProduce\Http\Controllers\ProduceOrderController;
+use App\Domains\FarmDirect\FreshProduce\Http\Controllers\FreshProductController;
+use App\Domains\FarmDirect\FreshProduce\Http\Controllers\ProduceOrderController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['api', 'tenant'])->prefix('fresh-produce')->group(function (): void {

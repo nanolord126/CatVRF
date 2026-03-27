@@ -35,7 +35,7 @@ final class ConfectioneryService
         }
         RateLimiter::hit("cake:order:".auth()->id(), 3600);
 
-        return $this->db->transaction(function () use ($shopId, $cakeId, $data, $correlationId) {
+        return DB::transaction(function () use ($shopId, $cakeId, $data, $correlationId) {
             $shop = ConfectioneryShop::findOrFail($shopId);
             $cake = Cake::findOrFail($cakeId);
 
@@ -47,7 +47,7 @@ final class ConfectioneryService
             ]);
 
             if ($fraud['decision'] === 'block') {
-                $this->log->channel('audit')->error('Cake order blocked', [
+                Log::channel('audit')->error('Cake order blocked', [
                     'user_id' => auth()->id(),
                     'score' => $fraud['score'],
                     'correlation_id' => $correlationId,
@@ -77,7 +77,7 @@ final class ConfectioneryService
                 'tags' => ['urgent:no', 'custom_design:no'],
             ]);
 
-            $this->log->channel('audit')->info('Cake order created', [
+            Log::channel('audit')->info('Cake order created', [
                 'order_id' => $order->id,
                 'cake_id' => $cakeId,
                 'user_id' => auth()->id(),
@@ -95,7 +95,7 @@ final class ConfectioneryService
     {
         $correlationId = $correlationId ?: (string) Str::uuid();
 
-        return $this->db->transaction(function () use ($shopId, $designData, $correlationId) {
+        return DB::transaction(function () use ($shopId, $designData, $correlationId) {
             $shop = ConfectioneryShop::findOrFail($shopId);
 
             $design = CustomCakeDesign::create([
@@ -112,7 +112,7 @@ final class ConfectioneryService
                 'tags' => ['custom:true', 'awaiting_approval:true'],
             ]);
 
-            $this->log->channel('audit')->info('Custom cake design submitted', [
+            Log::channel('audit')->info('Custom cake design submitted', [
                 'design_id' => $design->id,
                 'user_id' => auth()->id(),
                 'correlation_id' => $correlationId,
@@ -130,7 +130,7 @@ final class ConfectioneryService
         $correlationId = $correlationId ?: (string) Str::uuid();
         $order = CakeOrder::with('shop')->findOrFail($orderId);
 
-        $this->db->transaction(function () use ($order, $correlationId) {
+        DB::transaction(function () use ($order, $correlationId) {
             if ($order->status !== 'ready') {
                 throw new \RuntimeException("Order must be ready");
             }
@@ -162,7 +162,7 @@ final class ConfectioneryService
                 correlationId: $correlationId
             );
 
-            $this->log->channel('audit')->info('Cake order completed', [
+            Log::channel('audit')->info('Cake order completed', [
                 'order_id' => $order->id,
                 'payout_kopecks' => $payout,
                 'correlation_id' => $correlationId,
@@ -194,14 +194,14 @@ final class ConfectioneryService
         $correlationId = $correlationId ?: (string) Str::uuid();
         $order = CakeOrder::findOrFail($orderId);
 
-        return $this->db->transaction(function () use ($order, $correlationId) {
+        return DB::transaction(function () use ($order, $correlationId) {
             if ($order->status !== 'in_production') {
                 throw new \RuntimeException("Order not in production");
             }
 
             $order->update(['status' => 'ready']);
 
-            $this->log->channel('audit')->info('Cake order marked ready', [
+            Log::channel('audit')->info('Cake order marked ready', [
                 'order_id' => $order->id,
                 'correlation_id' => $correlationId,
             ]);

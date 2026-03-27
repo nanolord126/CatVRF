@@ -1,7 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php
-declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
@@ -30,8 +30,8 @@ class ValidateWebhookSignature
         $signature = $request->header('X-Signature') ?? $request->header('Authorization');
         $payload = $request->getContent();
 
-        if (!$signature || !$this->validator->validate($provider, $payload, $signature)) {
-            \Illuminate\Support\Facades\$this->log->channel('webhook_errors')->warning('Invalid webhook signature', [
+        if (!$signature || !Validator::validate($provider, $payload, $signature)) {
+            \Illuminate\Support\Facades\Log::channel('webhook_errors')->warning('Invalid webhook signature', [
                 'provider' => $provider,
                 'path' => $request->path(),
             ]);

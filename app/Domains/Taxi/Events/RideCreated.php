@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Taxi\Events;
 
@@ -27,13 +28,5 @@ class RideCreated
         public readonly string $passengerId,
         public readonly string $correlationId,
         public readonly array $metadata = [],
-    ) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+    ) {}
 }

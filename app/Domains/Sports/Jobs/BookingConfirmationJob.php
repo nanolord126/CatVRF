@@ -30,7 +30,7 @@ final class BookingConfirmationJob implements ShouldQueue
     public function handle(BookingService $service): void
     {
         try {
-            $this->log->channel('audit')->info('Starting booking confirmation', [
+            Log::channel('audit')->info('Starting booking confirmation', [
                 'booking_id' => $this->bookingId,
                 'correlation_id' => $this->correlationId,
             ]);
@@ -38,12 +38,12 @@ final class BookingConfirmationJob implements ShouldQueue
             $booking = Booking::findOrFail($this->bookingId);
             $service->confirmBooking($booking, $this->correlationId);
 
-            $this->log->channel('audit')->info('Booking confirmed', [
+            Log::channel('audit')->info('Booking confirmed', [
                 'booking_id' => $this->bookingId,
                 'correlation_id' => $this->correlationId,
             ]);
         } catch (Throwable $e) {
-            $this->log->channel('audit')->error('Booking confirmation failed', [
+            Log::channel('audit')->error('Booking confirmation failed', [
                 'booking_id' => $this->bookingId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $this->correlationId,

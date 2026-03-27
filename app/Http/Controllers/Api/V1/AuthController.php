@@ -1,8 +1,6 @@
 <?php
 declare(strict_types=1);
-
 namespace App\Http\Controllers\Api\V1;
-
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\TokenCreateRequest;
 use App\Http\Requests\Api\V1\TokenRefreshRequest;
@@ -12,7 +10,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
-
 /**
  * AuthController — аутентификация и управление token'ами.
  */
@@ -60,34 +57,28 @@ final class AuthController extends Controller
     {
         $correlationId = $request->header('X-Correlation-ID') ?? (string) Str::uuid()->toString();
         $this->fraudControlService->check(0, 'token_store', 0, $request->ip(), null, $correlationId);
-
         try {
-
             // Validate credentials
-            $user = $this->db->table('users')
+            $user = DB::table('users')
                 ->where('email', $request->email)
                 ->first();
-
             if (!$user || !$this->hash->check($request->password, $user->password)) {
                 return response()->json([
                     'error' => 'Invalid credentials',
                     'correlation_id' => $correlationId,
                 ], 401);
             }
-
             // Create token
             $token = $user->createToken(
                 $request->name ?? 'API Token',
                 $request->abilities ?? ['*'],
                 now()->addDays((int)env('SANCTUM_EXPIRATION_DAYS', 365))
             );
-
-            $this->log->channel('audit')->info('Token created', [
+            Log::channel('audit')->info('Token created', [
                 'user_id' => $user->id,
                 'token_name' => $request->name,
                 'correlation_id' => $correlationId,
             ]);
-
             return response()->json([
                 'token' => $token->plainTextToken,
                 'type' => 'Bearer',
@@ -95,18 +86,16 @@ final class AuthController extends Controller
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Token creation failed', [
+            Log::channel('audit')->error('Token creation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId ?? (string) Str::uuid()->toString(),
             ]);
-
             return response()->json([
                 'error' => 'Token creation failed',
                 'correlation_id' => $correlationId ?? Str::uuid()->toString(),
             ], 500);
         }
     }
-
     /**
      * Refresh personal access token
      * POST /api/v1/auth/tokens/refresh
@@ -116,34 +105,29 @@ final class AuthController extends Controller
         try {
             $correlationId = $request->header('X-Correlation-ID') ?? Str::uuid()->toString();
             $user = auth()->user();
-
             if (!$user) {
                 return response()->json([
                     'error' => 'Unauthorized',
                     'correlation_id' => $correlationId,
                 ], 401);
             }
-
             // Revoke old token
             $oldTokenId = $user->currentAccessToken()->id ?? null;
             if ($oldTokenId) {
-                $this->db->table('personal_access_tokens')
+                DB::table('personal_access_tokens')
                     ->where('id', $oldTokenId)
                     ->update(['revoked' => true]);
             }
-
             // Create new token
             $newToken = $user->createToken(
                 'Refreshed Token',
                 $user->currentAccessToken()->abilities ?? ['*'],
                 now()->addDays((int)env('SANCTUM_EXPIRATION_DAYS', 365))
             );
-
-            $this->log->channel('audit')->info('Token refreshed', [
+            Log::channel('audit')->info('Token refreshed', [
                 'user_id' => $user->id,
                 'correlation_id' => $correlationId,
             ]);
-
             return response()->json([
                 'token' => $newToken->plainTextToken,
                 'type' => 'Bearer',
@@ -151,18 +135,16 @@ final class AuthController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Token refresh failed', [
+            Log::channel('audit')->error('Token refresh failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId ?? (string) Str::uuid()->toString(),
             ]);
-
             return response()->json([
                 'error' => 'Token refresh failed',
                 'correlation_id' => $correlationId ?? Str::uuid()->toString(),
             ], 500);
         }
     }
-
     /**
      * Revoke personal access token
      * DELETE /api/v1/auth/tokens/{id}
@@ -171,46 +153,39 @@ final class AuthController extends Controller
     {
         $correlationId = request()->header('X-Correlation-ID') ?? (string) Str::uuid()->toString();
         $this->fraudControlService->check(auth()->id() ?? 0, 'token_destroy', 0, request()->ip(), null, $correlationId);
-
         try {
             $user = auth()->user();
-
             if (!$user) {
                 return response()->json([
                     'error' => 'Unauthorized',
                     'correlation_id' => $correlationId,
                 ], 401);
             }
-
             // Revoke token
-            $this->db->table('personal_access_tokens')
+            DB::table('personal_access_tokens')
                 ->where('id', $tokenId)
                 ->where('tokenable_id', $user->id)
                 ->update(['revoked' => true]);
-
-            $this->log->channel('audit')->info('Token revoked', [
+            Log::channel('audit')->info('Token revoked', [
                 'user_id' => $user->id,
                 'token_id' => $tokenId,
                 'correlation_id' => $correlationId,
             ]);
-
             return response()->json([
                 'message' => 'Token revoked',
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Token revocation failed', [
+            Log::channel('audit')->error('Token revocation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId ?? (string) Str::uuid()->toString(),
             ]);
-
             return response()->json([
                 'error' => 'Token revocation failed',
                 'correlation_id' => $correlationId ?? Str::uuid()->toString(),
             ], 500);
         }
     }
-
     /**
      * List user's tokens
      * GET /api/v1/auth/tokens
@@ -219,19 +194,16 @@ final class AuthController extends Controller
     {
         $user = auth()->user();
         $correlationId = request()->header('X-Correlation-ID') ?? Str::uuid()->toString();
-
         if (!$user) {
             return response()->json([
                 'error' => 'Unauthorized',
                 'correlation_id' => $correlationId,
             ], 401);
         }
-
-        $tokens = $this->db->table('personal_access_tokens')
+        $tokens = DB::table('personal_access_tokens')
             ->where('tokenable_id', $user->id)
             ->select('id', 'name', 'created_at', 'expires_at', 'revoked')
             ->get();
-
         return response()->json([
             'tokens' => $tokens,
             'correlation_id' => $correlationId,

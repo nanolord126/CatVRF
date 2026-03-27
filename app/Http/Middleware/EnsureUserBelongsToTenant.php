@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
@@ -45,7 +46,7 @@ class EnsureUserBelongsToTenant
         if ($tenant) {
             // Check if user has ANY business role in this tenant
             if (!$user->hasRoleInTenant($tenant->id, \App\Enums\Role::businessRoles())) {
-                $this->log->channel('audit')->warning('Tenant access blocked', [
+                Log::channel('audit')->warning('Tenant access blocked', [
                     'user_id' => $user->id,
                     'tenant_id' => $tenant->id,
                     'ip' => $request->ip(),

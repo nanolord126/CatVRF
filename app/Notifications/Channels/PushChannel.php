@@ -36,7 +36,7 @@ class PushChannel
     {
         // Проверить, что объект имеет метод toFirebase
         if (!method_exists($notification, 'toFirebase')) {
-            $this->log->warning('Notification does not have toFirebase method', [
+            Log::warning('Notification does not have toFirebase method', [
                 'notification_class' => get_class($notification),
                 'notifiable_id' => $notifiable->id,
             ]);
@@ -47,7 +47,7 @@ class PushChannel
             // Получить FCM token или устройства пользователя
             $devices = $this->getDeviceTokens($notifiable);
             if (empty($devices)) {
-                $this->log->debug('No device tokens found for user', [
+                Log::debug('No device tokens found for user', [
                     'notifiable_id' => $notifiable->id,
                 ]);
                 return;
@@ -66,14 +66,14 @@ class PushChannel
                         tenantId: $notification->getTenantId(),
                     );
                 } catch (\Exception $e) {
-                    $this->log->warning('Failed to send push to device', [
+                    Log::warning('Failed to send push to device', [
                         'device_token' => substr($deviceToken, 0, 20) . '...',
                         'error' => $e->getMessage(),
                     ]);
                 }
             }
 
-            $this->log->channel('audit')->info('Push notification sent', [
+            Log::channel('audit')->info('Push notification sent', [
                 'type' => $notification->getType(),
                 'user_id' => $notifiable->id,
                 'devices_count' => count($devices),
@@ -82,7 +82,7 @@ class PushChannel
             ]);
 
         } catch (\Exception $e) {
-            $this->log->channel('notifications')->error('Failed to send push notification', [
+            Log::channel('notifications')->error('Failed to send push notification', [
                 'notification_class' => get_class($notification),
                 'notifiable_id' => $notifiable->id,
                 'error' => $e->getMessage(),

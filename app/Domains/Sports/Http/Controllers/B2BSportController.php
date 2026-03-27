@@ -33,11 +33,11 @@ final class B2BSportController
         $fraudResult   = $this->fraudControlService->check(auth()->id() ?? 0, 'b2b_sport_storefront_create', 0, $request->ip(), null, $correlationId);
 
         if ($fraudResult['decision'] === 'block') {
-            $this->log->channel('fraud_alert')->warning('B2BSport storefront create blocked', ['correlation_id' => $correlationId, 'user_id' => auth()->id(), 'score' => $fraudResult['score']]);
+            Log::channel('fraud_alert')->warning('B2BSport storefront create blocked', ['correlation_id' => $correlationId, 'user_id' => auth()->id(), 'score' => $fraudResult['score']]);
             return response()->json(['success' => false, 'error' => 'Операция заблокирована.', 'correlation_id' => $correlationId], 403);
         }
 
-        $this->log->channel('audit')->info('B2BSport storefront create start', ['correlation_id' => $correlationId, 'user_id' => auth()->id()]);
+        Log::channel('audit')->info('B2BSport storefront create start', ['correlation_id' => $correlationId, 'user_id' => auth()->id()]);
 
         try {
             $this->authorize('createStorefront', B2BSportStorefront::class);
@@ -51,7 +51,7 @@ final class B2BSportController
                 'min_order_amount'   => 'integer|min:1000',
             ]);
 
-            $this->db->transaction(function () use ($validated, $correlationId) {
+            DB::transaction(function () use ($validated, $correlationId) {
                 B2BSportStorefront::create([
                     'uuid'      => Str::uuid(),
                     'tenant_id' => auth()->user()->tenant_id,
@@ -60,11 +60,11 @@ final class B2BSportController
                 ]);
             });
 
-            $this->log->channel('audit')->info('B2BSport storefront created', ['correlation_id' => $correlationId, 'user_id' => auth()->id()]);
+            Log::channel('audit')->info('B2BSport storefront created', ['correlation_id' => $correlationId, 'user_id' => auth()->id()]);
 
             return response()->json(['success' => true, 'message' => 'Витрина создана', 'correlation_id' => $correlationId], 201);
         } catch (\Exception $e) {
-            $this->log->error('B2BSport storefront create failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            Log::error('B2BSport storefront create failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json(['success' => false, 'message' => 'Ошибка при создании витрины', 'correlation_id' => Str::uuid()], 500);
         }
     }
@@ -75,7 +75,7 @@ final class B2BSportController
         $fraudResult   = $this->fraudControlService->check(auth()->id() ?? 0, 'b2b_sport_order_create', (int) $request->input('total_amount', 0), $request->ip(), null, $correlationId);
 
         if ($fraudResult['decision'] === 'block') {
-            $this->log->channel('fraud_alert')->warning('B2BSport order create blocked', ['correlation_id' => $correlationId, 'user_id' => auth()->id(), 'score' => $fraudResult['score']]);
+            Log::channel('fraud_alert')->warning('B2BSport order create blocked', ['correlation_id' => $correlationId, 'user_id' => auth()->id(), 'score' => $fraudResult['score']]);
             return response()->json(['success' => false, 'error' => 'Операция заблокирована.', 'correlation_id' => $correlationId], 403);
         }
 
@@ -88,7 +88,7 @@ final class B2BSportController
                 'total_amount'            => 'required|numeric|min:1',
             ]);
 
-            $this->db->transaction(function () use ($validated, $correlationId) {
+            DB::transaction(function () use ($validated, $correlationId) {
                 B2BSportOrder::create([
                     'uuid'              => Str::uuid(),
                     'tenant_id'         => auth()->user()->tenant_id,
@@ -100,11 +100,11 @@ final class B2BSportController
                 ]);
             });
 
-            $this->log->channel('audit')->info('B2BSport order created', ['correlation_id' => $correlationId, 'user_id' => auth()->id()]);
+            Log::channel('audit')->info('B2BSport order created', ['correlation_id' => $correlationId, 'user_id' => auth()->id()]);
 
             return response()->json(['success' => true, 'message' => 'Заказ создан', 'correlation_id' => $correlationId], 201);
         } catch (\Exception $e) {
-            $this->log->error('B2BSport order create failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            Log::error('B2BSport order create failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json(['success' => false, 'message' => 'Ошибка при создании заказа', 'correlation_id' => Str::uuid()], 500);
         }
     }
@@ -128,11 +128,11 @@ final class B2BSportController
 
             $correlationId = Str::uuid()->toString();
 
-            $this->db->transaction(function () use ($order) {
+            DB::transaction(function () use ($order) {
                 $order->update(['status' => 'approved']);
             });
 
-            $this->log->channel('audit')->info('B2BSport order approved', ['correlation_id' => $correlationId, 'user_id' => auth()->id(), 'order_id' => $id]);
+            Log::channel('audit')->info('B2BSport order approved', ['correlation_id' => $correlationId, 'user_id' => auth()->id(), 'order_id' => $id]);
 
             return response()->json(['success' => true, 'message' => 'Заказ одобрен', 'correlation_id' => $correlationId]);
         } catch (\Exception $e) {
@@ -149,11 +149,11 @@ final class B2BSportController
             $correlationId = Str::uuid()->toString();
             $reason        = $request->get('reason', '');
 
-            $this->db->transaction(function () use ($order, $reason) {
+            DB::transaction(function () use ($order, $reason) {
                 $order->update(['status' => 'rejected', 'notes' => $reason]);
             });
 
-            $this->log->channel('audit')->info('B2BSport order rejected', ['correlation_id' => $correlationId, 'user_id' => auth()->id(), 'order_id' => $id, 'reason' => $reason]);
+            Log::channel('audit')->info('B2BSport order rejected', ['correlation_id' => $correlationId, 'user_id' => auth()->id(), 'order_id' => $id, 'reason' => $reason]);
 
             return response()->json(['success' => true, 'message' => 'Заказ отклонен', 'correlation_id' => $correlationId]);
         } catch (\Exception $e) {
@@ -169,11 +169,11 @@ final class B2BSportController
             $storefront    = B2BSportStorefront::findOrFail($id);
             $correlationId = Str::uuid()->toString();
 
-            $this->db->transaction(function () use ($storefront) {
+            DB::transaction(function () use ($storefront) {
                 $storefront->update(['is_verified' => true]);
             });
 
-            $this->log->channel('audit')->info('B2BSport storefront verified', ['correlation_id' => $correlationId, 'user_id' => auth()->id(), 'storefront_id' => $id]);
+            Log::channel('audit')->info('B2BSport storefront verified', ['correlation_id' => $correlationId, 'user_id' => auth()->id(), 'storefront_id' => $id]);
 
             return response()->json(['success' => true, 'message' => 'Витрина верифицирована', 'correlation_id' => $correlationId]);
         } catch (\Exception $e) {

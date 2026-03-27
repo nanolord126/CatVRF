@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders\MedicalSupplies;
 
-use App\Domains\MedicalSupplies\Models\MedicalSupply;
+use App\Domains\Pharmacy\MedicalSupplies\Models\MedicalSupply;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 

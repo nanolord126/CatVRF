@@ -1,7 +1,7 @@
 <?php declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
-use App\Domains\Fitness\Http\Controllers\B2BFitnessController;
+use App\Domains\Sports\Fitness\Http\Controllers\B2BFitnessController;
 
 Route::middleware(['auth:sanctum', 'tenant'])->prefix('api/b2b/fitness')->group(function () {
     Route::get('/', [B2BFitnessController::class, 'storefronts'])->name('b2b.fitness.index');

@@ -25,7 +25,7 @@ class UpdatePaymentTransactionRequest extends FormRequest
         if (class_exists(\App\Services\Fraud\FraudControlService::class) && auth()->check()) {
             $fraudScore = app(\App\Services\Fraud\FraudControlService::class)->scoreOperation(new \stdClass());
             if ($fraudScore > 0.7 && !auth()->user()->hasRole('admin')) {
-                \Illuminate\Support\Facades\$this->log->channel('audit')->warning('Fraud check blocked request', ['class' => __CLASS__, 'score' => $fraudScore]);
+                \Illuminate\Support\Facades\Log::channel('audit')->warning('Fraud check blocked request', ['class' => __CLASS__, 'score' => $fraudScore]);
                 return false;
             }
         }

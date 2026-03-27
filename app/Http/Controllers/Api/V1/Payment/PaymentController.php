@@ -1,7 +1,5 @@
 declare(strict_types=1);
-
 namespace App\Http\Controllers\Api\V1\Payment;
-
 use App\Http\Controllers\Api\V1\BaseApiController;
 use App\Http\Requests\Payment\InitPaymentRequest;
 use App\Http\Requests\Payment\CapturePaymentRequest;
@@ -16,7 +14,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-
 /**
  * Payment API Controller.
  * Workflow: init → authorize (hold) → capture (settle).
@@ -32,11 +29,13 @@ use Illuminate\Support\Str;
 final class PaymentController extends BaseApiController
 {
     public function __construct(
+        // Payment-specific dependencies
         private readonly FraudControlService $fraudService,
         private readonly PaymentGatewayService $gatewayService,
         private readonly WalletService $walletService,
-    ) {}
-
+    ) {
+        parent::__construct();
+    }
     /**
      * POST /api/v1/payments/init
      * Инициализировать платёж (создать холд).
@@ -48,14 +47,12 @@ final class PaymentController extends BaseApiController
         $correlationId = $request->getCorrelationId();
         $tenantId = $request->getTenantId();
         $idempotencyKey = $request->input('idempotency_key') ?? Str::uuid()->toString();
-
         try {
             // 1. Проверка идемпотентности (предотвращение дублей)
             $existingPayment = PaymentTransaction::where([
                 'idempotency_key' => $idempotencyKey,
                 'tenant_id' => $tenantId,
             ])->first();
-
             if ($existingPayment) {
                 return response()->json([
                     'success' => true,
@@ -67,8 +64,7 @@ final class PaymentController extends BaseApiController
                     ],
                 ], 200);
             }
-
-            return $this->db->transaction(function () use ($request, $correlationId, $tenantId, $idempotencyKey) {
+            return DB::transaction(function () use ($request, $correlationId, $tenantId, $idempotencyKey) {
                 // 2. Fraud check перед платежом
                 $fraudResult = $this->fraudService->scoreOperation([
                     'type' => $request->input('operation_type'),
@@ -77,22 +73,19 @@ final class PaymentController extends BaseApiController
                     'ip_address' => $request->ip(),
                     'correlation_id' => $correlationId,
                 ]);
-
                 if ($fraudResult['decision'] === 'block') {
-                    $this->log->channel('fraud_alert')->warning('Payment blocked by fraud check', [
+                    Log::channel('fraud_alert')->warning('Payment blocked by fraud check', [
                         'correlation_id' => $correlationId,
                         'user_id' => auth()->id(),
                         'amount' => $request->integer('amount'),
                         'ml_score' => $fraudResult['score'],
                     ]);
-
                     return response()->json([
                         'success' => false,
                         'message' => 'Payment blocked due to fraud check',
                         'correlation_id' => $correlationId,
                     ], 403)->send();
                 }
-
                 // 3. Создать платёж
                 $payment = Payment::create([
                     'tenant_id' => $tenantId,
@@ -104,7 +97,6 @@ final class PaymentController extends BaseApiController
                     'correlation_id' => $correlationId,
                     'uuid' => Str::uuid(),
                 ]);
-
                 // 4. Создать транзакцию платежа (hold)
                 $transaction = PaymentTransaction::create([
                     'payment_id' => $payment->id,
@@ -118,7 +110,6 @@ final class PaymentController extends BaseApiController
                     'correlation_id' => $correlationId,
                     'uuid' => Str::uuid(),
                 ]);
-
                 // 5. Hold сумм в кошельке пользователя (если требуется)
                 if ($request->boolean('hold', true)) {
                     $this->walletService->holdAmount(
@@ -128,9 +119,8 @@ final class PaymentController extends BaseApiController
                         correlation_id: $correlationId,
                     );
                 }
-
                 // 6. Логирование
-                $this->log->channel('audit')->info('Payment initiated', [
+                Log::channel('audit')->info('Payment initiated', [
                     'correlation_id' => $correlationId,
                     'payment_id' => $payment->id,
                     'user_id' => auth()->id(),
@@ -138,7 +128,6 @@ final class PaymentController extends BaseApiController
                     'operation_type' => $request->input('operation_type'),
                     'fraud_score' => $fraudResult['score'],
                 ]);
-
                 return response()->json([
                     'success' => true,
                     'message' => 'Payment initiated successfully',
@@ -153,12 +142,11 @@ final class PaymentController extends BaseApiController
                 ], 201);
             });
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Payment initiation failed', [
+            Log::channel('audit')->error('Payment initiation failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-
             return response()->json([
                 'success' => false,
                 'message' => 'Payment initiation failed',
@@ -166,7 +154,6 @@ final class PaymentController extends BaseApiController
             ], 500);
         }
     }
-
     /**
      * POST /api/v1/payments/{id}/capture
      * Захватить платёж (списать деньги).
@@ -179,7 +166,6 @@ final class PaymentController extends BaseApiController
     ): JsonResponse {
         $correlationId = $request->getCorrelationId();
         $tenantId = $request->getTenantId();
-
         if ($payment->tenant_id !== $tenantId) {
             return response()->json([
                 'success' => false,
@@ -187,9 +173,8 @@ final class PaymentController extends BaseApiController
                 'correlation_id' => $correlationId,
             ], 403);
         }
-
         try {
-            return $this->db->transaction(function () use ($payment, $request, $correlationId) {
+            return DB::transaction(function () use ($payment, $request, $correlationId) {
                 // Проверить статус платежа
                 if ($payment->status !== 'pending') {
                     return response()->json([
@@ -198,25 +183,21 @@ final class PaymentController extends BaseApiController
                         'correlation_id' => $correlationId,
                     ], 400)->send();
                 }
-
                 // Получить commission rate
                 $commissionRate = $this->getCommissionRateByType($payment->operation_type);
                 $commission = intdiv((int) ($payment->amount * $commissionRate / 100), 1);
                 $netAmount = $payment->amount - $commission;
-
                 // Обновить статус платежа
                 $payment->update([
                     'status' => 'captured',
                     'captured_at' => now(),
                 ]);
-
                 // Обновить транзакцию
                 $transaction = $payment->transaction;
                 $transaction->update([
                     'status' => 'captured',
                     'captured_at' => now(),
                 ]);
-
                 // Кредитировать кошелёк провайдера (с комиссией)
                 $provider = $this->getProviderByOperationType($payment->operation_type, $request);
                 if ($provider) {
@@ -224,7 +205,6 @@ final class PaymentController extends BaseApiController
                         'tenant_id' => $payment->tenant_id,
                         'user_id' => $provider->id,
                     ]);
-
                     $this->walletService->credit(
                         wallet_id: $providerWallet->id,
                         amount: $netAmount,
@@ -232,16 +212,14 @@ final class PaymentController extends BaseApiController
                         correlation_id: $correlationId,
                     );
                 }
-
                 // Логирование
-                $this->log->channel('audit')->info('Payment captured', [
+                Log::channel('audit')->info('Payment captured', [
                     'correlation_id' => $correlationId,
                     'payment_id' => $payment->id,
                     'amount' => $payment->amount,
                     'commission' => $commission,
                     'net_amount' => $netAmount,
                 ]);
-
                 return response()->json([
                     'success' => true,
                     'message' => 'Payment captured successfully',
@@ -256,12 +234,11 @@ final class PaymentController extends BaseApiController
                 ], 200);
             });
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Payment capture failed', [
+            Log::channel('audit')->error('Payment capture failed', [
                 'correlation_id' => $correlationId,
                 'payment_id' => $payment->id,
                 'error' => $e->getMessage(),
             ]);
-
             return response()->json([
                 'success' => false,
                 'message' => 'Payment capture failed',
@@ -269,7 +246,6 @@ final class PaymentController extends BaseApiController
             ], 500);
         }
     }
-
     /**
      * POST /api/v1/payments/{id}/refund
      * Вернуть платёж.
@@ -281,11 +257,9 @@ final class PaymentController extends BaseApiController
         RefundPaymentRequest $request,
     ): JsonResponse {
         $correlationId = $request->getCorrelationId();
-
         try {
-            return $this->db->transaction(function () use ($payment, $request, $correlationId) {
+            return DB::transaction(function () use ($payment, $request, $correlationId) {
                 $refundAmount = $request->integer('amount', $payment->amount);
-
                 if ($refundAmount > $payment->amount) {
                     return response()->json([
                         'success' => false,
@@ -293,12 +267,10 @@ final class PaymentController extends BaseApiController
                         'correlation_id' => $correlationId,
                     ], 400)->send();
                 }
-
                 $payment->update([
                     'status' => 'refunded',
                     'refunded_at' => now(),
                 ]);
-
                 // Вернуть средства в кошелёк пользователя
                 $this->walletService->credit(
                     wallet_id: auth()->user()->wallet_id ?? 1,
@@ -306,13 +278,11 @@ final class PaymentController extends BaseApiController
                     reason: 'Refund for ' . $payment->operation_type,
                     correlation_id: $correlationId,
                 );
-
-                $this->log->channel('audit')->info('Payment refunded', [
+                Log::channel('audit')->info('Payment refunded', [
                     'correlation_id' => $correlationId,
                     'payment_id' => $payment->id,
                     'refund_amount' => $refundAmount,
                 ]);
-
                 return response()->json([
                     'success' => true,
                     'message' => 'Payment refunded successfully',
@@ -324,11 +294,10 @@ final class PaymentController extends BaseApiController
                 ], 200);
             });
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Payment refund failed', [
+            Log::channel('audit')->error('Payment refund failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
-
             return response()->json([
                 'success' => false,
                 'message' => 'Refund failed',
@@ -336,7 +305,6 @@ final class PaymentController extends BaseApiController
             ], 500);
         }
     }
-
     /**
      * Получить комиссию по типу операции.
      */
@@ -350,7 +318,6 @@ final class PaymentController extends BaseApiController
             default => 14.0,
         };
     }
-
     /**
      * Получить провайдера (продавца) по типу операции.
      */

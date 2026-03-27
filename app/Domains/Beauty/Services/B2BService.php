@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Beauty\Services;
 
@@ -24,26 +25,18 @@ class B2BService
     public function __construct(
         private readonly FraudControlService $fraudControl,
         private readonly WalletService $walletService
-    ) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+    ) {}
 
     public function createB2BOrder(array $data, string $correlationId): B2BBeautyOrder
     {
-        return $this->db->transaction(function () use ($data, $correlationId) {
+        return DB::transaction(function () use ($data, $correlationId) {
             $this->fraudControl->check($data, 'b2b_beauty_order_create');
 
             $order = B2BBeautyOrder::create(array_merge($data, [
                 'correlation_id' => $correlationId,
             ]));
 
-            $this->log->channel('audit')->info('B2B Beauty order created', [
+            Log::channel('audit')->info('B2B Beauty order created', [
                 'order_id' => $order->id,
                 'correlation_id' => $correlationId,
             ]);

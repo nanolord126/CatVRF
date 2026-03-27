@@ -1,8 +1,7 @@
-declare(strict_types=1);
-
 <?php
 
 declare(strict_types=1);
+
 
 namespace App\Domains\Beauty\Listeners;
 
@@ -39,10 +38,10 @@ class HandleSalonVerifiedListener implements ShouldQueue
         }
 
         // Clear salon cache
-        $this->cache->forget("salon:{$salon->id}");
-        $this->cache->forget("verified_salons:{$salon->tenant_id}");
+        Cache::forget("salon:{$salon->id}");
+        Cache::forget("verified_salons:{$salon->tenant_id}");
 
-        $this->log->channel('audit')->info('SalonVerified event handled', [
+        Log::channel('audit')->info('SalonVerified event handled', [
             'salon_id' => $salon->id,
             'correlation_id' => $event->correlationId,
         ]);

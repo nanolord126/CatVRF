@@ -2,7 +2,7 @@
 
 namespace App\Filament\Tenant\Resources\FreshProduce;
 
-use App\Domains\FreshProduce\Models\FreshProduct;
+use App\Domains\FarmDirect\FreshProduce\Models\FreshProduct;
 use App\Filament\Tenant\Resources\FreshProduce\Pages;
 use Filament\Forms;
 use Filament\Forms\Form;

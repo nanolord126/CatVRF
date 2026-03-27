@@ -36,7 +36,7 @@ class SmsChannel
     {
         // Проверить, что объект имеет метод toSms
         if (!method_exists($notification, 'toSms')) {
-            $this->log->warning('Notification does not have toSms method', [
+            Log::warning('Notification does not have toSms method', [
                 'notification_class' => get_class($notification),
                 'notifiable_id' => $notifiable->id,
             ]);
@@ -63,7 +63,7 @@ class SmsChannel
                 priority: $smsData['priority'] ?? 'normal',
             );
 
-            $this->log->channel('audit')->info('SMS notification sent', [
+            Log::channel('audit')->info('SMS notification sent', [
                 'type' => $notification->getType(),
                 'phone' => $this->maskPhone($phone),
                 'correlation_id' => $notification->getCorrelationId(),
@@ -71,7 +71,7 @@ class SmsChannel
             ]);
 
         } catch (\Exception $e) {
-            $this->log->channel('notifications')->error('Failed to send SMS notification', [
+            Log::channel('notifications')->error('Failed to send SMS notification', [
                 'notification_class' => get_class($notification),
                 'notifiable_id' => $notifiable->id,
                 'error' => $e->getMessage(),

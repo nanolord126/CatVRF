@@ -1,7 +1,7 @@
 <?php declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
-use App\Domains\FashionRetail\Http\Controllers\B2BFashionController;
+use App\Domains\Fashion\FashionRetail\Http\Controllers\B2BFashionController;
 
 Route::middleware(['auth:sanctum', 'tenant'])->prefix('api/b2b/fashion-retail')->group(function () {
     Route::get('/', [B2BFashionController::class, 'storefronts'])->name('b2b.fashion-retail.index');

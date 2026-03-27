@@ -57,7 +57,7 @@ final class Studio extends Model
 
     public function classes(): HasMany
     {
-        return $this->hasMany(Class$this->session->class);
+        return $this->hasMany(ClassSession::class);
     }
 
     public function memberships(): HasMany

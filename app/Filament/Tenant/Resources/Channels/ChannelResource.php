@@ -2,10 +2,10 @@
 
 namespace App\Filament\Tenant\Resources\Channels;
 
-use App\Domains\Channels\Models\BusinessChannel;
-use App\Domains\Channels\Services\ChannelService;
-use App\Domains\Channels\Services\ChannelSubscriptionService;
-use App\Domains\Channels\Services\ChannelTariffService;
+use App\Domains\Content\Channels\Models\BusinessChannel;
+use App\Domains\Content\Channels\Services\ChannelService;
+use App\Domains\Content\Channels\Services\ChannelSubscriptionService;
+use App\Domains\Content\Channels\Services\ChannelTariffService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;

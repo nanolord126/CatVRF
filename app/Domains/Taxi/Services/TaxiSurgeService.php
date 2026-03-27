@@ -25,7 +25,7 @@ final class TaxiSurgeService
 
 
         try {
-            $this->log->channel('audit')->info('Calculating surge multiplier', [
+            Log::channel('audit')->info('Calculating surge multiplier', [
                 'location' => $location,
                 'tenant_id' => $tenantId,
                 'correlation_id' => $correlationId,
@@ -52,7 +52,7 @@ final class TaxiSurgeService
 
             return $multiplier;
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Surge multiplier calculation failed', [
+            Log::channel('audit')->error('Surge multiplier calculation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -81,7 +81,7 @@ final class TaxiSurgeService
         $basePrice = ($basePrices[$vehicleClass] ?? 5000) * $distanceKm;
         $finalPrice = (int) ($basePrice * $ride->surge_multiplier);
 
-        $this->log->channel('audit')->info('Ride price calculated', [
+        Log::channel('audit')->info('Ride price calculated', [
             'ride_id' => $ride->id,
             'distance_km' => $distanceKm,
             'base_price' => $basePrice,

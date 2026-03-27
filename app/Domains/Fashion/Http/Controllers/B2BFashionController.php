@@ -45,14 +45,14 @@ final class B2BFashionController
                 'min_order_amount' => 'numeric|min:1000',
             ]);
 
-            return $this->db->transaction(function () use ($validated, $correlationId) {
+            return DB::transaction(function () use ($validated, $correlationId) {
                 $storefront = B2BFashionStorefront::create([
                     'tenant_id' => tenant()->id,
                     'correlation_id' => $correlationId,
                     ...$validated,
                 ]);
 
-                $this->log->channel('audit')->info('B2B Fashion storefront created', [
+                Log::channel('audit')->info('B2B Fashion storefront created', [
                     'storefront_id' => $storefront->id,
                     'correlation_id' => $correlationId,
                     'user_id' => auth()->id(),
@@ -65,7 +65,7 @@ final class B2BFashionController
                 ], 201);
             });
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Fashion storefront creation failed', [
+            Log::channel('audit')->error('Fashion storefront creation failed', [
                 'error' => $e->getMessage(),
                 'user_id' => auth()->id(),
             ]);
@@ -90,11 +90,11 @@ final class B2BFashionController
                 'items.*.quantity' => 'required|integer|min:1',
             ]);
 
-            return $this->db->transaction(function () use ($validated, $correlationId) {
+            return DB::transaction(function () use ($validated, $correlationId) {
                 $storefront = B2BFashionStorefront::findOrFail($validated['storefront_id']);
                 $commission = ($validated['items'][0]['quantity'] ?? 1) * 0.14;
 
-                $this->log->channel('audit')->info('B2B Fashion order created', [
+                Log::channel('audit')->info('B2B Fashion order created', [
                     'storefront_id' => $storefront->id,
                     'correlation_id' => $correlationId,
                     'commission' => $commission,
@@ -107,7 +107,7 @@ final class B2BFashionController
                 ], 201);
             });
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Fashion order creation failed', [
+            Log::channel('audit')->error('Fashion order creation failed', [
                 'error' => $e->getMessage(),
             ]);
 
@@ -135,11 +135,11 @@ final class B2BFashionController
     public function approveOrder(int $id): JsonResponse
     {
         try {
-            return $this->db->transaction(function () use ($id) {
+            return DB::transaction(function () use ($id) {
                 $order = B2BFashionStorefront::findOrFail($id);
                 $order->update(['status' => 'approved']);
 
-                $this->log->channel('audit')->info('Fashion order approved', [
+                Log::channel('audit')->info('Fashion order approved', [
                     'order_id' => $id,
                     'user_id' => auth()->id(),
                 ]);
@@ -163,14 +163,14 @@ final class B2BFashionController
                 'reason' => 'required|string|max:500',
             ]);
 
-            return $this->db->transaction(function () use ($id, $validated) {
+            return DB::transaction(function () use ($id, $validated) {
                 $order = B2BFashionStorefront::findOrFail($id);
                 $order->update([
                     'status' => 'rejected',
                     'rejection_reason' => $validated['reason'],
                 ]);
 
-                $this->log->channel('audit')->info('Fashion order rejected', [
+                Log::channel('audit')->info('Fashion order rejected', [
                     'order_id' => $id,
                     'reason' => $validated['reason'],
                 ]);
@@ -189,11 +189,11 @@ final class B2BFashionController
     public function verifyInn(int $id): JsonResponse
     {
         try {
-            return $this->db->transaction(function () use ($id) {
+            return DB::transaction(function () use ($id) {
                 $storefront = B2BFashionStorefront::findOrFail($id);
                 $storefront->update(['is_verified' => true]);
 
-                $this->log->channel('audit')->info('Fashion storefront verified', [
+                Log::channel('audit')->info('Fashion storefront verified', [
                     'storefront_id' => $id,
                     'admin_id' => auth()->id(),
                 ]);

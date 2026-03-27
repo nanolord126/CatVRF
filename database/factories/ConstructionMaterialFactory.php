@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Domains\ConstructionMaterials\Models\ConstructionMaterial;
+use App\Domains\ConstructionAndRepair\ConstructionAndRepair\ConstructionMaterials\Models\ConstructionMaterial;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 final class ConstructionMaterialFactory extends Factory

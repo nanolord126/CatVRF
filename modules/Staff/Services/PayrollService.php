@@ -24,13 +24,13 @@ class PayrollService
     {
         $correlationId = bin2hex(random_bytes(16));
 
-        $this->db->transaction(function () use ($slip, $correlationId) {
+        DB::transaction(function () use ($slip, $correlationId) {
             $employee = $slip->user;
             $organization = tenant(); // Тенант - владелец кошелька отеля/салона
 
             // Проверка баланса организации
             if ($organization->balance < $slip->net_salary) {
-                 $this->log->error('Payroll: Insufficient funds in organization wallet.', [
+                 Log::error('Payroll: Insufficient funds in organization wallet.', [
                      'tenant' => $organization->id,
                      'amount' => $slip->net_salary
                  ]);
@@ -47,7 +47,7 @@ class PayrollService
 
             $slip->update(['status' => 'paid', 'correlation_id' => $correlationId]);
             
-            $this->log->info("Payroll OK: Salary released for user #{$employee->id}", [
+            Log::info("Payroll OK: Salary released for user #{$employee->id}", [
                 'amount' => $slip->net_salary,
                 'correlation_id' => $correlationId
             ]);

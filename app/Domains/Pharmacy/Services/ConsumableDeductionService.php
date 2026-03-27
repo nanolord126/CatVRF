@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Pharmacy\Services;
 
@@ -20,23 +21,15 @@ final /**
  */
 class ConsumableDeductionService
 {
-    public function __construct(private readonly FraudControlService $fraud) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+    public function __construct(private readonly FraudControlService $fraud) {}
 
     public function deduct(int $id, int $qty, string $correlationId): void
     {
         $this->fraud->check(['id' => $id, 'qty' => $qty]);
-        $this->db->transaction(function () use ($id, $qty, $correlationId) {
+        DB::transaction(function () use ($id, $qty, $correlationId) {
             $c = PharmacyConsumable::findOrFail($id);
             $c->decrement('stock', $qty);
-            $this->log->channel('audit')->info("Consumable deducted", ['id' => $id, 'qty' => $qty, 'correlation_id' => $correlationId]);
+            Log::channel('audit')->info("Consumable deducted", ['id' => $id, 'qty' => $qty, 'correlation_id' => $correlationId]);
         });
     }
 }

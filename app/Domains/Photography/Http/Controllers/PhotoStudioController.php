@@ -27,7 +27,7 @@ final class PhotoStudioController
 				'correlation_id' => Str::uuid(),
 			]);
 		} catch (\Exception $e) {
-			$this->log->channel('audit')->error('Photography: Studios list failed', [
+			Log::channel('audit')->error('Photography: Studios list failed', [
 				'error' => $e->getMessage(),
 			]);
 			return response()->json([
@@ -50,7 +50,7 @@ final class PhotoStudioController
 				'correlation_id' => Str::uuid(),
 			]);
 		} catch (\Exception $e) {
-			$this->log->channel('audit')->error('Photography: Studio show failed', [
+			Log::channel('audit')->error('Photography: Studio show failed', [
 				'studio_id' => $id,
 				'error' => $e->getMessage(),
 			]);
@@ -159,7 +159,7 @@ final class PhotoStudioController
 				'total_studios' => PhotoStudio::count(),
 				'verified_studios' => PhotoStudio::where('is_verified', true)->count(),
 				'avg_rating' => PhotoStudio::avg('rating'),
-				'total_sessions' => \App\Domains\Photography\Models\Photo$this->session->count(),
+				'total_sessions' => \App\Domains\Photography\Models\PhotoSession->count(),
 			];
 
 			return response()->json([
@@ -202,11 +202,11 @@ final class PhotoStudioController
 		try {
 			$this->authorize('verify', PhotoStudio::class);
 
-			$this->db->transaction(function () use ($id) {
+			DB::transaction(function () use ($id) {
 				$studio = PhotoStudio::findOrFail($id);
 				$studio->update(['is_verified' => true]);
 
-				$this->log->channel('audit')->info('Photography: Studio verified', [
+				Log::channel('audit')->info('Photography: Studio verified', [
 					'studio_id' => $id,
 					'correlation_id' => Str::uuid(),
 				]);

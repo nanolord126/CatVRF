@@ -1,10 +1,11 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources;
 
-use App\Domains\HealthyFood\Models\HealthyFood;
+use App\Domains\Food\HealthyFood\Models\HealthyFood;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;

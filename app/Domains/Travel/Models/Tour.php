@@ -1,31 +1,78 @@
-<?php declare(strict_types=1);
-name
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domains\Travel\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Illuminate\Support\Str;
 
 /**
- * Tour
- * 
- * Производитель: CatVRF Platform
- * Версия: 1.0.0
- * 
- * Примеры использования:
- * 
- * ```php
- * // Базовое использование
- * $instance = new Tour();
- * ```
- * 
- * Требования:
- * - Laravel 10+
- * - PHP 8.2+
- * - Все методы должны быть явно типизированы
- * 
- * @author CatVRF
- * @package namespace App\Domains\Travel\Models
- * @see https://github.com/iyegorovskyi_clemny/CatVRF
+ * КАНОН 2026: Модель Tour (Тур).
  */
-space App\Domains\Travel\Models;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Traits\TenantScoped;
-final class Tour extends Model{use HasUuids,SoftDeletes,TenantScoped;protected $table='tours';protected $fillable=['uuid','tenant_id','agency_id','correlation_id','name','destination','price_kopecks','duration_days','rating','is_verified','tags'];protected $casts=['price_kopecks'=>'integer','duration_days'=>'integer','rating'=>'float','is_verified'=>'boolean','tags'=>'json'];protected static function booted(){static::addGlobalScope('tenant',fn($q)=>$q->where('tours.tenant_id',tenant()->id));}}
+final class Tour extends Model
+{
+    use SoftDeletes, LogsActivity;
+
+    protected $table = 'tours';
+
+    protected $fillable = [
+        'uuid',
+        'tenant_id',
+        'destination_id',
+        'title',
+        'content',
+        'base_price',
+        'duration_days',
+        'difficulty',
+        'amenities',
+        'tags',
+        'is_active',
+        'correlation_id'
+    ];
+
+    protected $casts = [
+        'amenities' => 'json',
+        'tags' => 'json',
+        'is_active' => 'boolean',
+        'base_price' => 'integer',
+        'deleted_at' => 'datetime'
+    ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Tour $model) {
+            if (!$model->uuid) $model->uuid = (string) Str::uuid();
+            if (!$model->tenant_id) $model->tenant_id = (tenant()->id ?? 1);
+            if (!$model->correlation_id) $model->correlation_id = request()->header('X-Correlation-ID');
+        });
+
+        static::addGlobalScope('tenant', function ($builder) {
+            $builder->where('tenant_id', tenant()->id ?? 1);
+        });
+    }
+
+    public function destination(): BelongsTo
+    {
+        return $this->belongsTo(Destination::class);
+    }
+
+    public function trips(): HasMany
+    {
+        return $this->hasMany(Trip::class);
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['title', 'base_price', 'is_active'])
+            ->logOnlyDirty()
+            ->useLogName('travel_domain')
+            ->dontSubmitEmptyLogs();
+    }
+}

@@ -17,8 +17,8 @@ final readonly class GeoService
         // from и to: ['lat' => ..., 'lon' => ...]
         $cacheKey = "distance:{$from['lat']}:{$from['lon']}:{$to['lat']}:{$to['lon']}";
 
-        if ($this->cache->has($cacheKey)) {
-            return $this->cache->get($cacheKey);
+        if (Cache::has($cacheKey)) {
+            return Cache::get($cacheKey);
         }
 
         // Используем формулу Haversine для простого расчета
@@ -29,14 +29,14 @@ final readonly class GeoService
             $to['lon'],
         );
 
-        $this->cache->put($cacheKey, $distance, 86400); // 1 день
+        Cache::put($cacheKey, $distance, 86400); // 1 день
 
         return $distance;
     }
 
     public function getNearbyItems(array $geoPoint, int $radiusKm, string $entityType = 'products'): array
     {
-        $query = $this->db->table($entityType)
+        $query = DB::table($entityType)
             ->selectRaw('*, ST_Distance(geo_point, ?) / 1000 as distance_km', [$geoPoint])
             ->havingRaw('distance_km <= ?', [$radiusKm])
             ->orderBy('distance_km');

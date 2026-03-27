@@ -1,33 +1,53 @@
-declare(strict_types=1);
+<?php
 
-<?php declare(strict_types=1);
+declare(strict_types=1);
 
 namespace App\Domains\Fashion\Policies;
 
-use App\Domains\Fashion\Models\FashionStore;
 use App\Models\User;
-use Illuminate\Auth\Access\Response;
+use App\Domains\Fashion\Models\FashionStore;
+use Illuminate\Auth\Access\HandlesAuthorization;
 
-final /**
- * FashionStorePolicy
+/**
+ * КАНЬОН 2026 — FASHION STORE POLICY
  * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
+ * Изоляция данных на уровне tenant_id. 
+ * Проверка ИНН для B2B действий.
  */
-class FashionStorePolicy
+final class FashionStorePolicy
 {
-    public function viewAny(?User $user): Response
+    use HandlesAuthorization;
+
+    public function viewAny(User $user): bool
     {
-        return $this->response->allow();
+        return $user->can('view_fashion');
     }
 
-    public function view(?User $user, FashionStore $store): Response
+    public function view(User $user, FashionStore $store): bool
     {
-        return $this->response->allow();
+        return $store->tenant_id === $user->tenant_id;
     }
+
+    public function create(User $user): bool
+    {
+        // Проверка через Fraud ML перед созданием магазина
+        if (!app(\App\Services\FraudControlService::class)->shouldBlock(0.1, 'create_fashion_store')) {
+             return $user->can('manage_fashion');
+        }
+
+        return false;
+    }
+
+    public function update(User $user, FashionStore $store): bool
+    {
+        return $store->tenant_id === $user->tenant_id && $user->can('manage_fashion');
+    }
+
+    public function delete(User $user, FashionStore $store): bool
+    {
+        return $store->tenant_id === $user->tenant_id && $user->isAdmin();
+    }
+}
 
     public function create(User $user): Response
     {

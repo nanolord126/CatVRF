@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Domains\Cosmetics\Models\CosmeticProduct;
+use App\Domains\Beauty\Cosmetics\Models\CosmeticProduct;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 final class CosmeticProductFactory extends Factory

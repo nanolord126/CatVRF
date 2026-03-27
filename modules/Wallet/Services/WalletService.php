@@ -81,7 +81,7 @@ final class WalletService
                 'correlation_id' => $correlationId,
             ]);
 
-            $this->log->channel('audit')->info('Wallet: Deposit initiated', [
+            Log::channel('audit')->info('Wallet: Deposit initiated', [
                 'correlation_id' => $correlationId,
                 'user_id' => $userId,
                 'tenant_id' => $tenantId,
@@ -90,7 +90,7 @@ final class WalletService
             ]);
 
             // 2. DATABASE TRANSACTION
-            $transaction = $this->db->transaction(function () use (
+            $transaction = DB::transaction(function () use (
                 $userId,
                 $tenantId,
                 $amountCents,
@@ -114,7 +114,7 @@ final class WalletService
             });
 
             // 3. SUCCESS LOG
-            $this->log->channel('audit')->info('Wallet: Deposit succeeded', [
+            Log::channel('audit')->info('Wallet: Deposit succeeded', [
                 'correlation_id' => $correlationId,
                 'transaction_id' => $transaction->id,
                 'amount' => $amountCents,
@@ -125,12 +125,12 @@ final class WalletService
         } catch (\Exception $e) {
             // 4. ERROR LOG with backtrace
             if ($e instanceof DomainException) {
-                $this->log->channel('audit')->warning('Wallet: Deposit failed - domain error', [
+                Log::channel('audit')->warning('Wallet: Deposit failed - domain error', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                 ]);
             } else {
-                $this->log->channel('audit')->error('Wallet: Deposit error', [
+                Log::channel('audit')->error('Wallet: Deposit error', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
@@ -177,7 +177,7 @@ final class WalletService
                 'correlation_id' => $correlationId,
             ]);
 
-            $this->log->channel('audit')->info('Wallet: Withdrawal initiated', [
+            Log::channel('audit')->info('Wallet: Withdrawal initiated', [
                 'correlation_id' => $correlationId,
                 'user_id' => $userId,
                 'tenant_id' => $tenantId,
@@ -186,7 +186,7 @@ final class WalletService
             ]);
 
             // 2. DATABASE TRANSACTION with balance check
-            $transaction = $this->db->transaction(function () use (
+            $transaction = DB::transaction(function () use (
                 $userId,
                 $tenantId,
                 $amountCents,
@@ -226,7 +226,7 @@ final class WalletService
             });
 
             // 3. SUCCESS LOG
-            $this->log->channel('audit')->info('Wallet: Withdrawal succeeded', [
+            Log::channel('audit')->info('Wallet: Withdrawal succeeded', [
                 'correlation_id' => $correlationId,
                 'transaction_id' => $transaction->id,
                 'amount' => $amountCents,
@@ -237,7 +237,7 @@ final class WalletService
         } catch (\Exception $e) {
             // 4. ERROR LOG with context
             if ($e instanceof DomainException) {
-                $this->log->channel('audit')->warning('Wallet: Withdrawal failed - insufficient balance', [
+                Log::channel('audit')->warning('Wallet: Withdrawal failed - insufficient balance', [
                     'correlation_id' => $correlationId,
                     'user_id' => $userId,
                     'requested_amount' => $amountCents,
@@ -245,7 +245,7 @@ final class WalletService
                     'error' => $e->getMessage(),
                 ]);
             } else {
-                $this->log->channel('audit')->error('Wallet: Withdrawal error', [
+                Log::channel('audit')->error('Wallet: Withdrawal error', [
                     'correlation_id' => $correlationId,
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
@@ -305,7 +305,7 @@ final class WalletService
                 'correlation_id' => $correlationId,
             ]);
 
-            $this->log->channel('audit')->info('Wallet: Transfer initiated', [
+            Log::channel('audit')->info('Wallet: Transfer initiated', [
                 'correlation_id' => $correlationId,
                 'from_user_id' => $fromUserId,
                 'to_user_id' => $toUserId,
@@ -313,7 +313,7 @@ final class WalletService
             ]);
 
             // 2. TRANSACTION
-            $result = $this->db->transaction(function () use (
+            $result = DB::transaction(function () use (
                 $fromUserId,
                 $toUserId,
                 $tenantId,
@@ -355,7 +355,7 @@ final class WalletService
             });
 
             // 3. SUCCESS LOG
-            $this->log->channel('audit')->info('Wallet: Transfer succeeded', [
+            Log::channel('audit')->info('Wallet: Transfer succeeded', [
                 'correlation_id' => $correlationId,
                 'from_user_id' => $fromUserId,
                 'to_user_id' => $toUserId,
@@ -365,7 +365,7 @@ final class WalletService
             return $result;
         } catch (\Exception $e) {
             // 4. ERROR LOG
-            $this->log->channel('audit')->error('Wallet: Transfer failed', [
+            Log::channel('audit')->error('Wallet: Transfer failed', [
                 'correlation_id' => $correlationId,
                 'from_user_id' => $fromUserId,
                 'to_user_id' => $toUserId,
@@ -414,7 +414,7 @@ final class WalletService
                 'correlation_id' => $correlationId,
             ]);
 
-            $this->log->channel('audit')->info('Wallet: Hold initiated', [
+            Log::channel('audit')->info('Wallet: Hold initiated', [
                 'correlation_id' => $correlationId,
                 'user_id' => $userId,
                 'amount' => $amountCents,
@@ -422,7 +422,7 @@ final class WalletService
             ]);
 
             // 2. TRANSACTION
-            $transaction = $this->db->transaction(function () use (
+            $transaction = DB::transaction(function () use (
                 $userId,
                 $tenantId,
                 $amountCents,
@@ -448,7 +448,7 @@ final class WalletService
             });
 
             // 3. SUCCESS LOG
-            $this->log->channel('audit')->info('Wallet: Hold succeeded', [
+            Log::channel('audit')->info('Wallet: Hold succeeded', [
                 'correlation_id' => $correlationId,
                 'transaction_id' => $transaction->id,
                 'amount' => $amountCents,
@@ -458,7 +458,7 @@ final class WalletService
             return $transaction;
         } catch (\Exception $e) {
             // 4. ERROR LOG
-            $this->log->channel('audit')->error('Wallet: Hold failed', [
+            Log::channel('audit')->error('Wallet: Hold failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -488,7 +488,7 @@ final class WalletService
                 throw new DomainException('Transaction is not a pending hold');
             }
 
-            $this->log->channel('audit')->info('Wallet: Release hold initiated', [
+            Log::channel('audit')->info('Wallet: Release hold initiated', [
                 'correlation_id' => $correlationId,
                 'hold_transaction_id' => $transactionId,
                 'amount' => abs($holdTransaction->amount),
@@ -501,7 +501,7 @@ final class WalletService
             ]);
 
             // CREATE reversal transaction
-            $this->db->transaction(function () use ($holdTransaction, $correlationId) {
+            DB::transaction(function () use ($holdTransaction, $correlationId) {
                 WalletTransaction::create([
                     'tenant_id' => $holdTransaction->tenant_id,
                     'user_id' => $holdTransaction->user_id,
@@ -514,12 +514,12 @@ final class WalletService
                 ]);
             });
 
-            $this->log->channel('audit')->info('Wallet: Release hold succeeded', [
+            Log::channel('audit')->info('Wallet: Release hold succeeded', [
                 'correlation_id' => $correlationId,
                 'hold_transaction_id' => $transactionId,
             ]);
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Wallet: Release hold failed', [
+            Log::channel('audit')->error('Wallet: Release hold failed', [
                 'correlation_id' => $correlationId,
                 'transaction_id' => $transactionId,
                 'error' => $e->getMessage(),

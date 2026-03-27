@@ -35,7 +35,7 @@ class PushNotificationService
                 $firebase = $factory->withServiceAccount(config('services.firebase.credentials_path'));
                 $this->messaging = $firebase->createMessaging();
             } catch (\Exception $e) {
-                $this->log->warning('Firebase not initialized', ['error' => $e->getMessage()]);
+                Log::warning('Firebase not initialized', ['error' => $e->getMessage()]);
             }
         }
 
@@ -59,7 +59,7 @@ class PushNotificationService
 
             // Создать облако сообщение
             $message = CloudMessage::withTarget('token', $token)
-                ->withNotification(Firebase$this->notification->create(
+                ->withNotification(FirebaseNotification->create(
                     $notification['notification']['title'] ?? 'Notification',
                     $notification['notification']['body'] ?? ''
                 ))
@@ -68,7 +68,7 @@ class PushNotificationService
             // Отправить
             $this->messaging->send($message);
 
-            $this->log->channel('audit')->info('Push notification sent', [
+            Log::channel('audit')->info('Push notification sent', [
                 'token' => substr($token, 0, 20) . '...',
                 'correlation_id' => $correlationId,
             ]);
@@ -76,7 +76,7 @@ class PushNotificationService
             return true;
 
         } catch (\Exception $e) {
-            $this->log->error('Failed to send push notification', [
+            Log::error('Failed to send push notification', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -106,7 +106,7 @@ class PushNotificationService
                         tenantId: $user->tenant_id ?? null,
                     );
                 } catch (\Exception $e) {
-                    $this->log->warning('Failed to send push to device', ['error' => $e->getMessage()]);
+                    Log::warning('Failed to send push to device', ['error' => $e->getMessage()]);
                 }
             }
         }

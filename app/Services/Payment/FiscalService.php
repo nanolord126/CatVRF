@@ -58,7 +58,7 @@ final readonly class FiscalService
             ]);
 
             // 2. AUDIT: Начало fiscalization
-            $this->log->channel('audit')->info('Fiscal transmission started', [
+            Log::channel('audit')->info('Fiscal transmission started', [
                 'correlation_id' => $correlationId,
                 'payment_id' => $payment->id,
                 'amount' => $payment->amount,
@@ -75,7 +75,7 @@ final readonly class FiscalService
             // 4. ПОЛУЧИТЬ ДАННЫЕ ЗАКАЗА
             $items = $payment->metadata['items'] ?? [];
             if (empty($items)) {
-                $this->log->channel('audit')->warning('Fiscal: no items to fiscalize', [
+                Log::channel('audit')->warning('Fiscal: no items to fiscalize', [
                     'correlation_id' => $correlationId,
                     'payment_id' => $payment->id,
                 ]);
@@ -89,7 +89,7 @@ final readonly class FiscalService
             $result = $this->sendToOFD($checkData, $payment, $correlationId);
 
             if ($result) {
-                $this->log->channel('audit')->info('Fiscal transmission succeeded', [
+                Log::channel('audit')->info('Fiscal transmission succeeded', [
                     'correlation_id' => $correlationId,
                     'payment_id' => $payment->id,
                     'fiscal_number' => $checkData['external_id'] ?? null,
@@ -99,7 +99,7 @@ final readonly class FiscalService
             return $result;
 
         } catch (Exception $e) {
-            $this->log->channel('audit')->error('Fiscal transmission failed', [
+            Log::channel('audit')->error('Fiscal transmission failed', [
                 'correlation_id' => $correlationId,
                 'payment_id' => $payment->id,
                 'amount' => $payment->amount,
@@ -270,7 +270,7 @@ final readonly class FiscalService
     {
         // Заглушка для кастомного провайдера
         // Имплементируется в подклассах или конкретных реализациях
-        $this->log->channel('audit')->info('Custom OFD provider not implemented', [
+        Log::channel('audit')->info('Custom OFD provider not implemented', [
             'correlation_id' => $correlationId,
         ]);
 

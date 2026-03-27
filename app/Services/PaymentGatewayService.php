@@ -43,12 +43,12 @@ final class PaymentGatewayService
 
 
         // Check idempotency
-        $existingPayment = $this->db->table('payment_idempotency_records')
+        $existingPayment = DB::table('payment_idempotency_records')
             ->where('idempotency_key', $paymentData['idempotency_key'] ?? null)
             ->first();
 
         if ($existingPayment) {
-            $this->log->channel('audit')->info('Idempotent payment request', [
+            Log::channel('audit')->info('Idempotent payment request', [
                 'correlation_id' => $correlationId,
                 'idempotency_key' => $paymentData['idempotency_key'],
                 'existing_payment_id' => $existingPayment->payment_id,
@@ -61,9 +61,9 @@ final class PaymentGatewayService
             ];
         }
 
-        return $this->db->transaction(function () use ($paymentData, $correlationId): array {
+        return DB::transaction(function () use ($paymentData, $correlationId): array {
             // Create payment record
-            $payment = $this->db->table('payment_transactions')->insertGetId([
+            $payment = DB::table('payment_transactions')->insertGetId([
                 'tenant_id' => $paymentData['tenant_id'],
                 'user_id' => $paymentData['user_id'] ?? null,
                 'operation_type' => $paymentData['operation_type'],
@@ -80,7 +80,7 @@ final class PaymentGatewayService
             ]);
 
             // Store idempotency record
-            $this->db->table('payment_idempotency_records')->insert([
+            DB::table('payment_idempotency_records')->insert([
                 'operation' => 'payment_init',
                 'idempotency_key' => $paymentData['idempotency_key'],
                 'merchant_id' => $paymentData['tenant_id'],
@@ -99,14 +99,14 @@ final class PaymentGatewayService
             );
 
             // Update payment with gateway transaction ID
-            $this->db->table('payment_transactions')
+            DB::table('payment_transactions')
                 ->where('id', $payment)
                 ->update([
                     'provider_payment_id' => $gatewayResponse['transaction_id'] ?? null,
                     'status' => 'authorized',
                 ]);
 
-            $this->log->channel('audit')->info('Payment initialized', [
+            Log::channel('audit')->info('Payment initialized', [
                 'correlation_id' => $correlationId,
                 'payment_id' => $payment,
                 'amount' => $paymentData['amount'],
@@ -135,8 +135,8 @@ final class PaymentGatewayService
      */
     public function capturePayment(int $paymentId, ?int $amount, string $correlationId): array
     {
-        return $this->db->transaction(function () use ($paymentId, $amount, $correlationId): array {
-            $payment = $this->db->table('payment_transactions')->lockForUpdate()->findOrFail($paymentId);
+        return DB::transaction(function () use ($paymentId, $amount, $correlationId): array {
+            $payment = DB::table('payment_transactions')->lockForUpdate()->findOrFail($paymentId);
 
             if ($payment->status !== 'authorized') {
                 throw new \Exception('Payment must be in authorized state');
@@ -159,7 +159,7 @@ final class PaymentGatewayService
             );
 
             // Update payment status
-            $this->db->table('payment_transactions')
+            DB::table('payment_transactions')
                 ->where('id', $paymentId)
                 ->update([
                     'status' => 'captured',
@@ -168,7 +168,7 @@ final class PaymentGatewayService
                     'updated_at' => now(),
                 ]);
 
-            $this->log->channel('audit')->info('Payment captured', [
+            Log::channel('audit')->info('Payment captured', [
                 'correlation_id' => $correlationId,
                 'payment_id' => $paymentId,
                 'amount' => $captureAmount,
@@ -196,8 +196,8 @@ final class PaymentGatewayService
      */
     public function refundPayment(int $paymentId, ?int $amount, string $reason, string $correlationId): array
     {
-        return $this->db->transaction(function () use ($paymentId, $amount, $reason, $correlationId): array {
-            $payment = $this->db->table('payment_transactions')->lockForUpdate()->findOrFail($paymentId);
+        return DB::transaction(function () use ($paymentId, $amount, $reason, $correlationId): array {
+            $payment = DB::table('payment_transactions')->lockForUpdate()->findOrFail($paymentId);
 
             if (!in_array($payment->status, ['captured', 'authorized'])) {
                 throw new \Exception('Payment must be captured or authorized to refund');
@@ -223,7 +223,7 @@ final class PaymentGatewayService
             );
 
             // Update payment status
-            $this->db->table('payment_transactions')
+            DB::table('payment_transactions')
                 ->where('id', $paymentId)
                 ->update([
                     'status' => 'refunded',
@@ -232,7 +232,7 @@ final class PaymentGatewayService
                     'updated_at' => now(),
                 ]);
 
-            $this->log->channel('audit')->info('Payment refunded', [
+            Log::channel('audit')->info('Payment refunded', [
                 'correlation_id' => $correlationId,
                 'payment_id' => $paymentId,
                 'refund_amount' => $refundAmount,
@@ -263,7 +263,7 @@ final class PaymentGatewayService
         try {
             // For now, return stub response
 
-            $this->log->channel('audit')->info('Gateway call', [
+            Log::channel('audit')->info('Gateway call', [
                 'correlation_id' => $correlationId,
                 'gateway' => $gateway,
                 'action' => $action,
@@ -276,7 +276,7 @@ final class PaymentGatewayService
                 'gateway_response_code' => '00',
             ];
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Gateway call failed', [
+            Log::channel('audit')->error('Gateway call failed', [
                 'correlation_id' => $correlationId,
                 'gateway' => $gateway,
                 'action' => $action,

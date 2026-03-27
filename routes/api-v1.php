@@ -19,9 +19,12 @@ use Illuminate\Support\Facades\Route;
 // ===== API v1 with Authentication & Tenant Middleware =====
 Route::prefix('v1')
     ->middleware([
-        'auth:sanctum',    // Validate Sanctum API token
-        'tenant',          // Validate & scope tenant
-        'rate-limit',      // Per-endpoint throttling (tenant-aware)
+        'correlation-id',     // 1. Generate/validate X-Correlation-ID (первым!)
+        'enrich-context',     // 2. Add IP, user_agent metadata
+        'auth:sanctum',       // 3. Validate Sanctum API token
+        'tenant',             // 4. Validate & scope tenant
+        'b2c-b2b',            // 5. B2C/B2B mode determination
+        'rate-limit',         // 6. Per-endpoint throttling (tenant-aware)
     ])
     ->group(function () {
         
@@ -34,6 +37,9 @@ Route::prefix('v1')
         require base_path('routes/promo.api.php');
         require base_path('routes/referral.api.php');
         require base_path('routes/wallet.api.php');
+        require base_path('routes/luxury.api.php');
+        require base_path('routes/pd.api.php');
+        require base_path('routes/ritual.api.php');
 
     });
 

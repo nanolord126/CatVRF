@@ -40,7 +40,7 @@ final readonly class InventoryManagementService
 
             return max($available, 0);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Inventory: Get stock failed', [
+            Log::channel('audit')->error('Inventory: Get stock failed', [
                 'item_id' => $itemId,
                 'error' => $e->getMessage(),
             ]);
@@ -74,13 +74,13 @@ final readonly class InventoryManagementService
             }
 
             // 2. TRANSACTION
-            $result = $this->db->transaction(function () use ($itemId, $quantity, $sourceType, $sourceId, $correlationId) {
+            $result = DB::transaction(function () use ($itemId, $quantity, $sourceType, $sourceId, $correlationId) {
                 $item = InventoryItem::where('id', $itemId)->lockForUpdate()->firstOrFail();
 
                 $available = $item->current_stock - $item->hold_stock;
 
                 if ($available < $quantity) {
-                    $this->log->channel('audit')->warning('Inventory: Insufficient stock for reserve', [
+                    Log::channel('audit')->warning('Inventory: Insufficient stock for reserve', [
                         'correlation_id' => $correlationId,
                         'item_id' => $itemId,
                         'requested' => $quantity,
@@ -105,7 +105,7 @@ final readonly class InventoryManagementService
                 ]);
 
                 // 3. AUDIT LOG
-                $this->log->channel('audit')->info('Inventory: Stock reserved', [
+                Log::channel('audit')->info('Inventory: Stock reserved', [
                     'correlation_id' => $correlationId,
                     'item_id' => $itemId,
                     'quantity' => $quantity,
@@ -118,7 +118,7 @@ final readonly class InventoryManagementService
 
             return $result;
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Inventory: Reserve failed', [
+            Log::channel('audit')->error('Inventory: Reserve failed', [
                 'correlation_id' => $correlationId,
                 'item_id' => $itemId,
                 'quantity' => $quantity,
@@ -143,11 +143,11 @@ final readonly class InventoryManagementService
 
         try {
             // 2. TRANSACTION
-            $result = $this->db->transaction(function () use ($itemId, $quantity, $sourceType, $sourceId, $correlationId) {
+            $result = DB::transaction(function () use ($itemId, $quantity, $sourceType, $sourceId, $correlationId) {
                 $item = InventoryItem::where('id', $itemId)->lockForUpdate()->firstOrFail();
 
                 if ($item->hold_stock < $quantity) {
-                    $this->log->channel('audit')->warning('Inventory: Release more than held', [
+                    Log::channel('audit')->warning('Inventory: Release more than held', [
                         'correlation_id' => $correlationId,
                         'item_id' => $itemId,
                         'held' => $item->hold_stock,
@@ -170,7 +170,7 @@ final readonly class InventoryManagementService
                 ]);
 
                 // 3. AUDIT LOG
-                $this->log->channel('audit')->info('Inventory: Stock released', [
+                Log::channel('audit')->info('Inventory: Stock released', [
                     'correlation_id' => $correlationId,
                     'item_id' => $itemId,
                     'quantity' => $quantity,
@@ -182,7 +182,7 @@ final readonly class InventoryManagementService
 
             return $result;
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Inventory: Release failed', [
+            Log::channel('audit')->error('Inventory: Release failed', [
                 'correlation_id' => $correlationId,
                 'item_id' => $itemId,
                 'error' => $e->getMessage(),
@@ -220,11 +220,11 @@ final readonly class InventoryManagementService
             }
 
             // 2. TRANSACTION
-            $result = $this->db->transaction(function () use ($itemId, $quantity, $reason, $sourceType, $sourceId, $correlationId) {
+            $result = DB::transaction(function () use ($itemId, $quantity, $reason, $sourceType, $sourceId, $correlationId) {
                 $item = InventoryItem::where('id', $itemId)->lockForUpdate()->firstOrFail();
 
                 if ($item->current_stock < $quantity) {
-                    $this->log->channel('audit')->error('Inventory: Insufficient stock for deduct', [
+                    Log::channel('audit')->error('Inventory: Insufficient stock for deduct', [
                         'correlation_id' => $correlationId,
                         'item_id' => $itemId,
                         'current' => $item->current_stock,
@@ -255,7 +255,7 @@ final readonly class InventoryManagementService
 
                 // Проверить low-stock
                 if ($item->current_stock <= $item->min_stock_threshold) {
-                    $this->log->channel('audit')->warning('Inventory: Low stock threshold reached', [
+                    Log::channel('audit')->warning('Inventory: Low stock threshold reached', [
                         'correlation_id' => $correlationId,
                         'item_id' => $itemId,
                         'current' => $item->current_stock,
@@ -264,7 +264,7 @@ final readonly class InventoryManagementService
                 }
 
                 // 3. AUDIT LOG
-                $this->log->channel('audit')->info('Inventory: Stock deducted', [
+                Log::channel('audit')->info('Inventory: Stock deducted', [
                     'correlation_id' => $correlationId,
                     'item_id' => $itemId,
                     'quantity' => $quantity,
@@ -278,7 +278,7 @@ final readonly class InventoryManagementService
 
             return $result;
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Inventory: Deduct failed', [
+            Log::channel('audit')->error('Inventory: Deduct failed', [
                 'correlation_id' => $correlationId,
                 'item_id' => $itemId,
                 'quantity' => $quantity,
@@ -317,7 +317,7 @@ final readonly class InventoryManagementService
             }
 
             // 2. TRANSACTION
-            $result = $this->db->transaction(function () use ($itemId, $quantity, $reason, $sourceType, $correlationId) {
+            $result = DB::transaction(function () use ($itemId, $quantity, $reason, $sourceType, $correlationId) {
                 $item = InventoryItem::where('id', $itemId)->lockForUpdate()->firstOrFail();
 
                 $item->increment('current_stock', $quantity);
@@ -333,7 +333,7 @@ final readonly class InventoryManagementService
                 ]);
 
                 // 3. AUDIT LOG
-                $this->log->channel('audit')->info('Inventory: Stock added', [
+                Log::channel('audit')->info('Inventory: Stock added', [
                     'correlation_id' => $correlationId,
                     'item_id' => $itemId,
                     'quantity' => $quantity,
@@ -346,7 +346,7 @@ final readonly class InventoryManagementService
 
             return $result;
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Inventory: Add failed', [
+            Log::channel('audit')->error('Inventory: Add failed', [
                 'correlation_id' => $correlationId,
                 'item_id' => $itemId,
                 'quantity' => $quantity,
@@ -386,7 +386,7 @@ final readonly class InventoryManagementService
             }
 
             // 2. TRANSACTION
-            $result = $this->db->transaction(function () use ($itemId, $newStock, $reason, $userId, $correlationId) {
+            $result = DB::transaction(function () use ($itemId, $newStock, $reason, $userId, $correlationId) {
                 $item = InventoryItem::where('id', $itemId)->lockForUpdate()->firstOrFail();
                 $oldStock = $item->current_stock;
 
@@ -403,7 +403,7 @@ final readonly class InventoryManagementService
                 ]);
 
                 // 3. AUDIT LOG - очень подробное логирование
-                $this->log->channel('audit')->warning('Inventory: Manual correction', [
+                Log::channel('audit')->warning('Inventory: Manual correction', [
                     'correlation_id' => $correlationId,
                     'item_id' => $itemId,
                     'old_stock' => $oldStock,
@@ -418,7 +418,7 @@ final readonly class InventoryManagementService
 
             return $result;
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Inventory: Adjust failed', [
+            Log::channel('audit')->error('Inventory: Adjust failed', [
                 'correlation_id' => $correlationId,
                 'item_id' => $itemId,
                 'new_stock' => $newStock,
@@ -440,7 +440,7 @@ final readonly class InventoryManagementService
                 ->get();
 
             if ($items->isNotEmpty()) {
-                $this->log->channel('audit')->warning('Inventory: Low stock items detected', [
+                Log::channel('audit')->warning('Inventory: Low stock items detected', [
                     'count' => $items->count(),
                     'items' => $items->pluck('id')->toArray(),
                 ]);
@@ -448,7 +448,7 @@ final readonly class InventoryManagementService
 
             return $items;
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Inventory: Low stock check failed', [
+            Log::channel('audit')->error('Inventory: Low stock check failed', [
                 'error' => $e->getMessage(),
             ]);
             throw $e;
@@ -477,7 +477,7 @@ final readonly class InventoryManagementService
                 'created_at' => $m->created_at->toIso8601String(),
             ])->toArray();
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Inventory: History retrieval failed', [
+            Log::channel('audit')->error('Inventory: History retrieval failed', [
                 'item_id' => $itemId,
                 'error' => $e->getMessage(),
             ]);

@@ -28,7 +28,7 @@ final class EditCarWashBooking extends EditRecord
                 ->visible(fn () => in_array($this->record->status, ['pending', 'in_progress']))
                 ->requiresConfirmation()
                 ->action(function () {
-                    $this->db->transaction(function () {
+                    DB::transaction(function () {
                         $this->record->status = 'completed';
                         $this->record->completed_at = now();
                         $this->record->save();
@@ -38,7 +38,7 @@ final class EditCarWashBooking extends EditRecord
                             $this->record->correlation_id
                         ));
 
-                        $this->log->channel('audit')->info('Car wash booking completed', [
+                        Log::channel('audit')->info('Car wash booking completed', [
                             'correlation_id' => $this->record->correlation_id,
                             'booking_id' => $this->record->id,
                             'completed_at' => $this->record->completed_at,
@@ -55,7 +55,7 @@ final class EditCarWashBooking extends EditRecord
 
             Actions\DeleteAction::make()
                 ->after(function () {
-                    $this->log->channel('audit')->info('Car wash booking deleted', [
+                    Log::channel('audit')->info('Car wash booking deleted', [
                         'correlation_id' => $this->record->correlation_id,
                         'booking_id' => $this->record->id,
                         'user_id' => auth()->id(),
@@ -66,7 +66,7 @@ final class EditCarWashBooking extends EditRecord
 
     protected function afterSave(): void
     {
-        $this->log->channel('audit')->info('Car wash booking updated', [
+        Log::channel('audit')->info('Car wash booking updated', [
             'correlation_id' => $this->record->correlation_id,
             'booking_id' => $this->record->id,
             'status' => $this->record->status,

@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Auto\Events;
 
@@ -32,7 +33,7 @@ class AutoPartOrderCreated implements ShouldBroadcast
         public readonly int $totalPrice,
         public readonly string $correlationId,
     ) {
-        $this->log->channel('audit')->info('AutoPartOrderCreated event dispatched', [
+        Log::channel('audit')->info('AutoPartOrderCreated event dispatched', [
             'correlation_id' => $this->correlationId,
             'order_id' => $this->autoPartOrderId,
             'tenant_id' => $this->tenantId,

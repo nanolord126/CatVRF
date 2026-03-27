@@ -32,7 +32,7 @@ final class CalculateAgencyEarningsJob implements ShouldQueue
     public function handle(): void
     {
         try {
-            $this->db->transaction(function () {
+            DB::transaction(function () {
                 $agency = TravelAgency::findOrFail($this->agencyId);
 
                 $startDate = match ($this->period) {
@@ -58,7 +58,7 @@ final class CalculateAgencyEarningsJob implements ShouldQueue
                     ->whereBetween('created_at', [$startDate, $endDate])
                     ->sum('total_amount');
 
-                $this->log->channel('audit')->info('Agency earnings calculated', [
+                Log::channel('audit')->info('Agency earnings calculated', [
                     'agency_id' => $this->agencyId,
                     'agency_name' => $agency->name,
                     'period' => $this->period,
@@ -68,7 +68,7 @@ final class CalculateAgencyEarningsJob implements ShouldQueue
                 ]);
             });
         } catch (Throwable $e) {
-            $this->log->channel('audit')->error('Agency earnings calculation failed', [
+            Log::channel('audit')->error('Agency earnings calculation failed', [
                 'agency_id' => $this->agencyId,
                 'period' => $this->period,
                 'error' => $e->getMessage(),

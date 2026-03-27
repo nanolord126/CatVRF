@@ -45,14 +45,14 @@ final class B2BPetController
                 'min_order_amount' => 'numeric|min:1000',
             ]);
 
-            return $this->db->transaction(function () use ($validated, $correlationId) {
+            return DB::transaction(function () use ($validated, $correlationId) {
                 $storefront = B2BPetStorefront::create([
                     'tenant_id' => tenant()->id,
                     'correlation_id' => $correlationId,
                     ...$validated,
                 ]);
 
-                $this->log->channel('audit')->info('B2B Pet storefront created', [
+                Log::channel('audit')->info('B2B Pet storefront created', [
                     'storefront_id' => $storefront->id,
                     'correlation_id' => $correlationId,
                     'user_id' => auth()->id(),
@@ -65,7 +65,7 @@ final class B2BPetController
                 ], 201);
             });
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Pet storefront creation failed', [
+            Log::channel('audit')->error('Pet storefront creation failed', [
                 'error' => $e->getMessage(),
                 'user_id' => auth()->id(),
             ]);
@@ -92,11 +92,11 @@ final class B2BPetController
 
             $correlationId = Str::uuid()->toString();
 
-            return $this->db->transaction(function () use ($validated, $correlationId) {
+            return DB::transaction(function () use ($validated, $correlationId) {
                 $storefront = B2BPetStorefront::findOrFail($validated['storefront_id']);
                 $commission = ($validated['items'][0]['quantity'] ?? 1) * 0.14;
 
-                $this->log->channel('audit')->info('B2B Pet order created', [
+                Log::channel('audit')->info('B2B Pet order created', [
                     'storefront_id' => $storefront->id,
                     'correlation_id' => $correlationId,
                     'commission' => $commission,
@@ -109,7 +109,7 @@ final class B2BPetController
                 ], 201);
             });
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Pet order creation failed', [
+            Log::channel('audit')->error('Pet order creation failed', [
                 'error' => $e->getMessage(),
             ]);
 
@@ -137,11 +137,11 @@ final class B2BPetController
     public function approveOrder(int $id): JsonResponse
     {
         try {
-            return $this->db->transaction(function () use ($id) {
+            return DB::transaction(function () use ($id) {
                 $order = B2BPetStorefront::findOrFail($id);
                 $order->update(['status' => 'approved']);
 
-                $this->log->channel('audit')->info('Pet order approved', [
+                Log::channel('audit')->info('Pet order approved', [
                     'order_id' => $id,
                     'user_id' => auth()->id(),
                 ]);
@@ -165,14 +165,14 @@ final class B2BPetController
                 'reason' => 'required|string|max:500',
             ]);
 
-            return $this->db->transaction(function () use ($id, $validated) {
+            return DB::transaction(function () use ($id, $validated) {
                 $order = B2BPetStorefront::findOrFail($id);
                 $order->update([
                     'status' => 'rejected',
                     'rejection_reason' => $validated['reason'],
                 ]);
 
-                $this->log->channel('audit')->info('Pet order rejected', [
+                Log::channel('audit')->info('Pet order rejected', [
                     'order_id' => $id,
                     'reason' => $validated['reason'],
                 ]);
@@ -191,11 +191,11 @@ final class B2BPetController
     public function verifyInn(int $id): JsonResponse
     {
         try {
-            return $this->db->transaction(function () use ($id) {
+            return DB::transaction(function () use ($id) {
                 $storefront = B2BPetStorefront::findOrFail($id);
                 $storefront->update(['is_verified' => true]);
 
-                $this->log->channel('audit')->info('Pet storefront verified', [
+                Log::channel('audit')->info('Pet storefront verified', [
                     'storefront_id' => $id,
                     'admin_id' => auth()->id(),
                 ]);

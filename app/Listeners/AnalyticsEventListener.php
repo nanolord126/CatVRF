@@ -61,25 +61,25 @@ final class AnalyticsEventListener implements ShouldQueue
 
         try {
             // Инвалидируем KPI-кэш
-            $this->cache->forget("analytics:metrics:{$tenantId}:revenue:*");
-            $this->cache->forget("analytics:metrics:{$tenantId}:orders:*");
-            $this->cache->forget("analytics:metrics:{$tenantId}:aov:*");
-            $this->cache->forget("analytics:metrics:{$tenantId}:conversion:*");
+            Cache::forget("analytics:metrics:{$tenantId}:revenue:*");
+            Cache::forget("analytics:metrics:{$tenantId}:orders:*");
+            Cache::forget("analytics:metrics:{$tenantId}:aov:*");
+            Cache::forget("analytics:metrics:{$tenantId}:conversion:*");
 
             // Инвалидируем forecast-кэш
-            $this->cache->forget("analytics:forecast:{$tenantId}:*");
+            Cache::forget("analytics:forecast:{$tenantId}:*");
 
             // Инвалидируем dashboard-кэш
-            $this->cache->forget("dashboard:layout:{$tenantId}:*");
+            Cache::forget("dashboard:layout:{$tenantId}:*");
 
             // Инвалидируем widgets
-            $this->cache->forget("revenue_chart:{$tenantId}");
-            $this->cache->forget("stats_overview:{$tenantId}");
+            Cache::forget("revenue_chart:{$tenantId}");
+            Cache::forget("stats_overview:{$tenantId}");
 
             // Пересчитываем сегменты
             $this->segmentationService->segmentCustomers($tenantId);
 
-            $this->log->channel('audit')->info('Analytics cache invalidated after order completed', [
+            Log::channel('audit')->info('Analytics cache invalidated after order completed', [
                 'tenant_id' => $tenantId,
                 'order_id' => $event->order->id,
                 'correlation_id' => $correlationId,
@@ -88,7 +88,7 @@ final class AnalyticsEventListener implements ShouldQueue
             ]);
 
         } catch (\Throwable $e) {
-            $this->log->channel('analytics_errors')->error('Failed to invalidate analytics cache', [
+            Log::channel('analytics_errors')->error('Failed to invalidate analytics cache', [
                 'tenant_id' => $tenantId,
                 'order_id' => $event->order->id,
                 'correlation_id' => $correlationId,
@@ -114,18 +114,18 @@ final class AnalyticsEventListener implements ShouldQueue
         try {
             // Инвалидируем только если платёж успешен
             if ($event->payment->status === 'captured' || $event->payment->status === 'completed') {
-                $this->cache->forget("analytics:metrics:{$tenantId}:revenue:*");
-                $this->cache->forget("analytics:metrics:{$tenantId}:conversion:*");
-                $this->cache->forget("stats_overview:{$tenantId}");
-                $this->cache->forget("revenue_chart:{$tenantId}");
+                Cache::forget("analytics:metrics:{$tenantId}:revenue:*");
+                Cache::forget("analytics:metrics:{$tenantId}:conversion:*");
+                Cache::forget("stats_overview:{$tenantId}");
+                Cache::forget("revenue_chart:{$tenantId}");
 
                 // Пересчитываем сегмент платежеспособности пользователя
                 if ($event->payment->user_id) {
-                    $this->cache->forget("user_segment:{$event->payment->user_id}");
+                    Cache::forget("user_segment:{$event->payment->user_id}");
                 }
             }
 
-            $this->log->channel('audit')->info('Analytics cache invalidated after payment processed', [
+            Log::channel('audit')->info('Analytics cache invalidated after payment processed', [
                 'tenant_id' => $tenantId,
                 'payment_id' => $event->payment->id,
                 'correlation_id' => $correlationId,
@@ -135,7 +135,7 @@ final class AnalyticsEventListener implements ShouldQueue
             ]);
 
         } catch (\Throwable $e) {
-            $this->log->channel('analytics_errors')->error('Failed to handle payment analytics event', [
+            Log::channel('analytics_errors')->error('Failed to handle payment analytics event', [
                 'tenant_id' => $tenantId,
                 'payment_id' => $event->payment->id,
                 'correlation_id' => $correlationId,
@@ -160,14 +160,14 @@ final class AnalyticsEventListener implements ShouldQueue
         try {
             if ($tenantId) {
                 // Инвалидируем метрику "новых пользователей"
-                $this->cache->forget("analytics:metrics:{$tenantId}:new_users:*");
-                $this->cache->forget("stats_overview:{$tenantId}");
+                Cache::forget("analytics:metrics:{$tenantId}:new_users:*");
+                Cache::forget("stats_overview:{$tenantId}");
 
                 // Пересчитываем сегменты
                 $this->segmentationService->segmentCustomers($tenantId);
             }
 
-            $this->log->channel('audit')->info('Analytics updated after user registration', [
+            Log::channel('audit')->info('Analytics updated after user registration', [
                 'tenant_id' => $tenantId,
                 'user_id' => $event->user->id,
                 'correlation_id' => $correlationId,
@@ -176,7 +176,7 @@ final class AnalyticsEventListener implements ShouldQueue
             ]);
 
         } catch (\Throwable $e) {
-            $this->log->channel('analytics_errors')->error('Failed to handle user registration analytics', [
+            Log::channel('analytics_errors')->error('Failed to handle user registration analytics', [
                 'user_id' => $event->user->id,
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage()
@@ -199,14 +199,14 @@ final class AnalyticsEventListener implements ShouldQueue
 
         try {
             // Инвалидируем кэш рейтингов
-            $this->cache->forget("ratings:{$tenantId}:product:{$event->review->product_id}");
-            $this->cache->forget("ratings:{$tenantId}:seller:{$event->review->seller_id}");
-            $this->cache->forget("ratings:summary:{$tenantId}");
+            Cache::forget("ratings:{$tenantId}:product:{$event->review->product_id}");
+            Cache::forget("ratings:{$tenantId}:seller:{$event->review->seller_id}");
+            Cache::forget("ratings:summary:{$tenantId}");
 
             // Инвалидируем общие метрики (средний рейтинг может измениться)
-            $this->cache->forget("analytics:metrics:{$tenantId}:ratings:*");
+            Cache::forget("analytics:metrics:{$tenantId}:ratings:*");
 
-            $this->log->channel('audit')->info('Analytics cache invalidated after review submitted', [
+            Log::channel('audit')->info('Analytics cache invalidated after review submitted', [
                 'tenant_id' => $tenantId,
                 'review_id' => $event->review->id,
                 'correlation_id' => $correlationId,
@@ -215,7 +215,7 @@ final class AnalyticsEventListener implements ShouldQueue
             ]);
 
         } catch (\Throwable $e) {
-            $this->log->channel('analytics_errors')->error('Failed to handle review analytics event', [
+            Log::channel('analytics_errors')->error('Failed to handle review analytics event', [
                 'tenant_id' => $tenantId,
                 'review_id' => $event->review->id,
                 'correlation_id' => $correlationId,
@@ -234,22 +234,22 @@ final class AnalyticsEventListener implements ShouldQueue
      */
     public static function registerListeners($events): void
     {
-        $events->listen(OrderCompleted$this->event->class, function (OrderCompletedEvent $event) {
+        $events->listen(OrderCompletedEvent::class, function (OrderCompletedEvent $event) {
             $listener = app(self::class);
             $listener->handleOrderCompleted($event);
         });
 
-        $events->listen(PaymentProcessed$this->event->class, function (PaymentProcessedEvent $event) {
+        $events->listen(PaymentProcessedEvent::class, function (PaymentProcessedEvent $event) {
             $listener = app(self::class);
             $listener->handlePaymentProcessed($event);
         });
 
-        $events->listen(UserRegistered$this->event->class, function (UserRegisteredEvent $event) {
+        $events->listen(UserRegisteredEvent::class, function (UserRegisteredEvent $event) {
             $listener = app(self::class);
             $listener->handleUserRegistered($event);
         });
 
-        $events->listen(ReviewSubmitted$this->event->class, function (ReviewSubmittedEvent $event) {
+        $events->listen(ReviewSubmittedEvent::class, function (ReviewSubmittedEvent $event) {
             $listener = app(self::class);
             $listener->handleReviewSubmitted($event);
         });

@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Pharmacy\Events;
 
@@ -26,13 +27,5 @@ class PrescriptionVerified
         public readonly int $tenantId,
         public readonly int $verifiedBy,
         public readonly string $correlationId,
-    ) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+    ) {}
 }

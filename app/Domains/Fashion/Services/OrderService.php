@@ -43,7 +43,7 @@ final class OrderService
         }
         RateLimiter::hit("fashion:order:".auth()->id(), 3600);
 
-        return $this->db->transaction(function () use ($brandId, $items, $requiresFitting, $correlationId) {
+        return DB::transaction(function () use ($brandId, $items, $requiresFitting, $correlationId) {
             $brand = FashionBrand::findOrFail($brandId);
             
             // 2. Fraud Check - проверка на массовые возвраты и поддельные аккаунты
@@ -55,7 +55,7 @@ final class OrderService
             ]);
 
             if ($fraud["decision"] === "block") {
-                $this->log->channel("audit")->warning("Fashion Block", ["user" => auth()->id(), "score" => $fraud["score"]]);
+                Log::channel("audit")->warning("Fashion Block", ["user" => auth()->id(), "score" => $fraud["score"]]);
                 throw new \RuntimeException("Blocked by security. High return risk detected.", 403);
             }
 
@@ -87,7 +87,7 @@ final class OrderService
                 "tags" => ["collection:spring_2026", "fitting:".($requiresFitting ? "yes" : "no")]
             ]);
 
-            $this->log->channel("audit")->info("Fashion: order created", ["order_id" => $order->id, "fitting" => $requiresFitting]);
+            Log::channel("audit")->info("Fashion: order created", ["order_id" => $order->id, "fitting" => $requiresFitting]);
 
             return $order;
         });
@@ -101,7 +101,7 @@ final class OrderService
         $correlationId = $correlationId ?: (string) Str::uuid();
         $order = FashionOrder::with("items")->findOrFail($orderId);
 
-        $this->db->transaction(function () use ($order, $keptItemIds, $correlationId) {
+        DB::transaction(function () use ($order, $keptItemIds, $correlationId) {
             foreach ($order->items as $item) {
                 if (!in_array($item->id, $keptItemIds)) {
                     // Возвращаем невыкупленный товар на склад
@@ -125,7 +125,7 @@ final class OrderService
             $newTotal = $order->items->whereIn("id", $keptItemIds)->sum(fn($i) => $i->price_kopecks * $i->pivot->quantity);
             $order->update(["total_price_kopecks" => $newTotal, "status" => "partially_returned"]);
 
-            $this->log->channel("audit")->info("Fashion: fitting processed", ["order_id" => $order->id, "kept" => count($keptItemIds)]);
+            Log::channel("audit")->info("Fashion: fitting processed", ["order_id" => $order->id, "kept" => count($keptItemIds)]);
         });
     }
 
@@ -137,7 +137,7 @@ final class OrderService
         $correlationId = $correlationId ?: (string) Str::uuid();
         $order = FashionOrder::with("brand")->findOrFail($orderId);
 
-        $this->db->transaction(function () use ($order, $correlationId) {
+        DB::transaction(function () use ($order, $correlationId) {
             $order->update(["status" => "completed", "finalized_at" => now()]);
 
             // 6. Окончательное списание из Inventory
@@ -164,7 +164,7 @@ final class OrderService
                 correlationId: $correlationId
             );
 
-            $this->log->channel("audit")->info("Fashion: payout done", ["order_id" => $order->id, "payout" => $payout]);
+            Log::channel("audit")->info("Fashion: payout done", ["order_id" => $order->id, "payout" => $payout]);
         });
     }
 }

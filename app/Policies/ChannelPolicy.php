@@ -1,13 +1,12 @@
-declare(strict_types=1);
-
 <?php
 
 declare(strict_types=1);
 
+
 namespace App\Policies;
 
 use App\Models\User;
-use App\Domains\Channels\Models\BusinessChannel;
+use App\Domains\Content\Channels\Models\BusinessChannel;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
 final /**

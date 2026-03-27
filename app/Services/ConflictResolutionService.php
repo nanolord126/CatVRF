@@ -44,22 +44,22 @@ final class ConflictResolutionService
                 'correlation_id' => $correlationId,
             ];
 
-            $this->cache->put($editKey, $edit, self::CONFLICT_CACHE_TTL);
+            Cache::put($editKey, $edit, self::CONFLICT_CACHE_TTL);
 
             // Добавляем в историю редактирования
             $historyKey = "collab:history:{$tenantId}:{$documentType}:{$documentId}";
-            $history = $this->cache->get($historyKey, []);
+            $history = Cache::get($historyKey, []);
             $history[] = $editId;
 
             // Сохраняем только последние 100 изменений
             if (count($history) > 100) {
                 $oldestEditId = array_shift($history);
-                $this->cache->forget("collab:edit:{$tenantId}:{$documentType}:{$documentId}:{$oldestEditId}");
+                Cache::forget("collab:edit:{$tenantId}:{$documentType}:{$documentId}:{$oldestEditId}");
             }
 
-            $this->cache->put($historyKey, $history, self::CONFLICT_CACHE_TTL);
+            Cache::put($historyKey, $history, self::CONFLICT_CACHE_TTL);
 
-            $this->log->channel('audit')->debug('Edit recorded', [
+            Log::channel('audit')->debug('Edit recorded', [
                 'correlation_id' => $correlationId,
                 'edit_id' => $editId,
                 'user_id' => $userId,
@@ -67,7 +67,7 @@ final class ConflictResolutionService
 
             return $edit;
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Failed to record edit', [
+            Log::channel('audit')->error('Failed to record edit', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -86,13 +86,13 @@ final class ConflictResolutionService
         string $lastKnownVersion
     ): array {
         $historyKey = "collab:history:{$tenantId}:{$documentType}:{$documentId}";
-        $editIds = $this->cache->get($historyKey, []);
+        $editIds = Cache::get($historyKey, []);
 
         $conflicts = [];
 
         foreach ($editIds as $editId) {
             $editKey = "collab:edit:{$tenantId}:{$documentType}:{$documentId}:{$editId}";
-            $edit = $this->cache->get($editKey);
+            $edit = Cache::get($editKey);
 
             if ($edit && $edit['version'] > (int)$lastKnownVersion) {
                 $conflicts[] = $edit;
@@ -142,7 +142,7 @@ final class ConflictResolutionService
         int $limit = 50
     ): Collection {
         $historyKey = "collab:history:{$tenantId}:{$documentType}:{$documentId}";
-        $editIds = $this->cache->get($historyKey, []);
+        $editIds = Cache::get($historyKey, []);
 
         $edits = collect();
 
@@ -151,7 +151,7 @@ final class ConflictResolutionService
 
         foreach ($recentEditIds as $editId) {
             $editKey = "collab:edit:{$tenantId}:{$documentType}:{$documentId}:{$editId}";
-            $edit = $this->cache->get($editKey);
+            $edit = Cache::get($editKey);
 
             if ($edit) {
                 $edits->push($edit);
@@ -171,7 +171,7 @@ final class ConflictResolutionService
     ): bool {
         $lockKey = "collab:lock:{$tenantId}:{$documentType}:{$documentId}";
 
-        return $this->cache->has($lockKey);
+        return Cache::has($lockKey);
     }
 
     /**
@@ -184,7 +184,7 @@ final class ConflictResolutionService
         int $lockDurationSeconds = 300
     ): bool {
         $lockKey = "collab:lock:{$tenantId}:{$documentType}:{$documentId}";
-        $this->cache->put($lockKey, true, $lockDurationSeconds);
+        Cache::put($lockKey, true, $lockDurationSeconds);
 
         return true;
     }
@@ -198,7 +198,7 @@ final class ConflictResolutionService
         int $tenantId
     ): bool {
         $lockKey = "collab:lock:{$tenantId}:{$documentType}:{$documentId}";
-        $this->cache->forget($lockKey);
+        Cache::forget($lockKey);
 
         return true;
     }

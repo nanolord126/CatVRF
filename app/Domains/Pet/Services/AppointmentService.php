@@ -22,7 +22,7 @@ final class AppointmentService
         $correlationId ??= Str::uuid()->toString();
 
         try {
-            return $this->db->transaction(function () use ($data, $correlationId) {
+            return DB::transaction(function () use ($data, $correlationId) {
                 $this->fraudControl->check([
                     'type' => 'pet_appointment',
                     'amount' => $data['price'] ?? 0,
@@ -40,7 +40,7 @@ final class AppointmentService
 
                 AppointmentBooked::dispatch($appointment, $correlationId);
 
-                $this->log->channel('audit')->info('Pet appointment created', [
+                Log::channel('audit')->info('Pet appointment created', [
                     'appointment_id' => $appointment->id,
                     'clinic_id' => $appointment->clinic_id,
                     'vet_id' => $appointment->vet_id,
@@ -53,7 +53,7 @@ final class AppointmentService
                 return $appointment;
             });
         } catch (\Throwable $e) {
-            $this->log->error('Failed to create pet appointment', [
+            Log::error('Failed to create pet appointment', [
                 'data' => $data,
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
@@ -70,7 +70,7 @@ final class AppointmentService
         $correlationId ??= Str::uuid()->toString();
 
         try {
-            return $this->db->transaction(function () use ($appointment, $correlationId) {
+            return DB::transaction(function () use ($appointment, $correlationId) {
                 $appointment->update([
                     'status' => 'completed',
                     'completed_at' => now(),
@@ -78,7 +78,7 @@ final class AppointmentService
                     'correlation_id' => $correlationId,
                 ]);
 
-                $this->log->channel('audit')->info('Pet appointment completed', [
+                Log::channel('audit')->info('Pet appointment completed', [
                     'appointment_id' => $appointment->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -86,7 +86,7 @@ final class AppointmentService
                 return $appointment;
             });
         } catch (\Throwable $e) {
-            $this->log->error('Failed to complete pet appointment', [
+            Log::error('Failed to complete pet appointment', [
                 'appointment_id' => $appointment->id,
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
@@ -103,7 +103,7 @@ final class AppointmentService
         $correlationId ??= Str::uuid()->toString();
 
         try {
-            return $this->db->transaction(function () use ($appointment, $correlationId) {
+            return DB::transaction(function () use ($appointment, $correlationId) {
                 if ($appointment->status === 'completed' || $appointment->status === 'cancelled') {
                     throw new \RuntimeException('Cannot cancel completed or already cancelled appointment');
                 }
@@ -136,7 +136,7 @@ final class AppointmentService
                     ]);
                 }
 
-                $this->log->channel('audit')->info('Pet appointment cancelled', [
+                Log::channel('audit')->info('Pet appointment cancelled', [
                     'appointment_id' => $appointment->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -144,7 +144,7 @@ final class AppointmentService
                 return $appointment;
             });
         } catch (\Throwable $e) {
-            $this->log->error('Failed to cancel pet appointment', [
+            Log::error('Failed to cancel pet appointment', [
                 'appointment_id' => $appointment->id,
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),

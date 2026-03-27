@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs\Analytics;
 
-use App\Domains\Analytics\Services\ClickHouseService;
+use App\Domains\Consulting\Analytics\Services\ClickHouseService;
 use App\Domains\Click\Models\ClickEvent;
 use App\Events\Analytics\ClickEventsSyncedToClickHouse;
 use Exception;
@@ -39,7 +39,7 @@ final class SyncClickEventsToClickHouseJob implements ShouldQueue
             $totalEvents = 0;
 
             // Get unsynchronized events from last 6 minutes
-            Click$this->event->where('synced_to_ch', false)
+            ClickEvent::where('synced_to_ch', false)
                 ->where('created_at', '>', now()->subMinutes(6))
                 ->orderBy('created_at', 'asc')
                 ->chunk(10000, function ($chunk) use ($clickHouseService, &$totalEvents) {
@@ -49,7 +49,7 @@ final class SyncClickEventsToClickHouseJob implements ShouldQueue
 
             $duration = microtime(true) - $startTime;
 
-            $this->log->channel('audit')->info('[SyncClickEventsToClickHouse] Sync completed', [
+            Log::channel('audit')->info('[SyncClickEventsToClickHouse] Sync completed', [
                 'correlation_id' => $this->correlationId,
                 'events_synced' => $totalEvents,
                 'duration_seconds' => round($duration, 2),
@@ -68,7 +68,7 @@ final class SyncClickEventsToClickHouseJob implements ShouldQueue
                 );
             }
         } catch (Exception $e) {
-            $this->log->channel('error')->error('[SyncClickEventsToClickHouse] Sync failed', [
+            Log::channel('error')->error('[SyncClickEventsToClickHouse] Sync failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $this->correlationId,
                 'stacktrace' => $e->getTraceAsString(),
@@ -85,14 +85,14 @@ final class SyncClickEventsToClickHouseJob implements ShouldQueue
 
             // Mark as synced
             $ids = $chunk->pluck('id')->toArray();
-            Click$this->event->whereIn('id', $ids)->update(['synced_to_ch' => true]);
+            ClickEvent::whereIn('id', $ids)->update(['synced_to_ch' => true]);
 
-            $this->log->channel('analytics')->debug('[SyncClickEventsToClickHouse] Chunk synced', [
+            Log::channel('analytics')->debug('[SyncClickEventsToClickHouse] Chunk synced', [
                 'count' => count($ids),
                 'correlation_id' => $this->correlationId,
             ]);
         } catch (Exception $e) {
-            $this->log->channel('error')->error('[SyncClickEventsToClickHouse] Chunk sync failed', [
+            Log::channel('error')->error('[SyncClickEventsToClickHouse] Chunk sync failed', [
                 'error' => $e->getMessage(),
                 'count' => count($chunk),
                 'correlation_id' => $this->correlationId,
@@ -105,7 +105,7 @@ final class SyncClickEventsToClickHouseJob implements ShouldQueue
 
     public function failed(Exception $exception): void
     {
-        $this->log->channel('error')->error('[SyncClickEventsToClickHouse] Job failed permanently', [
+        Log::channel('error')->error('[SyncClickEventsToClickHouse] Job failed permanently', [
             'error' => $exception->getMessage(),
             'correlation_id' => $this->correlationId,
             'attempts' => $this->attempts(),

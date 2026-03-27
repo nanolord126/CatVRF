@@ -386,7 +386,7 @@ final class DocumentationGeneratorService
             ));
         }
 
-        $this->log->channel('documentation')->info('Documentation saved', [
+        Log::channel('documentation')->info('Documentation saved', [
             'type' => $type,
             'format' => $format,
             'path' => $filepath,

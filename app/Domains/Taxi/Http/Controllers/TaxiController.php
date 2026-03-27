@@ -40,7 +40,7 @@ final class TaxiController
         );
 
         if ($fraudResult['decision'] === 'block') {
-            $this->log->channel('fraud_alert')->warning('Operation blocked by fraud control', [
+            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'score'          => $fraudResult['score'],
@@ -64,7 +64,7 @@ final class TaxiController
 
             return response()->json(['data' => $taxi], 201);
         } catch (\Exception $e) {
-            \$this->log->channel('audit')->error('Taxi creation failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage()]);
+            \Log::channel('audit')->error('Taxi creation failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage()]);
 
             return response()->json(['error' => 'Failed to create taxi'], 422);
         }
@@ -82,7 +82,7 @@ final class TaxiController
         );
 
         if ($fraudResult['decision'] === 'block') {
-            $this->log->channel('fraud_alert')->warning('Operation blocked by fraud control', [
+            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'score'          => $fraudResult['score'],
@@ -99,7 +99,7 @@ final class TaxiController
 
         try {
             $taxi->update($request->only(['name', 'phone', 'status']));
-            \$this->log->channel('audit')->info('Taxi updated', ['correlation_id' => $correlationId, 'taxi_id' => $taxi->id]);
+            \Log::channel('audit')->info('Taxi updated', ['correlation_id' => $correlationId, 'taxi_id' => $taxi->id]);
 
             return response()->json(['data' => $taxi]);
         } catch (\Exception $e) {
@@ -119,7 +119,7 @@ final class TaxiController
         );
 
         if ($fraudResult['decision'] === 'block') {
-            $this->log->channel('fraud_alert')->warning('Operation blocked by fraud control', [
+            Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'score'          => $fraudResult['score'],
@@ -136,7 +136,7 @@ final class TaxiController
 
         try {
             $taxi->delete();
-            \$this->log->channel('audit')->info('Taxi deleted', ['correlation_id' => $correlationId, 'taxi_id' => $taxi->id]);
+            \Log::channel('audit')->info('Taxi deleted', ['correlation_id' => $correlationId, 'taxi_id' => $taxi->id]);
 
             return response()->json(null, 204);
         } catch (\Exception $e) {

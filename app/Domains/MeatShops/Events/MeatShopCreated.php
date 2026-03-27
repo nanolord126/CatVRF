@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\MeatShops\Events;
 
@@ -19,13 +20,5 @@ final /**
 class MeatShopCreated
 {
     use Dispatchable, SerializesModels;
-    public function __construct(public readonly string $correlationId, public readonly mixed $shop) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+    public function __construct(public readonly string $correlationId, public readonly mixed $shop) {}
 }

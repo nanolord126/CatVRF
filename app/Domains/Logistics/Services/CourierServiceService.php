@@ -35,7 +35,7 @@ final class CourierServiceService
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-$this->db->transaction(function () use (
+DB::transaction(function () use (
             $tenantId,
             $userId,
             $companyName,
@@ -59,7 +59,7 @@ $this->db->transaction(function () use (
                 'correlation_id' => $correlationId,
             ]);
 
-            $this->log->channel('audit')->info('Courier service created', [
+            Log::channel('audit')->info('Courier service created', [
                 'courier_id' => $courier->id,
                 'tenant_id' => $tenantId,
                 'company_name' => $companyName,
@@ -82,10 +82,10 @@ $this->db->transaction(function () use (
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-$this->db->transaction(function () use ($courier, $data, $correlationId) {
+DB::transaction(function () use ($courier, $data, $correlationId) {
             $courier->update([...$data, 'correlation_id' => $correlationId]);
 
-            $this->log->channel('audit')->info('Courier service updated', [
+            Log::channel('audit')->info('Courier service updated', [
                 'courier_id' => $courier->id,
                 'correlation_id' => $correlationId,
             ]);

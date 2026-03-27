@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Domains\Bloggers\Http\Controllers\{
+use App\Domains\Content\Bloggers\Http\Controllers\{
     StreamController,
     ProductController,
     OrderController,

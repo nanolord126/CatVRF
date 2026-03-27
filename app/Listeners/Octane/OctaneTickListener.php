@@ -32,13 +32,13 @@ final class OctaneTickListener
     {
         // Trigger job processing if queue is pending
         try {
-            if (\$this->db->table('jobs')->count() > 0) {
-                $this->log->channel('octane')->debug('Job queue processed', [
-                    'pending_jobs' => \$this->db->table('jobs')->count(),
+            if (\DB::table('jobs')->count() > 0) {
+                Log::channel('octane')->debug('Job queue processed', [
+                    'pending_jobs' => \DB::table('jobs')->count(),
                 ]);
             }
         } catch (\Exception $e) {
-            $this->log->channel('octane')->error('Job queue check failed', [
+            Log::channel('octane')->error('Job queue check failed', [
                 'error' => $e->getMessage(),
             ]);
         }
@@ -54,10 +54,10 @@ final class OctaneTickListener
 
             if ($info['used_memory'] > (config('cache.default') === 'redis' ? 512 * 1024 * 1024 : 100 * 1024 * 1024)) {
                 $redis->flushdb();
-                $this->log->channel('octane')->warning('Cache flushed due to memory pressure');
+                Log::channel('octane')->warning('Cache flushed due to memory pressure');
             }
         } catch (\Exception $e) {
-            $this->log->channel('octane')->error('Cache cleanup failed', [
+            Log::channel('octane')->error('Cache cleanup failed', [
                 'error' => $e->getMessage(),
             ]);
         }
@@ -70,13 +70,13 @@ final class OctaneTickListener
             $memoryUsage = memory_get_usage(true) / 1024 / 1024;
             $peakMemory = memory_get_peak_usage(true) / 1024 / 1024;
 
-            $this->log->channel('octane')->debug('Octane metrics', [
+            Log::channel('octane')->debug('Octane metrics', [
                 'memory_mb' => round($memoryUsage, 2),
                 'peak_memory_mb' => round($peakMemory, 2),
                 'tick_count' => $this->tickCount,
             ]);
         } catch (\Exception $e) {
-            $this->log->channel('octane')->error('Metrics reporting failed', [
+            Log::channel('octane')->error('Metrics reporting failed', [
                 'error' => $e->getMessage(),
             ]);
         }

@@ -14,34 +14,32 @@ final class MedicalAppointment extends Model
     protected $table = 'medical_appointments';
 
     protected $fillable = [
+        'uuid',
         'tenant_id',
         'clinic_id',
         'doctor_id',
         'patient_id',
         'service_id',
         'appointment_number',
-        'scheduled_at',
+        'starts_at',
+        'ends_at',
         'completed_at',
         'cancelled_at',
         'status',
         'payment_status',
-        'price',
-        'commission_amount',
-        'notes',
-        'diagnosis',
-        'prescription',
+        'total_amount_kopecks',
+        'client_comment',
+        'internal_notes',
         'transaction_id',
         'correlation_id',
     ];
 
-    protected $hidden = ['deleted_at'];
+    protected $hidden = ['deleted_at', 'correlation_id'];
 
     protected $casts = [
-        'diagnosis' => 'collection',
-        'prescription' => 'collection',
-        'price' => 'float',
-        'commission_amount' => 'float',
-        'scheduled_at' => 'datetime',
+        'total_amount_kopecks' => 'integer',
+        'starts_at' => 'datetime',
+        'ends_at' => 'datetime',
         'completed_at' => 'datetime',
         'cancelled_at' => 'datetime',
     ];
@@ -49,9 +47,7 @@ final class MedicalAppointment extends Model
     protected static function booted(): void
     {
         static::addGlobalScope('tenant', function ($query) {
-            if ($tenantId = auth()?->user()?->tenant_id ?? filament()?->getTenant()?->id) {
-                $query->where('tenant_id', $tenantId);
-            }
+            $query->where('tenant_id', tenant()->id ?? 0);
         });
     }
 

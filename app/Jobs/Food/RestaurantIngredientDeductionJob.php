@@ -38,11 +38,11 @@ final class RestaurantIngredientDeductionJob implements ShouldQueue
         $correlationId = Str::uuid()->toString();
 
         try {
-            $this->db->transaction(function () use ($inventoryService, $correlationId) {
+            DB::transaction(function () use ($inventoryService, $correlationId) {
                 $order = $inventoryService->getRestaurantOrderWithDishes($this->orderId);
 
                 if (! $order || $order->status !== 'completed') {
-                    $this->log->channel('audit')->info('Order not ready for ingredient deduction', [
+                    Log::channel('audit')->info('Order not ready for ingredient deduction', [
                         'correlation_id' => $correlationId,
                         'order_id' => $this->orderId,
                         'status' => $order?->status,
@@ -61,7 +61,7 @@ final class RestaurantIngredientDeductionJob implements ShouldQueue
                             sourceId: $this->orderId
                         );
 
-                        $this->log->channel('audit')->info('Ingredient deducted', [
+                        Log::channel('audit')->info('Ingredient deducted', [
                             'correlation_id' => $correlationId,
                             'ingredient_id' => $consumable->id,
                             'quantity' => $consumable->quantity,
@@ -72,7 +72,7 @@ final class RestaurantIngredientDeductionJob implements ShouldQueue
                 }
             });
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Ingredient deduction job failed', [
+            Log::channel('audit')->error('Ingredient deduction job failed', [
                 'correlation_id' => $correlationId,
                 'order_id' => $this->orderId,
                 'tenant_id' => $this->tenantId,

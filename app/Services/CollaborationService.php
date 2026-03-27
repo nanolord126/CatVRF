@@ -46,18 +46,18 @@ final class CollaborationService
                 'correlation_id' => $correlationId,
             ];
 
-            $this->cache->put($sessionKey, $sessionData, self::CACHE_TTL);
+            Cache::put($sessionKey, $sessionData, self::CACHE_TTL);
 
             // Добавляем в список активных сессий документа
             $documentsKey = "collab:doc:{$tenantId}:{$documentType}:{$documentId}";
-            $activeSessions = $this->cache->get($documentsKey, []);
+            $activeSessions = Cache::get($documentsKey, []);
             $activeSessions[$sessionId] = [
                 'user_id' => $userId,
                 'started_at' => now()->toIso8601String(),
             ];
-            $this->cache->put($documentsKey, $activeSessions, self::CACHE_TTL);
+            Cache::put($documentsKey, $activeSessions, self::CACHE_TTL);
 
-            $this->log->channel('audit')->info('Collaboration session started', [
+            Log::channel('audit')->info('Collaboration session started', [
                 'correlation_id' => $correlationId,
                 'session_id' => $sessionId,
                 'user_id' => $userId,
@@ -67,7 +67,7 @@ final class CollaborationService
 
             return $sessionData;
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Failed to start collaboration session', [
+            Log::channel('audit')->error('Failed to start collaboration session', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -91,20 +91,20 @@ final class CollaborationService
 
         try {
             $sessionKey = "collab:session:{$tenantId}:{$documentType}:{$documentId}:{$sessionId}";
-            $this->cache->forget($sessionKey);
+            Cache::forget($sessionKey);
 
             // Удаляем из активных сессий документа
             $documentsKey = "collab:doc:{$tenantId}:{$documentType}:{$documentId}";
-            $activeSessions = $this->cache->get($documentsKey, []);
+            $activeSessions = Cache::get($documentsKey, []);
             unset($activeSessions[$sessionId]);
 
             if (empty($activeSessions)) {
-                $this->cache->forget($documentsKey);
+                Cache::forget($documentsKey);
             } else {
-                $this->cache->put($documentsKey, $activeSessions, self::CACHE_TTL);
+                Cache::put($documentsKey, $activeSessions, self::CACHE_TTL);
             }
 
-            $this->log->channel('audit')->info('Collaboration session ended', [
+            Log::channel('audit')->info('Collaboration session ended', [
                 'correlation_id' => $correlationId,
                 'session_id' => $sessionId,
                 'tenant_id' => $tenantId,
@@ -113,7 +113,7 @@ final class CollaborationService
 
             return true;
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Failed to end collaboration session', [
+            Log::channel('audit')->error('Failed to end collaboration session', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -131,13 +131,13 @@ final class CollaborationService
         int $documentId
     ): Collection {
         $documentsKey = "collab:doc:{$tenantId}:{$documentType}:{$documentId}";
-        $activeSessions = $this->cache->get($documentsKey, []);
+        $activeSessions = Cache::get($documentsKey, []);
 
         $editors = collect();
 
         foreach ($activeSessions as $sessionId => $sessionInfo) {
             $sessionKey = "collab:session:{$tenantId}:{$documentType}:{$documentId}:{$sessionId}";
-            $sessionData = $this->cache->get($sessionKey);
+            $sessionData = Cache::get($sessionKey);
 
             if ($sessionData) {
                 $user = User::find($sessionData['user_id']);
@@ -173,7 +173,7 @@ final class CollaborationService
 
         try {
             $sessionKey = "collab:session:{$tenantId}:{$documentType}:{$documentId}:{$sessionId}";
-            $sessionData = $this->cache->get($sessionKey);
+            $sessionData = Cache::get($sessionKey);
 
             if (!$sessionData) {
                 throw new \Exception("Session not found: {$sessionId}");
@@ -182,9 +182,9 @@ final class CollaborationService
             $sessionData['cursor_position'] = $position;
             $sessionData['last_heartbeat'] = now()->toIso8601String();
 
-            $this->cache->put($sessionKey, $sessionData, self::CACHE_TTL);
+            Cache::put($sessionKey, $sessionData, self::CACHE_TTL);
 
-            $this->log->channel('audit')->debug('Cursor position updated', [
+            Log::channel('audit')->debug('Cursor position updated', [
                 'correlation_id' => $correlationId,
                 'session_id' => $sessionId,
                 'position' => $position,
@@ -192,7 +192,7 @@ final class CollaborationService
 
             return true;
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Failed to update cursor position', [
+            Log::channel('audit')->error('Failed to update cursor position', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -211,14 +211,14 @@ final class CollaborationService
         int $documentId
     ): bool {
         $sessionKey = "collab:session:{$tenantId}:{$documentType}:{$documentId}:{$sessionId}";
-        $sessionData = $this->cache->get($sessionKey);
+        $sessionData = Cache::get($sessionKey);
 
         if (!$sessionData) {
             return false;
         }
 
         $sessionData['last_heartbeat'] = now()->toIso8601String();
-        $this->cache->put($sessionKey, $sessionData, self::CACHE_TTL);
+        Cache::put($sessionKey, $sessionData, self::CACHE_TTL);
 
         return true;
     }
@@ -234,7 +234,7 @@ final class CollaborationService
     ): ?array {
         $sessionKey = "collab:session:{$tenantId}:{$documentType}:{$documentId}:{$sessionId}";
 
-        return $this->cache->get($sessionKey);
+        return Cache::get($sessionKey);
     }
 
     /**
@@ -244,7 +244,7 @@ final class CollaborationService
     {
         // Использует Redis SCAN для поиска ключей
         // В продакшене можно использовать более оптимизированный подход
-        $this->log->channel('audit')->info('Cleanup stale collaboration sessions', [
+        Log::channel('audit')->info('Cleanup stale collaboration sessions', [
             'tenant_id' => $tenantId,
         ]);
     }

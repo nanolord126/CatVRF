@@ -28,7 +28,7 @@ final class FashionWishlistController
         try {
             $correlationId = Str::uuid()->toString();
 
-            $this->db->transaction(function () use ($id, $correlationId) {
+            DB::transaction(function () use ($id, $correlationId) {
                 FashionWishlist::create([
                     'uuid' => Str::uuid(),
                     'tenant_id' => tenant('id'),
@@ -39,7 +39,7 @@ final class FashionWishlistController
                     'correlation_id' => $correlationId,
                 ]);
 
-                $this->log->channel('audit')->info('Product added to wishlist', [
+                Log::channel('audit')->info('Product added to wishlist', [
                     'product_id' => $id,
                     'user_id' => auth()->id(),
                     'correlation_id' => $correlationId,
@@ -60,9 +60,9 @@ final class FashionWishlistController
                 ->firstOrFail();
             $correlationId = Str::uuid()->toString();
 
-            $this->db->transaction(function () use ($wishlist, $correlationId) {
+            DB::transaction(function () use ($wishlist, $correlationId) {
                 $wishlist->delete();
-                $this->log->channel('audit')->info('Product removed from wishlist', [
+                Log::channel('audit')->info('Product removed from wishlist', [
                     'product_id' => $wishlist->product_id,
                     'user_id' => auth()->id(),
                     'correlation_id' => $correlationId,

@@ -1,62 +1,129 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Medical\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
+use Illuminate\Database\Eloquent\Builder;
 
+/**
+ * КАНОН 2026: Модель Медицинской Услуги (Medical Service).
+ * Слой 2: Доменные Модели / Вертикаль Medical.
+ */
 final class MedicalService extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, LogsActivity;
 
     protected $table = 'medical_services';
 
     protected $fillable = [
+        'uuid',
         'tenant_id',
         'clinic_id',
         'name',
+        'category_name',
         'description',
-        'category',
-        'price',
-        'cost_price',
         'duration_minutes',
-        'requires_tests',
-        'tags',
+        'price_kopecks',
         'is_active',
-        'rating',
-        'review_count',
-        'correlation_id',
+        'consumables_json',
+        'age_limit_min',
+        'age_limit_max',
+        'required_prepayment_percentage',
+        'metadata',
+        'tags',
+        'correlation_id'
     ];
-
-    protected $hidden = ['deleted_at'];
 
     protected $casts = [
-        'requires_tests' => 'collection',
-        'tags' => 'collection',
-        'price' => 'float',
-        'cost_price' => 'float',
-        'rating' => 'float',
         'is_active' => 'boolean',
+        'price_kopecks' => 'integer',
+        'duration_minutes' => 'integer',
+        'age_limit_min' => 'integer',
+        'age_limit_max' => 'integer',
+        'required_prepayment_percentage' => 'integer',
+        'consumables_json' => 'array',
+        'metadata' => 'array',
+        'tags' => 'array',
     ];
 
+    /**
+     * КАНОН: Global Scopes и События модели.
+     */
     protected static function booted(): void
     {
         static::addGlobalScope('tenant', function ($query) {
-            if ($tenantId = auth()?->user()?->tenant_id ?? filament()?->getTenant()?->id) {
-                $query->where('tenant_id', $tenantId);
-            }
+            $query->where('tenant_id', tenant()->id ?? 0);
         });
     }
 
-    public function clinic(): BelongsTo
+    /**
+     * Настройка логов для аудита и ФЗ-152.
+     */
+    public function getActivitylogOptions(): LogOptions
     {
-        return $this->belongsTo(MedicalClinic::class, 'clinic_id');
+        return LogOptions::defaults()
+            ->logOnly(['name', 'base_price', 'is_active', 'age_limit_min', 'required_prepayment_percentage'])
+            ->logOnlyDirty()
+            ->useLogName('medical_service_audit');
     }
 
+    /**
+     * Отношение: Клиника, предоставляющая услугу.
+     */
+    public function clinic(): BelongsTo
+    {
+        return $this->belongsTo(Clinic::class, 'clinic_id');
+    }
+
+    /**
+     * Отношение: Записи на данную услугу.
+     */
     public function appointments(): HasMany
     {
-        return $this->hasMany(MedicalAppointment::class, 'service_id');
+        return $this->hasMany(Appointment::class, 'service_id');
+    }
+
+    /**
+     * Проверка: соответствие возрасту.
+     */
+    public function checkAgeLimits(int $age): bool
+    {
+        if ($this->age_limit_min && $age < $this->age_limit_min) {
+            return false;
+        }
+
+        if ($this->age_limit_max && $age > $this->age_limit_max) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Расчёт обязательной предоплаты.
+     */
+    public function calculateRequiredPrepayment(): int
+    {
+        if (!$this->required_prepayment_percentage) {
+            return 0;
+        }
+
+        return (int)($this->base_price * ($this->required_prepayment_percentage / 100));
+    }
+
+    /**
+     * Отношение: Расходники, привязанные к услуге.
+     */
+    public function consumables(): HasMany
+    {
+        return $this->hasMany(MedicalConsumable::class, 'service_id');
     }
 }

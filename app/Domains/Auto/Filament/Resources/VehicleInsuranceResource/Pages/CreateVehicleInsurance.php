@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Auto\Filament\Resources\VehicleInsuranceResource\Pages;
 
@@ -37,8 +38,8 @@ class CreateVehicleInsurance extends CreateRecord
 
     protected function afterCreate(): void
     {
-        $this->db->transaction(function () {
-            $this->log->channel('audit')->info('VehicleInsurance created', [
+        DB::transaction(function () {
+            Log::channel('audit')->info('VehicleInsurance created', [
                 'correlation_id' => $this->record->correlation_id,
                 'policy_id' => $this->record->id,
                 'policy_number' => $this->record->policy_number,

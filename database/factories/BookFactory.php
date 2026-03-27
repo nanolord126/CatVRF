@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Domains\Books\Models\Book;
+use App\Domains\BooksAndLiterature\Books\Models\Book;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 final class BookFactory extends Factory

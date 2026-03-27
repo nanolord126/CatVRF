@@ -1,31 +1,110 @@
-<?php declare(strict_types=1);
-namespac
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domains\Veterinary\Models;
+
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 /**
- * VeterinaryAppointment
- * 
- * Производитель: CatVRF Platform
- * Версия: 1.0.0
- * 
- * Примеры использования:
- * 
- * ```php
- * // Базовое использование
- * $instance = new VeterinaryAppointment();
- * ```
- * 
- * Требования:
- * - Laravel 10+
- * - PHP 8.2+
- * - Все методы должны быть явно типизированы
- * 
- * @author CatVRF
- * @package namespace App\Domains\Veterinary\Models
- * @see https://github.com/iyegorovskyi_clemny/CatVRF
+ * Veterinary Appointment Model (Booking)
  */
-e App\Domains\Veterinary\Models;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Traits\TenantScoped;
-final class VeterinaryAppointment extends Model{use HasUuids,SoftDeletes,TenantScoped;protected $table='veterinary_appointments';protected $fillable=['uuid','tenant_id','clinic_id','owner_id','correlation_id','status','total_kopecks','payout_kopecks','payment_status','pet_name','pet_type','appointment_date','service_type','tags'];protected $casts=['total_kopecks'=>'integer','payout_kopecks'=>'integer','appointment_date'=>'datetime','tags'=>'json'];protected static function booted(){static::addGlobalScope('tenant',fn($q)=>$q->where('veterinary_appointments.tenant_id',tenant()->id));}}
+final class VeterinaryAppointment extends Model
+{
+    protected $table = 'veterinary_appointments';
+
+    protected $fillable = [
+        'uuid',
+        'tenant_id',
+        'clinic_id',
+        'veterinarian_id',
+        'pet_id',
+        'service_id',
+        'client_id',
+        'appointment_at',
+        'status',
+        'final_price',
+        'payment_status',
+        'symptoms',
+        'cancellation_reason',
+        'tags',
+        'correlation_id',
+    ];
+
+    protected $casts = [
+        'appointment_at' => 'datetime',
+        'final_price' => 'integer',
+        'tags' => 'json',
+    ];
+
+    /**
+     * Boot logic
+     */
+    protected static function booted(): void
+    {
+        static::addGlobalScope('tenant_scope', function (Builder $builder) {
+            if (function_exists('tenant') && is_object(tenant()) && isset(tenant()->id)) {
+                $builder->where('veterinary_appointments.tenant_id', tenant()->id);
+            }
+        });
+
+        static::creating(function (Model $model) {
+            $model->uuid = $model->uuid ?? (string) Str::uuid();
+            if (function_exists('tenant') && is_object(tenant()) && isset(tenant()->id)) {
+                $model->tenant_id = $model->tenant_id ?? tenant()->id;
+            }
+        });
+    }
+
+    /**
+     * Relations: Clinic
+     */
+    public function clinic(): BelongsTo
+    {
+        return $this->belongsTo(VeterinaryClinic::class, 'clinic_id');
+    }
+
+    /**
+     * Relations: Veterinarian
+     */
+    public function veterinarian(): BelongsTo
+    {
+        return $this->belongsTo(Veterinarian::class, 'veterinarian_id');
+    }
+
+    /**
+     * Relations: Pet
+     */
+    public function pet(): BelongsTo
+    {
+        return $this->belongsTo(Pet::class, 'pet_id');
+    }
+
+    /**
+     * Relations: User (Pet Owner / Client)
+     */
+    public function client(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\User::class, 'client_id');
+    }
+
+    /**
+     * Relations: Specific Service
+     */
+    public function service(): BelongsTo
+    {
+        return $this->belongsTo(VeterinaryService::class, 'service_id');
+    }
+
+    /**
+     * Relations: Resulting Medical Record
+     */
+    public function medicalRecord(): BelongsTo
+    {
+        return $this->hasOne(MedicalRecord::class, 'appointment_id');
+    }
+}

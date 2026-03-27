@@ -216,7 +216,7 @@ final class RateLimiterService
     ): bool {
         // Проверить burst ban
         if (Redis::exists("{$key}:burst_ban") === 1) {
-            $this->log->channel('fraud_alert')->warning('Rate limit burst ban active', [
+            Log::channel('fraud_alert')->warning('Rate limit burst ban active', [
                 'key' => $key,
                 'operation' => $operation,
                 'correlation_id' => $correlationId,
@@ -278,7 +278,7 @@ final class RateLimiterService
                 now()->toDateTimeString()
             );
             
-            $this->log->channel('fraud_alert')->warning('Rate limit burst protection activated', [
+            Log::channel('fraud_alert')->warning('Rate limit burst protection activated', [
                 'key' => $key,
                 'operation' => $operation,
                 'rejection_count' => $rejectionCount,
@@ -289,7 +289,7 @@ final class RateLimiterService
             return;
         }
         
-        $this->log->channel('security')->warning('Rate limit exceeded', [
+        Log::channel('security')->warning('Rate limit exceeded', [
             'key' => $key,
             'operation' => $operation,
             'rejection_count' => $rejectionCount,

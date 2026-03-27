@@ -39,14 +39,14 @@ final class MLRecalculateJob implements ShouldQueue
     public function handle(FraudMLService $fraudMLService): void
     {
         try {
-            $this->db->transaction(function () use ($fraudMLService) {
+            DB::transaction(function () use ($fraudMLService) {
                 $trainingData = $fraudMLService->gatherTrainingData(
                     dateFrom: Carbon::now()->subDays(30),
                     dateTo: Carbon::now()
                 );
 
                 if ($trainingData->isEmpty()) {
-                    $this->log->channel('audit')->warning('Insufficient data for ML model training', [
+                    Log::channel('audit')->warning('Insufficient data for ML model training', [
                         'correlation_id' => $this->correlationId,
                         'date_range' => '30 days',
                     ]);
@@ -58,7 +58,7 @@ final class MLRecalculateJob implements ShouldQueue
 
                 $metrics = $fraudMLService->evaluateModel($modelVersion);
 
-                $this->db->table('fraud_model_versions')->insert([
+                DB::table('fraud_model_versions')->insert([
                     'version' => $modelVersion,
                     'trained_at' => Carbon::now(),
                     'accuracy' => $metrics['accuracy'],
@@ -77,7 +77,7 @@ final class MLRecalculateJob implements ShouldQueue
                 if ($metrics['auc_roc'] > ($currentMetrics['auc_roc'] + 0.02)) {
                     $fraudMLService->switchToModel($modelVersion);
 
-                    $this->log->channel('audit')->info('ML model switched to new version', [
+                    Log::channel('audit')->info('ML model switched to new version', [
                         'correlation_id' => $this->correlationId,
                         'old_version' => $currentVersion,
                         'new_version' => $modelVersion,
@@ -85,7 +85,7 @@ final class MLRecalculateJob implements ShouldQueue
                         'new_auc' => $metrics['auc_roc'],
                     ]);
                 } else {
-                    $this->log->channel('audit')->info('ML model training completed - performance not improved', [
+                    Log::channel('audit')->info('ML model training completed - performance not improved', [
                         'correlation_id' => $this->correlationId,
                         'new_version' => $modelVersion,
                         'auc_roc' => $metrics['auc_roc'],
@@ -93,7 +93,7 @@ final class MLRecalculateJob implements ShouldQueue
                 }
             });
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('ML recalculation job failed', [
+            Log::channel('audit')->error('ML recalculation job failed', [
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

@@ -1,8 +1,6 @@
 <?php
 declare(strict_types=1);
-
 namespace App\Http\Controllers\Api;
-
 use App\Http\Requests\Api\PaymentInitRequest;
 use App\Services\Payment\PaymentService;
 use App\Exceptions\DuplicatePaymentException;
@@ -15,7 +13,6 @@ use Illuminate\Routing\Controller;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-
 final class PaymentController extends Controller
 {
     public function __construct(
@@ -23,11 +20,9 @@ final class PaymentController extends Controller
         private readonly FraudControlService $fraudControl,
         private readonly RateLimiterService $rateLimiter
     ) {}
-
     public function init(PaymentInitRequest $request): JsonResponse
     {
         $correlationId = $request->header('X-Correlation-ID', Str::uuid()->toString());
-
         try {
             // Apply Rate Limiting
             $this->rateLimiter->ensureLimit(
@@ -35,7 +30,6 @@ final class PaymentController extends Controller
                 maxAttempts: 10,
                 decayMinutes: 1
             );
-
             // Apply Fraud Check before payment processing
             try {
                 $this->fraudControl->checkAndScore(
@@ -46,16 +40,15 @@ final class PaymentController extends Controller
                 );
             } catch (\Exception $e) {
                 // Fraud blocks
-                $this->log->channel('fraud_alert')->error('Payment blocked by Fraud Control', [
+                Log::channel('fraud_alert')->error('Payment blocked by Fraud Control', [
                     'user_id' => $request->user()->id,
                     'amount' => $request->input('amount'),
                     'correlation_id' => $correlationId,
                 ]);
                 return response()->json(['error' => 'Transaction blocked for security reasons.'], 403);
             }
-
             $validated = $request->all();
-            $payment = $this->db->transaction(function () use ($validated, $correlationId) {
+            $payment = DB::transaction(function () use ($validated, $correlationId) {
                 return $this->paymentService->initPayment(
                     tenantId: ($validated['tenant_id'] ?? null),
                     userId: $request->user()->id,
@@ -66,14 +59,12 @@ final class PaymentController extends Controller
                     correlationId: $correlationId
                 );
             });
-
-            $this->log->channel('audit')->info('Payment initiated successfully', [
+            Log::channel('audit')->info('Payment initiated successfully', [
                 'payment_id' => $payment->id,
                 'amount' => $payment->amount,
                 'user_id' => $request->user()->id,
                 'correlation_id' => $correlationId,
             ]);
-
             return response()->json([
                 'id' => $payment->uuid,
                 'status' => $payment->status,
@@ -83,19 +74,16 @@ final class PaymentController extends Controller
                 'created_at' => $payment->created_at,
                 'correlation_id' => $correlationId,
             ], 201);
-
         } catch (DuplicatePaymentException $e) {
-            $this->log->channel('audit')->warning('Duplicate payment detected', [
+            Log::channel('audit')->warning('Duplicate payment detected', [
                 'user_id' => $request->user()->id ?? null,
                 'correlation_id' => $correlationId,
             ]);
-
             return response()->json([
                 'message' => 'Duplicate payment detected',
                 'previous_payment' => $e->getPreviousPayment(),
                 'correlation_id' => $correlationId,
             ], 409);
-
         } catch (RateLimitException $e) {
             return response()->json([
                 'message' => $e->getMessage(),
@@ -103,15 +91,13 @@ final class PaymentController extends Controller
             ], 429, [
                 'Retry-After' => $e->getRetryAfter(),
             ]);
-
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Payment creation failed', [
+            Log::channel('audit')->error('Payment creation failed', [
                 'error' => $e->getMessage(),
                 'user_id' => $request->user()->id ?? null,
                 'correlation_id' => $correlationId,
                 'trace' => $e->getTraceAsString(),
             ]);
-
             return response()->json([
                 'message' => 'Payment creation failed',
                 'correlation_id' => $correlationId,

@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Auto\Events;
 
@@ -29,7 +30,7 @@ class ParkingBookingCreated implements ShouldBroadcast
         public readonly ParkingBooking $booking,
         public readonly string $correlationId
     ) {
-        $this->log->channel('audit')->info('ParkingBookingCreated event dispatched', [
+        Log::channel('audit')->info('ParkingBookingCreated event dispatched', [
             'correlation_id' => $this->correlationId,
             'booking_id' => $this->booking->id,
             'spot_number' => $this->booking->spot_number,

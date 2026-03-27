@@ -28,8 +28,8 @@ final class CreateVehicleInspection extends CreateRecord
 
     protected function afterCreate(): void
     {
-        $this->db->transaction(function () {
-            $this->log->channel('audit')->info('VehicleInspection created', [
+        DB::transaction(function () {
+            Log::channel('audit')->info('VehicleInspection created', [
                 'correlation_id' => $this->record->correlation_id,
                 'inspection_id' => $this->record->id,
                 'vehicle_id' => $this->record->vehicle_id,

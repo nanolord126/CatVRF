@@ -2,204 +2,105 @@
 
 namespace App\Domains\Beauty\Http\Controllers;
 
+use App\Domains\Beauty\Http\Requests\CreateBeautySalonRequest;
 use App\Domains\Beauty\Models\BeautySalon;
-use App\Domains\Beauty\Models\Master;
-use App\Domains\Beauty\Services\SalonService;
-use App\Services\FraudControlService;
+use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
-final class BeautySalonController
+/**
+ * КАНОН 2026: Beauty Salon Controller (Layer 4)
+ */
+final class BeautySalonController extends Controller
 {
-    public function __construct(
-        private readonly SalonService $salonService,
-        private readonly FraudControlService $fraudControlService,
-    ) {}
-
+    /**
+     * Список салонов (GET /beauty/salons).
+     */
     public function index(): JsonResponse
     {
-        try {
-            $salons = BeautySalon::where('is_active', true)
-                ->with('masters', 'services')
-                ->paginate(20);
+        $correlationId = (string) Str::uuid();
 
-            $correlationId = Str::uuid()->toString();
-            $this->log->channel('audit')->info('Beauty salons listed', [
-                'count' => $salons->count(),
-                'correlation_id' => $correlationId,
-            ]);
+        try {
+            $salons = BeautySalon::query()
+                ->where('is_active', true)
+                ->with(['masters', 'services'])
+                ->paginate(20);
 
             return response()->json([
                 'success' => true,
                 'data' => $salons,
-                'correlation_id' => $correlationId,
+                'correlation_id' => $correlationId
             ]);
+
         } catch (\Throwable $e) {
-            $correlationId = Str::uuid()->toString();
-            $this->log->error('Beauty salon listing failed', [
-                'error' => $e->getMessage(),
+            Log::channel('audit')->error('API Error: List Salons Failed', [
                 'correlation_id' => $correlationId,
+                'error' => $e->getMessage()
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage(),
-                'correlation_id' => $correlationId,
+                'message' => 'Не удалось загрузить список салонов.',
+                'correlation_id' => $correlationId
             ], 500);
         }
     }
 
-    public function show(int $id): JsonResponse
+    /**
+     * Создать новый салон (POST /beauty/salons).
+     */
+    public function store(CreateBeautySalonRequest $request): JsonResponse
     {
-        try {
-            $salon = BeautySalon::with('masters', 'services', 'reviews')->findOrFail($id);
-
-            return response()->json([
-                'success' => true,
-                'data' => $salon,
-                'correlation_id' => Str::uuid(),
-            ]);
-        } catch (\Throwable $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Salon not found',
-                'correlation_id' => Str::uuid(),
-            ], 404);
-        }
-    }
-
-    public function store(): JsonResponse
-    {
-        $correlationId = Str::uuid()->toString();
-        
-        $fraudResult = $this->fraudControlService->check(
-            auth()->id() ?? 0,
-            'operation',
-            0,
-            request()->ip(),
-            request()->header('X-Device-Fingerprint'),
-            $correlationId,
-        );
-
-        if ($fraudResult['decision'] === 'block') {
-            $this->log->channel('fraud_alert')->warning('Operation blocked by fraud control', [
-                'correlation_id' => $correlationId,
-                'user_id'        => auth()->id(),
-                'score'          => $fraudResult['score'],
-            ]);
-            return response()->json([
-                'success'        => false,
-                'error'          => 'Операция заблокирована.',
-                'correlation_id' => $correlationId,
-            ], 403);
-        }
+        $correlationId = (string) Str::uuid();
 
         try {
-            $salon = $this->db->transaction(function () use ($correlationId) {
-                return BeautySalon::create([
-                    'uuid' => Str::uuid(),
-                    'tenant_id' => tenant('id'),
-                    'name' => request('name'),
-                    'description' => request('description'),
-                    'address' => request('address'),
-                    'phone' => request('phone'),
-                    'email' => request('email'),
-                    'owner_id' => auth()->id(),
-                    'schedule' => request('schedule', []),
-                    'is_active' => true,
+            $salon = DB::transaction(function () use ($request, $correlationId) {
+                return BeautySalon::create(array_merge($request->validated(), [
+                    'uuid' => (string) Str::uuid(),
+                    'tenant_id' => tenant('id') ?? 1,
                     'correlation_id' => $correlationId,
-                ]);
+                    'is_active' => true
+                ]));
             });
 
-            $this->log->channel('audit')->info('Beauty salon created', [
+            Log::channel('audit')->info('API Success: Beauty Salon Created', [
                 'salon_id' => $salon->id,
-                'owner_id' => auth()->id(),
-                'correlation_id' => $correlationId,
+                'correlation_id' => $correlationId
             ]);
 
             return response()->json([
                 'success' => true,
                 'data' => $salon,
-                'correlation_id' => $correlationId,
+                'correlation_id' => $correlationId
             ], 201);
+
         } catch (\Throwable $e) {
-            $correlationId = Str::uuid()->toString();
-            $this->log->error('Beauty salon creation failed', [
-                'error' => $e->getMessage(),
+            Log::channel('audit')->error('API Error: Create Salon Failed', [
                 'correlation_id' => $correlationId,
+                'error' => $e->getMessage()
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => $e->getMessage(),
-                'correlation_id' => $correlationId,
-            ], 500);
+                'message' => 'Ошибка при создании салона.',
+                'correlation_id' => $correlationId
+            ], 400);
         }
     }
 
-    public function update(int $id): JsonResponse
+    /**
+     * Информация о салоне (GET /beauty/salons/{salon}).
+     */
+    public function show(BeautySalon $salon): JsonResponse
     {
-        $correlationId = Str::uuid()->toString();
-        
-        $fraudResult = $this->fraudControlService->check(
-            auth()->id() ?? 0,
-            'operation',
-            0,
-            request()->ip(),
-            request()->header('X-Device-Fingerprint'),
-            $correlationId,
-        );
+        $correlationId = (string) Str::uuid();
 
-        if ($fraudResult['decision'] === 'block') {
-            $this->log->channel('fraud_alert')->warning('Operation blocked by fraud control', [
-                'correlation_id' => $correlationId,
-                'user_id'        => auth()->id(),
-                'score'          => $fraudResult['score'],
-            ]);
-            return response()->json([
-                'success'        => false,
-                'error'          => 'Операция заблокирована.',
-                'correlation_id' => $correlationId,
-            ], 403);
-        }
-
-        try {
-            $salon = BeautySalon::findOrFail($id);
-
-            $this->db->transaction(function () use ($salon, $correlationId) {
-                $salon->update([
-                    'name' => request('name', $salon->name),
-                    'description' => request('description', $salon->description),
-                    'phone' => request('phone', $salon->phone),
-                    'schedule' => request('schedule', $salon->schedule),
-                    'correlation_id' => $correlationId,
-                ]);
-            });
-
-            $this->log->channel('audit')->info('Beauty salon updated', [
-                'salon_id' => $id,
-                'correlation_id' => $correlationId,
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'data' => $salon,
-                'correlation_id' => $correlationId,
-            ]);
-        } catch (\Throwable $e) {
-            $correlationId = Str::uuid()->toString();
-            $this->log->error('Beauty salon update failed', [
-                'error' => $e->getMessage(),
-                'correlation_id' => $correlationId,
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-                'correlation_id' => $correlationId,
-            ], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'data' => $salon->load(['masters', 'services', 'reviews']),
+            'correlation_id' => $correlationId
+        ]);
     }
 }

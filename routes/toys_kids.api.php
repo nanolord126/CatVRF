@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Domains\ToysKids\Http\Controllers\ToyProductController;
+use App\Domains\ToysAndGames\ToysAndGames\ToysKids\Http\Controllers\ToyProductController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['api', 'tenant'])->prefix('toys')->group(function (): void {

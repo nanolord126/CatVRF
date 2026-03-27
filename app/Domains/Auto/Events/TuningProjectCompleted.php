@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Auto\Events;
 
@@ -29,7 +30,7 @@ class TuningProjectCompleted implements ShouldBroadcast
         public readonly TuningProject $project,
         public readonly string $correlationId
     ) {
-        $this->log->channel('audit')->info('TuningProjectCompleted event dispatched', [
+        Log::channel('audit')->info('TuningProjectCompleted event dispatched', [
             'correlation_id' => $this->correlationId,
             'project_id' => $this->project->id,
         ]);

@@ -23,7 +23,7 @@ final class TicketSaleController
 
             $correlationId = Str::uuid()->toString();
 
-            $sale = $this->db->transaction(function () use ($eventId, $validated, $correlationId) {
+            $sale = DB::transaction(function () use ($eventId, $validated, $correlationId) {
                 return $this->salesService->createSale(
                     $eventId,
                     $validated['ticket_type_id'],
@@ -35,7 +35,7 @@ final class TicketSaleController
 
             TicketGenerationJob::dispatch($sale->id, $correlationId);
 
-            \$this->log->channel('audit')->info('Ticket purchase initiated', [
+            \Log::channel('audit')->info('Ticket purchase initiated', [
                 'event_id' => $eventId,
                 'quantity' => $validated['quantity'],
                 'correlation_id' => $correlationId,
@@ -47,7 +47,7 @@ final class TicketSaleController
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Throwable $e) {
-            \$this->log->channel('audit')->error('Ticket purchase failed', [
+            \Log::channel('audit')->error('Ticket purchase failed', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -60,7 +60,7 @@ final class TicketSaleController
     public function eventSales(int $eventId): JsonResponse
     {
         try {
-            $event = $this->event->findOrFail($eventId);
+            $event = Event::findOrFail($eventId);
             $this->authorize('update', $event);
 
             $sales = TicketSale::where('event_id', $eventId)
@@ -73,7 +73,7 @@ final class TicketSaleController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Throwable $e) {
-            \$this->log->channel('audit')->error('Failed to list sales', [
+            \Log::channel('audit')->error('Failed to list sales', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -97,7 +97,7 @@ final class TicketSaleController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Throwable $e) {
-            \$this->log->channel('audit')->error('Failed to show sale', [
+            \Log::channel('audit')->error('Failed to show sale', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -116,11 +116,11 @@ final class TicketSaleController
             $reason = request()->input('reason', 'User requested refund');
             $correlationId = Str::uuid()->toString();
 
-            $this->db->transaction(function () use ($sale, $reason, $correlationId) {
+            DB::transaction(function () use ($sale, $reason, $correlationId) {
                 $this->salesService->refundSale($sale, $reason, $correlationId);
             });
 
-            \$this->log->channel('audit')->info('Ticket sale refunded', [
+            \Log::channel('audit')->info('Ticket sale refunded', [
                 'sale_id' => $id,
                 'reason' => $reason,
                 'correlation_id' => $correlationId,
@@ -132,7 +132,7 @@ final class TicketSaleController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            \$this->log->channel('audit')->error('Refund failed', [
+            \Log::channel('audit')->error('Refund failed', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([

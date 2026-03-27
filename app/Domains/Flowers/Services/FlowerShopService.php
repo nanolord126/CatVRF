@@ -37,7 +37,7 @@ final class FlowerShopService
         }
         RateLimiter::hit("flowers:order:".$clientId, 3600);
 
-        return $this->db->transaction(function () use ($clientId, $data, $correlationId) {
+        return DB::transaction(function () use ($clientId, $data, $correlationId) {
             $this->fraud->check([
                 "user_id" => $clientId,
                 "operation_type" => "flower_order",
@@ -67,7 +67,7 @@ final class FlowerShopService
                 $correlationId
             );
 
-            $this->log->channel("audit")->info("Flowers: order created", ["order_uuid" => $order->uuid]);
+            Log::channel("audit")->info("Flowers: order created", ["order_uuid" => $order->uuid]);
 
             return $order;
         });
@@ -81,7 +81,7 @@ final class FlowerShopService
         $correlationId = $correlationId ?: (string) Str::uuid();
         $order = FlowerOrder::findOrFail($orderId);
 
-        $this->db->transaction(function () use ($order, $correlationId) {
+        DB::transaction(function () use ($order, $correlationId) {
             $fee = (int) ($order->total_amount * 0.14);
             $payout = $order->total_amount - $fee;
 
@@ -90,7 +90,7 @@ final class FlowerShopService
             $this->wallet->releaseHold($order->client_id, $order->total_amount, $correlationId);
             $this->wallet->credit($order->shop_id, $payout, "flower_sale_payout", "Sale #{$order->uuid}", $correlationId);
 
-            $this->log->channel("audit")->info("Flowers: order balance settled", [
+            Log::channel("audit")->info("Flowers: order balance settled", [
                 "order_id" => $orderId,
                 "fee" => $fee,
                 "payout" => $payout
@@ -110,7 +110,7 @@ final class FlowerShopService
 
         foreach ($expired as $item) {
             $item->update(["status" => "wasted"]);
-            $this->log->channel("audit")->warning("Flowers: item expired", ["shop" => $shop_id, "item" => $item->id]);
+            Log::channel("audit")->warning("Flowers: item expired", ["shop" => $shop_id, "item" => $item->id]);
         }
 
         return ["wasted_count" => $expired->count()];

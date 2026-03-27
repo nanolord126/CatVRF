@@ -136,7 +136,7 @@ use Exception;
                 $fiscalId = $response['Model']['Id'] ?? null;
                 $receiptUrl = $response['Model']['Url'] ?? null;
 
-                $this->log->info('CloudKassir receipt sent', [
+                Log::info('CloudKassir receipt sent', [
                     'fiscal_id' => $fiscalId,
                     'payment_id' => $tx['payment_id'] ?? null,
                     'correlation_id' => $tx['correlation_id'] ?? null,
@@ -151,7 +151,7 @@ use Exception;
                     'error' => null,
                 ];
             } catch (Exception $e) {
-                $this->log->error('CloudKassir sendReceipt failed', [
+                Log::error('CloudKassir sendReceipt failed', [
                     'error' => $e->getMessage(),
                     'payment_id' => $tx['payment_id'] ?? null,
                     'correlation_id' => $tx['correlation_id'] ?? null,
@@ -180,7 +180,7 @@ use Exception;
                 'error' => null,
             ];
         } catch (Exception $e) {
-            $this->log->error('CloudKassir getReceiptStatus failed', [
+            Log::error('CloudKassir getReceiptStatus failed', [
                 'error' => $e->getMessage(),
                 'fiscal_id' => $fiscalId,
             ]);
@@ -226,7 +226,7 @@ use Exception;
                 throw new Exception("CloudKassir refund error: {$response['Message']}");
             }
 
-            $this->log->info('CloudKassir refund sent', [
+            Log::info('CloudKassir refund sent', [
                 'original_fiscal_id' => $fiscalId,
                 'refund_fiscal_id' => $response['Model']['Id'] ?? null,
                 'amount' => $amount,
@@ -238,7 +238,7 @@ use Exception;
                 'status' => 'registered',
             ];
         } catch (Exception $e) {
-            $this->log->error('CloudKassir refundReceipt failed', [
+            Log::error('CloudKassir refundReceipt failed', [
                 'error' => $e->getMessage(),
                 'fiscal_id' => $fiscalId,
                 'amount' => $amount,
@@ -258,10 +258,10 @@ use Exception;
                 ->head($this->endpoint)
                 ->successful();
 
-            $this->log->info('CloudKassir availability check', ['available' => $response]);
+            Log::info('CloudKassir availability check', ['available' => $response]);
             return $response;
         } catch (Exception $e) {
-            $this->log->warning('CloudKassir availability check failed', ['error' => $e->getMessage()]);
+            Log::warning('CloudKassir availability check failed', ['error' => $e->getMessage()]);
             return false;
         }
     }
@@ -272,7 +272,7 @@ use Exception;
     public function resendReceipt(string $fiscalId): array
     {
         try {
-            $this->log->info('CloudKassir: resending receipt', ['fiscal_id' => $fiscalId]);
+            Log::info('CloudKassir: resending receipt', ['fiscal_id' => $fiscalId]);
 
             $response = Http::withBasicAuth($this->config['id'], $this->config['key'])
                 ->timeout(10)
@@ -287,7 +287,7 @@ use Exception;
                 'sent_at' => Carbon::now()->toIso8601String(),
             ];
         } catch (Exception $e) {
-            $this->log->error('CloudKassir resendReceipt failed', [
+            Log::error('CloudKassir resendReceipt failed', [
                 'error' => $e->getMessage(),
                 'fiscal_id' => $fiscalId,
             ]);
@@ -303,7 +303,7 @@ use Exception;
         try {
             // CloudKassir не предоставляет метод истории через API
             // Возвращаем пустой результат или можно добавить логику через данные БД
-            $this->log->info('CloudKassir: getReceiptHistory not implemented in API');
+            Log::info('CloudKassir: getReceiptHistory not implemented in API');
             
             return [
                 'total' => 0,
@@ -311,7 +311,7 @@ use Exception;
                 'items' => [],
             ];
         } catch (Exception $e) {
-            $this->log->error('CloudKassir getReceiptHistory failed', [
+            Log::error('CloudKassir getReceiptHistory failed', [
                 'error' => $e->getMessage(),
             ]);
             throw $e;

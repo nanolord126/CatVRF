@@ -21,7 +21,7 @@ final class ElectronicsService
         if (RateLimiter::tooManyAttempts("electronics:order:".auth()->id(), 15)) throw new \RuntimeException("Too many orders", 429);
         RateLimiter::hit("electronics:order:".auth()->id(), 3600);
 
-        return $this->db->transaction(function () use ($sellerId, $items, $correlationId) {
+        return DB::transaction(function () use ($sellerId, $items, $correlationId) {
             $total = 0;
             foreach ($items as $item) {
                 $product = ElectronicProduct::where('id', $item['product_id'])->firstOrFail();
@@ -31,7 +31,7 @@ final class ElectronicsService
 
             $fraud = $this->fraud->check(['user_id' => auth()->id() ?? 0, 'operation_type' => 'electronic_order', 'correlation_id' => $correlationId, 'amount' => $total]);
             if ($fraud['decision'] === 'block') {
-                $this->log->channel('audit')->error('Electronic order blocked', ['user_id' => auth()->id(), 'correlation_id' => $correlationId]);
+                Log::channel('audit')->error('Electronic order blocked', ['user_id' => auth()->id(), 'correlation_id' => $correlationId]);
                 throw new \RuntimeException("Security block", 403);
             }
 
@@ -42,7 +42,7 @@ final class ElectronicsService
                 'tags' => ['electronics' => true],
             ]);
 
-            $this->log->channel('audit')->info('Electronic order created', ['order_id' => $order->id, 'correlation_id' => $correlationId]);
+            Log::channel('audit')->info('Electronic order created', ['order_id' => $order->id, 'correlation_id' => $correlationId]);
             return $order;
         });
     }
@@ -50,7 +50,7 @@ final class ElectronicsService
     public function completeOrder(int $orderId, string $correlationId = ""): ElectronicOrder
     {
         $correlationId = $correlationId ?: (string) Str::uuid();
-        return $this->db->transaction(function () use ($orderId, $correlationId) {
+        return DB::transaction(function () use ($orderId, $correlationId) {
             $order = ElectronicOrder::findOrFail($orderId);
             if ($order->payment_status !== 'completed') throw new \RuntimeException("Order not paid", 400);
             foreach ($order->items_json as $item) {
@@ -58,7 +58,7 @@ final class ElectronicsService
             }
             $order->update(['status' => 'completed', 'correlation_id' => $correlationId]);
             $this->wallet->credit(tenant()->id, $order->payout_kopecks, 'electronic_payout', ['correlation_id' => $correlationId, 'order_id' => $order->id]);
-            $this->log->channel('audit')->info('Electronic order completed', ['order_id' => $order->id, 'correlation_id' => $correlationId]);
+            Log::channel('audit')->info('Electronic order completed', ['order_id' => $order->id, 'correlation_id' => $correlationId]);
             return $order;
         });
     }
@@ -66,14 +66,14 @@ final class ElectronicsService
     public function cancelOrder(int $orderId, string $correlationId = ""): ElectronicOrder
     {
         $correlationId = $correlationId ?: (string) Str::uuid();
-        return $this->db->transaction(function () use ($orderId, $correlationId) {
+        return DB::transaction(function () use ($orderId, $correlationId) {
             $order = ElectronicOrder::findOrFail($orderId);
             if ($order->status === 'completed') throw new \RuntimeException("Cannot cancel completed", 400);
             $order->update(['status' => 'cancelled', 'payment_status' => 'refunded', 'correlation_id' => $correlationId]);
             if ($order->payment_status === 'completed') {
                 $this->wallet->credit(tenant()->id, $order->total_kopecks, 'electronic_refund', ['correlation_id' => $correlationId, 'order_id' => $order->id]);
             }
-            $this->log->channel('audit')->info('Electronic order cancelled', ['order_id' => $order->id, 'correlation_id' => $correlationId]);
+            Log::channel('audit')->info('Electronic order cancelled', ['order_id' => $order->id, 'correlation_id' => $correlationId]);
             return $order;
         });
     }

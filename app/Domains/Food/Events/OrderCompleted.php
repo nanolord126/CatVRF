@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Food\Events;
 
@@ -20,13 +21,5 @@ final class OrderCompleted
     public function __construct(
         public RestaurantOrder $order,
         public string $correlationId = '',
-    ) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+    ) {}
 }

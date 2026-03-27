@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Courses;
 
-use App\Domains\Courses\Models\Course;
+use App\Domains\Education\Courses\Models\Course;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;

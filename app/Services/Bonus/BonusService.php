@@ -82,7 +82,7 @@ final readonly class BonusService
                 'correlation_id' => $correlationId,
             ]);
 
-            $this->log->channel('audit')->info('Bonus: Award initiated', [
+            Log::channel('audit')->info('Bonus: Award initiated', [
                 'correlation_id' => $correlationId,
                 'user_id' => $userId,
                 'amount' => $amount,
@@ -90,7 +90,7 @@ final readonly class BonusService
             ]);
 
             // 2. DATABASE TRANSACTION
-            $bonus = $this->db->transaction(function () use (
+            $bonus = DB::transaction(function () use (
                 $userId, $tenantId, $amount, $type, $sourceType, $sourceId, $correlationId, $metadata
             ) {
                 $wallet = Wallet::where('tenant_id', $tenantId)
@@ -115,7 +115,7 @@ final readonly class BonusService
             });
 
             // 3. SUCCESS LOG
-            $this->log->channel('audit')->info('Bonus: Award succeeded', [
+            Log::channel('audit')->info('Bonus: Award succeeded', [
                 'correlation_id' => $correlationId,
                 'bonus_id' => $bonus->id,
                 'user_id' => $userId,
@@ -126,7 +126,7 @@ final readonly class BonusService
             return $bonus;
         } catch (\Exception $e) {
             // 4. ERROR LOG
-            $this->log->channel('audit')->error('Bonus: Award failed', [
+            Log::channel('audit')->error('Bonus: Award failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -150,7 +150,7 @@ final readonly class BonusService
         $unlockedCount = 0;
 
         try {
-            $this->log->channel('audit')->info('Bonus: Unlock expired holds started', [
+            Log::channel('audit')->info('Bonus: Unlock expired holds started', [
                 'correlation_id' => $correlationId,
             ]);
 
@@ -161,7 +161,7 @@ final readonly class BonusService
 
             foreach ($pendingBonuses as $bonus) {
                 try {
-                    $this->db->transaction(function () use ($bonus, $correlationId) {
+                    DB::transaction(function () use ($bonus, $correlationId) {
                         // 1. UPDATE status
                         $bonus->update([
                             'status' => 'credited',
@@ -183,7 +183,7 @@ final readonly class BonusService
                         );
 
                         // 3. LOG
-                        $this->log->channel('audit')->info('Bonus: Hold unlocked', [
+                        Log::channel('audit')->info('Bonus: Hold unlocked', [
                             'correlation_id' => $correlationId,
                             'bonus_id' => $bonus->id,
                             'amount' => $bonus->amount,
@@ -192,7 +192,7 @@ final readonly class BonusService
 
                     $unlockedCount++;
                 } catch (\Exception $e) {
-                    $this->log->channel('audit')->error('Bonus: Unlock failed', [
+                    Log::channel('audit')->error('Bonus: Unlock failed', [
                         'correlation_id' => $correlationId,
                         'bonus_id' => $bonus->id,
                         'error' => $e->getMessage(),
@@ -200,14 +200,14 @@ final readonly class BonusService
                 }
             }
 
-            $this->log->channel('audit')->info('Bonus: Unlock expired holds completed', [
+            Log::channel('audit')->info('Bonus: Unlock expired holds completed', [
                 'correlation_id' => $correlationId,
                 'unlocked_count' => $unlockedCount,
             ]);
 
             return $unlockedCount;
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Bonus: Unlock process failed', [
+            Log::channel('audit')->error('Bonus: Unlock process failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -249,7 +249,7 @@ final readonly class BonusService
                 'correlation_id' => $correlationId,
             ]);
 
-            $this->log->channel('audit')->info('Bonus: Spending initiated', [
+            Log::channel('audit')->info('Bonus: Spending initiated', [
                 'correlation_id' => $correlationId,
                 'user_id' => $userId,
                 'amount' => $amount,
@@ -266,14 +266,14 @@ final readonly class BonusService
             );
 
             // 3. SUCCESS LOG
-            $this->log->channel('audit')->info('Bonus: Spending succeeded', [
+            Log::channel('audit')->info('Bonus: Spending succeeded', [
                 'correlation_id' => $correlationId,
                 'user_id' => $userId,
                 'amount' => $amount,
             ]);
         } catch (\Exception $e) {
             // 4. ERROR LOG
-            $this->log->channel('audit')->error('Bonus: Spending failed', [
+            Log::channel('audit')->error('Bonus: Spending failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -334,14 +334,14 @@ final readonly class BonusService
                     'correlation_id' => $correlationId,
                 ]);
 
-            $this->log->channel('audit')->info('Bonus: Expired bonuses processed', [
+            Log::channel('audit')->info('Bonus: Expired bonuses processed', [
                 'correlation_id' => $correlationId,
                 'expired_count' => $expiredCount,
             ]);
 
             return $expiredCount;
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Bonus: Expiry process failed', [
+            Log::channel('audit')->error('Bonus: Expiry process failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);

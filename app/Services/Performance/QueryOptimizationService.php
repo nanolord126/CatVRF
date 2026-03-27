@@ -28,11 +28,11 @@ final class QueryOptimizationService
      */
     public static function enableSlowQueryLogging(): void
     {
-        $this->db->listen(function ($query) {
+        DB::listen(function ($query) {
             $time = $query->time;
 
             if ($time > self::SLOW_QUERY_THRESHOLD) {
-                $this->log->channel('performance')->warning('Slow query detected', [
+                Log::channel('performance')->warning('Slow query detected', [
                     'query' => $query->sql,
                     'bindings' => $query->bindings,
                     'time' => $time . 'ms',
@@ -56,7 +56,7 @@ final class QueryOptimizationService
             return $query;
         }
 
-        $this->log->channel('performance')->debug('Eager loading applied', [
+        Log::channel('performance')->debug('Eager loading applied', [
             'relations' => $relations,
             'model' => $query->getModel()::class
         ]);
@@ -112,9 +112,9 @@ final class QueryOptimizationService
     public static function analyzeQuery(string $sql, array $bindings = []): array
     {
         try {
-            $results = $this->db->select('EXPLAIN ' . $sql, $bindings);
+            $results = DB::select('EXPLAIN ' . $sql, $bindings);
 
-            $this->log->channel('performance')->info('Query analysis', [
+            Log::channel('performance')->info('Query analysis', [
                 'query' => $sql,
                 'rows_examined' => $results[0]->rows ?? 0,
             ]);
@@ -122,7 +122,7 @@ final class QueryOptimizationService
             return $results;
 
         } catch (\Throwable $e) {
-            $this->log->channel('performance')->error('Query analysis failed', [
+            Log::channel('performance')->error('Query analysis failed', [
                 'query' => $sql,
                 'error' => $e->getMessage()
             ]);
@@ -215,7 +215,7 @@ final class QueryOptimizationService
         $executionTime = ($endTime - $startTime) * 1000; // мс
         $memoryUsed = ($endMemory - $startMemory) / 1024; // КБ
 
-        $this->log->channel('performance')->info('Code profiling', [
+        Log::channel('performance')->info('Code profiling', [
             'label' => $label,
             'execution_time_ms' => round($executionTime, 2),
             'memory_used_kb' => round($memoryUsed, 2),
@@ -232,7 +232,7 @@ final class QueryOptimizationService
      */
     public static function detectNPlusOne(): int
     {
-        $queries = $this->db->getQueryLog();
+        $queries = DB::getQueryLog();
         
         // Анализируем повторяющиеся запросы
         $queryPatterns = [];
@@ -245,7 +245,7 @@ final class QueryOptimizationService
         $suspiciousPatterns = array_filter($queryPatterns, fn ($count) => $count > 5);
 
         if (!empty($suspiciousPatterns)) {
-            $this->log->channel('performance')->warning('Possible N+1 query detected', [
+            Log::channel('performance')->warning('Possible N+1 query detected', [
                 'patterns' => $suspiciousPatterns,
                 'total_queries' => count($queries)
             ]);

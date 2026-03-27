@@ -31,7 +31,7 @@ final class DishConsumableService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-            $this->db->transaction(function () use ($orderId, $dishes, $correlationId) {
+            DB::transaction(function () use ($orderId, $dishes, $correlationId) {
                 foreach ($dishes as $dishId => $quantity) {
                     $dish = Dish::lockForUpdate()->findOrFail($dishId);
 
@@ -41,7 +41,7 @@ final class DishConsumableService
 
                     $dish->decrement('current_stock', $quantity);
 
-                    $this->log->channel('audit')->info('Dish ingredients deducted', [
+                    Log::channel('audit')->info('Dish ingredients deducted', [
                         'order_id' => $orderId,
                         'dish_id' => $dishId,
                         'quantity' => $quantity,
@@ -53,7 +53,7 @@ final class DishConsumableService
 
             return true;
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Dish ingredient deduction failed', [
+            Log::channel('audit')->error('Dish ingredient deduction failed', [
                 'order_id' => $orderId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

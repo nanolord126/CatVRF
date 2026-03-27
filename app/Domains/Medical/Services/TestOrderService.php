@@ -37,7 +37,7 @@ final class TestOrderService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-$this->db->transaction(function () use (
+DB::transaction(function () use (
                 $tenantId,
                 $appointmentId,
                 $patientId,
@@ -63,7 +63,7 @@ $this->db->transaction(function () use (
 
                 TestOrderCreated::dispatch($testOrder, $correlationId);
 
-                $this->log->channel('audit')->info('Medical test order created', [
+                Log::channel('audit')->info('Medical test order created', [
                     'test_order_id' => $testOrder->id,
                     'patient_id' => $patientId,
                     'clinic_id' => $clinicId,
@@ -75,7 +75,7 @@ $this->db->transaction(function () use (
                 return $testOrder;
             });
         } catch (Throwable $e) {
-            $this->log->channel('audit')->error('Failed to create test order', [
+            Log::channel('audit')->error('Failed to create test order', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -99,7 +99,7 @@ $this->db->transaction(function () use (
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-$this->db->transaction(function () use ($testOrder, $results, $correlationId) {
+DB::transaction(function () use ($testOrder, $results, $correlationId) {
                 $testOrder->update([
                     'status' => 'completed',
                     'completed_at' => now(),
@@ -107,7 +107,7 @@ $this->db->transaction(function () use ($testOrder, $results, $correlationId) {
                     'correlation_id' => $correlationId,
                 ]);
 
-                $this->log->channel('audit')->info('Medical test order completed', [
+                Log::channel('audit')->info('Medical test order completed', [
                     'test_order_id' => $testOrder->id,
                     'patient_id' => $testOrder->patient_id,
                     'correlation_id' => $correlationId,
@@ -116,7 +116,7 @@ $this->db->transaction(function () use ($testOrder, $results, $correlationId) {
                 return $testOrder;
             });
         } catch (Throwable $e) {
-            $this->log->channel('audit')->error('Failed to complete test order', [
+            Log::channel('audit')->error('Failed to complete test order', [
                 'test_order_id' => $testOrder->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

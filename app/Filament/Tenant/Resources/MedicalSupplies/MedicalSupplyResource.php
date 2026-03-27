@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\MedicalSupplies;
 
-use App\Domains\MedicalSupplies\Models\MedicalSupply;
+use App\Domains\Pharmacy\MedicalSupplies\Models\MedicalSupply;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;

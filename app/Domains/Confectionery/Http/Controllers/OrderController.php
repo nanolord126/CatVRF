@@ -44,7 +44,7 @@ final class OrderController
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\RuntimeException $e) {
-            \$this->log->channel('audit')->error('Cake order store error', [
+            \Log::channel('audit')->error('Cake order store error', [
                 'error' => $e->getMessage(),
                 'user_id' => auth()->id(),
                 'correlation_id' => $correlationId,
@@ -90,7 +90,7 @@ final class OrderController
                 ],
             ]);
         } catch (\Exception $e) {
-            \$this->log->channel('audit')->error('Cake order show error', [
+            \Log::channel('audit')->error('Cake order show error', [
                 'order_id' => $orderId,
                 'user_id' => auth()->id(),
                 'error' => $e->getMessage(),
@@ -135,7 +135,7 @@ final class OrderController
                 'tags' => array_merge($order->tags ?? [], ['custom_design' => true]),
             ]);
 
-            \$this->log->channel('audit')->info('Custom cake design uploaded', [
+            \Log::channel('audit')->info('Custom cake design uploaded', [
                 'order_id' => $order->id,
                 'user_id' => auth()->id(),
                 'photo_path' => $path,
@@ -149,7 +149,7 @@ final class OrderController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Exception $e) {
-            \$this->log->channel('audit')->error('Custom design upload error', [
+            \Log::channel('audit')->error('Custom design upload error', [
                 'order_id' => $orderId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -179,7 +179,7 @@ final class OrderController
 
             $updated = $this->service->cancelOrder($orderId, $correlationId);
 
-            \$this->log->channel('audit')->info('Cake order cancelled via API', [
+            \Log::channel('audit')->info('Cake order cancelled via API', [
                 'order_id' => $orderId,
                 'user_id' => auth()->id(),
                 'correlation_id' => $correlationId,
@@ -192,7 +192,7 @@ final class OrderController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Exception $e) {
-            \$this->log->channel('audit')->error('Cake order cancellation error', [
+            \Log::channel('audit')->error('Cake order cancellation error', [
                 'order_id' => $orderId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

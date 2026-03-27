@@ -29,7 +29,7 @@ class FraudControlService
 
         $decision = $score > self::THRESHOLD ? 'block' : 'allow';
 
-        $this->log->channel('audit')->info('Fraud check', [
+        Log::channel('audit')->info('Fraud check', [
             'correlation_id' => $correlationId ?: Str::uuid()->toString(),
             'user_id' => $userId,
             'operation_type' => $operationType,
@@ -47,13 +47,13 @@ class FraudControlService
     public function checkRecommendation(int $userId, int|string $tenantId = 0, string $correlationId = ''): bool
     {
         // Проверка на накрутку рекомендаций
-        $recentClicks = $this->db->table('recommendation_logs')
+        $recentClicks = DB::table('recommendation_logs')
             ->where('user_id', $userId)
             ->where('created_at', '>=', now()->subMinutes(5))
             ->count();
 
         if ($recentClicks > 50) {
-            $this->log->channel('audit')->warning('Recommendation abuse detected', [
+            Log::channel('audit')->warning('Recommendation abuse detected', [
                 'correlation_id' => $correlationId ?: (string) \Illuminate\Support\Str::uuid(),
                 'user_id' => $userId,
                 'recent_clicks' => $recentClicks,
@@ -70,7 +70,7 @@ class FraudControlService
         $score = 0.0;
 
         // Проверка количества операций за 5 минут
-        $recentOperations = $this->db->table('fraud_attempts')
+        $recentOperations = DB::table('fraud_attempts')
             ->where('user_id', $data['user_id'])
             ->where('created_at', '>=', now()->subMinutes(5))
             ->count();
@@ -104,7 +104,7 @@ class FraudControlService
             return false;
         }
 
-        $exists = $this->db->table('fraud_attempts')
+        $exists = DB::table('fraud_attempts')
             ->where('user_id', $userId)
             ->where('device_fingerprint', $deviceFingerprint)
             ->where('created_at', '>=', now()->subDays(30))
@@ -119,7 +119,7 @@ class FraudControlService
             return false;
         }
 
-        $exists = $this->db->table('fraud_attempts')
+        $exists = DB::table('fraud_attempts')
             ->where('user_id', $userId)
             ->where('ip_address', $ipAddress)
             ->where('created_at', '>=', now()->subDays(30))

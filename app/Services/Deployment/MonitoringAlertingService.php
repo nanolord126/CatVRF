@@ -27,7 +27,7 @@ final class MonitoringAlertingService
      */
     public static function recordMetric(string $metricName, float $value, array $tags = []): void
     {
-        $this->log->channel('metrics')->info('Metric recorded', [
+        Log::channel('metrics')->info('Metric recorded', [
             'metric' => $metricName,
             'value' => $value,
             'tags' => $tags,
@@ -60,7 +60,7 @@ final class MonitoringAlertingService
             'status' => 'active',
         ];
 
-        $this->log->channel('alerts')->info('Alert created', $alert);
+        Log::channel('alerts')->info('Alert created', $alert);
 
         return $alert;
     }
@@ -130,7 +130,7 @@ final class MonitoringAlertingService
             default => 'info',
         };
 
-        $this->log->channel('alerts')->$severity('Alert triggered', [
+        Log::channel('alerts')->$severity('Alert triggered', [
             'alert' => $alertName,
             'message' => $message,
             'severity' => $severity,

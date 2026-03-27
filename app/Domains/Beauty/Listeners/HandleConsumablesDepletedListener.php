@@ -1,8 +1,7 @@
-declare(strict_types=1);
-
 <?php
 
 declare(strict_types=1);
+
 
 namespace App\Domains\Beauty\Listeners;
 
@@ -30,7 +29,7 @@ class HandleConsumablesDepletedListener implements ShouldQueue
         if ($consumable->current_stock <= $consumable->min_stock_threshold) {
             NotifyLowConsumablesJob::dispatch($event->correlationId);
             
-            $this->log->channel('audit')->warning('Consumable depleted below threshold', [
+            Log::channel('audit')->warning('Consumable depleted below threshold', [
                 'consumable_id' => $consumable->id,
                 'name' => $consumable->name,
                 'current_stock' => $consumable->current_stock,
@@ -39,7 +38,7 @@ class HandleConsumablesDepletedListener implements ShouldQueue
             ]);
         }
 
-        $this->log->channel('audit')->info('ConsumablesDepleted event handled', [
+        Log::channel('audit')->info('ConsumablesDepleted event handled', [
             'consumable_id' => $consumable->id,
             'quantity_depleted' => $event->quantity,
             'correlation_id' => $event->correlationId,

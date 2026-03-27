@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Factories\Cosmetics;
 
-use App\Domains\Cosmetics\Models\CosmeticOrder;
+use App\Domains\Beauty\Cosmetics\Models\CosmeticOrder;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 final class CosmeticOrderFactory extends Factory

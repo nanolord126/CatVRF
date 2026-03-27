@@ -22,7 +22,7 @@ class ZeroWaitOrchestrator
     public function __construct()
     {
         $this->correlationId = Str::uuid();
-        $this->tenantId = $this->auth->guard('tenant')?->id();
+        $this->tenantId = Auth::guard('tenant')?->id();
     }
 
     /**
@@ -32,19 +32,19 @@ class ZeroWaitOrchestrator
     public function executeAtomicTransaction(string $resourceKey, callable $logic)
     {
         try {
-            $this->log->channel('performance')->debug('ZeroWaitOrchestrator: executing atomic transaction', [
+            Log::channel('performance')->debug('ZeroWaitOrchestrator: executing atomic transaction', [
                 'correlation_id' => $this->correlationId,
                 'resource_key' => $resourceKey,
             ]);
 
-            return $this->db->transaction(function () use ($resourceKey, $logic) {
+            return DB::transaction(function () use ($resourceKey, $logic) {
                 // Используем Redis как распределенный семафор для мгновенного допуска
                 $lockKey = "executor_semaphore:{$resourceKey}";
                 
                 if (!Redis::set($lockKey, "active", 'EX', 5, 'NX')) {
                     // Если ресурс занят другим процессом, мы не ставим в очередь,
                     // а мгновенно отдаем результат из кеша или Read-Replica.
-                    $this->log->warning('ZeroWaitOrchestrator: resource locked, serving from cache', [
+                    Log::warning('ZeroWaitOrchestrator: resource locked, serving from cache', [
                         'correlation_id' => $this->correlationId,
                         'resource_key' => $resourceKey,
                     ]);
@@ -56,7 +56,7 @@ class ZeroWaitOrchestrator
                     // Синхронная запись в Hot Cache для мгновенного доступа другими инстансами
                     $this->updateHotCache($resourceKey, $result);
                     
-                    $this->log->channel('performance')->info('ZeroWaitOrchestrator: atomic transaction completed', [
+                    Log::channel('performance')->info('ZeroWaitOrchestrator: atomic transaction completed', [
                         'correlation_id' => $this->correlationId,
                         'resource_key' => $resourceKey,
                     ]);
@@ -67,7 +67,7 @@ class ZeroWaitOrchestrator
                 }
             });
         } catch (Throwable $e) {
-            $this->log->error('ZeroWaitOrchestrator: atomic transaction failed', [
+            Log::error('ZeroWaitOrchestrator: atomic transaction failed', [
                 'correlation_id' => $this->correlationId,
                 'resource_key' => $resourceKey,
                 'error' => $e->getMessage(),
@@ -83,7 +83,7 @@ class ZeroWaitOrchestrator
     public function fastRead(string $key, callable $fallback)
     {
         try {
-            $this->log->channel('performance')->debug('ZeroWaitOrchestrator: fast read', [
+            Log::channel('performance')->debug('ZeroWaitOrchestrator: fast read', [
                 'correlation_id' => $this->correlationId,
                 'cache_key' => $key,
             ]);
@@ -91,7 +91,7 @@ class ZeroWaitOrchestrator
             $data = Redis::get("hot_data:{$key}");
             
             if ($data) {
-                $this->log->channel('performance')->debug('ZeroWaitOrchestrator: cache hit', [
+                Log::channel('performance')->debug('ZeroWaitOrchestrator: cache hit', [
                     'correlation_id' => $this->correlationId,
                     'cache_key' => $key,
                 ]);
@@ -101,14 +101,14 @@ class ZeroWaitOrchestrator
             $fresh = $fallback();
             $this->updateHotCache($key, $fresh);
             
-            $this->log->channel('performance')->debug('ZeroWaitOrchestrator: cache miss, populated', [
+            Log::channel('performance')->debug('ZeroWaitOrchestrator: cache miss, populated', [
                 'correlation_id' => $this->correlationId,
                 'cache_key' => $key,
             ]);
 
             return $fresh;
         } catch (Throwable $e) {
-            $this->log->error('ZeroWaitOrchestrator: fast read failed', [
+            Log::error('ZeroWaitOrchestrator: fast read failed', [
                 'correlation_id' => $this->correlationId,
                 'cache_key' => $key,
                 'error' => $e->getMessage(),
@@ -124,7 +124,7 @@ class ZeroWaitOrchestrator
     public function serveFromHotCache(string $key)
     {
         try {
-            $this->log->channel('performance')->debug('ZeroWaitOrchestrator: serving from hot cache', [
+            Log::channel('performance')->debug('ZeroWaitOrchestrator: serving from hot cache', [
                 'correlation_id' => $this->correlationId,
                 'cache_key' => $key,
             ]);
@@ -137,7 +137,7 @@ class ZeroWaitOrchestrator
 
             return null;
         } catch (Throwable $e) {
-            $this->log->error('ZeroWaitOrchestrator: hot cache read failed', [
+            Log::error('ZeroWaitOrchestrator: hot cache read failed', [
                 'correlation_id' => $this->correlationId,
                 'cache_key' => $key,
                 'error' => $e->getMessage(),
@@ -153,12 +153,12 @@ class ZeroWaitOrchestrator
             // TTL 60 секунд для актуальности данных маркетплейса (цены, остатки)
             Redis::setex("hot_data:{$key}", 60, serialize($data));
 
-            $this->log->channel('performance')->debug('ZeroWaitOrchestrator: hot cache updated', [
+            Log::channel('performance')->debug('ZeroWaitOrchestrator: hot cache updated', [
                 'correlation_id' => $this->correlationId,
                 'cache_key' => $key,
             ]);
         } catch (Throwable $e) {
-            $this->log->error('ZeroWaitOrchestrator: hot cache update failed', [
+            Log::error('ZeroWaitOrchestrator: hot cache update failed', [
                 'correlation_id' => $this->correlationId,
                 'cache_key' => $key,
                 'error' => $e->getMessage(),

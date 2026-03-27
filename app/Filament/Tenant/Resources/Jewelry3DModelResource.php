@@ -2,7 +2,7 @@
 
 namespace App\Filament\Tenant\Resources;
 
-use App\Domains\Jewelry\Models\Jewelry3DModel;
+use App\Domains\Luxury\Jewelry\Models\Jewelry3DModel;
 use Filament\Forms;
 use Filament\Resources\Resource;
 use Filament\Tables;

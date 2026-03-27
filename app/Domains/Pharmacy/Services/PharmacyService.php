@@ -43,7 +43,7 @@ final class PharmacyService
         }
         RateLimiter::hit("pharmacy:order:".auth()->id(), 3600);
 
-        return $this->db->transaction(function () use ($pharmacyId, $items, $correlationId) {
+        return DB::transaction(function () use ($pharmacyId, $items, $correlationId) {
             $pharmacy = Pharmacy::findOrFail($pharmacyId);
             
             // 2. Fraud Check - предотвращение злоупотреблений рецептурными препаратами
@@ -55,7 +55,7 @@ final class PharmacyService
             ]);
 
             if ($fraud["decision"] === "block") {
-                $this->log->channel("audit")->error("Pharmacy Security Block", ["user" => auth()->id(), "score" => $fraud["score"]]);
+                Log::channel("audit")->error("Pharmacy Security Block", ["user" => auth()->id(), "score" => $fraud["score"]]);
                 throw new \RuntimeException("Blocked by security. Unusual medication activity.", 403);
             }
 
@@ -92,7 +92,7 @@ final class PharmacyService
                 "tags" => ["temp_controlled:" . (collect($items)->contains("requires_cold_chain", true) ? "yes" : "no")]
             ]);
 
-            $this->log->channel("audit")->info("Pharmacy: order created", ["order_id" => $order->id, "requires_rx" => $requiresPrescription]);
+            Log::channel("audit")->info("Pharmacy: order created", ["order_id" => $order->id, "requires_rx" => $requiresPrescription]);
 
             return $order;
         });
@@ -106,7 +106,7 @@ final class PharmacyService
         $correlationId = $correlationId ?: (string) Str::uuid();
         $order = PharmacyOrder::findOrFail($orderId);
 
-        $this->db->transaction(function () use ($order, $rxData, $correlationId) {
+        DB::transaction(function () use ($order, $rxData, $correlationId) {
             // Здесь должна быть логика OCR или вызов API верификации рецептов
             // Для Канона 2026 пишем логику подтверждения
             
@@ -120,7 +120,7 @@ final class PharmacyService
 
             $order->update(["status" => "pending_payment"]);
 
-            $this->log->channel("audit")->info("Pharmacy: rx verified", ["order_id" => $order->id, "corr" => $correlationId]);
+            Log::channel("audit")->info("Pharmacy: rx verified", ["order_id" => $order->id, "corr" => $correlationId]);
         });
     }
 
@@ -132,7 +132,7 @@ final class PharmacyService
         $correlationId = $correlationId ?: (string) Str::uuid();
         $order = PharmacyOrder::with("pharmacy")->findOrFail($orderId);
 
-        $this->db->transaction(function () use ($order, $correlationId) {
+        DB::transaction(function () use ($order, $correlationId) {
             $order->update([
                 "status" => "completed",
                 "delivered_at" => now()
@@ -162,7 +162,7 @@ final class PharmacyService
                 correlationId: $correlationId
             );
 
-            $this->log->channel("audit")->info("Pharmacy: payout done", ["order_id" => $order->id, "payout" => $payout]);
+            Log::channel("audit")->info("Pharmacy: payout done", ["order_id" => $order->id, "payout" => $payout]);
         });
     }
 
@@ -204,7 +204,7 @@ final class PharmacyService
         $correlationId = $correlationId ?: (string) \Illuminate\Support\Str::uuid();
         $order = PharmacyOrder::findOrFail($orderId);
 
-        $this->db->transaction(function () use ($order, $reason, $correlationId) {
+        DB::transaction(function () use ($order, $reason, $correlationId) {
             if (in_array($order->status, ['completed', 'cancelled'])) {
                 throw new \RuntimeException("Cannot cancel order with status: {$order->status}");
             }
@@ -220,7 +220,7 @@ final class PharmacyService
                 sourceId: $order->id
             );
 
-            $this->log->channel("audit")->info("Pharmacy order cancelled", [
+            Log::channel("audit")->info("Pharmacy order cancelled", [
                 "order_id" => $order->id,
                 "reason" => $reason,
                 "correlation_id" => $correlationId,

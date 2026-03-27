@@ -32,7 +32,7 @@ final class PetClinicController extends Controller
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Throwable $e) {
-            $this->log->error('Failed to get clinics', ['error' => $e->getMessage()]);
+            Log::error('Failed to get clinics', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve clinics',
@@ -83,7 +83,7 @@ final class PetClinicController extends Controller
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Throwable $e) {
-            $this->log->error('Failed to create clinic', ['error' => $e->getMessage()]);
+            Log::error('Failed to create clinic', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to create clinic',

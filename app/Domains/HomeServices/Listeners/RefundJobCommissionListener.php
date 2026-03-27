@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\HomeServices\Listeners;
 
@@ -30,13 +31,13 @@ class RefundJobCommissionListener implements ShouldQueue
                 return;
             }
 
-            \$this->db->transaction(function () use ($job, $event) {
+            \DB::transaction(function () use ($job, $event) {
                 $wallet = \App\Models\Wallet::where('tenant_id', $job->tenant_id)->lockForUpdate()->firstOrFail();
                 $commissionAmount = (int)($job->commission_amount * 100);
                 
                 $wallet->increment('balance', $commissionAmount);
                 
-                \$this->db->table('balance_transactions')->insert([
+                \DB::table('balance_transactions')->insert([
                     'wallet_id' => $wallet->id,
                     'type' => 'refund',
                     'amount' => $commissionAmount,
@@ -46,13 +47,13 @@ class RefundJobCommissionListener implements ShouldQueue
                 ]);
             });
 
-            \$this->log->channel('audit')->info('Job commission refunded', [
+            \Log::channel('audit')->info('Job commission refunded', [
                 'job_id' => $job->id,
                 'commission_amount' => $job->commission_amount,
                 'correlation_id' => $event->correlationId,
             ]);
         } catch (\Throwable $e) {
-            \$this->log->channel('audit')->error('Failed to refund job commission', [
+            \Log::channel('audit')->error('Failed to refund job commission', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $event->correlationId,
             ]);

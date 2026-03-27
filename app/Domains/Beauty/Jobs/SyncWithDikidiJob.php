@@ -30,7 +30,7 @@ final class SyncWithDikidiJob implements ShouldQueue
         $dikidiApiKey = config('integrations.dikidi.api_key');
         
         if (!$dikidiApiKey || !$tenant->dikidi_business_id) {
-            $this->log->channel('audit')->warning('Dikidi sync skipped - no credentials', [
+            Log::channel('audit')->warning('Dikidi sync skipped - no credentials', [
                 'tenant_id' => $this->tenantId,
                 'correlation_id' => $this->correlationId,
             ]);
@@ -61,14 +61,14 @@ final class SyncWithDikidiJob implements ShouldQueue
                     );
                 }
 
-                $this->log->channel('audit')->info('Dikidi sync completed', [
+                Log::channel('audit')->info('Dikidi sync completed', [
                     'tenant_id' => $this->tenantId,
                     'synced_count' => count($appointments),
                     'correlation_id' => $this->correlationId,
                 ]);
             }
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Dikidi sync failed', [
+            Log::channel('audit')->error('Dikidi sync failed', [
                 'tenant_id' => $this->tenantId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $this->correlationId,

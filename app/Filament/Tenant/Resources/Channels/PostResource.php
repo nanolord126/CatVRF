@@ -2,9 +2,9 @@
 
 namespace App\Filament\Tenant\Resources\Channels;
 
-use App\Domains\Channels\Models\BusinessChannel;
-use App\Domains\Channels\Models\Post;
-use App\Domains\Channels\Services\PostService;
+use App\Domains\Content\Channels\Models\BusinessChannel;
+use App\Domains\Content\Channels\Models\Post;
+use App\Domains\Content\Channels\Services\PostService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;

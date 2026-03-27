@@ -26,7 +26,7 @@ class EmailService
     ): bool {
         try {
             // Можно расширить для разных провайдеров
-            $this->mail->send($template, $data, function ($message) use ($to, $subject, $attachments) {
+            Mail::send($template, $data, function ($message) use ($to, $subject, $attachments) {
                 $message->to($to)->subject($subject);
                 
                 // Добавить attachments
@@ -39,7 +39,7 @@ class EmailService
                 }
             });
 
-            $this->log->channel('audit')->info('Email sent', [
+            Log::channel('audit')->info('Email sent', [
                 'to' => $to,
                 'subject' => $subject,
                 'correlation_id' => $correlationId,
@@ -48,7 +48,7 @@ class EmailService
             return true;
 
         } catch (\Exception $e) {
-            $this->log->error('Failed to send email', [
+            Log::error('Failed to send email', [
                 'to' => $to,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

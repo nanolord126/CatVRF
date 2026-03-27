@@ -28,7 +28,7 @@ final class ContractController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Error listing contracts', [
+            Log::channel('audit')->error('Error listing contracts', [
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
             ]);
@@ -54,7 +54,7 @@ final class ContractController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Error showing contract', [
+            Log::channel('audit')->error('Error showing contract', [
                 'contract_id' => $id,
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
@@ -83,7 +83,7 @@ final class ContractController
                 correlationId: $correlationId,
             );
 
-            $this->log->channel('audit')->info('Milestone payment released', [
+            Log::channel('audit')->info('Milestone payment released', [
                 'contract_id' => $id,
                 'amount' => $request->input('amount'),
                 'correlation_id' => $correlationId,
@@ -94,7 +94,7 @@ final class ContractController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Error releasing milestone', [
+            Log::channel('audit')->error('Error releasing milestone', [
                 'contract_id' => $id,
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
@@ -123,7 +123,7 @@ final class ContractController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Error completing contract', [
+            Log::channel('audit')->error('Error completing contract', [
                 'contract_id' => $id,
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
@@ -152,7 +152,7 @@ final class ContractController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Error pausing contract', [
+            Log::channel('audit')->error('Error pausing contract', [
                 'contract_id' => $id,
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
@@ -181,7 +181,7 @@ final class ContractController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Error cancelling contract', [
+            Log::channel('audit')->error('Error cancelling contract', [
                 'contract_id' => $id,
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
@@ -211,7 +211,7 @@ final class ContractController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Error listing my contracts', [
+            Log::channel('audit')->error('Error listing my contracts', [
                 'user_id' => auth()->id(),
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
@@ -229,7 +229,7 @@ final class ContractController
     {
         try {
             $totalEarnings = FreelanceContract::where('status', 'completed')
-                ->sum($this->db->raw('amount_paid'));
+                ->sum(DB::raw('amount_paid'));
 
             $activeContracts = FreelanceContract::where('status', 'active')->count();
 
@@ -242,7 +242,7 @@ final class ContractController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Error getting earnings report', [
+            Log::channel('audit')->error('Error getting earnings report', [
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
             ]);

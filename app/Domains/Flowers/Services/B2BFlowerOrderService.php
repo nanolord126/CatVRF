@@ -19,7 +19,7 @@ final class B2BFlowerOrderService
         private readonly FraudControlService $fraudControlService,
     ) {
         $correlationId = Str::uuid()->toString();
-        $this->log->channel('audit')->info('Service method called in Flowers', ['correlation_id' => $correlationId]);
+        Log::channel('audit')->info('Service method called in Flowers', ['correlation_id' => $correlationId]);
 }
 
     public function createB2BOrder(
@@ -38,7 +38,7 @@ final class B2BFlowerOrderService
                 correlationId: $correlationId,
             );
 
-            return $this->db->transaction(function () use ($tenantId, $storefrontId, $items, $deliveryData, $correlationId) {
+            return DB::transaction(function () use ($tenantId, $storefrontId, $items, $deliveryData, $correlationId) {
                 $storefront = B2BFlowerStorefront::query()
                     ->where('id', $storefrontId)
                     ->where('tenant_id', $tenantId)
@@ -71,7 +71,7 @@ final class B2BFlowerOrderService
                     'correlation_id' => $correlationId,
                 ]);
 
-                $this->log->channel('audit')->info('B2B flower order created', [
+                Log::channel('audit')->info('B2B flower order created', [
                     'order_id' => $order->id,
                     'storefront_id' => $storefrontId,
                     'total_amount' => $totalAmount,
@@ -84,7 +84,7 @@ final class B2BFlowerOrderService
                 return $order;
             });
         } catch (\Exception $exception) {
-            $this->log->channel('audit')->error('B2B flower order creation failed', [
+            Log::channel('audit')->error('B2B flower order creation failed', [
                 'storefront_id' => $storefrontId,
                 'error' => $exception->getMessage(),
                 'correlation_id' => $correlationId,

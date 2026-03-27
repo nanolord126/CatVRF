@@ -55,7 +55,7 @@ final class RentalListingController
                 'description'      => 'nullable|string',
             ]);
 
-            $listing = $this->db->transaction(function () use ($data, $correlationId) {
+            $listing = DB::transaction(function () use ($data, $correlationId) {
                 return RentalListing::create([
                     ...$data,
                     'tenant_id'      => tenant('id') ?? auth()->user()?->tenant_id ?? 1,
@@ -65,7 +65,7 @@ final class RentalListingController
                 ]);
             });
 
-            $this->log->channel('audit')->info('Rental listing created', [
+            Log::channel('audit')->info('Rental listing created', [
                 'correlation_id' => $correlationId,
                 'listing_id'     => $listing->id,
                 'tenant_id'      => $listing->tenant_id,
@@ -81,7 +81,7 @@ final class RentalListingController
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Rental listing create failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            Log::channel('audit')->error('Rental listing create failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json(['success' => false, 'message' => 'Ошибка создания объявления.', 'correlation_id' => $correlationId], 500);
         }
     }
@@ -96,12 +96,12 @@ final class RentalListingController
         }
 
         try {
-            $this->db->transaction(function () use ($rentalListing) {
+            DB::transaction(function () use ($rentalListing) {
                 $rentalListing->update(['status' => 'removed']);
                 $rentalListing->delete();
             });
 
-            $this->log->channel('audit')->info('Rental listing deleted', [
+            Log::channel('audit')->info('Rental listing deleted', [
                 'correlation_id' => $correlationId,
                 'listing_id'     => $rentalListing->id,
                 'tenant_id'      => $rentalListing->tenant_id,
@@ -113,7 +113,7 @@ final class RentalListingController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Rental listing delete failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            Log::channel('audit')->error('Rental listing delete failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json(['success' => false, 'message' => 'Ошибка удаления объявления.', 'correlation_id' => $correlationId], 500);
         }
     }

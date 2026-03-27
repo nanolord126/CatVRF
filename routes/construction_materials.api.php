@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Domains\ConstructionMaterials\Http\Controllers\MaterialController;
+use App\Domains\ConstructionAndRepair\ConstructionAndRepair\ConstructionMaterials\Http\Controllers\MaterialController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['api', 'tenant'])->prefix('construction-materials')->group(function (): void {

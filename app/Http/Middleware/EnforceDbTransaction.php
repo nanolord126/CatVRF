@@ -1,7 +1,6 @@
-declare(strict_types=1);
-
 <?php
 
+declare(strict_types=1);
 namespace App\Http\Middleware;
 
 use Closure;
@@ -35,7 +34,7 @@ class EnforceDbTransaction
         }
 
         // For cross-database or multiple connection scenarios, this wraps the default connection
-        return $this->db->transaction(function () use ($request, $next) {
+        return DB::transaction(function () use ($request, $next) {
             return $next($request);
         });
     }

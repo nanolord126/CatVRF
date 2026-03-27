@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Food\Listeners;
 
@@ -17,7 +18,7 @@ final class LowConsumableStockAlertListener implements ShouldQueue
     public function handle(LowConsumableStock $event): void
     {
         try {
-            $this->log->channel('audit')->warning('Low consumable stock alert', [
+            Log::channel('audit')->warning('Low consumable stock alert', [
                 'consumable_id' => $event->consumable->id,
                 'name' => $event->consumable->name,
                 'current_stock' => $event->consumable->current_stock,
@@ -27,7 +28,7 @@ final class LowConsumableStockAlertListener implements ShouldQueue
             ]);
             // Notification::send($event->consumable->restaurant->owner, new LowStockNotification($event->consumable));
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Low stock alert failed', [
+            Log::channel('audit')->error('Low stock alert failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $event->correlationId,
             ]);

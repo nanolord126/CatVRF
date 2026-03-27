@@ -1,8 +1,7 @@
-declare(strict_types=1);
-
 <?php
 
 declare(strict_types=1);
+
 
 namespace App\Domains\Beauty\Jobs;
 
@@ -33,28 +32,20 @@ class UpdateMasterRatingsJob implements ShouldQueue
 
     public function __construct(
         private readonly string $correlationId,
-    ) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+    ) {}
 
     public function handle(): void
     {
         $masters = Master::query()->with('reviews')->get();
 
-        $this->db->transaction(function () use ($masters): void {
+        DB::transaction(function () use ($masters): void {
             foreach ($masters as $master) {
                 $avgRating = $master->reviews()->avg('rating') ?? 0.0;
                 $oldRating = $master->rating;
 
                 $master->update(['rating' => $avgRating]);
 
-                $this->log->channel('audit')->info('Master rating updated', [
+                Log::channel('audit')->info('Master rating updated', [
                     'master_id' => $master->id,
                     'old_rating' => $oldRating,
                     'new_rating' => $avgRating,

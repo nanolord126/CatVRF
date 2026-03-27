@@ -59,7 +59,7 @@ final class ServiceListingController
         $fraudResult   = $this->fraudControlService->check(auth()->id() ?? 0, 'service_listing_create', 0, request()->ip(), null, $correlationId);
 
         if ($fraudResult['decision'] === 'block') {
-            $this->log->channel('fraud_alert')->warning('ServiceListing create blocked', [
+            Log::channel('fraud_alert')->warning('ServiceListing create blocked', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'score'          => $fraudResult['score'],
@@ -67,7 +67,7 @@ final class ServiceListingController
             return response()->json(['success' => false, 'error' => 'Операция заблокирована.', 'correlation_id' => $correlationId], 403);
         }
 
-        $this->log->channel('audit')->info('ServiceListing create start', ['correlation_id' => $correlationId, 'user_id' => auth()->id()]);
+        Log::channel('audit')->info('ServiceListing create start', ['correlation_id' => $correlationId, 'user_id' => auth()->id()]);
 
         try {
             $contractor = \App\Domains\HomeServices\Models\Contractor::where('user_id', auth()->id())->firstOrFail();
@@ -91,7 +91,7 @@ final class ServiceListingController
                 $correlationId
             );
 
-            $this->log->channel('audit')->info('ServiceListing created', [
+            Log::channel('audit')->info('ServiceListing created', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'listing_id'     => $listing->id,
@@ -99,7 +99,7 @@ final class ServiceListingController
 
             return response()->json(['success' => true, 'data' => $listing, 'correlation_id' => $correlationId], 201);
         } catch (\Throwable $e) {
-            $this->log->error('ServiceListing create failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            Log::error('ServiceListing create failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json(['success' => false, 'message' => 'Failed to create listing'], 500);
         }
     }
@@ -110,7 +110,7 @@ final class ServiceListingController
         $fraudResult   = $this->fraudControlService->check(auth()->id() ?? 0, 'service_listing_update', 0, request()->ip(), null, $correlationId);
 
         if ($fraudResult['decision'] === 'block') {
-            $this->log->channel('fraud_alert')->warning('ServiceListing update blocked', [
+            Log::channel('fraud_alert')->warning('ServiceListing update blocked', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'score'          => $fraudResult['score'],
@@ -133,7 +133,7 @@ final class ServiceListingController
 
             $listing = $this->listingService->updateListing($listing, $validated, $correlationId);
 
-            $this->log->channel('audit')->info('ServiceListing updated', [
+            Log::channel('audit')->info('ServiceListing updated', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'listing_id'     => $id,
@@ -143,7 +143,7 @@ final class ServiceListingController
 
             return response()->json(['success' => true, 'data' => $listing, 'correlation_id' => $correlationId]);
         } catch (\Throwable $e) {
-            $this->log->error('ServiceListing update failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            Log::error('ServiceListing update failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json(['success' => false, 'message' => 'Update failed'], 500);
         }
     }
@@ -154,7 +154,7 @@ final class ServiceListingController
         $fraudResult   = $this->fraudControlService->check(auth()->id() ?? 0, 'service_listing_delete', 0, request()->ip(), null, $correlationId);
 
         if ($fraudResult['decision'] === 'block') {
-            $this->log->channel('fraud_alert')->warning('ServiceListing delete blocked', [
+            Log::channel('fraud_alert')->warning('ServiceListing delete blocked', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'score'          => $fraudResult['score'],
@@ -168,7 +168,7 @@ final class ServiceListingController
 
             $listing->delete();
 
-            $this->log->channel('audit')->info('ServiceListing deleted', [
+            Log::channel('audit')->info('ServiceListing deleted', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'listing_id'     => $id,
@@ -176,7 +176,7 @@ final class ServiceListingController
 
             return response()->json(['success' => true, 'message' => 'Listing deleted', 'correlation_id' => $correlationId]);
         } catch (\Throwable $e) {
-            $this->log->error('ServiceListing delete failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            Log::error('ServiceListing delete failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json(['success' => false, 'message' => 'Deletion failed'], 500);
         }
     }
@@ -187,7 +187,7 @@ final class ServiceListingController
         $fraudResult   = $this->fraudControlService->check(auth()->id() ?? 0, 'service_listing_force_delete', 0, request()->ip(), null, $correlationId);
 
         if ($fraudResult['decision'] === 'block') {
-            $this->log->channel('fraud_alert')->warning('ServiceListing forceDelete blocked', [
+            Log::channel('fraud_alert')->warning('ServiceListing forceDelete blocked', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'score'          => $fraudResult['score'],
@@ -201,7 +201,7 @@ final class ServiceListingController
 
             $listing->forceDelete();
 
-            $this->log->channel('audit')->info('ServiceListing permanently deleted', [
+            Log::channel('audit')->info('ServiceListing permanently deleted', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'listing_id'     => $id,
@@ -209,7 +209,7 @@ final class ServiceListingController
 
             return response()->json(['success' => true, 'message' => 'Listing permanently deleted', 'correlation_id' => $correlationId]);
         } catch (\Throwable $e) {
-            $this->log->error('ServiceListing forceDelete failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            Log::error('ServiceListing forceDelete failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json(['success' => false, 'message' => 'Deletion failed'], 500);
         }
     }

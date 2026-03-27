@@ -49,7 +49,7 @@ final class TravelAgencyController extends Controller
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (Throwable $e) {
-            $this->log->channel('audit')->error('Failed to list travel agencies', [
+            Log::channel('audit')->error('Failed to list travel agencies', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
@@ -73,7 +73,7 @@ final class TravelAgencyController extends Controller
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (Throwable $e) {
-            $this->log->channel('audit')->error('Failed to show travel agency', [
+            Log::channel('audit')->error('Failed to show travel agency', [
                 'agency_id' => $id,
                 'error' => $e->getMessage(),
             ]);
@@ -102,7 +102,7 @@ final class TravelAgencyController extends Controller
             ]);
 
             $validated = $request->all();
-            $agency = $this->db->transaction(function () use ($validated, $correlationId) {
+            $agency = DB::transaction(function () use ($validated, $correlationId) {
                 return TravelAgency::create([
                     'tenant_id' => tenant()->id,
                     'owner_id' => auth()->id(),
@@ -117,7 +117,7 @@ final class TravelAgencyController extends Controller
                 ]);
             });
 
-            $this->log->channel('audit')->info('Travel agency created', [
+            Log::channel('audit')->info('Travel agency created', [
                 'agency_id' => $agency->id,
                 'name' => $agency->name,
                 'owner_id' => auth()->id(),
@@ -130,7 +130,7 @@ final class TravelAgencyController extends Controller
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (Throwable $e) {
-            $this->log->channel('audit')->error('Travel agency creation failed', [
+            Log::channel('audit')->error('Travel agency creation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
                 'trace' => $e->getTraceAsString(),
@@ -155,7 +155,7 @@ final class TravelAgencyController extends Controller
             $this->authorize('update', $agency);
 
             $validated = $request->all();
-            $agency = $this->db->transaction(function () use ($validated, $agency, $correlationId) {
+            $agency = DB::transaction(function () use ($validated, $agency, $correlationId) {
                 $agency->update([
                     'name' => ($validated['name'] ?? $agency->name),
                     'address' => ($validated['address'] ?? $agency->address),
@@ -169,7 +169,7 @@ final class TravelAgencyController extends Controller
                 return $agency;
             });
 
-            $this->log->channel('audit')->info('Travel agency updated', [
+            Log::channel('audit')->info('Travel agency updated', [
                 'agency_id' => $agency->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -180,7 +180,7 @@ final class TravelAgencyController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (Throwable $e) {
-            $this->log->channel('audit')->error('Travel agency update failed', [
+            Log::channel('audit')->error('Travel agency update failed', [
                 'agency_id' => $id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -204,11 +204,11 @@ final class TravelAgencyController extends Controller
 
             $this->authorize('delete', $agency);
 
-            $this->db->transaction(function () use ($agency, $correlationId) {
+            DB::transaction(function () use ($agency, $correlationId) {
                 $agency->delete();
             });
 
-            $this->log->channel('audit')->info('Travel agency deleted', [
+            Log::channel('audit')->info('Travel agency deleted', [
                 'agency_id' => $agency->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -218,7 +218,7 @@ final class TravelAgencyController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (Throwable $e) {
-            $this->log->channel('audit')->error('Travel agency deletion failed', [
+            Log::channel('audit')->error('Travel agency deletion failed', [
                 'agency_id' => $id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -460,14 +460,14 @@ final class TravelAgencyController extends Controller
         try {
             $agency = TravelAgency::where('tenant_id', tenant()->id)->findOrFail($id);
 
-            $this->db->transaction(function () use ($agency, $correlationId) {
+            DB::transaction(function () use ($agency, $correlationId) {
                 $agency->update([
                     'is_verified' => true,
                     'correlation_id' => $correlationId,
                 ]);
             });
 
-            $this->log->channel('audit')->info('Travel agency verified', [
+            Log::channel('audit')->info('Travel agency verified', [
                 'agency_id' => $agency->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -492,11 +492,11 @@ final class TravelAgencyController extends Controller
         try {
             $agency = TravelAgency::where('tenant_id', tenant()->id)->findOrFail($id);
 
-            $this->db->transaction(function () use ($agency, $correlationId) {
+            DB::transaction(function () use ($agency, $correlationId) {
                 $agency->delete();
             });
 
-            $this->log->channel('audit')->info('Travel agency rejected', [
+            Log::channel('audit')->info('Travel agency rejected', [
                 'agency_id' => $agency->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -544,12 +544,12 @@ final class TravelAgencyController extends Controller
                 ->where('tenant_id', tenant()->id)
                 ->findOrFail($id);
 
-            $this->db->transaction(function () use ($agency, $correlationId) {
+            DB::transaction(function () use ($agency, $correlationId) {
                 $agency->restore();
                 $agency->update(['correlation_id' => $correlationId]);
             });
 
-            $this->log->channel('audit')->info('Travel agency restored', [
+            Log::channel('audit')->info('Travel agency restored', [
                 'agency_id' => $agency->id,
                 'correlation_id' => $correlationId,
             ]);

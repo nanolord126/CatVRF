@@ -25,7 +25,7 @@ final class B2BFreelanceController
                 'correlation_id' => Str::uuid(),
             ], 200);
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Freelance B2B: Failed to fetch storefronts', [
+            Log::channel('audit')->error('Freelance B2B: Failed to fetch storefronts', [
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
             ]);
@@ -54,7 +54,7 @@ final class B2BFreelanceController
 
             $correlationId = Str::uuid()->toString();
 
-            $this->db->transaction(function () use ($validated, $correlationId) {
+            DB::transaction(function () use ($validated, $correlationId) {
                 B2BFreelanceStorefront::create([
                     'uuid' => Str::uuid(),
                     'tenant_id' => auth()->user()->tenant_id,
@@ -62,7 +62,7 @@ final class B2BFreelanceController
                     'correlation_id' => $correlationId,
                 ]);
 
-                $this->log->channel('audit')->info('Freelance B2B: Storefront created', [
+                Log::channel('audit')->info('Freelance B2B: Storefront created', [
                     'inn' => $validated['inn'],
                     'correlation_id' => $correlationId,
                 ]);
@@ -74,7 +74,7 @@ final class B2BFreelanceController
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Freelance B2B: Storefront creation failed', [
+            Log::channel('audit')->error('Freelance B2B: Storefront creation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
             ]);
@@ -101,7 +101,7 @@ final class B2BFreelanceController
             $correlationId = Str::uuid()->toString();
             $commission = (int) ($validated['total_amount'] * 0.14);
 
-            $this->db->transaction(function () use ($validated, $correlationId, $commission) {
+            DB::transaction(function () use ($validated, $correlationId, $commission) {
                 B2BFreelanceOrder::create([
                     'uuid' => Str::uuid(),
                     'tenant_id' => auth()->user()->tenant_id,
@@ -112,7 +112,7 @@ final class B2BFreelanceController
                     'correlation_id' => $correlationId,
                 ]);
 
-                $this->log->channel('audit')->info('Freelance B2B: Order created', [
+                Log::channel('audit')->info('Freelance B2B: Order created', [
                     'amount' => $validated['total_amount'],
                     'correlation_id' => $correlationId,
                 ]);
@@ -124,7 +124,7 @@ final class B2BFreelanceController
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Freelance B2B: Order creation failed', [
+            Log::channel('audit')->error('Freelance B2B: Order creation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
             ]);
@@ -150,7 +150,7 @@ final class B2BFreelanceController
                 'correlation_id' => Str::uuid(),
             ], 200);
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Freelance B2B: Failed to fetch orders', [
+            Log::channel('audit')->error('Freelance B2B: Failed to fetch orders', [
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
             ]);
@@ -171,10 +171,10 @@ final class B2BFreelanceController
 
             $correlationId = Str::uuid()->toString();
 
-            $this->db->transaction(function () use ($order, $correlationId) {
+            DB::transaction(function () use ($order, $correlationId) {
                 $order->update(['status' => 'approved']);
 
-                $this->log->channel('audit')->info('Freelance B2B: Order approved', [
+                Log::channel('audit')->info('Freelance B2B: Order approved', [
                     'order_id' => $order->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -186,7 +186,7 @@ final class B2BFreelanceController
                 'correlation_id' => $correlationId,
             ], 200);
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Freelance B2B: Order approval failed', [
+            Log::channel('audit')->error('Freelance B2B: Order approval failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
             ]);
@@ -208,13 +208,13 @@ final class B2BFreelanceController
             $correlationId = Str::uuid()->toString();
             $reason = $request->get('reason', '');
 
-            $this->db->transaction(function () use ($order, $correlationId, $reason) {
+            DB::transaction(function () use ($order, $correlationId, $reason) {
                 $order->update([
                     'status' => 'rejected',
                     'notes' => $reason,
                 ]);
 
-                $this->log->channel('audit')->info('Freelance B2B: Order rejected', [
+                Log::channel('audit')->info('Freelance B2B: Order rejected', [
                     'order_id' => $order->id,
                     'reason' => $reason,
                     'correlation_id' => $correlationId,
@@ -227,7 +227,7 @@ final class B2BFreelanceController
                 'correlation_id' => $correlationId,
             ], 200);
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Freelance B2B: Order rejection failed', [
+            Log::channel('audit')->error('Freelance B2B: Order rejection failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
             ]);
@@ -248,10 +248,10 @@ final class B2BFreelanceController
             $storefront = B2BFreelanceStorefront::findOrFail($id);
             $correlationId = Str::uuid()->toString();
 
-            $this->db->transaction(function () use ($storefront, $correlationId) {
+            DB::transaction(function () use ($storefront, $correlationId) {
                 $storefront->update(['is_verified' => true]);
 
-                $this->log->channel('audit')->info('Freelance B2B: Storefront verified', [
+                Log::channel('audit')->info('Freelance B2B: Storefront verified', [
                     'storefront_id' => $storefront->id,
                     'inn' => $storefront->inn,
                     'correlation_id' => $correlationId,
@@ -264,7 +264,7 @@ final class B2BFreelanceController
                 'correlation_id' => $correlationId,
             ], 200);
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Freelance B2B: Verification failed', [
+            Log::channel('audit')->error('Freelance B2B: Verification failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => Str::uuid(),
             ]);

@@ -54,7 +54,7 @@ foreach ($resources as $pagePath) {
     
     // Check 3: Does it have authorization checks?
     if (strpos($content, 'authorizeAccess') === false && 
-        strpos($content, '$this->gate->allows') === false &&
+        strpos($content, 'Gate::allows') === false &&
         (strpos($content, 'CreateRecord') !== false || strpos($content, 'EditRecord') !== false)) {
         $issues[] = "⚠️  Missing authorization checks";
     }

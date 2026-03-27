@@ -40,7 +40,7 @@ final class LoadTestingService
         // Добавляем токен авторизации по умолчанию
         $headers['Authorization'] = $headers['Authorization'] ?? 'Bearer token';
 
-        $this->log->channel('performance')->info('Load test started', [
+        Log::channel('performance')->info('Load test started', [
             'url' => $url,
             'requests' => $requestsCount,
             'concurrency' => $concurrency
@@ -60,7 +60,7 @@ final class LoadTestingService
                     },
                     function ($error) use (&$failed) {
                         $failed++;
-                        $this->log->channel('performance')->warning('Load test request failed', [
+                        Log::channel('performance')->warning('Load test request failed', [
                             'error' => $error->getMessage()
                         ]);
                     }
@@ -104,7 +104,7 @@ final class LoadTestingService
             'max_response_time_ms' => round($maxTime, 2),
         ];
 
-        $this->log->channel('performance')->info('Load test completed', $results);
+        Log::channel('performance')->info('Load test completed', $results);
 
         return $results;
     }
@@ -128,7 +128,7 @@ final class LoadTestingService
                 $requestCount++;
                 $dataTransferred += strlen($response->body());
             } catch (\Throwable $e) {
-                $this->log->channel('performance')->warning('Throughput test error', [
+                Log::channel('performance')->warning('Throughput test error', [
                     'error' => $e->getMessage()
                 ]);
             }
@@ -163,7 +163,7 @@ final class LoadTestingService
                 \Illuminate\Support\Facades\Http::get($url);
                 $latencies[] = (microtime(true) - $start) * 1000; // мс
             } catch (\Throwable $e) {
-                $this->log->channel('performance')->warning('Latency test error', [
+                Log::channel('performance')->warning('Latency test error', [
                     'error' => $e->getMessage()
                 ]);
             }

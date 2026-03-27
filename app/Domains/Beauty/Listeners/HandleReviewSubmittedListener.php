@@ -1,8 +1,7 @@
-declare(strict_types=1);
-
 <?php
 
 declare(strict_types=1);
+
 
 namespace App\Domains\Beauty\Listeners;
 
@@ -30,15 +29,15 @@ class HandleReviewSubmittedListener implements ShouldQueue
         // Trigger master rating update
         if ($review->master_id) {
             UpdateMasterRatingsJob::dispatch($event->correlationId);
-            $this->cache->forget("master_reviews:{$review->master_id}");
+            Cache::forget("master_reviews:{$review->master_id}");
         }
 
         // Trigger salon rating update
         if ($review->salon_id) {
-            $this->cache->forget("salon_reviews:{$review->salon_id}");
+            Cache::forget("salon_reviews:{$review->salon_id}");
         }
 
-        $this->log->channel('audit')->info('ReviewSubmitted event handled', [
+        Log::channel('audit')->info('ReviewSubmitted event handled', [
             'review_id' => $review->id,
             'master_id' => $review->master_id,
             'salon_id' => $review->salon_id,

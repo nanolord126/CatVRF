@@ -199,7 +199,7 @@ final class Kernel extends ConsoleKernel
         // === CLEANUP ===
         // Clean old model files weekly
         $schedule->call(function () {
-            $storage = $this->storage->disk('models');
+            $storage = Storage::disk('models');
             if (!$storage->exists('fraud')) {
                 return;
             }

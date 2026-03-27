@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Domains\Jewelry\Http\Controllers\JewelryController;
+use App\Domains\Luxury\Jewelry\Http\Controllers\JewelryController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['api', 'tenant'])->prefix('jewelry')->group(function (): void {

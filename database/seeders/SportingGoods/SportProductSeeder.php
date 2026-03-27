@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders\SportingGoods;
 
-use App\Domains\SportingGoods\Models\SportProduct;
+use App\Domains\Sports\SportingGoods\Models\SportProduct;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 

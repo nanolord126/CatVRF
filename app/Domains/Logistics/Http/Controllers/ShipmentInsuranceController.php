@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Logistics\Http\Controllers;
 
@@ -36,7 +37,7 @@ class ShipmentInsuranceController
         try {
             $correlationId = Str::uuid()->toString();
 
-            $this->db->transaction(function () use ($shipmentId, $correlationId) {
+            DB::transaction(function () use ($shipmentId, $correlationId) {
                 $shipment = \App\Domains\Logistics\Models\Shipment::findOrFail($shipmentId);
 
                 ShipmentInsurance::create([
@@ -48,7 +49,7 @@ class ShipmentInsuranceController
                     'correlation_id' => $correlationId,
                 ]);
 
-                $this->log->channel('audit')->info('Shipment insurance added', [
+                Log::channel('audit')->info('Shipment insurance added', [
                     'shipment_id' => $shipmentId,
                     'insurance_amount' => request('insurance_amount'),
                     'correlation_id' => $correlationId,

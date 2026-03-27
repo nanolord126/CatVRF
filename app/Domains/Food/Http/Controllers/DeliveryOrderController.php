@@ -31,7 +31,7 @@ final class DeliveryOrderController
                 'data' => $deliveries,
             ]);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('DeliveryOrder index failed', [
+            Log::channel('audit')->error('DeliveryOrder index failed', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
@@ -63,7 +63,7 @@ final class DeliveryOrderController
         );
 
         if ($fraudResult['decision'] === 'block') {
-            $this->log->channel('fraud_alert')->warning('Delivery start blocked by fraud control', [
+            Log::channel('fraud_alert')->warning('Delivery start blocked by fraud control', [
                 'correlation_id' => $correlationId,
                 'delivery_id' => $delivery->id,
                 'score' => $fraudResult['score'],
@@ -83,7 +83,7 @@ final class DeliveryOrderController
                 'picked_up_at' => now(),
             ]);
 
-            $this->log->channel('audit')->info('Delivery started', [
+            Log::channel('audit')->info('Delivery started', [
                 'correlation_id' => $correlationId,
                 'delivery_id' => $delivery->id,
                 'tenant_id' => $delivery->tenant_id ?? null,
@@ -100,7 +100,7 @@ final class DeliveryOrderController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Delivery start failed', [
+            Log::channel('audit')->error('Delivery start failed', [
                 'correlation_id' => $correlationId,
                 'delivery_id' => $delivery->id,
                 'error' => $e->getMessage(),

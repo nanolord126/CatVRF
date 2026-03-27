@@ -1,8 +1,7 @@
-declare(strict_types=1);
-
 <?php
 
 declare(strict_types=1);
+
 
 namespace App\Domains\Beauty\Listeners;
 
@@ -46,7 +45,7 @@ class HandleAppointmentCancelledListener implements ShouldQueue
             );
         }
 
-        $this->log->channel('audit')->info('AppointmentCancelled event handled', [
+        Log::channel('audit')->info('AppointmentCancelled event handled', [
             'appointment_id' => $appointment->id,
             'reason' => $event->reason,
             'correlation_id' => $event->correlationId,

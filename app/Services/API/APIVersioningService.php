@@ -219,7 +219,7 @@ final class APIVersioningService
      */
     public static function sendDeprecationNotice(string $version, int $tenantId): void
     {
-        $this->log->channel('api')->warning('Deprecation notice sent', [
+        Log::channel('api')->warning('Deprecation notice sent', [
             'version' => $version,
             'tenant_id' => $tenantId,
             'sunset_date' => self::VERSIONS[$version]['sunset_date'] ?? null,

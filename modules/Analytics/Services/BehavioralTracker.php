@@ -28,11 +28,11 @@ class BehavioralTracker
         array $payload = [],
         float $monetaryValue = 0.0
     ): void {
-        $userId = $this->auth->id();
+        $userId = Auth::id();
         if (!$userId) return;
 
         // В идеале это должно отправляться в Queue для High Performance
-        Behavioral$this->event->create([
+        BehavioralEvent::create([
             'user_id' => $userId,
             'event_type' => $eventType,
             'vertical' => $vertical,

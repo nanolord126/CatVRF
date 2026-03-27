@@ -54,9 +54,9 @@ final class PaymentGatewayService
         ]);
 
         try {
-            return $this->db->transaction(function () use ($data, $tenantId, $correlationId) {
+            return DB::transaction(function () use ($data, $tenantId, $correlationId) {
                 // 2. AUDIT LOG В НАЧАЛЕ ТРАНЗАКЦИИ
-                $this->log->channel('audit')->info('Payment initialization started', [
+                Log::channel('audit')->info('Payment initialization started', [
                     'correlation_id' => $correlationId,
                     'amount' => $data['amount'],
                     'provider' => $data['provider'] ?? 'tinkoff',
@@ -77,7 +77,7 @@ final class PaymentGatewayService
                     'user_id' => auth()->id(),
                 ]);
 
-                $this->log->channel('audit')->info('Payment transaction created', [
+                Log::channel('audit')->info('Payment transaction created', [
                     'correlation_id' => $correlationId,
                     'payment_id' => $transaction->id,
                     'idempotency_key' => $idempotencyKey,
@@ -86,7 +86,7 @@ final class PaymentGatewayService
                 return $transaction;
             });
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Payment initialization failed', [
+            Log::channel('audit')->error('Payment initialization failed', [
                 'correlation_id' => $correlationId,
                 'amount' => $data['amount'],
                 'error' => $e->getMessage(),
@@ -118,9 +118,9 @@ final class PaymentGatewayService
         ]);
 
         try {
-            return $this->db->transaction(function () use ($transaction, $correlationId) {
+            return DB::transaction(function () use ($transaction, $correlationId) {
                 // 2. AUDIT LOG В НАЧАЛЕ ТРАНЗАКЦИИ
-                $this->log->channel('audit')->info('Payment capture started', [
+                Log::channel('audit')->info('Payment capture started', [
                     'correlation_id' => $correlationId,
                     'payment_id' => $transaction->id,
                     'amount' => $transaction->amount,
@@ -144,7 +144,7 @@ final class PaymentGatewayService
                         'correlation_id' => $correlationId,
                     ]);
 
-                    $this->log->channel('audit')->info('Payment captured successfully', [
+                    Log::channel('audit')->info('Payment captured successfully', [
                         'correlation_id' => $correlationId,
                         'payment_id' => $transaction->id,
                         'gateway' => $transaction->provider,
@@ -154,7 +154,7 @@ final class PaymentGatewayService
                 return $result;
             });
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Payment capture failed', [
+            Log::channel('audit')->error('Payment capture failed', [
                 'correlation_id' => $correlationId,
                 'payment_id' => $transaction->id,
                 'error' => $e->getMessage(),
@@ -187,9 +187,9 @@ final class PaymentGatewayService
         ]);
 
         try {
-            return $this->db->transaction(function () use ($transaction, $amount, $correlationId) {
+            return DB::transaction(function () use ($transaction, $amount, $correlationId) {
                 // 2. AUDIT LOG В НАЧАЛЕ ТРАНЗАКЦИИ
-                $this->log->channel('audit')->info('Payment refund initiated', [
+                Log::channel('audit')->info('Payment refund initiated', [
                     'correlation_id' => $correlationId,
                     'payment_id' => $transaction->id,
                     'refund_amount' => $amount,
@@ -215,7 +215,7 @@ final class PaymentGatewayService
                         'correlation_id' => $correlationId,
                     ]);
 
-                    $this->log->channel('audit')->info('Payment refunded successfully', [
+                    Log::channel('audit')->info('Payment refunded successfully', [
                         'correlation_id' => $correlationId,
                         'payment_id' => $transaction->id,
                         'refunded_amount' => $amount,
@@ -226,7 +226,7 @@ final class PaymentGatewayService
                 return $result;
             });
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Payment refund failed', [
+            Log::channel('audit')->error('Payment refund failed', [
                 'correlation_id' => $correlationId,
                 'payment_id' => $transaction->id,
                 'refund_amount' => $amount,

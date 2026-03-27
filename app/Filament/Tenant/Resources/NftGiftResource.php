@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources;
 
-use App\Domains\Bloggers\Models\NftGift;
+use App\Domains\Content\Bloggers\Models\NftGift;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -260,7 +260,7 @@ final class NftGiftResource extends Resource
                     ->requiresConfirmation()
                     ->action(function (NftGift $record) {
                         $record->update(['minting_status' => 'pending']);
-                        \App\Domains\Bloggers\Jobs\MintNftGiftJob::dispatch($record);
+                        \App\Domains\Content\Bloggers\Jobs\MintNftGiftJob::dispatch($record);
                     })
                     ->visible(fn (NftGift $record) => $record->minting_status === 'failed'),
                 Tables\Actions\Action::make('view_nft')

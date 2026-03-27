@@ -1,31 +1,109 @@
-<?php declare(strict_types=1);
-namespac
+<?php
+
+declare(strict_types=1);
+
+namespace App\Domains\Veterinary\Models;
+
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 /**
- * VeterinaryClinic
- * 
- * Производитель: CatVRF Platform
- * Версия: 1.0.0
- * 
- * Примеры использования:
- * 
- * ```php
- * // Базовое использование
- * $instance = new VeterinaryClinic();
- * ```
- * 
- * Требования:
- * - Laravel 10+
- * - PHP 8.2+
- * - Все методы должны быть явно типизированы
- * 
- * @author CatVRF
- * @package namespace App\Domains\Veterinary\Models
- * @see https://github.com/iyegorovskyi_clemny/CatVRF
+ * Veterinary Clinic Model (CatVRF 2026 Canonical)
  */
-e App\Domains\Veterinary\Models;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Traits\TenantScoped;
-final class VeterinaryClinic extends Model{use HasUuids,SoftDeletes,TenantScoped;protected $table='veterinary_clinics';protected $fillable=['uuid','tenant_id','user_id','correlation_id','name','address','phone','price_kopecks_per_hour','rating','is_verified','tags'];protected $casts=['price_kopecks_per_hour'=>'integer','rating'=>'float','is_verified'=>'boolean','tags'=>'json'];protected static function booted(){static::addGlobalScope('tenant',fn($q)=>$q->where('veterinary_clinics.tenant_id',tenant()->id));}}
+final class VeterinaryClinic extends Model
+{
+    use SoftDeletes;
+
+    protected $table = 'veterinary_clinics';
+
+    protected $fillable = [
+        'uuid',
+        'tenant_id',
+        'business_group_id',
+        'name',
+        'address',
+        'geo_point',
+        'schedule_json',
+        'rating',
+        'review_count',
+        'is_verified',
+        'has_emergency',
+        'tags',
+        'correlation_id',
+    ];
+
+    protected $casts = [
+        'schedule_json' => 'json',
+        'tags' => 'json',
+        'is_verified' => 'boolean',
+        'has_emergency' => 'boolean',
+        'rating' => 'float',
+    ];
+
+    protected $hidden = [
+        'correlation_id',
+    ];
+
+    /**
+     * Tenant Scoping Global Scope
+     */
+    protected static function booted(): void
+    {
+        static::addGlobalScope('tenant_scope', function (Builder $builder) {
+            if (function_exists('tenant') && is_object(tenant()) && isset(tenant()->id)) {
+                $builder->where('veterinary_clinics.tenant_id', tenant()->id);
+            }
+        });
+
+        static::creating(function (Model $model) {
+            $model->uuid = $model->uuid ?? (string) Str::uuid();
+            if (function_exists('tenant') && is_object(tenant()) && isset(tenant()->id)) {
+                $model->tenant_id = $model->tenant_id ?? tenant()->id;
+            }
+        });
+    }
+
+    /**
+     * Relations: Veterinarians working in the clinic
+     */
+    public function veterinarians(): HasMany
+    {
+        return $this->hasMany(Veterinarian::class, 'clinic_id');
+    }
+
+    /**
+     * Relations: Services offered in the clinic
+     */
+    public function services(): HasMany
+    {
+        return $this->hasMany(VeterinaryService::class, 'clinic_id');
+    }
+
+    /**
+     * Relations: Appointments booked for this clinic
+     */
+    public function appointments(): HasMany
+    {
+        return $this->hasMany(VeterinaryAppointment::class, 'clinic_id');
+    }
+
+    /**
+     * Relations: Consumables inventory
+     */
+    public function consumables(): HasMany
+    {
+        return $this->hasMany(VeterinaryConsumable::class, 'clinic_id');
+    }
+
+    /**
+     * Relations: Business Group (Affiliate)
+     */
+    public function businessGroup(): BelongsTo
+    {
+        return $this->belongsTo('App\Models\BusinessGroup', 'business_group_id');
+    }
+}

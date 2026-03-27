@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\FarmDirect\Http\Controllers;
 
@@ -21,15 +22,7 @@ final /**
  */
 class MainController extends Controller
 {
-    public function __construct(private readonly FarmDirectService $service) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+    public function __construct(private readonly FarmDirectService $service) {}
 
     public function index(Request $request): JsonResponse
     {

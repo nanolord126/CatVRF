@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Tickets\Events;
 
@@ -25,13 +26,5 @@ class EventReviewSubmitted
     public function __construct(
         public EventReview $review,
         public string $correlationId = '',
-    ) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+    ) {}
 }

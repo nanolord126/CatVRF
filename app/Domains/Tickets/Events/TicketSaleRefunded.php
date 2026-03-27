@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Tickets\Events;
 
@@ -26,13 +27,5 @@ class TicketSaleRefunded
         public TicketSale $ticketSale,
         public string $reason = '',
         public string $correlationId = '',
-    ) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+    ) {}
 }

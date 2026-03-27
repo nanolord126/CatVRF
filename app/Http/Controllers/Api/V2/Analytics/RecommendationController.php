@@ -1,16 +1,12 @@
 <?php
-
 declare(strict_types=1);
-
 namespace App\Http\Controllers\Api\V2\Analytics;
-
 use App\Http\Controllers\Controller;
 use App\Services\Analytics\RecommendationMLService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-
 /**
  * ML Recommendation Engine Controller
  * Эндпоинты для получения персональных рекомендаций товаров/услуг
@@ -20,12 +16,15 @@ use Illuminate\Support\Str;
 final class RecommendationController extends Controller
 {
     private readonly RecommendationMLService $recommendationService;
-
     public function __construct(RecommendationMLService $recommendationService)
     {
         $this->recommendationService = $recommendationService;
+        // PRODUCTION-READY 2026 CANON: Middleware для ML Recommendations
+        $this->middleware('auth:sanctum')->only(['getForMe', 'getCrossVertical']); // Только для авторизованных
+         // 500 запросов/час
+        $this->middleware('tenant', ['only' => ['getForMe', 'getCrossVertical']]); // Tenant scoping
+        $this->middleware('fraud-check', ['only' => ['rateRecommendation']]); // Проверка перед рейтингом
     }
-
     /**
      * GET /api/v2/recommendations/for-me
      * Получает персональные рекомендации для текущего пользователя
@@ -36,28 +35,24 @@ final class RecommendationController extends Controller
     public function getForMe(Request $request): JsonResponse
     {
         $correlationId = $request->get('correlation_id', Str::uuid()->toString());
-
         try {
             $vertical = $request->get('vertical'); // Опционально: beauty, food, auto, etc.
             $context = [
                 'geo_hash' => $request->get('geo_hash'),
                 'device_type' => $request->get('device_type', 'mobile'),
             ];
-
             $recommendations = $this->recommendationService->getForUser(
                 userId: auth()->id(),
                 vertical: $vertical,
                 context: $context
             );
-
-            $this->log->channel('audit')->info('Recommendations fetched', [
+            Log::channel('audit')->info('Recommendations fetched', [
                 'user_id' => auth()->id(),
                 'correlation_id' => $correlationId,
                 'vertical' => $vertical,
                 'count' => $recommendations->count(),
                 'timestamp' => now()->toIso8601String()
             ]);
-
             return response()->json([
                 'correlation_id' => $correlationId,
                 'data' => [
@@ -66,21 +61,18 @@ final class RecommendationController extends Controller
                 ],
                 'timestamp' => now()->toIso8601String()
             ]);
-
         } catch (\Throwable $e) {
-            $this->log->channel('analytics_errors')->error('Failed to get recommendations', [
+            Log::channel('analytics_errors')->error('Failed to get recommendations', [
                 'user_id' => auth()->id(),
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage()
             ]);
-
             return response()->json([
                 'correlation_id' => $correlationId,
                 'error' => 'Failed to generate recommendations'
             ], 500);
         }
     }
-
     /**
      * GET /api/v2/recommendations/cross-vertical
      * Получает кросс-вертикальные рекомендации
@@ -92,13 +84,10 @@ final class RecommendationController extends Controller
     public function getCrossVertical(Request $request): JsonResponse
     {
         $correlationId = $request->get('correlation_id', Str::uuid()->toString());
-
         try {
             $currentVertical = $request->get('current_vertical', 'beauty');
-            
             // Получаем рекомендации из других вертикалей
             $recommendations = collect();
-
             $verticals = ['food', 'auto', 'realestate', 'hotels'];
             foreach ($verticals as $vertical) {
                 if ($vertical !== $currentVertical) {
@@ -109,7 +98,6 @@ final class RecommendationController extends Controller
                     $recommendations = $recommendations->merge($recs);
                 }
             }
-
             return response()->json([
                 'correlation_id' => $correlationId,
                 'data' => [
@@ -117,20 +105,17 @@ final class RecommendationController extends Controller
                     'recommendations' => $recommendations->take(10)->toArray(),
                 ]
             ]);
-
         } catch (\Throwable $e) {
-            $this->log->channel('analytics_errors')->error('Failed to get cross-vertical recommendations', [
+            Log::channel('analytics_errors')->error('Failed to get cross-vertical recommendations', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage()
             ]);
-
             return response()->json([
                 'correlation_id' => $correlationId,
                 'error' => 'Failed to generate cross-vertical recommendations'
             ], 500);
         }
     }
-
     /**
      * POST /api/v2/recommendations/track-click
      * Отслеживает клики по рекомендациям для аналитики и переобучения модели
@@ -141,9 +126,8 @@ final class RecommendationController extends Controller
     public function trackClick(Request $request): JsonResponse
     {
         $correlationId = $request->get('correlation_id', Str::uuid()->toString());
-
         try {
-            \$this->db->table('recommendation_logs')->insert([
+            \DB::table('recommendation_logs')->insert([
                 'user_id' => auth()->id(),
                 'tenant_id' => auth()->user()->tenant_id,
                 'recommended_item_id' => $request->get('item_id'),
@@ -151,18 +135,15 @@ final class RecommendationController extends Controller
                 'clicked_at' => now(),
                 'correlation_id' => $correlationId,
             ]);
-
             return response()->json([
                 'correlation_id' => $correlationId,
                 'data' => ['tracked' => true]
             ]);
-
         } catch (\Throwable $e) {
-            $this->log->channel('analytics_errors')->error('Failed to track recommendation click', [
+            Log::channel('analytics_errors')->error('Failed to track recommendation click', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage()
             ]);
-
             return response()->json([
                 'correlation_id' => $correlationId,
                 'error' => 'Failed to track click'

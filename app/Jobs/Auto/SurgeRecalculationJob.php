@@ -37,7 +37,7 @@ final class SurgeRecalculationJob implements ShouldQueue
     public function handle(SurgePricingService $surgePricingService): void
     {
         try {
-            $this->db->transaction(function () use ($surgePricingService) {
+            DB::transaction(function () use ($surgePricingService) {
                 $zones = $surgePricingService->getActiveSurgeZones();
 
                 foreach ($zones as $zone) {
@@ -53,7 +53,7 @@ final class SurgeRecalculationJob implements ShouldQueue
                             $this->correlationId
                         );
 
-                        $this->log->channel('audit')->info('Surge multiplier updated', [
+                        Log::channel('audit')->info('Surge multiplier updated', [
                             'correlation_id' => $this->correlationId,
                             'zone_id' => $zone->id,
                             'old_multiplier' => $zone->surge_multiplier,
@@ -63,7 +63,7 @@ final class SurgeRecalculationJob implements ShouldQueue
                 }
             });
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Surge recalculation failed', [
+            Log::channel('audit')->error('Surge recalculation failed', [
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

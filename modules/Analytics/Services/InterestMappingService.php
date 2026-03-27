@@ -24,7 +24,7 @@ class InterestMappingService
     // Add private readonly properties here
     public function mapUserInterests(User $user): void
     {
-        $interactions = Behavioral$this->event->where('user_id', $user->id)
+        $interactions = BehavioralEvent::where('user_id', $user->id)
             ->where('event_type', 'view')
             ->pluck('payload')
             ->map(fn($p) => $p['category'] ?? $p['name'] ?? '')

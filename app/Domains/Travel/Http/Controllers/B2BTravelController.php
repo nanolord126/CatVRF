@@ -45,14 +45,14 @@ final class B2BTravelController
                 'min_order_amount' => 'numeric|min:1000',
             ]);
 
-            return $this->db->transaction(function () use ($validated, $correlationId) {
+            return DB::transaction(function () use ($validated, $correlationId) {
                 $storefront = B2BTravelStorefront::create([
                     'tenant_id' => tenant()->id,
                     'correlation_id' => $correlationId,
                     ...$validated,
                 ]);
 
-                $this->log->channel('audit')->info('B2B Travel storefront created', [
+                Log::channel('audit')->info('B2B Travel storefront created', [
                     'storefront_id' => $storefront->id,
                     'correlation_id' => $correlationId,
                     'user_id' => auth()->id(),
@@ -65,7 +65,7 @@ final class B2BTravelController
                 ], 201);
             });
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Travel storefront creation failed', [
+            Log::channel('audit')->error('Travel storefront creation failed', [
                 'error' => $e->getMessage(),
                 'user_id' => auth()->id(),
             ]);
@@ -90,11 +90,11 @@ final class B2BTravelController
                 'items.*.quantity' => 'required|integer|min:1',
             ]);
 
-            return $this->db->transaction(function () use ($validated, $correlationId) {
+            return DB::transaction(function () use ($validated, $correlationId) {
                 $storefront = B2BTravelStorefront::findOrFail($validated['storefront_id']);
                 $commission = ($validated['items'][0]['quantity'] ?? 1) * 0.14;
 
-                $this->log->channel('audit')->info('B2B Travel order created', [
+                Log::channel('audit')->info('B2B Travel order created', [
                     'storefront_id' => $storefront->id,
                     'correlation_id' => $correlationId,
                     'commission' => $commission,
@@ -107,7 +107,7 @@ final class B2BTravelController
                 ], 201);
             });
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Travel order creation failed', [
+            Log::channel('audit')->error('Travel order creation failed', [
                 'error' => $e->getMessage(),
             ]);
 
@@ -135,11 +135,11 @@ final class B2BTravelController
     public function approveOrder(int $id): JsonResponse
     {
         try {
-            return $this->db->transaction(function () use ($id) {
+            return DB::transaction(function () use ($id) {
                 $order = B2BTravelStorefront::findOrFail($id);
                 $order->update(['status' => 'approved']);
 
-                $this->log->channel('audit')->info('Travel order approved', [
+                Log::channel('audit')->info('Travel order approved', [
                     'order_id' => $id,
                     'user_id' => auth()->id(),
                 ]);
@@ -163,14 +163,14 @@ final class B2BTravelController
                 'reason' => 'required|string|max:500',
             ]);
 
-            return $this->db->transaction(function () use ($id, $validated) {
+            return DB::transaction(function () use ($id, $validated) {
                 $order = B2BTravelStorefront::findOrFail($id);
                 $order->update([
                     'status' => 'rejected',
                     'rejection_reason' => $validated['reason'],
                 ]);
 
-                $this->log->channel('audit')->info('Travel order rejected', [
+                Log::channel('audit')->info('Travel order rejected', [
                     'order_id' => $id,
                     'reason' => $validated['reason'],
                 ]);
@@ -189,11 +189,11 @@ final class B2BTravelController
     public function verifyInn(int $id): JsonResponse
     {
         try {
-            return $this->db->transaction(function () use ($id) {
+            return DB::transaction(function () use ($id) {
                 $storefront = B2BTravelStorefront::findOrFail($id);
                 $storefront->update(['is_verified' => true]);
 
-                $this->log->channel('audit')->info('Travel storefront verified', [
+                Log::channel('audit')->info('Travel storefront verified', [
                     'storefront_id' => $id,
                     'admin_id' => auth()->id(),
                 ]);

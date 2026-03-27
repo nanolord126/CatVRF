@@ -124,9 +124,9 @@ final class FashionProductController
         try {
             $product = FashionProduct::findOrFail($id);
 
-            $this->db->transaction(function () use ($product, $id, $correlationId) {
+            DB::transaction(function () use ($product, $id, $correlationId) {
                 $product->delete();
-                $this->log->channel('audit')->info('Fashion product deleted', ['product_id' => $id, 'correlation_id' => $correlationId]);
+                Log::channel('audit')->info('Fashion product deleted', ['product_id' => $id, 'correlation_id' => $correlationId]);
             });
 
             return response()->json(['success' => true, 'data' => null, 'correlation_id' => $correlationId]);

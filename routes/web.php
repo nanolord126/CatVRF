@@ -101,9 +101,11 @@ Route::get('/logout', function (Request $request) {
     Auth::logout();
     $request->session()->invalidate();
     $request->session()->regenerateToken();
-
     return redirect('/login');
-});
+})->name('logout');
+
+// Psychology Domain Routes
+require __DIR__ . '/psychology.php';
 
 /**
  * Analytics Dashboard Route

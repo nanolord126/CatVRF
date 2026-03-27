@@ -13,7 +13,7 @@ use Filament\Tables\Table;
 
 class PhotoSessionResource extends Resource
 {
-	protected static ?string $model = Photo$this->session->class;
+	protected static ?string $model = PhotoSession::class;
 
 	protected static ?string $navigationIcon = 'heroicon-o-calendar';
 

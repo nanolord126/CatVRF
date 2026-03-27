@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Domains\Jewelry\Models\JewelryItem;
+use App\Domains\Luxury\Jewelry\Models\JewelryItem;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 final class JewelryItemFactory extends Factory

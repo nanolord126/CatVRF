@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\SportingGoods;
 
-use App\Domains\SportingGoods\Models\SportProduct;
+use App\Domains\Sports\SportingGoods\Models\SportProduct;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;

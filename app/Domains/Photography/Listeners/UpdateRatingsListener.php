@@ -1,8 +1,7 @@
-declare(strict_types=1);
-
 <?php
 
 declare(strict_types=1);
+
 
 namespace App\Domains\Photography\Listeners;
 
@@ -30,7 +29,7 @@ class UpdateRatingsListener implements ShouldQueue
 	public function handle(ReviewSubmitted $event): void
 	{
 		try {
-			$this->db->transaction(function () use ($event) {
+			DB::transaction(function () use ($event) {
 				$studio = PhotoStudio::find($event->review->photo_studio_id);
 				$photographer = Photographer::find($event->review->photographer_id);
 
@@ -47,14 +46,14 @@ class UpdateRatingsListener implements ShouldQueue
 					]);
 				}
 
-				$this->log->channel('audit')->info('Photography: Ratings updated', [
+				Log::channel('audit')->info('Photography: Ratings updated', [
 					'studio_id' => $studio?->id,
 					'photographer_id' => $photographer?->id,
 					'correlation_id' => $event->correlationId,
 				]);
 			});
 		} catch (\Exception $e) {
-			$this->log->channel('audit')->error('Photography: Rating update failed', [
+			Log::channel('audit')->error('Photography: Rating update failed', [
 				'review_id' => $event->review->id,
 				'error' => $e->getMessage(),
 				'correlation_id' => $event->correlationId,

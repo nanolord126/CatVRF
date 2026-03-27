@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Domains\MedicalHealthcare\Models\MedicalAppointment;
+use App\Domains\Medical\MedicalHealthcare\Models\MedicalAppointment;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 final class MedicalAppointmentFactory extends Factory

@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\HomeServices\Events;
 
@@ -24,13 +25,5 @@ class ReviewSubmitted
     // Add private readonly properties here
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public function __construct(public ServiceReview $review, public string $correlationId) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+    public function __construct(public ServiceReview $review, public string $correlationId) {}
 }

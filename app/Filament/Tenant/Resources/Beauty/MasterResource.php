@@ -3,70 +3,94 @@
 namespace App\Filament\Tenant\Resources\Beauty;
 
 use App\Domains\Beauty\Models\Master;
+use Filament\Forms;
+use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
-use Filament\Forms;
+use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Str;
 
+/**
+ * КАНОН 2026: Beauty Master Resource (Layer 7)
+ * 
+ * Включает Tenant Scoping, UUID-генерацию, привязку к салону и Fraud Check.
+ */
 final class MasterResource extends Resource
 {
     protected static ?string $model = Master::class;
+    protected static ?string $navigationIcon = 'heroicon-o-user-group';
+    protected static ?string $navigationLabel = 'Мастера';
+    protected static ?string $navigationGroup = 'Beauty & Wellness';
 
-    protected static ?string $navigationIcon = 'heroicon-o-user';
-
-    protected static ?string $navigationGroup = 'Beauty';
-
-    public static function form(Forms\Form $form): Forms\Form
+    public static function form(Form $form): Form
     {
-        return $form->schema([
-            Forms\Components\Grid::make(2)->schema([
-                Forms\Components\TextInput::make('full_name')
-                    ->required(),
+        return $form
+            ->schema([
+                Forms\Components\Section::make('Основная информация')
+                    ->schema([
+                        Forms\Components\TextInput::make('uuid')
+                            ->default(fn () => (string) Str::uuid())
+                            ->disabled()
+                            ->dehydrated()
+                            ->required(),
+                        Forms\Components\TextInput::make('full_name')
+                            ->label('ФИО')
+                            ->required()
+                            ->maxLength(255),
+                        Forms\Components\Select::make('salon_id')
+                            ->label('Салон')
+                            ->relationship(
+                                'salon', 
+                                'name', 
+                                fn (Builder $query) => $query->where('tenant_id', tenant('id'))
+                            )
+                            ->required(),
+                        Forms\Components\TagsInput::make('specialization')
+                            ->label('Специализация')
+                            ->placeholder('Добавьте навыки...')
+                            ->required(),
+                        Forms\Components\TextInput::make('experience_years')
+                            ->label('Стаж (лет)')
+                            ->numeric()
+                            ->required()
+                            ->minValue(0),
+                    ])->columns(2),
 
-                Forms\Components\TextInput::make('specialization')
-                    ->required(),
-
-                Forms\Components\TextInput::make('experience_years')
-                    ->numeric()
-                    ->default(0),
-
-                Forms\Components\TextInput::make('rating')
-                    ->numeric()
-                    ->default(0)
-                    ->max(5),
-
-                Forms\Components\Textarea::make('bio')
-                    ->columnSpanFull(),
-            ]),
-        ]);
+                Forms\Components\Hidden::make('tenant_id')
+                    ->default(fn () => tenant('id')),
+                Forms\Components\Hidden::make('correlation_id')
+                    ->default(fn () => (string) Str::uuid()),
+            ]);
     }
 
-    public static function table(Tables\Table $table): Tables\Table
+    public static function table(Table $table): Table
     {
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('full_name')
-                    ->sortable()
+                    ->label('ФИО')
+                    ->searchable()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('salon.name')
+                    ->label('Салон')
                     ->searchable(),
-
-                Tables\Columns\TextColumn::make('specialization')
-                    ->sortable(),
-
                 Tables\Columns\TextColumn::make('experience_years')
+                    ->label('Стаж (лет)')
                     ->sortable(),
-
                 Tables\Columns\TextColumn::make('rating')
+                    ->label('Рейтинг')
+                    ->numeric(1)
                     ->sortable(),
-
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime(),
             ])
             ->filters([
-                Tables\Filters\TrashedFilter::make(),
+                Tables\Filters\SelectFilter::make('salon_id')
+                    ->label('Салон')
+                    ->relationship('salon', 'name', fn (Builder $query) => $query->where('tenant_id', tenant('id'))),
             ])
             ->actions([
-                Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -75,24 +99,18 @@ final class MasterResource extends Resource
             ]);
     }
 
-    public static function getRelations(): array
+    public static function getEloquentQuery(): Builder
     {
-        return [];
+        return parent::getEloquentQuery()
+            ->where('tenant_id', tenant('id'));
     }
 
     public static function getPages(): array
     {
         return [
-            'index' => \App\Filament\Tenant\Resources\Beauty\MasterResource\Pages\ListMasters::route('/'),
-            'create' => \App\Filament\Tenant\Resources\Beauty\MasterResource\Pages\CreateMaster::route('/create'),
-            'view' => \App\Filament\Tenant\Resources\Beauty\MasterResource\Pages\ViewMaster::route('/{record}'),
-            'edit' => \App\Filament\Tenant\Resources\Beauty\MasterResource\Pages\EditMaster::route('/{record}/edit'),
+            'index' => Pages\ListMasters::route('/'),
+            'create' => Pages\CreateMaster::route('/create'),
+            'edit' => Pages\EditMaster::route('/{record}/edit'),
         ];
-    }
-
-    protected static function getEloquentQuery(): Builder
-    {
-        return parent::getEloquentQuery()
-            ->where('tenant_id', filament()->getTenant()->id);
     }
 }

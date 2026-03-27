@@ -33,14 +33,14 @@ final class AuditService
         $context = array_merge([
             'correlation_id' => $correlationId,
             'operation' => $operation,
-            'user_id' => $this->auth->id(),
+            'user_id' => Auth::id(),
             'tenant_id' => tenant()->id ?? null,
             'ip_address' => request()->ip(),
             'user_agent' => request()->userAgent(),
             'timestamp' => now(),
         ], $metadata, $data);
 
-        $this->log->channel('audit')->info($operation, $context);
+        Log::channel('audit')->info($operation, $context);
     }
 
     /**
@@ -60,12 +60,12 @@ final class AuditService
             'error' => $exception->getMessage(),
             'code' => $exception->getCode(),
             'trace' => $exception->getTraceAsString(),
-            'user_id' => $this->auth->id(),
+            'user_id' => Auth::id(),
             'tenant_id' => tenant()->id ?? null,
             'timestamp' => now(),
         ], $context);
 
-        $this->log->channel('audit')->error($operation . ' failed', $errorContext);
+        Log::channel('audit')->error($operation . ' failed', $errorContext);
     }
 
     /**

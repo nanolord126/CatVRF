@@ -1,7 +1,7 @@
 <?php declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
-use App\Domains\MedicalHealthcare\Http\Controllers\B2BMedicalController;
+use App\Domains\Medical\MedicalHealthcare\Http\Controllers\B2BMedicalController;
 
 Route::middleware(['auth:sanctum', 'tenant'])->prefix('api/b2b/medical-healthcare')->group(function () {
     Route::get('/', [B2BMedicalController::class, 'storefronts'])->name('b2b.medical-healthcare.index');

@@ -25,7 +25,7 @@ final class TicketController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Throwable $e) {
-            \$this->log->channel('audit')->error('Failed to list my tickets', [
+            \Log::channel('audit')->error('Failed to list my tickets', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -49,7 +49,7 @@ final class TicketController
                 'correlation_id' => Str::uuid(),
             ]);
         } catch (\Throwable $e) {
-            \$this->log->channel('audit')->error('Failed to show ticket', [
+            \Log::channel('audit')->error('Failed to show ticket', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -74,7 +74,7 @@ final class TicketController
 
             return $pdf->download($ticket->ticket_number . '.pdf');
         } catch (\Throwable $e) {
-            \$this->log->channel('audit')->error('Failed to download ticket', [
+            \Log::channel('audit')->error('Failed to download ticket', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([
@@ -95,7 +95,7 @@ final class TicketController
 
             $this->generationService->checkinTicket($validated['qr_code'], $correlationId);
 
-            \$this->log->channel('audit')->info('Ticket checked in', [
+            \Log::channel('audit')->info('Ticket checked in', [
                 'event_id' => $eventId,
                 'correlation_id' => $correlationId,
             ]);
@@ -106,7 +106,7 @@ final class TicketController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            \$this->log->channel('audit')->error('Checkin failed', [
+            \Log::channel('audit')->error('Checkin failed', [
                 'error' => $e->getMessage(),
             ]);
             return response()->json([

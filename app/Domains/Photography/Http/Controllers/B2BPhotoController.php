@@ -69,7 +69,7 @@ final class B2BPhotoController
 				'correlation_id' => $correlationId,
 			], 201);
 		} catch (\Exception $e) {
-			$this->log->channel('audit')->error('Photography B2B: Storefront creation failed', [
+			Log::channel('audit')->error('Photography B2B: Storefront creation failed', [
 				'error' => $e->getMessage(),
 				'correlation_id' => Str::uuid(),
 			]);
@@ -116,7 +116,7 @@ final class B2BPhotoController
 
 			$storefront->update($validated);
 
-			$this->log->channel('audit')->info('Photography B2B: Storefront updated', [
+			Log::channel('audit')->info('Photography B2B: Storefront updated', [
 				'storefront_id' => $id,
 				'correlation_id' => Str::uuid(),
 			]);
@@ -243,7 +243,7 @@ final class B2BPhotoController
 
 			$order->update(['status' => $status]);
 
-			$this->log->channel('audit')->info('Photography B2B: Order status updated', [
+			Log::channel('audit')->info('Photography B2B: Order status updated', [
 				'order_id' => $id,
 				'status' => $status,
 				'correlation_id' => Str::uuid(),
@@ -294,7 +294,7 @@ final class B2BPhotoController
 			$reason = $request->get('reason', 'Причина не указана');
 			$order->update(['status' => 'rejected', 'notes' => $reason]);
 
-			$this->log->channel('audit')->info('Photography B2B: Order rejected', [
+			Log::channel('audit')->info('Photography B2B: Order rejected', [
 				'order_id' => $id,
 				'reason' => $reason,
 				'correlation_id' => Str::uuid(),
@@ -338,11 +338,11 @@ final class B2BPhotoController
 		try {
 			$this->authorize('verify', B2BPhotoStorefront::class);
 
-			$this->db->transaction(function () use ($id) {
+			DB::transaction(function () use ($id) {
 				$storefront = B2BPhotoStorefront::findOrFail($id);
 				$storefront->update(['is_verified' => true]);
 
-				$this->log->channel('audit')->info('Photography B2B: INN verified', [
+				Log::channel('audit')->info('Photography B2B: INN verified', [
 					'storefront_id' => $id,
 					'inn' => $storefront->inn,
 					'correlation_id' => Str::uuid(),

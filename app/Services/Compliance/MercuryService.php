@@ -1,8 +1,7 @@
-declare(strict_types=1);
-
 <?php
 
 declare(strict_types=1);
+
 
 namespace App\Services\Compliance;
 
@@ -40,7 +39,7 @@ final class MercuryService
 
             return $response->successful() && $response->json('status') === 'COMPLETED';
         } catch (Throwable $e) {
-            $this->log->channel('fraud_alert')->error('Mercury VSD verification failed', [
+            Log::channel('fraud_alert')->error('Mercury VSD verification failed', [
                 'vsd_id' => $vsdId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId

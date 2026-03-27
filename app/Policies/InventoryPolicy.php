@@ -28,7 +28,7 @@ final class InventoryPolicy
     {
         // CANON 2026: Strict tenant scoping check
         if (isset($item->tenant_id) && $user->tenant_id !== $item->tenant_id && !$user->hasRole('admin')) {
-            \Illuminate\Support\Facades\$this->log->warning('Tenant mismatch in ' . __CLASS__ . '::' . __FUNCTION__, [
+            \Illuminate\Support\Facades\Log::warning('Tenant mismatch in ' . __CLASS__ . '::' . __FUNCTION__, [
                 'user_id' => $user->id,
                 'user_tenant_id' => $user->tenant_id,
                 'model_tenant_id' => $item->tenant_id,
@@ -60,7 +60,7 @@ final class InventoryPolicy
         // CANON 2026 FRAUD: Predict/check operation before mutating
         $fraudScore = 0; // fraud check at service layer
         if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-            \Illuminate\Support\Facades\$this->log->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+            \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                 'user_id' => $user->id,
                 'score' => $fraudScore
             ]);
@@ -73,7 +73,7 @@ final class InventoryPolicy
         );
 
         if (!$allowed) {
-            $this->log->info('Unauthorized inventory creation attempt', [
+            Log::info('Unauthorized inventory creation attempt', [
                 'user_id' => $user->id,
             ]);
         }
@@ -90,7 +90,7 @@ final class InventoryPolicy
         // CANON 2026 FRAUD: Predict/check operation before mutating
         $fraudScore = 0; // fraud check at service layer
         if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-            \Illuminate\Support\Facades\$this->log->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+            \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                 'user_id' => $user->id,
                 'score' => $fraudScore
             ]);
@@ -100,7 +100,7 @@ final class InventoryPolicy
         $allowed = $user->tenant_id === $item->tenant_id && $user->hasRole(['business', 'admin']);
 
         if (!$allowed) {
-            $this->log->warning('Unauthorized inventory update attempt', [
+            Log::warning('Unauthorized inventory update attempt', [
                 'user_id' => $user->id,
                 'item_id' => $item->id,
             ]);
@@ -202,7 +202,7 @@ final class InventoryPolicy
         // CANON 2026 FRAUD: Predict/check operation before mutating
         $fraudScore = 0; // fraud check at service layer
         if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-            \Illuminate\Support\Facades\$this->log->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+            \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                 'user_id' => $user->id,
                 'score' => $fraudScore
             ]);
@@ -220,7 +220,7 @@ final class InventoryPolicy
         // CANON 2026 FRAUD: Predict/check operation before mutating
         $fraudScore = 0; // fraud check at service layer
         if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-            \Illuminate\Support\Facades\$this->log->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+            \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                 'user_id' => $user->id,
                 'score' => $fraudScore
             ]);
@@ -239,7 +239,7 @@ final class InventoryPolicy
         // CANON 2026 FRAUD: Predict/check operation before mutating
         $fraudScore = 0; // fraud check at service layer
         if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-            \Illuminate\Support\Facades\$this->log->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+            \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                 'user_id' => $user->id,
                 'score' => $fraudScore
             ]);

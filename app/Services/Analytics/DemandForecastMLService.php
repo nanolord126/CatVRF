@@ -47,7 +47,7 @@ final class DemandForecastMLService
 
         $cacheKey = "forecast:item:{$itemId}:days:{$daysAhead}";
 
-        return $this->cache->remember($cacheKey, self::CACHE_TTL, function () use ($itemId, $daysAhead) {
+        return Cache::remember($cacheKey, self::CACHE_TTL, function () use ($itemId, $daysAhead) {
             try {
                 // Получаем историю спроса
                 $history = $this->getHistoricalDemand($itemId);
@@ -77,7 +77,7 @@ final class DemandForecastMLService
                 ];
 
             } catch (\Throwable $e) {
-                $this->log->channel('analytics_errors')->error('Demand forecast failed', [
+                Log::channel('analytics_errors')->error('Demand forecast failed', [
                     'item_id' => $itemId,
                     'error' => $e->getMessage()
                 ]);
@@ -116,14 +116,14 @@ final class DemandForecastMLService
     {
         $since = now()->subDays($days)->startOfDay();
 
-        $actuals = $this->db->table('demand_actuals')
+        $actuals = DB::table('demand_actuals')
             ->where('vertical', $vertical)
             ->where('date', '>=', $since)
             ->get()
             ->groupBy('date')
             ->map(fn ($group) => $group->sum('actual_demand'));
 
-        $predictions = $this->db->table('demand_forecasts')
+        $predictions = DB::table('demand_forecasts')
             ->where('vertical', $vertical)
             ->where('forecast_date', '>=', $since)
             ->get()
@@ -173,7 +173,7 @@ final class DemandForecastMLService
     {
         $since = now()->subDays(90)->startOfDay();
 
-        $history = $this->db->table('demand_actuals')
+        $history = DB::table('demand_actuals')
             ->where('item_id', $itemId)
             ->where('date', '>=', $since)
             ->orderBy('date')

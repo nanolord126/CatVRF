@@ -1,8 +1,7 @@
-declare(strict_types=1);
-
 <?php
 
 declare(strict_types=1);
+
 
 namespace App\Domains\Beauty\Listeners;
 
@@ -28,14 +27,14 @@ class HandleMasterRatingUpdatedListener implements ShouldQueue
         $master = $event->master;
 
         // Invalidate master rating cache
-        $this->cache->forget("master_rating:{$master->id}");
+        Cache::forget("master_rating:{$master->id}");
 
         // Trigger salon rating recalculation
         if ($master->salon_id) {
             RecalculateSalonRatingJob::dispatch($event->correlationId);
         }
 
-        $this->log->channel('audit')->info('MasterRatingUpdated event handled', [
+        Log::channel('audit')->info('MasterRatingUpdated event handled', [
             'master_id' => $master->id,
             'old_rating' => $event->oldRating,
             'new_rating' => $event->newRating,

@@ -28,7 +28,7 @@ final class LiveSearchService
 
         try {
             $cacheKey = "search:docs:{$tenantId}:" . md5($query . json_encode($filters));
-            $cached = $this->cache->get($cacheKey);
+            $cached = Cache::get($cacheKey);
 
             if ($cached !== null) {
                 return collect($cached);
@@ -41,9 +41,9 @@ final class LiveSearchService
                 $results = $results->take(self::MAX_RESULTS);
             }
 
-            $this->cache->put($cacheKey, $results->toArray(), self::SEARCH_CACHE_TTL);
+            Cache::put($cacheKey, $results->toArray(), self::SEARCH_CACHE_TTL);
 
-            $this->log->channel('audit')->debug('Document search performed', [
+            Log::channel('audit')->debug('Document search performed', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
                 'query' => $query,
@@ -52,7 +52,7 @@ final class LiveSearchService
 
             return $results;
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Document search failed', [
+            Log::channel('audit')->error('Document search failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -73,7 +73,7 @@ final class LiveSearchService
 
         try {
             $cacheKey = "search:users:{$tenantId}:" . md5($query);
-            $cached = $this->cache->get($cacheKey);
+            $cached = Cache::get($cacheKey);
 
             if ($cached !== null) {
                 return collect($cached);
@@ -86,11 +86,11 @@ final class LiveSearchService
                 $results = $results->take(self::MAX_RESULTS);
             }
 
-            $this->cache->put($cacheKey, $results->toArray(), self::SEARCH_CACHE_TTL);
+            Cache::put($cacheKey, $results->toArray(), self::SEARCH_CACHE_TTL);
 
             return $results;
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('User search failed', [
+            Log::channel('audit')->error('User search failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -128,7 +128,7 @@ final class LiveSearchService
     {
         $cacheKey = "search:popular:{$tenantId}";
 
-        return $this->cache->get($cacheKey, []);
+        return Cache::get($cacheKey, []);
     }
 
     /**
@@ -145,7 +145,7 @@ final class LiveSearchService
         }
 
         $cacheKey = "search:history:{$tenantId}:{$userId}";
-        $history = $this->cache->get($cacheKey, []);
+        $history = Cache::get($cacheKey, []);
 
         $history[] = [
             'query' => $query,
@@ -158,7 +158,7 @@ final class LiveSearchService
             $history = array_slice($history, -50);
         }
 
-        $this->cache->put($cacheKey, $history, 2592000); // 30 дней
+        Cache::put($cacheKey, $history, 2592000); // 30 дней
     }
 
     /**
@@ -168,7 +168,7 @@ final class LiveSearchService
     {
         $cacheKey = "search:history:{$tenantId}:{$userId}";
 
-        return $this->cache->get($cacheKey, []);
+        return Cache::get($cacheKey, []);
     }
 
     /**
@@ -177,7 +177,7 @@ final class LiveSearchService
     public function clearSearchHistory(int $userId, int $tenantId): bool
     {
         $cacheKey = "search:history:{$tenantId}:{$userId}";
-        $this->cache->forget($cacheKey);
+        Cache::forget($cacheKey);
 
         return true;
     }

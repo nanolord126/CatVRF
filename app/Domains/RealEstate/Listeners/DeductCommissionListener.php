@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Listeners;
 
@@ -18,19 +19,19 @@ final class DeductCommissionListener implements ShouldQueue
     public function handle(PropertySold $event): void
     {
         try {
-            $this->db->transaction(function () use ($event) {
+            DB::transaction(function () use ($event) {
                 $listing = $event->listing;
                 $commission = (int) ($listing->sale_price * $listing->commission_percent / 100);
                 // WalletService::debit($listing->property->owner_id, $commission, 'commission');
 
-                $this->log->channel('audit')->info('Commission deducted', [
+                Log::channel('audit')->info('Commission deducted', [
                     'property_id' => $listing->property_id,
                     'commission' => $commission,
                     'correlation_id' => $event->correlationId,
                 ]);
             });
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Failed to deduct commission', [
+            Log::channel('audit')->error('Failed to deduct commission', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $event->correlationId,
             ]);

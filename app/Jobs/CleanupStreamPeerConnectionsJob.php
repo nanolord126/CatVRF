@@ -1,8 +1,7 @@
-declare(strict_types=1);
-
 <?php
 
 declare(strict_types=1);
+
 
 namespace App\Jobs;
 
@@ -51,12 +50,12 @@ class CleanupStreamPeerConnectionsJob implements ShouldQueue
         try {
             $deleted = $meshService->cleanupClosedConnections($this->olderThanMinutes);
 
-            $this->log->channel('audit')->info(
+            Log::channel('audit')->info(
                 'Stream peer connections cleanup completed',
                 ['deleted' => $deleted, 'older_than_minutes' => $this->olderThanMinutes]
             );
         } catch (\Exception $e) {
-            $this->log->channel('error')->error(
+            Log::channel('error')->error(
                 'Stream peer connections cleanup failed',
                 ['error' => $e->getMessage()]
             );

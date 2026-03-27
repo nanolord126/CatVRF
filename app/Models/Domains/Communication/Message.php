@@ -1,6 +1,6 @@
-declare(strict_types=1);
-
 <?php
+
+declare(strict_types=1);
 namespace App\Models\Domains\Communication;
 
 use Illuminate\Database\Eloquent\Model;

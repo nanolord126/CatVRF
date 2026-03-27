@@ -42,7 +42,7 @@ final class RecommendationQualityJob implements ShouldQueue
     public function handle(): void
     {
         try {
-            $this->log->channel('audit')->info('Recommendation quality check started', [
+            Log::channel('audit')->info('Recommendation quality check started', [
                 'correlation_id' => $this->correlationId,
                 'timestamp' => now()->toIso8601String(),
             ]);
@@ -50,12 +50,12 @@ final class RecommendationQualityJob implements ShouldQueue
             // 1. Получить рекомендации за вчера
             $yesterday = Carbon::yesterday();
 
-            $recommendations = $this->db->table('recommendation_logs')
+            $recommendations = DB::table('recommendation_logs')
                 ->whereDate('created_at', $yesterday)
                 ->get(['user_id', 'recommended_items', 'clicked_at', 'score']);
 
             if ($recommendations->isEmpty()) {
-                $this->log->info('No recommendations to analyze');
+                Log::info('No recommendations to analyze');
                 return;
             }
 
@@ -95,13 +95,13 @@ final class RecommendationQualityJob implements ShouldQueue
                 ->where('created_at', '>=', $yesterday->startOfDay())
                 ->where('created_at', '<=', $yesterday->endOfDay())
                 ->where('source', 'recommendation')
-                ->sum($this->db->raw('total_price - commission_amount'));
+                ->sum(DB::raw('total_price - commission_amount'));
 
             $baselineRevenue = Order::query()
                 ->where('created_at', '>=', $yesterday->startOfDay())
                 ->where('created_at', '<=', $yesterday->endOfDay())
                 ->where('source', '!=', 'recommendation')
-                ->sum($this->db->raw('total_price - commission_amount')) / max(Order::query()
+                ->sum(DB::raw('total_price - commission_amount')) / max(Order::query()
                     ->where('created_at', '>=', $yesterday->startOfDay())
                     ->count(), 1);
 
@@ -118,7 +118,7 @@ final class RecommendationQualityJob implements ShouldQueue
             // 5. Пересчитать cosine similarity для embeddings
             $this->updateEmbeddingsSimilarity();
 
-            $this->log->channel('audit')->info('Recommendation quality check completed', [
+            Log::channel('audit')->info('Recommendation quality check completed', [
                 'correlation_id' => $this->correlationId,
                 'ctr' => round($metrics['ctr'], 2) . '%',
                 'conversion_rate' => round($metrics['conversion_rate'], 2) . '%',
@@ -126,7 +126,7 @@ final class RecommendationQualityJob implements ShouldQueue
             ]);
 
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Recommendation quality check failed', [
+            Log::channel('audit')->error('Recommendation quality check failed', [
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -140,8 +140,8 @@ final class RecommendationQualityJob implements ShouldQueue
      * Логировать метрики качества
      */
     private function logQualityMetrics(array $metrics): void
-    { $this->db->transaction(function() use ($metrics) {
-            $this->db->table('recommendation_quality_logs')->insert([
+    { DB::transaction(function() use ($metrics) {
+            DB::table('recommendation_quality_logs')->insert([
             'date' => Carbon::yesterday(),
             'total_recommendations' => $metrics['total_recommendations'],
             'clicks' => $metrics['clicks'],
@@ -155,7 +155,7 @@ final class RecommendationQualityJob implements ShouldQueue
             ]);
         });
 
-        $this->log->info('Quality metrics logged', [
+        Log::info('Quality metrics logged', [
             'ctr' => $metrics['ctr'],
             'conversion_rate' => $metrics['conversion_rate'],
         ]);
@@ -184,7 +184,7 @@ final class RecommendationQualityJob implements ShouldQueue
         }
 
         if (!empty($alerts)) {
-            $this->log->warning('Recommendation quality below threshold', [
+            Log::warning('Recommendation quality below threshold', [
                 'correlation_id' => $this->correlationId,
                 'alerts' => $alerts,
             ]);
@@ -207,14 +207,14 @@ final class RecommendationQualityJob implements ShouldQueue
         // В реальности: пересчитать vectors similarity через PostgreSQL pgvector
         // Для демо: просто логируем
 
-        $this->log->info('Embeddings similarity recalculated', [
+        Log::info('Embeddings similarity recalculated', [
             'correlation_id' => $this->correlationId,
         ]);
     }
 
     public function failed(\Exception $exception): void
     {
-        $this->log->channel('audit')->error('RecommendationQualityJob failed permanently', [
+        Log::channel('audit')->error('RecommendationQualityJob failed permanently', [
             'correlation_id' => $this->correlationId,
             'error' => $exception->getMessage(),
         ]);

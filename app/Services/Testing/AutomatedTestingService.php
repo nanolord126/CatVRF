@@ -43,7 +43,7 @@ final class AutomatedTestingService
 
         $results['summary'] = self::calculateTestSummary($results);
 
-        $this->log->channel('testing')->info('Test suite completed', [
+        Log::channel('testing')->info('Test suite completed', [
             'suite' => $suite,
             'tests_passed' => $results['summary']['passed'],
             'tests_failed' => $results['summary']['failed'],
@@ -232,7 +232,7 @@ final class AutomatedTestingService
      */
     public static function runTestFile(string $testFile): array
     {
-        $this->log->channel('testing')->info('Running test file', [
+        Log::channel('testing')->info('Running test file', [
             'file' => $testFile,
         ]);
 

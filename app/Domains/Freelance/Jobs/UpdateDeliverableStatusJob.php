@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Freelance\Jobs;
 
@@ -37,7 +38,7 @@ class UpdateDeliverableStatusJob implements ShouldQueue
     {
         $deliverable = FreelanceDeliverable::find($this->deliverableId);
         if (!$deliverable) {
-            $this->log->channel('audit')->warning('Deliverable not found', [
+            Log::channel('audit')->warning('Deliverable not found', [
                 'deliverable_id' => $this->deliverableId,
                 'correlation_id' => $this->correlationId,
             ]);
@@ -47,7 +48,7 @@ class UpdateDeliverableStatusJob implements ShouldQueue
         if ($deliverable->status === 'submitted' && $deliverable->created_at->addDays(7)->isPast()) {
             $deliverable->update(['status' => 'pending']);
             
-            $this->log->channel('audit')->info('Deliverable status auto-reset to pending after 7 days', [
+            Log::channel('audit')->info('Deliverable status auto-reset to pending after 7 days', [
                 'deliverable_id' => $this->deliverableId,
                 'correlation_id' => $this->correlationId,
             ]);

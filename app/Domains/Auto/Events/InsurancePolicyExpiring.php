@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Auto\Events;
 
@@ -30,7 +31,7 @@ class InsurancePolicyExpiring implements ShouldBroadcast
         public readonly int $daysUntilExpiry,
         public readonly string $correlationId
     ) {
-        $this->log->channel('audit')->info('InsurancePolicyExpiring event dispatched', [
+        Log::channel('audit')->info('InsurancePolicyExpiring event dispatched', [
             'correlation_id' => $this->correlationId,
             'insurance_id' => $this->insurance->id,
             'days_until_expiry' => $this->daysUntilExpiry,

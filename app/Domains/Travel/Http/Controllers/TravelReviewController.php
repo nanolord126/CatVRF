@@ -34,7 +34,7 @@ final class TravelReviewController extends Controller
             ]);
 
             $validated = $request->all();
-            $review = $this->db->transaction(function () use ($validated, $correlationId) {
+            $review = DB::transaction(function () use ($validated, $correlationId) {
                 return TravelReview::create([
                     'tenant_id' => tenant()->id,
                     'agency_id' => ($validated['agency_id'] ?? null),
@@ -51,7 +51,7 @@ final class TravelReviewController extends Controller
                 ]);
             });
 
-            $this->log->channel('audit')->info('Review created', [
+            Log::channel('audit')->info('Review created', [
                 'review_id' => $review->id,
                 'reviewer_id' => auth()->id(),
                 'correlation_id' => $correlationId,
@@ -82,7 +82,7 @@ final class TravelReviewController extends Controller
                 ->findOrFail($id);
 
             $validated = $request->all();
-            $review = $this->db->transaction(function () use ($validated, $review, $correlationId) {
+            $review = DB::transaction(function () use ($validated, $review, $correlationId) {
                 $review->update([
                     'rating' => ($validated['rating'] ?? $review->rating),
                     'comment' => ($validated['comment'] ?? $review->comment),
@@ -93,7 +93,7 @@ final class TravelReviewController extends Controller
                 return $review;
             });
 
-            $this->log->channel('audit')->info('Review updated', [
+            Log::channel('audit')->info('Review updated', [
                 'review_id' => $review->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -122,11 +122,11 @@ final class TravelReviewController extends Controller
                 ->where('reviewer_id', auth()->id())
                 ->findOrFail($id);
 
-            $this->db->transaction(function () use ($review) {
+            DB::transaction(function () use ($review) {
                 $review->delete();
             });
 
-            $this->log->channel('audit')->info('Review deleted', [
+            Log::channel('audit')->info('Review deleted', [
                 'review_id' => $review->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -172,14 +172,14 @@ final class TravelReviewController extends Controller
         try {
             $review = TravelReview::where('tenant_id', tenant()->id)->findOrFail($id);
 
-            $this->db->transaction(function () use ($review, $correlationId) {
+            DB::transaction(function () use ($review, $correlationId) {
                 $review->update([
                     'status' => 'approved',
                     'correlation_id' => $correlationId,
                 ]);
             });
 
-            $this->log->channel('audit')->info('Review approved', [
+            Log::channel('audit')->info('Review approved', [
                 'review_id' => $review->id,
                 'correlation_id' => $correlationId,
             ]);
@@ -204,14 +204,14 @@ final class TravelReviewController extends Controller
         try {
             $review = TravelReview::where('tenant_id', tenant()->id)->findOrFail($id);
 
-            $this->db->transaction(function () use ($review, $correlationId) {
+            DB::transaction(function () use ($review, $correlationId) {
                 $review->update([
                     'status' => 'rejected',
                     'correlation_id' => $correlationId,
                 ]);
             });
 
-            $this->log->channel('audit')->info('Review rejected', [
+            Log::channel('audit')->info('Review rejected', [
                 'review_id' => $review->id,
                 'correlation_id' => $correlationId,
             ]);

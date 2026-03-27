@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Travel\Events;
 
@@ -29,15 +30,7 @@ class TransportationBooked implements ShouldBroadcast
     public function __construct(
         public TravelTransportation $transportation,
         public string $correlationId,
-    ) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+    ) {}
 
     public function broadcastOn(): array
     {

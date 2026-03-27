@@ -1,0 +1,29 @@
+<?php
+
+declare(strict_types=1);
+
+
+namespace App\Domains\EventPlanning\Entertainment\Filament\Resources\EntertainmentEventResource\Pages;
+
+use App\Domains\EventPlanning\Entertainment\Filament\Resources\EntertainmentEventResource;
+use Filament\Actions;
+use Filament\Resources\Pages\EditRecord;
+
+final /**
+ * EditEntertainmentEvent
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class EditEntertainmentEvent extends EditRecord
+{
+    protected static string $resource = EntertainmentEventResource::class;
+
+    protected function getHeaderActions(): array
+    {
+        return [Actions\DeleteAction::make()];
+    }
+}

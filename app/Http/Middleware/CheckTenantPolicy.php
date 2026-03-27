@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
@@ -32,7 +33,7 @@ class CheckTenantPolicy
         }
 
         // Check tenant access
-        if (! $this->gate->check('view-tenant')) {
+        if (! Gate::check('view-tenant')) {
             return response()->json(['error' => 'Forbidden - No tenant access'], 403);
         }
 

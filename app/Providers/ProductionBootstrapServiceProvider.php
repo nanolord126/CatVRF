@@ -36,7 +36,7 @@ final class ProductionBootstrapServiceProvider extends ServiceProvider
     private function bootCaching(): void
     {
 
-        $this->log->info('Production caching enabled', [
+        Log::info('Production caching enabled', [
             'config_cached' => true,
             'routes_cached' => true,
         ]);
@@ -85,7 +85,7 @@ final class ProductionBootstrapServiceProvider extends ServiceProvider
                 ->by("bulk_import_{$tenantId}");
         });
 
-        $this->log->info('RateLimiter configured for production', [
+        Log::info('RateLimiter configured for production', [
             'limiters' => ['payments', 'promo', 'wishlist', 'referral', 'bulk_import'],
         ]);
     }
@@ -98,7 +98,7 @@ final class ProductionBootstrapServiceProvider extends ServiceProvider
         // Используем канал 'audit' для всех критичных действий
         // Канал определен в config/logging.php
 
-        $this->log->info('Production logging enabled', [
+        Log::info('Production logging enabled', [
             'audit_channel' => 'audit',
             'environment' => app()->environment(),
         ]);

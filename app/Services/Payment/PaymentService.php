@@ -73,7 +73,7 @@ final readonly class PaymentService
             throw new \RuntimeException('Payment blocked by fraud detection system');
         }
 
-        return $this->db->transaction(function () use (
+        return DB::transaction(function () use (
             $amount,
             $tenantId,
             $userId,
@@ -140,7 +140,7 @@ final readonly class PaymentService
     ): PaymentTransaction {
         $correlationId = $correlationId ?? Str::uuid()->toString();
 
-        return $this->db->transaction(function () use ($paymentUuid, $amount, $correlationId) {
+        return DB::transaction(function () use ($paymentUuid, $amount, $correlationId) {
             $payment = PaymentTransaction::where('uuid', $paymentUuid)->lockForUpdate()->firstOrFail();
 
             if ($payment->status !== PaymentTransaction::STATUS_AUTHORIZED) {
@@ -193,7 +193,7 @@ final readonly class PaymentService
     ): PaymentTransaction {
         $correlationId = $correlationId ?? Str::uuid()->toString();
 
-        return $this->db->transaction(function () use ($paymentUuid, $amount, $reason, $correlationId) {
+        return DB::transaction(function () use ($paymentUuid, $amount, $reason, $correlationId) {
             $payment = PaymentTransaction::where('uuid', $paymentUuid)->lockForUpdate()->firstOrFail();
 
             if ($payment->status !== PaymentTransaction::STATUS_CAPTURED) {

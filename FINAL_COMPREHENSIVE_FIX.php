@@ -169,7 +169,7 @@ protected Guard $guard;
 	protected function authorizeAccess(): void
 	{
 		parent::authorizeAccess();
-		if (!$this->gate->allows('create', $this->resource::$model)) {
+		if (!Gate::allows('create', $this->resource::$model)) {
 			abort(403);
 		}
 	}
@@ -177,12 +177,12 @@ protected Guard $guard;
 	protected function handleRecordCreation(array $data): Model
 	{
 		try {
-			return $this->db->transaction(function () use ($data) {
+			return DB::transaction(function () use ($data) {
 				$user = $this->guard->user();
 				$data['tenant_id'] = $user?->tenant_id;
 				$record = parent::handleRecordCreation($data);
 				if ($user) {
-					$this->log->channel('audit')->info('Created', ['id' => $record->id, 'user' => $user->id]);
+					Log::channel('audit')->info('Created', ['id' => $record->id, 'user' => $user->id]);
 				}
 				Notification::make()->success()->send();
 				return $record;
@@ -215,17 +215,17 @@ protected Guard $guard;
 	protected function authorizeAccess(): void
 	{
 		parent::authorizeAccess();
-		if (!$this->gate->allows('update', $this->record)) abort(403);
+		if (!Gate::allows('update', $this->record)) abort(403);
 		if ($this->record->tenant_id !== $this->guard->user()?->tenant_id) abort(403);
 	}
 
 	protected function handleRecordUpdate(Model $record, array $data): Model
 	{
 		try {
-			return $this->db->transaction(function () use ($record, $data) {
+			return DB::transaction(function () use ($record, $data) {
 				$record = parent::handleRecordUpdate($record, $data);
 				if ($this->guard->user()) {
-					$this->log->channel('audit')->info('Updated', ['id' => $record->id]);
+					Log::channel('audit')->info('Updated', ['id' => $record->id]);
 				}
 				Notification::make()->success()->send();
 				return $record;
@@ -256,7 +256,7 @@ protected Guard $guard;
 		parent::authorizeAccess();
 		$user = $this->guard->user();
 		if ($user) {
-			$this->log->channel('audit')->info('List accessed', ['user_id' => $user->id]);
+			Log::channel('audit')->info('List accessed', ['user_id' => $user->id]);
 		}
 	}
 PHP;
@@ -280,7 +280,7 @@ protected Guard $guard;
 	protected function authorizeAccess(): void
 	{
 		parent::authorizeAccess();
-		if (!$this->gate->allows('view', $this->record)) abort(403);
+		if (!Gate::allows('view', $this->record)) abort(403);
 		if ($this->record->tenant_id !== $this->guard->user()?->tenant_id) abort(403);
 	}
 PHP;

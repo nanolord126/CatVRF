@@ -2,9 +2,9 @@
 
 namespace App\Livewire\Channels;
 
-use App\Domains\Channels\Models\BusinessChannel;
-use App\Domains\Channels\Models\Post;
-use App\Domains\Channels\Services\ChannelSubscriptionService;
+use App\Domains\Content\Channels\Models\BusinessChannel;
+use App\Domains\Content\Channels\Models\Post;
+use App\Domains\Content\Channels\Services\ChannelSubscriptionService;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Illuminate\View\View;

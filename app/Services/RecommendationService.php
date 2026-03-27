@@ -55,7 +55,7 @@ final readonly class RecommendationService
             $this->rateLimiter->check('recommend', $userId);
 
             // 2. FRAUD CHECK
-            $tenantId = $context['tenant_id'] ?? $this->db->table('users')
+            $tenantId = $context['tenant_id'] ?? DB::table('users')
                 ->where('id', $userId)
                 ->value('tenant_id') ?? 0;
 
@@ -71,9 +71,9 @@ final readonly class RecommendationService
             $geoHash = $context['geo_hash'] ?? 'global';
             $cacheKey = "recommend:user:{$userId}:vertical:{$vertical}:geo:{$geoHash}:v1";
 
-            $cached = $this->cache->get($cacheKey);
+            $cached = Cache::get($cacheKey);
             if ($cached) {
-                $this->log->channel('audit')->info('Recommendation: Cache hit', [
+                Log::channel('audit')->info('Recommendation: Cache hit', [
                     'correlation_id' => $correlationId,
                     'user_id' => $userId,
                     'vertical' => $vertical,
@@ -93,7 +93,7 @@ final readonly class RecommendationService
 
             // 5. CACHE & LOG
             $ttl = $context['cache_ttl'] ?? 300; // 5 минут по умолчанию
-            $this->cache->put($cacheKey, $recommendations->toArray(), $ttl);
+            Cache::put($cacheKey, $recommendations->toArray(), $ttl);
 
             // Log в recommendation_logs для аналитики
             RecommendationLog::create([
@@ -106,7 +106,7 @@ final readonly class RecommendationService
                 'correlation_id' => $correlationId,
             ]);
 
-            $this->log->channel('audit')->info('Recommendation: Generated', [
+            Log::channel('audit')->info('Recommendation: Generated', [
                 'correlation_id' => $correlationId,
                 'user_id' => $userId,
                 'vertical' => $vertical,
@@ -115,7 +115,7 @@ final readonly class RecommendationService
 
             return $recommendations;
         } catch (\InvalidArgumentException $e) {
-            $this->log->channel('audit')->warning('Recommendation: Invalid argument', [
+            Log::channel('audit')->warning('Recommendation: Invalid argument', [
                 'correlation_id' => $correlationId,
                 'user_id' => $userId,
                 'error' => $e->getMessage(),
@@ -123,7 +123,7 @@ final readonly class RecommendationService
 
             throw $e;
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Recommendation: Generation failed', [
+            Log::channel('audit')->error('Recommendation: Generation failed', [
                 'correlation_id' => $correlationId,
                 'user_id' => $userId,
                 'error' => $e->getMessage(),
@@ -193,7 +193,7 @@ final readonly class RecommendationService
                 ->take(20)
                 ->values();
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Recommendation: Build failed', [
+            Log::channel('audit')->error('Recommendation: Build failed', [
                 'correlation_id' => $correlationId,
                 'user_id' => $userId,
                 'error' => $e->getMessage(),
@@ -207,7 +207,7 @@ final readonly class RecommendationService
     {
         try {
             // Получить просмотренные товары (за последние 30 дней)
-            return $this->db->table('product_views')
+            return DB::table('product_views')
                 ->where('user_id', $userId)
                 ->where('created_at', '>', now()->subDays(30))
                 ->groupBy('product_id')
@@ -221,7 +221,7 @@ final readonly class RecommendationService
                     'source' => 'behavior',
                 ])->values();
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->warning('Recommendation: Behavior retrieval failed', [
+            Log::channel('audit')->warning('Recommendation: Behavior retrieval failed', [
                 'correlation_id' => $correlationId,
                 'user_id' => $userId,
                 'error' => $e->getMessage(),
@@ -241,7 +241,7 @@ final readonly class RecommendationService
             }
 
             // Простой радиусный поиск (ST_Distance_Sphere в MySQL)
-            return $this->db->table('products')
+            return DB::table('products')
                 ->selectRaw('id, name, ST_Distance_Sphere(point(lon, lat), point(?, ?)) as distance', [
                     $context['lon'],
                     $context['lat'],
@@ -262,7 +262,7 @@ final readonly class RecommendationService
                     'source' => 'geo',
                 ])->values();
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->warning('Recommendation: Geo retrieval failed', [
+            Log::channel('audit')->warning('Recommendation: Geo retrieval failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -283,7 +283,7 @@ final readonly class RecommendationService
 
             // Найти похожие товары по cosine similarity (требует pgvector или подобного)
             // Упрощённая версия: найти товары в похожих категориях
-            return $this->db->table('products')
+            return DB::table('products')
                 ->where('tenant_id', $tenantId)
                 ->whereNotIn('id', function ($q) use ($userId) {
                     $q->select('product_id')->from('orders')->where('user_id', $userId);
@@ -297,7 +297,7 @@ final readonly class RecommendationService
                     'source' => 'embedding',
                 ])->values();
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->warning('Recommendation: Embedding retrieval failed', [
+            Log::channel('audit')->warning('Recommendation: Embedding retrieval failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -309,14 +309,14 @@ final readonly class RecommendationService
     private function getBusinessRules(int $tenantId, ?string $vertical, string $correlationId): Collection
     {
         try {
-            return $this->db->table('recommendation_rules')
+            return DB::table('recommendation_rules')
                 ->where('tenant_id', $tenantId)
                 ->where('rule_type', 'boost')
                 ->when($vertical, fn ($q) => $q->where('vertical', $vertical))
                 ->get()
                 ->values();
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->warning('Recommendation: Rules retrieval failed', [
+            Log::channel('audit')->warning('Recommendation: Rules retrieval failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -333,14 +333,14 @@ final readonly class RecommendationService
         $correlationId ??= Str::uuid()->toString();
 
         try {
-            $this->cache->tags(['recommend', "user:{$userId}"])->flush();
+            Cache::tags(['recommend', "user:{$userId}"])->flush();
 
-            $this->log->channel('audit')->info('Recommendation: Cache invalidated', [
+            Log::channel('audit')->info('Recommendation: Cache invalidated', [
                 'correlation_id' => $correlationId,
                 'user_id' => $userId,
             ]);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Recommendation: Invalidation failed', [
+            Log::channel('audit')->error('Recommendation: Invalidation failed', [
                 'correlation_id' => $correlationId,
                 'user_id' => $userId,
                 'error' => $e->getMessage(),
@@ -363,7 +363,7 @@ final readonly class RecommendationService
 
         try {
             // Получить последний заказ в текущей вертикали
-            $lastOrder = $this->db->table('orders')
+            $lastOrder = DB::table('orders')
                 ->where('user_id', $userId)
                 ->where('vertical', $currentVertical)
                 ->orderBy('created_at', 'desc')
@@ -400,7 +400,7 @@ final readonly class RecommendationService
                 $recommendations = $recommendations->merge($recs);
             }
 
-            $this->log->channel('audit')->info('Recommendation: Cross-vertical generated', [
+            Log::channel('audit')->info('Recommendation: Cross-vertical generated', [
                 'correlation_id' => $correlationId,
                 'user_id' => $userId,
                 'from_vertical' => $currentVertical,
@@ -409,7 +409,7 @@ final readonly class RecommendationService
 
             return $recommendations->take(10);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Recommendation: Cross-vertical failed', [
+            Log::channel('audit')->error('Recommendation: Cross-vertical failed', [
                 'correlation_id' => $correlationId,
                 'user_id' => $userId,
                 'current_vertical' => $currentVertical,
@@ -433,7 +433,7 @@ final readonly class RecommendationService
 
         try {
             // Получить поставщиков той же вертикали
-            $suppliers = $this->db->table('suppliers')
+            $suppliers = DB::table('suppliers')
                 ->where('vertical', $vertical)
                 ->whereNotIn('tenant_id', [$tenantId]) // исключить себя
                 ->orderBy('rating', 'desc')
@@ -447,7 +447,7 @@ final readonly class RecommendationService
                     'source' => 'b2b',
                 ])->values();
 
-            $this->log->channel('audit')->info('Recommendation: B2B generated', [
+            Log::channel('audit')->info('Recommendation: B2B generated', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
                 'vertical' => $vertical,
@@ -456,7 +456,7 @@ final readonly class RecommendationService
 
             return $suppliers;
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Recommendation: B2B failed', [
+            Log::channel('audit')->error('Recommendation: B2B failed', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
                 'vertical' => $vertical,
@@ -482,7 +482,7 @@ final readonly class RecommendationService
             $score = 0.5; // базовый скор
 
             // Было ли куплено раньше?
-            $wasBought = $this->db->table('order_items')
+            $wasBought = DB::table('order_items')
                 ->where('user_id', $userId)
                 ->where('product_id', $itemId)
                 ->exists();
@@ -492,7 +492,7 @@ final readonly class RecommendationService
             }
 
             // Было ли просмотрено последний день?
-            $wasViewedToday = $this->db->table('product_views')
+            $wasViewedToday = DB::table('product_views')
                 ->where('user_id', $userId)
                 ->where('product_id', $itemId)
                 ->where('created_at', '>', now()->subDay())
@@ -503,18 +503,18 @@ final readonly class RecommendationService
             }
 
             // Рейтинг товара
-            $rating = $this->db->table('products')
+            $rating = DB::table('products')
                 ->where('id', $itemId)
                 ->value('rating') ?? 3;
 
             $score += ($rating / 5.0) * 0.15;
 
             // Цена в бюджете?
-            $price = $this->db->table('products')
+            $price = DB::table('products')
                 ->where('id', $itemId)
                 ->value('price') ?? 0;
 
-            $userAvgPrice = $this->db->table('order_items')
+            $userAvgPrice = DB::table('order_items')
                 ->where('user_id', $userId)
                 ->avg('price') ?? 5000;
 
@@ -524,7 +524,7 @@ final readonly class RecommendationService
 
             $finalScore = min($score, 1.0);
 
-            $this->log->channel('audit')->info('Recommendation: Item scored', [
+            Log::channel('audit')->info('Recommendation: Item scored', [
                 'correlation_id' => $correlationId,
                 'user_id' => $userId,
                 'item_id' => $itemId,
@@ -533,7 +533,7 @@ final readonly class RecommendationService
 
             return $finalScore;
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Recommendation: Scoring failed', [
+            Log::channel('audit')->error('Recommendation: Scoring failed', [
                 'correlation_id' => $correlationId,
                 'user_id' => $userId,
                 'item_id' => $itemId,
@@ -552,12 +552,12 @@ final readonly class RecommendationService
         $correlationId ??= Str::uuid()->toString();
 
         try {
-            $this->log->channel('audit')->info('Recommendation: Embeddings recalc started', [
+            Log::channel('audit')->info('Recommendation: Embeddings recalc started', [
                 'correlation_id' => $correlationId,
             ]);
 
             // Получить все товары
-            $products = $this->db->table('products')
+            $products = DB::table('products')
                 ->where('updated_at', '>', now()->subDay())
                 ->get();
 
@@ -581,7 +581,7 @@ final readonly class RecommendationService
 
                     $processed++;
                 } catch (\Throwable $e) {
-                    $this->log->channel('audit')->warning('Recommendation: Embedding generation failed', [
+                    Log::channel('audit')->warning('Recommendation: Embedding generation failed', [
                         'correlation_id' => $correlationId,
                         'product_id' => $product->id,
                         'error' => $e->getMessage(),
@@ -589,7 +589,7 @@ final readonly class RecommendationService
                 }
             }
 
-            $this->log->channel('audit')->info('Recommendation: Embeddings recalc completed', [
+            Log::channel('audit')->info('Recommendation: Embeddings recalc completed', [
                 'correlation_id' => $correlationId,
                 'processed' => $processed,
                 'total' => $products->count(),
@@ -601,7 +601,7 @@ final readonly class RecommendationService
                 'status' => 'completed',
             ];
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Recommendation: Embeddings recalc failed', [
+            Log::channel('audit')->error('Recommendation: Embeddings recalc failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

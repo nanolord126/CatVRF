@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources;
 
-use App\Domains\HealthyFood\Models\DietPlan;
+use App\Domains\Food\HealthyFood\Models\DietPlan;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Form;

@@ -86,7 +86,7 @@ final class DeliveryZone extends Model
      */
     public function routes(): HasMany
     {
-        return $this->hasMany(Delivery$this->route->class, 'zone_id');
+        return $this->hasMany(DeliveryRoute::class, 'zone_id');
     }
 
     /**

@@ -1,38 +1,168 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 namespace App\Domains\Veterinary\Services;
-use App\Domains\Veterinary\Models\VeterinaryClinic;
+
+use App\Domains\Veterinary\Models\Pet;
 use App\Domains\Veterinary\Models\VeterinaryAppointment;
+use App\Domains\Veterinary\Models\VeterinaryClinic;
+use App\Domains\Veterinary\Models\VeterinaryService as ServiceModel;
 use App\Services\FraudControlService;
-use App\Services\WalletService;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
-final /**
- * VeterinaryService
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
+
+/**
+ * Veterinary Domain Central Service (CatVRF 2026 Canonical)
  */
-class VeterinaryService{public function __construct(private readonly FraudControlService $fraud,private readonly WalletService $wallet){
+final readonly class VeterinaryService
+{
     /**
-     * Инициализировать класс
+     * @param FraudControlService $fraudControl
+     * @param string $correlationId
      */
-    public function __construct()
-    {
-        // TODO: инициализация
+    public function __construct(
+        private FraudControlService $fraudControl,
+        private string $correlationId = ''
+    ) {
     }
-}
-public function createAppointment(int $clinicId,$petName,$petType,$appointmentDate,$serviceType,string $correlationId=""):VeterinaryAppointment{$correlationId=$correlationId?:(string)Str::uuid();if(RateLimiter::tooManyAttempts("vet:appt:".auth()->id(),10))throw new \RuntimeException("Too many",429);RateLimiter::hit("vet:appt:".auth()->id(),3600);
-return $this->db->transaction(function()use($clinicId,$petName,$petType,$appointmentDate,$serviceType,$correlationId){$c=VeterinaryClinic::findOrFail($clinicId);$total=(int)($c->price_kopecks_per_hour*1);$fraud=$this->fraud->check(['user_id'=>auth()->id()??0,'operation_type'=>'veterinary','correlation_id'=>$correlationId,'amount'=>$total]);if($fraud['decision']==='block')throw new \RuntimeException("Security",403);$a=VeterinaryAppointment::create(['uuid'=>Str::uuid(),'tenant_id'=>tenant()->id,'clinic_id'=>$clinicId,'owner_id'=>auth()->id()??0,'correlation_id'=>$correlationId,'status'=>'pending_payment','total_kopecks'=>$total,'payout_kopecks'=>$total-(int)($total*0.14),'payment_status'=>'pending','pet_name'=>$petName,'pet_type'=>$petType,'appointment_date'=>$appointmentDate,'service_type'=>$serviceType,'tags'=>['veterinary'=>true]]);$this->log->channel('audit')->info('Veterinary appointment created',['appointment_id'=>$a->id,'correlation_id'=>$correlationId]);return $a;});
-}
-public function completeAppointment(int $appointmentId,string $correlationId=""):VeterinaryAppointment{$correlationId=$correlationId?:(string)Str::uuid();return $this->db->transaction(function()use($appointmentId,$correlationId){$a=VeterinaryAppointment::findOrFail($appointmentId);if($a->payment_status!=='completed')throw new \RuntimeException("Not paid",400);$a->update(['status'=>'completed','correlation_id'=>$correlationId]);$this->wallet->credit(tenant()->id,$a->payout_kopecks,'vet_payout',['correlation_id'=>$correlationId,'appointment_id'=>$a->id]);$this->log->channel('audit')->info('Veterinary appointment completed',['appointment_id'=>$a->id]);return $a;});}
-public function cancelAppointment(int $appointmentId,string $correlationId=""):VeterinaryAppointment{$correlationId=$correlationId?:(string)Str::uuid();return $this->db->transaction(function()use($appointmentId,$correlationId){$a=VeterinaryAppointment::findOrFail($appointmentId);if($a->status==='completed')throw new \RuntimeException("Cannot cancel",400);$a->update(['status'=>'cancelled','payment_status'=>'refunded','correlation_id'=>$correlationId]);if($a->payment_status==='completed')$this->wallet->credit(tenant()->id,$a->total_kopecks,'vet_refund',['correlation_id'=>$correlationId,'appointment_id'=>$a->id]);$this->log->channel('audit')->info('Veterinary appointment cancelled',['appointment_id'=>$a->id]);return $a;});}
-public function getAppointment(int $appointmentId):VeterinaryAppointment{return VeterinaryAppointment::findOrFail($appointmentId);}
-public function getUserAppointments(int $ownerId){return VeterinaryAppointment::where('owner_id',$ownerId)->orderBy('created_at','desc')->take(10)->get();}
+
+    /**
+     * Get or set the current correlation ID
+     */
+    private function getCorrelationId(): string
+    {
+        return $this->correlationId ?: Str::uuid()->toString();
+    }
+
+    /**
+     * Register a new pet with full validation and logging
+     */
+    public function registerPet(array $data, int $ownerId): Pet
+    {
+        $correlationId = $this->getCorrelationId();
+        
+        Log::channel('audit')->info('Attempting to register new pet', [
+            'owner_id' => $ownerId,
+            'name' => $data['name'] ?? 'Unknown',
+            'correlation_id' => $correlationId
+        ]);
+
+        // 1. Policy/Fraud Check
+        $this->fraudControl->check();
+
+        return DB::transaction(function () use ($data, $ownerId, $correlationId) {
+            $pet = Pet::create([
+                'tenant_id' => tenant()->id ?? 1,
+                'owner_id' => $ownerId,
+                'name' => $data['name'],
+                'species' => $data['species'],
+                'breed' => $data['breed'] ?? null,
+                'birth_date' => $data['birth_date'] ?? null,
+                'gender' => $data['gender'] ?? 'unknown',
+                'chip_number' => $data['chip_number'] ?? null,
+                'tags' => $data['tags'] ?? [],
+                'correlation_id' => $correlationId,
+            ]);
+
+            Log::channel('audit')->info('Pet successfully registered', [
+                'pet_id' => $pet->id,
+                'pet_uuid' => $pet->uuid,
+                'correlation_id' => $correlationId
+            ]);
+
+            return $pet;
+        });
+    }
+
+    /**
+     * Search available services in a clinic
+     */
+    public function getClinicServices(int $clinicId, string $category = null): Collection
+    {
+        $query = ServiceModel::where('clinic_id', $clinicId)->where('is_active', true);
+
+        if ($category) {
+            $query->where('category', $category);
+        }
+
+        return $query->get();
+    }
+
+    /**
+     * Create a complex veterinary appointment
+     * Mandatory: B2C vs B2B branch logic
+     */
+    public function createAppointment(array $data, bool $isB2B = false): VeterinaryAppointment
+    {
+        $correlationId = $this->getCorrelationId();
+
+        Log::channel('audit')->info('Initiating veterinary appointment creation', [
+            'client_id' => $data['client_id'],
+            'clinic_id' => $data['clinic_id'],
+            'is_b2b' => $isB2B,
+            'correlation_id' => $correlationId
+        ]);
+
+        // 1. Mandatory Pre-check
+        $this->fraudControl->check();
+
+        return DB::transaction(function () use ($data, $isB2B, $correlationId) {
+            
+            // Logic: B2B usually allows bulk or credit line appointments
+            // B2C requires immediate hold or prepayment (WalletService integration would be here)
+
+            $appointment = VeterinaryAppointment::create([
+                'tenant_id' => tenant()->id ?? 1,
+                'clinic_id' => $data['clinic_id'],
+                'veterinarian_id' => $data['veterinarian_id'] ?? null,
+                'pet_id' => $data['pet_id'],
+                'service_id' => $data['service_id'],
+                'client_id' => $data['client_id'],
+                'appointment_at' => $data['appointment_at'],
+                'status' => 'pending',
+                'final_price' => $data['final_price'],
+                'payment_status' => 'unpaid',
+                'symptoms' => $data['symptoms'] ?? null,
+                'tags' => array_merge($data['tags'] ?? [], [
+                    'source' => $isB2B ? 'b2b_portal' : 'b2c_marketplace',
+                    'urgency' => $data['urgency'] ?? 'normal'
+                ]),
+                'correlation_id' => $correlationId,
+            ]);
+
+            Log::channel('audit')->info('Veterinary appointment created', [
+                'appointment_id' => $appointment->id,
+                'appointment_uuid' => $appointment->uuid,
+                'correlation_id' => $correlationId
+            ]);
+
+            return $appointment;
+        });
+    }
+
+    /**
+     * Update clinic rating based on reviews
+     */
+    public function recalculateClinicRating(int $clinicId): void
+    {
+        $clinic = VeterinaryClinic::findOrFail($clinicId);
+        
+        $avg = DB::table('reviews')
+            ->where('reviewable_type', VeterinaryClinic::class)
+            ->where('reviewable_id', $clinicId)
+            ->avg('rating') ?: 0;
+
+        $count = DB::table('reviews')
+            ->where('reviewable_type', VeterinaryClinic::class)
+            ->where('reviewable_id', $clinicId)
+            ->count();
+
+        $clinic->update([
+            'rating' => round((float)$avg, 1),
+            'review_count' => $count
+        ]);
+    }
 }

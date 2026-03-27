@@ -32,14 +32,14 @@ final class B2BFlowerController
                 'shop_id' => 'required|integer|exists:flower_shops,id',
             ]);
 
-            $storefront = $this->db->transaction(function () use ($validated, $correlationId) {
+            $storefront = DB::transaction(function () use ($validated, $correlationId) {
                 $storefront = B2BFlowerStorefront::query()->create([
                     'tenant_id' => filament()->getTenant()->id,
                     'correlation_id' => $correlationId,
                     ...$validated,
                 ]);
 
-                $this->log->channel('audit')->info('B2B flower storefront created', [
+                Log::channel('audit')->info('B2B flower storefront created', [
                     'storefront_id' => $storefront->id,
                     'company_inn' => $validated['company_inn'],
                     'correlation_id' => $correlationId,
@@ -55,7 +55,7 @@ final class B2BFlowerController
                 'correlation_id' => $correlationId,
             ], $this->response->HTTP_CREATED);
         } catch (\Exception $exception) {
-            $this->log->channel('audit')->error('B2B registration failed', [
+            Log::channel('audit')->error('B2B registration failed', [
                 'error' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -106,10 +106,10 @@ final class B2BFlowerController
                 ->where('company_inn', auth()->user()->company_inn)
                 ->firstOrFail();
 
-            $storefront = $this->db->transaction(function () use ($storefront, $validated, $correlationId) {
+            $storefront = DB::transaction(function () use ($storefront, $validated, $correlationId) {
                 $storefront->update([...$validated, 'correlation_id' => $correlationId]);
 
-                $this->log->channel('audit')->info('B2B storefront updated', [
+                Log::channel('audit')->info('B2B storefront updated', [
                     'storefront_id' => $storefront->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -191,7 +191,7 @@ final class B2BFlowerController
                 'message' => 'nullable|string',
             ]);
 
-            $this->log->channel('audit')->info('B2B product inquiry', [
+            Log::channel('audit')->info('B2B product inquiry', [
                 'product_id' => $id,
                 'quantity' => $validated['quantity'],
                 'correlation_id' => $correlationId,
@@ -241,7 +241,7 @@ final class B2BFlowerController
                 'correlation_id' => $correlationId,
             ], $this->response->HTTP_CREATED);
         } catch (\Exception $exception) {
-            $this->log->channel('audit')->error('B2B order creation failed', [
+            Log::channel('audit')->error('B2B order creation failed', [
                 'error' => $exception->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
@@ -324,10 +324,10 @@ final class B2BFlowerController
                 'delivery_date' => 'date|after:today',
             ]);
 
-            $order = $this->db->transaction(function () use ($order, $validated, $correlationId) {
+            $order = DB::transaction(function () use ($order, $validated, $correlationId) {
                 $order->update([...$validated, 'correlation_id' => $correlationId]);
 
-                $this->log->channel('audit')->info('B2B order updated', [
+                Log::channel('audit')->info('B2B order updated', [
                     'order_id' => $order->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -356,10 +356,10 @@ final class B2BFlowerController
         try {
             $order = B2BFlowerOrder::query()->findOrFail($id);
 
-            $order = $this->db->transaction(function () use ($order, $correlationId) {
+            $order = DB::transaction(function () use ($order, $correlationId) {
                 $order->update(['status' => 'submitted']);
 
-                $this->log->channel('audit')->info('B2B order submitted', [
+                Log::channel('audit')->info('B2B order submitted', [
                     'order_id' => $order->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -396,10 +396,10 @@ final class B2BFlowerController
                 ], $this->response->HTTP_UNPROCESSABLE_ENTITY);
             }
 
-            $order = $this->db->transaction(function () use ($order, $correlationId) {
+            $order = DB::transaction(function () use ($order, $correlationId) {
                 $order->update(['status' => 'cancelled']);
 
-                $this->log->channel('audit')->info('B2B order cancelled', [
+                Log::channel('audit')->info('B2B order cancelled', [
                     'order_id' => $order->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -542,10 +542,10 @@ final class B2BFlowerController
         try {
             $storefront = B2BFlowerStorefront::query()->findOrFail($id);
 
-            $storefront = $this->db->transaction(function () use ($storefront, $correlationId) {
+            $storefront = DB::transaction(function () use ($storefront, $correlationId) {
                 $storefront->update(['is_verified' => true]);
 
-                $this->log->channel('audit')->info('B2B storefront verified', [
+                Log::channel('audit')->info('B2B storefront verified', [
                     'storefront_id' => $storefront->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -572,11 +572,11 @@ final class B2BFlowerController
         $correlationId = (string)Str::uuid()->toString();
 
         try {
-            $this->db->transaction(function () use ($id, $correlationId) {
+            DB::transaction(function () use ($id, $correlationId) {
                 $storefront = B2BFlowerStorefront::query()->findOrFail($id);
                 $storefront->delete();
 
-                $this->log->channel('audit')->info('B2B storefront deleted', [
+                Log::channel('audit')->info('B2B storefront deleted', [
                     'storefront_id' => $storefront->id,
                     'correlation_id' => $correlationId,
                 ]);

@@ -1,7 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php
-declare(strict_types=1);
 
 namespace App\Jobs;
 
@@ -40,12 +40,12 @@ class CleanupExpiredIdempotencyRecordsJob implements ShouldQueue
         try {
             $deletedCount = $service->cleanup();
             
-            $this->log->channel('audit')->info('Idempotency cleanup job completed', [
+            Log::channel('audit')->info('Idempotency cleanup job completed', [
                 'deleted_records' => $deletedCount,
                 'job_id' => $this->job->getJobId(),
             ]);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Idempotency cleanup job failed', [
+            Log::channel('audit')->error('Idempotency cleanup job failed', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);

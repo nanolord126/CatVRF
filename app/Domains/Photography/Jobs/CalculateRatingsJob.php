@@ -1,8 +1,7 @@
-declare(strict_types=1);
-
 <?php
 
 declare(strict_types=1);
+
 
 namespace App\Domains\Photography\Jobs;
 
@@ -35,7 +34,7 @@ class CalculateRatingsJob implements ShouldQueue
 	public function handle(): void
 	{
 		try {
-			$this->db->transaction(function () {
+			DB::transaction(function () {
 				$studios = PhotoStudio::all();
 				foreach ($studios as $studio) {
 					$avgRating = $studio->reviews()->avg('rating') ?? 0;
@@ -53,13 +52,13 @@ class CalculateRatingsJob implements ShouldQueue
 					$photographer->update(['rating' => $avgRating]);
 				}
 
-				$this->log->channel('audit')->info('Photography: Batch ratings calculated', [
+				Log::channel('audit')->info('Photography: Batch ratings calculated', [
 					'studios_count' => $studios->count(),
 					'photographers_count' => $photographers->count(),
 				]);
 			});
 		} catch (\Exception $e) {
-			$this->log->channel('audit')->error('Photography: Ratings calculation failed', [
+			Log::channel('audit')->error('Photography: Ratings calculation failed', [
 				'error' => $e->getMessage(),
 			]);
 			throw $e;

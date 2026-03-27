@@ -1,12 +1,11 @@
-declare(strict_types=1);
-
 <?php
 
 declare(strict_types=1);
 
+
 namespace App\Notifications;
 
-use App\Domains\Channels\Models\ChannelSubscriptionUsage;
+use App\Domains\Content\Channels\Models\ChannelSubscriptionUsage;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;

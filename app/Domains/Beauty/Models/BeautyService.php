@@ -5,12 +5,11 @@ namespace App\Domains\Beauty\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * Модель услуги красоты.
- * Production 2026.
+ * КАНОН 2026: Beauty Service Model (Layer 2)
  */
 final class BeautyService extends Model
 {
@@ -19,6 +18,7 @@ final class BeautyService extends Model
     protected $table = 'beauty_services';
 
     protected $fillable = [
+        'uuid',
         'tenant_id',
         'salon_id',
         'master_id',
@@ -26,25 +26,26 @@ final class BeautyService extends Model
         'description',
         'duration_minutes',
         'price',
-        'consumables_json',
-        'correlation_id',
+        'consumables',
         'tags',
-        'metadata',
+        'correlation_id',
     ];
 
-    protected $hidden = [];
-
     protected $casts = [
-        'consumables_json' => 'collection',
-        'tags' => 'collection',
-        'metadata' => 'json',
-        'price' => 'integer',
         'duration_minutes' => 'integer',
+        'price' => 'integer',
+        'consumables' => 'json',
+        'tags' => 'json',
+        'deleted_at' => 'datetime',
     ];
 
     protected static function booted(): void
     {
-        static::addGlobalScope('tenant', fn ($query) => $query->where('tenant_id', tenant('id') ?? 0));
+        static::addGlobalScope('tenant_scoping', function ($builder) {
+            if (function_exists('tenant') && tenant('id')) {
+                $builder->where('tenant_id', tenant('id'));
+            }
+        });
     }
 
     public function salon(): BelongsTo

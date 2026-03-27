@@ -1,6 +1,7 @@
-declare(strict_types=1);
+<?php
 
-<?php declare(strict_types=1); namespace App\Filament\Tenant\Resources\AutoParts; use App\Domains\AutoParts\Models\AutoPart; use App\Filament\Tenant\Resources\AutoPartsResource\Pages; use Filament\Forms\Components\TextInput; use Filament\Forms\Components\Select; use Filament\Forms\Form; use Filament\Resources\Resource; use Filament\Tables\Columns\TextColumn; use Filament\Tables\Table; final /**
+declare(strict_types=1);
+ namespace App\Filament\Tenant\Resources\AutoParts; use App\Domains\AutoParts\Models\AutoPart; use App\Filament\Tenant\Resources\AutoPartsResource\Pages; use Filament\Forms\Components\TextInput; use Filament\Forms\Components\Select; use Filament\Forms\Form; use Filament\Resources\Resource; use Filament\Tables\Columns\TextColumn; use Filament\Tables\Table; final /**
  * AutoPartsResource
  * 
  * Основной класс для работы с платформой CatVRF.

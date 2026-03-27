@@ -58,7 +58,7 @@ final class OrderTrackingComponent extends Component
             ];
 
         } catch (\Exception $e) {
-            \$this->log->channel('error')->error('Failed to load order', [
+            \Log::channel('error')->error('Failed to load order', [
                 'order_id' => $this->orderId,
                 'exception' => $e->getMessage(),
                 'correlation_id' => (string) Str::uuid(),
@@ -78,13 +78,13 @@ final class OrderTrackingComponent extends Component
 
                 $this->emit('orderCancelled');
 
-                \$this->log->channel('audit')->info('Order cancelled', [
+                \Log::channel('audit')->info('Order cancelled', [
                     'order_id' => $this->order->id,
                     'user_id' => auth()->user()->id,
                 ]);
 
             } catch (\Exception $e) {
-                \$this->log->channel('error')->error('Failed to cancel order', [
+                \Log::channel('error')->error('Failed to cancel order', [
                     'exception' => $e->getMessage(),
                 ]);
             }

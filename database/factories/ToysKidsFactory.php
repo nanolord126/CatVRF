@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Domains\ToysKids\Models\ToysKids;
+use App\Domains\ToysAndGames\ToysAndGames\ToysKids\Models\ToysKids;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 final class ToysKidsFactory extends Factory

@@ -62,7 +62,7 @@ final class StreamPeerConnection extends Model
      */
     public function stream(): BelongsTo
     {
-        return $this->belongsTo($this->event->class, 'stream_id');
+        return $this->belongsTo(Event::class, 'stream_id');
     }
 
     /**

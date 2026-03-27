@@ -78,7 +78,7 @@ final class DatabaseIndexingService
                         'error' => $e->getMessage()
                     ];
 
-                    $this->log->channel('performance')->error('Index creation failed', [
+                    Log::channel('performance')->error('Index creation failed', [
                         'table' => $table,
                         'columns' => $indexConfig['columns'],
                         'error' => $e->getMessage()
@@ -87,7 +87,7 @@ final class DatabaseIndexingService
             }
         }
 
-        $this->log->channel('performance')->info('Indexes creation summary', [
+        Log::channel('performance')->info('Indexes creation summary', [
             'created' => $created,
             'failed' => $failed,
             'errors' => $errors
@@ -114,9 +114,9 @@ final class DatabaseIndexingService
         $sql = "ALTER TABLE {$table} ADD {$indexType} {$indexName} ({$columnsStr})";
 
         try {
-            $this->db->statement($sql);
+            DB::statement($sql);
             
-            $this->log->channel('performance')->info('Index created', [
+            Log::channel('performance')->info('Index created', [
                 'table' => $table,
                 'index' => $indexName,
                 'columns' => $columns
@@ -141,7 +141,7 @@ final class DatabaseIndexingService
      */
     public static function getTableIndexes(string $table): array
     {
-        $results = $this->db->select("SHOW INDEXES FROM {$table}");
+        $results = DB::select("SHOW INDEXES FROM {$table}");
 
         $indexes = [];
         foreach ($results as $index) {
@@ -173,7 +173,7 @@ final class DatabaseIndexingService
      */
     public static function getIndexSizes(): array
     {
-        $results = $this->db->select("
+        $results = DB::select("
             SELECT 
                 TABLE_NAME,
                 INDEX_NAME,
@@ -206,7 +206,7 @@ final class DatabaseIndexingService
         $dropped = 0;
         $errors = [];
 
-        $results = $this->db->select("
+        $results = DB::select("
             SELECT 
                 OBJECT_SCHEMA,
                 OBJECT_NAME,
@@ -220,10 +220,10 @@ final class DatabaseIndexingService
 
         foreach ($results as $row) {
             try {
-                $this->db->statement("ALTER TABLE {$row->OBJECT_SCHEMA}.{$row->OBJECT_NAME} DROP INDEX {$row->INDEX_NAME}");
+                DB::statement("ALTER TABLE {$row->OBJECT_SCHEMA}.{$row->OBJECT_NAME} DROP INDEX {$row->INDEX_NAME}");
                 $dropped++;
 
-                $this->log->channel('performance')->info('Unused index dropped', [
+                Log::channel('performance')->info('Unused index dropped', [
                     'table' => "{$row->OBJECT_SCHEMA}.{$row->OBJECT_NAME}",
                     'index' => $row->INDEX_NAME
                 ]);

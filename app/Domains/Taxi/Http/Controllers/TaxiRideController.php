@@ -40,7 +40,7 @@ final class TaxiRideController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Failed to fetch rides', [
+            Log::channel('audit')->error('Failed to fetch rides', [
                 'error' => $e->getMessage(),
             ]);
 
@@ -65,7 +65,7 @@ final class TaxiRideController
         );
 
         if ($fraudResult['decision'] === 'block') {
-            $this->log->channel('fraud_alert')->warning('TaxiRide create blocked', [
+            Log::channel('fraud_alert')->warning('TaxiRide create blocked', [
                 'correlation_id' => $correlationId,
                 'user_id'        => auth()->id(),
                 'score'          => $fraudResult['score'],
@@ -86,7 +86,7 @@ final class TaxiRideController
                 'dropoff_point' => 'required|array',
             ]);
 
-            $ride = $this->db->transaction(function () use ($validated, $correlationId) {
+            $ride = DB::transaction(function () use ($validated, $correlationId) {
                 $surgeMultiplier = $this->surgeService->calculateSurgeMultiplier(
                     $validated['pickup_point'],
                     tenant('id'),
@@ -107,7 +107,7 @@ final class TaxiRideController
                     'correlation_id'   => $correlationId,
                 ]);
 
-                $this->log->channel('audit')->info('TaxiRide created', [
+                Log::channel('audit')->info('TaxiRide created', [
                     'ride_id'          => $ride->id,
                     'passenger_id'     => $ride->passenger_id,
                     'driver_id'        => $ride->driver_id,
@@ -124,7 +124,7 @@ final class TaxiRideController
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Failed to create ride', [
+            Log::channel('audit')->error('Failed to create ride', [
                 'error'          => $e->getMessage(),
                 'trace'          => $e->getTraceAsString(),
                 'correlation_id' => $correlationId,
@@ -159,10 +159,10 @@ final class TaxiRideController
 
             $this->authorize('cancel', $ride);
 
-            $ride = $this->db->transaction(function () use ($ride, $correlationId) {
+            $ride = DB::transaction(function () use ($ride, $correlationId) {
                 $ride->update(['status' => 'cancelled']);
 
-                $this->log->channel('audit')->info('Ride cancelled', [
+                Log::channel('audit')->info('Ride cancelled', [
                     'ride_id' => $ride->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -176,7 +176,7 @@ final class TaxiRideController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Failed to cancel ride', [
+            Log::channel('audit')->error('Failed to cancel ride', [
                 'error' => $e->getMessage(),
             ]);
 
@@ -201,14 +201,14 @@ final class TaxiRideController
 
             $before = ['rating' => $ride->rating, 'comment' => $ride->comment ?? null];
 
-            $this->db->transaction(function () use ($ride, $validated) {
+            DB::transaction(function () use ($ride, $validated) {
                 $ride->update([
                     'rating'  => $validated['rating'],
                     'comment' => $validated['comment'] ?? null,
                 ]);
             });
 
-            $this->log->channel('audit')->info('TaxiRide rated', [
+            Log::channel('audit')->info('TaxiRide rated', [
                 'ride_id'        => $ride->id,
                 'before'         => $before,
                 'after'          => ['rating' => $validated['rating'], 'comment' => $validated['comment'] ?? null],
@@ -221,7 +221,7 @@ final class TaxiRideController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            $this->log->error('TaxiRide rate failed', [
+            Log::error('TaxiRide rate failed', [
                 'ride_id' => $ride->id,
                 'error'   => $e->getMessage(),
                 'trace'   => $e->getTraceAsString(),

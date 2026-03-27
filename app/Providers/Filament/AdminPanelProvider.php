@@ -1,6 +1,6 @@
-declare(strict_types=1);
-
 <?php
+
+declare(strict_types=1);
 
 namespace App\Providers\Filament;
 
@@ -27,14 +27,14 @@ class AdminPanelProvider extends PanelProvider
             ->maxContentWidth('full')
             ->middleware([
                 \Illuminate\Cookie\Middleware\EncryptCookies::class,
-                \Illuminate\Cookie\Middleware\AddQueuedCookiesTo$this->response->class,
-                \Illuminate\Session\Middleware\Start$this->session->class,
-                \Illuminate\Session\Middleware\Authenticate$this->session->class,
-                \Illuminate\View\Middleware\ShareErrorsFrom$this->session->class,
+                \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+                \Illuminate\Session\Middleware\StartSession::class,
+                \Illuminate\Session\Middleware\AuthenticateSession::class,
+                \Illuminate\View\Middleware\ShareErrorsFromSession::class,
                 \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
                 \Illuminate\Routing\Middleware\SubstituteBindings::class,
                 \Filament\Http\Middleware\DisableBladeIconComponents::class,
-                \Filament\Http\Middleware\DispatchServingFilament$this->event->class,
+                \Filament\Http\Middleware\DispatchServingFilamentEvent::class,
             ])
             ->authMiddleware([
                 \Filament\Http\Middleware\Authenticate::class,

@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\ShortTermRentals\Http\Controllers;
 
@@ -25,15 +26,7 @@ class MainController extends Controller
     public function __construct(
         private readonly ApartmentService $apartmentService,
         private readonly FraudControlService $fraudControl
-    ) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+    ) {}
 
     public function index(Request $request): JsonResponse
     {

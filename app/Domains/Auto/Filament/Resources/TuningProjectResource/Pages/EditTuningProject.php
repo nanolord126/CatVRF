@@ -19,7 +19,7 @@ final class EditTuningProject extends EditRecord
         return [
             Actions\DeleteAction::make()
                 ->after(function () {
-                    $this->log->channel('audit')->info('TuningProject deleted', [
+                    Log::channel('audit')->info('TuningProject deleted', [
                         'correlation_id' => $this->record->correlation_id,
                         'project_id' => $this->record->id,
                     ]);
@@ -35,14 +35,14 @@ final class EditTuningProject extends EditRecord
                         ->required(),
                 ])
                 ->action(function (array $data) {
-                    $this->db->transaction(function () use ($data) {
+                    DB::transaction(function () use ($data) {
                         $this->record->update([
                             'status' => 'completed',
                             'completion_date' => now(),
                             'final_price' => $data['final_price'],
                         ]);
                         
-                        $this->log->channel('audit')->info('TuningProjectCompleted', [
+                        Log::channel('audit')->info('TuningProjectCompleted', [
                             'correlation_id' => $this->record->correlation_id,
                             'project_id' => $this->record->id,
                         ]);
@@ -63,7 +63,7 @@ final class EditTuningProject extends EditRecord
 
     protected function afterSave(): void
     {
-        $this->log->channel('audit')->info('TuningProject updated', [
+        Log::channel('audit')->info('TuningProject updated', [
             'correlation_id' => $this->record->correlation_id,
             'project_id' => $this->record->id,
             'status' => $this->record->status,

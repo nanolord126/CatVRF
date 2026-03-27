@@ -47,7 +47,7 @@ class PredictInventoryNeedsJob implements ShouldQueue
                 ]);
 
                 // Логируем событие в аудит
-                \App\Models\StaffAudit$this->log->create([
+                \App\Models\StaffAuditLog::create([
                     'user_id' => 0, // System
                     'action' => 'AI_INVENTORY_FORECAST',
                     'resource_id' => $product->id,

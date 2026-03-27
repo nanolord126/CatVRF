@@ -41,7 +41,7 @@ final class FurnitureController
 
             return response()->json(['success' => true, 'data' => $items, 'correlation_id' => $correlationId]);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Furniture: index error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+            Log::channel('audit')->error('Furniture: index error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
             return response()->json(['success' => false, 'message' => 'Ошибка загрузки', 'correlation_id' => $correlationId], 500);
         }
     }
@@ -97,7 +97,7 @@ final class FurnitureController
                 'color'            => 'nullable|string',
             ]);
 
-            $order = $this->db->transaction(function () use ($validated, $userId, $correlationId): FurnitureOrder {
+            $order = DB::transaction(function () use ($validated, $userId, $correlationId): FurnitureOrder {
                 $item  = FurnitureItem::findOrFail($validated['item_id']);
                 $order = FurnitureOrder::create([
                     'uuid'             => Str::uuid(),
@@ -114,7 +114,7 @@ final class FurnitureController
                     'correlation_id'   => $correlationId,
                 ]);
 
-                $this->log->channel('audit')->info('Furniture: Order created', [
+                Log::channel('audit')->info('Furniture: Order created', [
                     'order_id' => $order->id, 'user_id' => $userId, 'correlation_id' => $correlationId,
                 ]);
 
@@ -125,7 +125,7 @@ final class FurnitureController
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Furniture: order error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+            Log::channel('audit')->error('Furniture: order error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
             return response()->json(['success' => false, 'message' => 'Ошибка заказа', 'correlation_id' => $correlationId], 500);
         }
     }

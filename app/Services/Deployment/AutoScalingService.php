@@ -77,7 +77,7 @@ final class AutoScalingService
      */
     public static function scaleApplication(int $targetInstances, string $provider = 'kubernetes'): array
     {
-        $this->log->channel('deployment')->info('Scaling application', [
+        Log::channel('deployment')->info('Scaling application', [
             'target_instances' => $targetInstances,
             'provider' => $provider,
             'timestamp' => now()->toDateTimeString(),
@@ -154,7 +154,7 @@ final class AutoScalingService
 
         $finalConfig = array_merge($defaults, $config);
 
-        $this->log->channel('deployment')->info('Auto scaling configured', [
+        Log::channel('deployment')->info('Auto scaling configured', [
             'enabled' => $enabled,
             'config' => $finalConfig,
         ]);

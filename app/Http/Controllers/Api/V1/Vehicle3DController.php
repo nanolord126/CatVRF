@@ -1,15 +1,11 @@
+<?php
 declare(strict_types=1);
-
-<?php declare(strict_types=1);
-
 namespace App\Http\Controllers\API\V1;
-
 use App\Http\Controllers\Controller;
 use App\Services\ThreeD\VehicleVisualizerService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-
 final /**
  * Vehicle3DController
  * 
@@ -30,7 +26,6 @@ class Vehicle3DController extends Controller
         // TODO: инициализация
     }
 }
-
     public function visualize(int $vehicleId, Request $request): JsonResponse
     {
         $vehicleData = $request->validate([
@@ -40,15 +35,12 @@ class Vehicle3DController extends Controller
             'color' => 'string',
             'wheels' => 'integer',
         ]);
-
         $visualization = $this->service->generateVehicleVisualization($vehicleData);
-
         return response()->json([
             'data' => $visualization,
             'correlation_id' => Str::uuid(),
         ]);
     }
-
     public function getCameraAngles(int $vehicleId): JsonResponse
     {
         $angles = [
@@ -57,7 +49,6 @@ class Vehicle3DController extends Controller
             'top' => ['position' => [0, 4, 0], 'target' => [0, 1, 0]],
             'interior' => ['position' => [0, 1, 0], 'target' => [0, 1, -1]],
         ];
-
         return response()->json([
             'data' => $angles,
             'correlation_id' => Str::uuid(),

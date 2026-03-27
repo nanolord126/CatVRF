@@ -1,21 +1,16 @@
 <?php
-
 declare(strict_types=1);
-
 namespace App\Http\Controllers\Api\V1;
-
 use App\Models\Wallet;
 use App\Services\Wallet\WalletService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-
 final class WalletController extends BaseApiV1Controller
 {
     public function __construct(
         private readonly WalletService $walletService,
     ) {}
-
     /**
      * Get wallet balance for authenticated tenant
      */
@@ -23,16 +18,13 @@ final class WalletController extends BaseApiV1Controller
     {
         $tenantId = (int) tenant('id');
         $correlationId = Str::uuid()->toString();
-
         try {
             $wallet = Wallet::where('tenant_id', $tenantId)->firstOrFail();
-
-            \Illuminate\Support\Facades\$this->log->channel('audit')->info('Wallet retrieved', [
+            \Illuminate\Support\Facades\Log::channel('audit')->info('Wallet retrieved', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
                 'balance' => $wallet->current_balance,
             ]);
-
             return response()->json([
                 'data' => [
                     'id' => $wallet->id,
@@ -47,24 +39,20 @@ final class WalletController extends BaseApiV1Controller
             return $this->errorResponse($e, $correlationId);
         }
     }
-
     /**
      * Show wallet details
      */
     public function show(Request $request, Wallet $wallet): JsonResponse
     {
         $correlationId = Str::uuid()->toString();
-
         try {
             $tenantId = (int) tenant('id');
-            
             if ($wallet->tenant_id !== $tenantId) {
                 return response()->json([
                     'error' => 'Unauthorized',
                     'correlation_id' => $correlationId,
                 ], 403);
             }
-
             return response()->json([
                 'data' => [
                     'id' => $wallet->id,
@@ -79,29 +67,24 @@ final class WalletController extends BaseApiV1Controller
             return $this->errorResponse($e, $correlationId);
         }
     }
-
     /**
      * Deposit funds to wallet (testing only)
      */
     public function deposit(Request $request, Wallet $wallet): JsonResponse
     {
         $correlationId = Str::uuid()->toString();
-
         try {
             $validated = $request->validate([
                 'amount' => 'required|integer|min:100',
                 'reason' => 'nullable|string',
             ]);
-
             $tenantId = (int) tenant('id');
-            
             if ($wallet->tenant_id !== $tenantId) {
                 return response()->json([
                     'error' => 'Unauthorized',
                     'correlation_id' => $correlationId,
                 ], 403);
             }
-
             $transaction = $this->walletService->credit(
                 tenantId: $wallet->tenant_id,
                 amount: $validated['amount'],
@@ -109,7 +92,6 @@ final class WalletController extends BaseApiV1Controller
                 correlationId: $correlationId,
                 reason: $validated['reason'] ?? 'API deposit',
             );
-
             return response()->json([
                 'data' => [
                     'transaction_id' => $transaction->id,
@@ -122,29 +104,24 @@ final class WalletController extends BaseApiV1Controller
             return $this->errorResponse($e, $correlationId);
         }
     }
-
     /**
      * Withdraw funds from wallet
      */
     public function withdraw(Request $request, Wallet $wallet): JsonResponse
     {
         $correlationId = Str::uuid()->toString();
-
         try {
             $validated = $request->validate([
                 'amount' => 'required|integer|min:100',
                 'reason' => 'nullable|string',
             ]);
-
             $tenantId = (int) tenant('id');
-            
             if ($wallet->tenant_id !== $tenantId) {
                 return response()->json([
                     'error' => 'Unauthorized',
                     'correlation_id' => $correlationId,
                 ], 403);
             }
-
             $transaction = $this->walletService->debit(
                 tenantId: $wallet->tenant_id,
                 amount: $validated['amount'],
@@ -152,7 +129,6 @@ final class WalletController extends BaseApiV1Controller
                 correlationId: $correlationId,
                 reason: $validated['reason'] ?? 'API withdrawal',
             );
-
             return response()->json([
                 'data' => [
                     'transaction_id' => $transaction->id,

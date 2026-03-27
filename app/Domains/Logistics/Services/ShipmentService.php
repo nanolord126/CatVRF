@@ -30,7 +30,7 @@ final class ShipmentService
     ): Shipment {
 
 
-        return $this->db->transaction(function () use (
+        return DB::transaction(function () use (
             $tenantId,
             $courierServiceId,
             $customerId,
@@ -61,7 +61,7 @@ final class ShipmentService
 
             ShipmentCreated::dispatch($shipment, $correlationId);
 
-            $this->log->channel('audit')->info('Shipment created', [
+            Log::channel('audit')->info('Shipment created', [
                 'shipment_id' => $shipment->id,
                 'tenant_id' => $tenantId,
                 'customer_id' => $customerId,
@@ -86,7 +86,7 @@ final class ShipmentService
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-        $this->db->transaction(function () use ($shipment, $reason, $correlationId) {
+        DB::transaction(function () use ($shipment, $reason, $correlationId) {
             $shipment->update([
                 'status' => 'cancelled',
                 'cancellation_reason' => $reason,
@@ -94,7 +94,7 @@ final class ShipmentService
                 'correlation_id' => $correlationId,
             ]);
 
-            $this->log->channel('audit')->info('Shipment cancelled', [
+            Log::channel('audit')->info('Shipment cancelled', [
                 'shipment_id' => $shipment->id,
                 'tenant_id' => $shipment->tenant_id,
                 'reason' => $reason,
@@ -115,7 +115,7 @@ final class ShipmentService
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-        $this->db->transaction(function () use ($shipment, $status, $correlationId) {
+        DB::transaction(function () use ($shipment, $status, $correlationId) {
             $shipment->update([
                 'status' => $status,
                 'correlation_id' => $correlationId,
@@ -127,7 +127,7 @@ final class ShipmentService
                 $shipment->update(['delivered_at' => now()]);
             }
 
-            $this->log->channel('audit')->info('Shipment status updated', [
+            Log::channel('audit')->info('Shipment status updated', [
                 'shipment_id' => $shipment->id,
                 'status' => $status,
                 'correlation_id' => $correlationId,

@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Pharmacy\Http\Controllers;
 
@@ -21,15 +22,7 @@ final /**
  */
 class B2BController extends Controller
 {
-    public function __construct(private readonly B2BService $service) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+    public function __construct(private readonly B2BService $service) {}
 
     public function store(Request $request): JsonResponse
     {

@@ -1,8 +1,7 @@
-declare(strict_types=1);
-
 <?php
 
 declare(strict_types=1);
+
 
 namespace App\Domains\Beauty\Jobs;
 
@@ -33,25 +32,17 @@ class CleanupExpiredBookingsJob implements ShouldQueue
 
     public function __construct(
         private readonly string $correlationId,
-    ) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+    ) {}
 
     public function handle(): void
     {
-        $this->db->transaction(function (): void {
+        DB::transaction(function (): void {
             $expired = Appointment::query()
                 ->where('status', 'pending')
                 ->where('created_at', '<', now()->subMinutes(15))
                 ->update(['status' => 'expired']);
 
-            $this->log->channel('audit')->info('Expired bookings cleaned', [
+            Log::channel('audit')->info('Expired bookings cleaned', [
                 'count' => $expired,
                 'correlation_id' => $this->correlationId,
             ]);

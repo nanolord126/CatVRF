@@ -43,7 +43,7 @@ final class MedicalAppointmentService
         }
         RateLimiter::hit("medical:book:{$clinicId}", 3600);
 
-        return $this->db->transaction(function () use ($clinicId, $doctorId, $data, $correlationId) {
+        return DB::transaction(function () use ($clinicId, $doctorId, $data, $correlationId) {
             $clinic = Clinic::findOrFail($clinicId);
             $doctor = Doctor::findOrFail($doctorId);
 
@@ -56,7 +56,7 @@ final class MedicalAppointmentService
             ]);
 
             if ($fraud["decision"] === "block") {
-                $this->log->channel("audit")->error("Medical Security Block", ["clinic_id" => $clinicId, "score" => $fraud["score"]]);
+                Log::channel("audit")->error("Medical Security Block", ["clinic_id" => $clinicId, "score" => $fraud["score"]]);
                 throw new \RuntimeException("Операция заблокирована системой безопасности.", 403);
             }
 
@@ -87,7 +87,7 @@ final class MedicalAppointmentService
                 }
             }
 
-            $this->log->channel("audit")->info("Medical: appointment booked", ["app_id" => $appointment->id, "doctor" => $doctor->id, "corr" => $correlationId]);
+            Log::channel("audit")->info("Medical: appointment booked", ["app_id" => $appointment->id, "doctor" => $doctor->id, "corr" => $correlationId]);
 
             return $appointment;
         });
@@ -101,7 +101,7 @@ final class MedicalAppointmentService
         $correlationId = $correlationId ?: (string) Str::uuid();
         $appointment = MedicalAppointment::with("clinic", "doctor")->findOrFail($appointmentId);
 
-        $this->db->transaction(function () use ($appointment, $findings, $correlationId) {
+        DB::transaction(function () use ($appointment, $findings, $correlationId) {
             $appointment->update([
                 "status" => "completed",
                 "finished_at" => now()
@@ -145,7 +145,7 @@ final class MedicalAppointmentService
                 correlationId: $correlationId
             );
 
-            $this->log->channel("audit")->info("Medical: appointment finished + payout", ["app_id" => $appointment->id, "fee" => $platformFee]);
+            Log::channel("audit")->info("Medical: appointment finished + payout", ["app_id" => $appointment->id, "fee" => $platformFee]);
         });
     }
 
@@ -155,7 +155,7 @@ final class MedicalAppointmentService
     public function validateRussianCompliance(int $userId): bool
     {
         // Имитация проверки согласия на ОПД и интеграции с федеральными реестрами
-        $this->log->channel("audit")->info("Medical: compliance check (FZ-152)", ["user" => $userId]);
+        Log::channel("audit")->info("Medical: compliance check (FZ-152)", ["user" => $userId]);
         return true;
     }
 }

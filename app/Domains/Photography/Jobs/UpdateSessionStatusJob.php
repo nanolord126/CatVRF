@@ -1,8 +1,7 @@
-declare(strict_types=1);
-
 <?php
 
 declare(strict_types=1);
+
 
 namespace App\Domains\Photography\Jobs;
 
@@ -35,30 +34,22 @@ class UpdateSessionStatusJob implements ShouldQueue
 		public readonly ?PhotoSession $session = null,
 		public readonly string $newStatus = '',
 		public readonly string $correlationId = '',
-	) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+	) {}
 
 	public function handle(): void
 	{
 		try {
-			$this->db->transaction(function () {
+			DB::transaction(function () {
 				$this->session->update(['status' => $this->newStatus]);
 
-				$this->log->channel('audit')->info('Photography: Session status auto-updated', [
+				Log::channel('audit')->info('Photography: Session status auto-updated', [
 					'session_id' => $this->session->id,
 					'new_status' => $this->newStatus,
 					'correlation_id' => $this->correlationId,
 				]);
 			});
 		} catch (\Exception $e) {
-			$this->log->channel('audit')->error('Photography: Session status update failed', [
+			Log::channel('audit')->error('Photography: Session status update failed', [
 				'session_id' => $this->session->id,
 				'error' => $e->getMessage(),
 				'correlation_id' => $this->correlationId,

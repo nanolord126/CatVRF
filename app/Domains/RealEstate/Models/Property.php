@@ -1,74 +1,76 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Casts\AsCollection;
+use Illuminate\Database\Eloquent\Builder;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
+use Illuminate\Support\Str;
 
-/**
- * Model для объекта недвижимости.
- * Production 2026.
- */
 final class Property extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, LogsActivity;
 
     protected $table = 'properties';
+
     protected $fillable = [
-        'tenant_id', 'owner_id', 'address', 'geo_point', 'type', 'area', 'rooms',
-        'floor', 'total_floors', 'condition', 'amenities', 'status', 'correlation_id', 'tags', 'metadata',
+        'uuid',
+        'tenant_id',
+        'business_group_id',
+        'correlation_id',
+        'name',
+        'address',
+        'lat',
+        'lon',
+        'type',
+        'area',
+        'rooms',
+        'floor',
+        'features',
+        'status',
+        'tags',
     ];
 
     protected $casts = [
-        'geo_point' => 'json',
-        'amenities' => AsCollection::class,
-        'tags' => AsCollection::class,
-        'metadata' => 'json',
-        'area' => 'integer',
-        'rooms' => 'integer',
-        'floor' => 'integer',
-        'total_floors' => 'integer',
+        'features' => 'array',
+        'tags' => 'array',
+        'lat' => 'float',
+        'lon' => 'float',
+        'area' => 'float',
     ];
 
-    protected $hidden = ['deleted_at'];
-
-    public function booted(): void
+    protected static function booted(): void
     {
-        static::addGlobalScope('tenant', function ($query) {
-            $query->where('tenant_id', tenant('id') ?? 0);
+        static::creating(function (Property $model) {
+             if (empty($model->uuid)) {
+                $model->uuid = (string) Str::uuid();
+            }
+             if (empty($model->tenant_id) && function_exists('tenant') && tenant()) {
+                $model->tenant_id = tenant()->id;
+            }
+        });
+
+        static::addGlobalScope('tenant', function (Builder $builder) {
+            if (function_exists('tenant') && tenant()) {
+                $builder->where('tenant_id', tenant()->id);
+            }
         });
     }
 
-    public function rentalListing(): HasOne
+    public function listings(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
-        return $this->hasOne(RentalListing::class, 'property_id');
+        return $this->hasMany(Listing::class);
     }
 
-    public function saleListing(): HasOne
+    public function getActivitylogOptions(): LogOptions
     {
-        return $this->hasOne(SaleListing::class, 'property_id');
-    }
-
-    public function landPlot(): HasOne
-    {
-        return $this->hasOne(LandPlot::class, 'property_id');
-    }
-
-    public function viewingAppointments(): HasMany
-    {
-        return $this->hasMany(ViewingAppointment::class, 'property_id');
-    }
-
-    public function mortgageApplications(): HasMany
-    {
-        return $this->hasMany(MortgageApplication::class, 'property_id');
-    }
-
-    public function images(): HasMany
-    {
-        return $this->hasMany(PropertyImage::class, 'property_id');
+        return LogOptions::defaults()
+            ->logFillable()
+            ->useLogName('real_estate')
+            ->logOnlyDirty();
     }
 }

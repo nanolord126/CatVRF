@@ -2,49 +2,65 @@
 
 namespace App\Domains\Hotels\Models;
 
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Str;
 
+/**
+ * КАНОН 2026: Hotel Model (Layer 2)
+ * 
+ * Отель/Гостиница в системе.
+ */
 final class Hotel extends Model
 {
-    use HasUuids, SoftDeletes;
+    use SoftDeletes;
+
+    protected $table = 'hotels';
 
     protected $fillable = [
+        'uuid',
         'tenant_id',
         'name',
+        'description',
         'address',
         'geo_point',
-        'star_rating',
-        'total_rooms',
-        'description',
-        'amenities',
-        'status',
+        'stars',
+        'is_active',
+        'schedule_json',
         'rating',
-        'is_verified',
+        'review_count',
         'correlation_id',
         'tags',
-        'metadata',
     ];
+
+    protected $hidden = ['deleted_at'];
 
     protected $casts = [
-        'amenities' => 'collection',
-        'tags' => 'collection',
-        'metadata' => 'json',
+        'is_active' => 'boolean',
+        'schedule_json' => 'json',
+        'tags' => 'json',
+        'stars' => 'integer',
         'rating' => 'float',
-        'is_verified' => 'boolean',
     ];
 
-    public function booted(): void
+    protected static function booted(): void
     {
-        static::addGlobalScope('tenant', fn ($q) => $q->where('tenant_id', tenant('id') ?? 0));
+        static::creating(function (Model $model) {
+            $model->uuid = $model->uuid ?? (string) Str::uuid();
+            $model->tenant_id = $model->tenant_id ?? (int) tenant('id');
+        });
+
+        // Global scope tenant_id (КАНОН 2026)
+        static::addGlobalScope('tenant_id', function ($builder) {
+            $builder->where('tenant_id', (int) tenant('id'));
+        });
     }
 
-    public function roomTypes(): HasMany
+    public function rooms(): HasMany
     {
-        return $this->hasMany(RoomType::class);
+        return $this->hasMany(Room::class);
     }
 
     public function bookings(): HasMany
@@ -52,18 +68,13 @@ final class Hotel extends Model
         return $this->hasMany(Booking::class);
     }
 
-    public function reviews(): HasMany
+    public function amenities(): BelongsToMany
     {
-        return $this->hasMany(Review::class);
+        return $this->belongsToMany(Amenity::class, 'hotel_amenity_pivot', 'hotel_id', 'amenity_id');
     }
 
-    public function images(): HasMany
+    public function b2bContracts(): HasMany
     {
-        return $this->hasMany(HotelImage::class);
-    }
-
-    public function payoutSchedule()
-    {
-        return $this->hasOne(PayoutSchedule::class);
+        return $this->hasMany(B2BContract::class);
     }
 }

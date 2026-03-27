@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Auto\Filament\Resources\PartWarrantyResource\Pages;
 
@@ -36,8 +37,8 @@ class CreatePartWarranty extends CreateRecord
 
     protected function afterCreate(): void
     {
-        $this->db->transaction(function () {
-            $this->log->channel('audit')->info('PartWarranty created', [
+        DB::transaction(function () {
+            Log::channel('audit')->info('PartWarranty created', [
                 'correlation_id' => $this->record->correlation_id,
                 'warranty_id' => $this->record->id,
                 'warranty_number' => $this->record->warranty_number,

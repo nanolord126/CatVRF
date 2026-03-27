@@ -1,10 +1,10 @@
 <?php declare(strict_types=1);
 
-use App\Domains\Entertainment\Http\Controllers\EntertainmentVenueController;
-use App\Domains\Entertainment\Http\Controllers\EntertainmentEventController;
-use App\Domains\Entertainment\Http\Controllers\EntertainerController;
-use App\Domains\Entertainment\Http\Controllers\BookingController;
-use App\Domains\Entertainment\Http\Controllers\TicketSaleController;
+use App\Domains\EventPlanning\Entertainment\Http\Controllers\EntertainmentVenueController;
+use App\Domains\EventPlanning\Entertainment\Http\Controllers\EntertainmentEventController;
+use App\Domains\EventPlanning\Entertainment\Http\Controllers\EntertainerController;
+use App\Domains\EventPlanning\Entertainment\Http\Controllers\BookingController;
+use App\Domains\EventPlanning\Entertainment\Http\Controllers\TicketSaleController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['tenant'])->prefix('api/entertainment')->group(function () {

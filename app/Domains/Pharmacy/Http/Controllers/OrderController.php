@@ -28,7 +28,7 @@ final class OrderController extends Controller
         $correlationId = (string) Str::uuid();
 
         try {
-            return $this->db->transaction(function () use ($request, $correlationId) {
+            return DB::transaction(function () use ($request, $correlationId) {
                 // 1. Fraud Check
                 $fraudResult = $this->fraudControl->check([
                     'user_id' => auth()->id(),
@@ -38,7 +38,7 @@ final class OrderController extends Controller
                 ]);
 
                 if ($fraudResult['decision'] === 'block') {
-                    $this->log->channel('audit')->warning('Pharmacy order blocked by fraud check', [
+                    Log::channel('audit')->warning('Pharmacy order blocked by fraud check', [
                         'user_id' => auth()->id(),
                         'correlation_id' => $correlationId,
                         'score' => $fraudResult['score'],
@@ -54,7 +54,7 @@ final class OrderController extends Controller
                 );
 
                 // 3. Audit Log
-                $this->log->channel('audit')->info('Pharmacy order created (B2C)', [
+                Log::channel('audit')->info('Pharmacy order created (B2C)', [
                     'order_id' => $order->id,
                     'user_id' => auth()->id(),
                     'total' => $order->total_price_kopecks,
@@ -72,7 +72,7 @@ final class OrderController extends Controller
                 ], 201);
             });
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Pharmacy order creation failed', [
+            Log::channel('audit')->error('Pharmacy order creation failed', [
                 'user_id' => auth()->id(),
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -98,7 +98,7 @@ final class OrderController extends Controller
             $order = $this->service->getOrder($orderId);
 
             if ($order->client_id !== auth()->id() && !auth()->user()->isPharmacyOwner($order->pharmacy_id)) {
-                $this->log->channel('audit')->warning('Unauthorized pharmacy order access', [
+                Log::channel('audit')->warning('Unauthorized pharmacy order access', [
                     'user_id' => auth()->id(),
                     'order_id' => $orderId,
                     'correlation_id' => $correlationId,
@@ -116,7 +116,7 @@ final class OrderController extends Controller
                 'correlation_id' => $correlationId,
             ], 200);
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Pharmacy order fetch failed', [
+            Log::channel('audit')->error('Pharmacy order fetch failed', [
                 'order_id' => $orderId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
@@ -134,14 +134,14 @@ final class OrderController extends Controller
         $correlationId = (string) Str::uuid();
 
         try {
-            return $this->db->transaction(function () use ($orderId, $request, $correlationId) {
+            return DB::transaction(function () use ($orderId, $request, $correlationId) {
                 $this->service->validatePrescription(
                     orderId: $orderId,
                     rxData: $request->validated()['prescription_data'] ?? '',
                     correlationId: $correlationId
                 );
 
-                $this->log->channel('audit')->info('Pharmacy prescription uploaded', [
+                Log::channel('audit')->info('Pharmacy prescription uploaded', [
                     'order_id' => $orderId,
                     'user_id' => auth()->id(),
                     'correlation_id' => $correlationId,
@@ -154,7 +154,7 @@ final class OrderController extends Controller
                 ], 200);
             });
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Pharmacy prescription validation failed', [
+            Log::channel('audit')->error('Pharmacy prescription validation failed', [
                 'order_id' => $orderId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

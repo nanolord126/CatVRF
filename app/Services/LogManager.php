@@ -1,8 +1,7 @@
-declare(strict_types=1);
-
 <?php
 
 declare(strict_types=1);
+
 
 namespace App\Services;
 
@@ -18,27 +17,27 @@ class LogManager
     // Add private readonly properties here
     public function info(string $message, array $context = []): void
     {
-        $this->log->info($message, $context);
+        Log::info($message, $context);
     }
 
     public function warn(string $message, array $context = []): void
     {
-        $this->log->warning($message, $context);
+        Log::warning($message, $context);
     }
 
     public function warning(string $message, array $context = []): void
     {
-        $this->log->warning($message, $context);
+        Log::warning($message, $context);
     }
 
     public function error(string $message, array $context = []): void
     {
-        $this->log->error($message, $context);
+        Log::error($message, $context);
     }
 
     public function debug(string $message, array $context = []): void
     {
-        $this->log->debug($message, $context);
+        Log::debug($message, $context);
     }
 
     public function channel(string $channel): static

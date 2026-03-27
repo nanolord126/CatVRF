@@ -40,7 +40,7 @@ final class ShipmentController
 
             return response()->json(['success' => true, 'data' => $shipment, 'correlation_id' => $correlationId], 201);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Failed to create shipment', ['error' => $e->getMessage()]);
+            Log::channel('audit')->error('Failed to create shipment', ['error' => $e->getMessage()]);
             return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 400);
         }
     }
@@ -76,9 +76,9 @@ final class ShipmentController
         try {
             $shipment = Shipment::findOrFail($id);
 
-            $this->db->transaction(function () use ($shipment, $correlationId) {
+            DB::transaction(function () use ($shipment, $correlationId) {
                 $shipment->update(['correlation_id' => $correlationId]);
-                $this->log->channel('audit')->info('Shipment updated', ['shipment_id' => $id, 'correlation_id' => $correlationId]);
+                Log::channel('audit')->info('Shipment updated', ['shipment_id' => $id, 'correlation_id' => $correlationId]);
             });
 
             return response()->json(['success' => true, 'data' => $shipment, 'correlation_id' => $correlationId]);

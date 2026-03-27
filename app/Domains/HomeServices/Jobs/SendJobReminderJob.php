@@ -32,7 +32,7 @@ final class SendJobReminderJob implements ShouldQueue
                 $contractor = $job->contractor;
                 $client = $job->client;
 
-                \$this->log->channel('audit')->info('Job reminder sent', [
+                \Log::channel('audit')->info('Job reminder sent', [
                     'job_id' => $this->jobId,
                     'contractor_id' => $contractor->id,
                     'client_id' => $client->id,
@@ -40,7 +40,7 @@ final class SendJobReminderJob implements ShouldQueue
                 ]);
             }
         } catch (\Throwable $e) {
-            \$this->log->channel('audit')->error('Failed to send job reminder', [
+            \Log::channel('audit')->error('Failed to send job reminder', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $this->correlationId,
             ]);

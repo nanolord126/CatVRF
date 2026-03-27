@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Beauty\Listeners;
 
@@ -22,8 +23,8 @@ class UpdateConsumableInventory
     public function handle(ConsumableDeducted $event): void
     {
         try {
-            $this->db->transaction(function () use ($event) {
-                $this->log->channel('audit')->info('Consumable inventory updated', [
+            DB::transaction(function () use ($event) {
+                Log::channel('audit')->info('Consumable inventory updated', [
                     'appointment_id' => $event->appointmentId,
                     'consumables_count' => count($event->consumables),
                     'correlation_id' => $event->correlationId,
@@ -34,7 +35,7 @@ class UpdateConsumableInventory
                 // }
             });
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Failed to update consumable inventory', [
+            Log::channel('audit')->error('Failed to update consumable inventory', [
                 'correlation_id' => $event->correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

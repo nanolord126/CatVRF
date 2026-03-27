@@ -1,0 +1,31 @@
+<?php declare(strict_types=1);
+namespace A
+
+/**
+ * TradeJob
+ * 
+ * Производитель: CatVRF Platform
+ * Версия: 1.0.0
+ * 
+ * Примеры использования:
+ * 
+ * ```php
+ * // Базовое использование
+ * $instance = new TradeJob();
+ * ```
+ * 
+ * Требования:
+ * - Laravel 10+
+ * - PHP 8.2+
+ * - Все методы должны быть явно типизированы
+ * 
+ * @author CatVRF
+ * @package namespace App\Domains\Logistics\TradeServices\Models
+ * @see https://github.com/iyegorovskyi_clemny/CatVRF
+ */
+pp\Domains\TradeServices\Models;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Traits\TenantScoped;
+final class TradeJob extends Model{use HasUuids,SoftDeletes,TenantScoped;protected $table='trade_jobs';protected $fillable=['uuid','tenant_id','tradesperson_id','client_id','correlation_id','status','total_kopecks','payout_kopecks','payment_status','job_date','duration_hours','job_type','tags'];protected $casts=['total_kopecks'=>'integer','payout_kopecks'=>'integer','job_date'=>'datetime','duration_hours'=>'integer','tags'=>'json'];protected static function booted(){static::addGlobalScope('tenant',fn($q)=>$q->where('trade_jobs.tenant_id',tenant()->id));}}

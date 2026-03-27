@@ -1,80 +1,98 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Domains\Auto\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
+/**
+ * КАНОН 2026: Vehicle.
+ * Модель транспортного средства (Такси, СТО, Продажа).
+ */
 final class Vehicle extends Model
 {
-    use HasFactory, SoftDeletes;
+    use SoftDeletes;
 
-    protected $table = 'vehicles';
+    protected $table = 'auto_vehicles';
 
     protected $fillable = [
+        'uuid',
         'tenant_id',
-        'owner_id',
+        'business_group_id',
         'vin',
-        'make',
+        'license_plate',
+        'brand',
         'model',
         'year',
-        'license_plate',
         'color',
-        'engine_type',
-        'transmission',
-        'mileage',
-        'uuid',
+        'type',
+        'status',
+        'technical_specs',
+        'amenities',
+        'price_kopecks',
         'correlation_id',
         'tags',
     ];
 
-    protected $hidden = [];
-
     protected $casts = [
-        'year' => 'integer',
-        'mileage' => 'integer',
+        'technical_specs' => 'json',
+        'amenities' => 'json',
         'tags' => 'json',
+        'price_kopecks' => 'integer',
+        'year' => 'integer',
     ];
 
+    /**
+     * КАНОН 2026: Global Scope + ID Generation.
+     */
     protected static function booted(): void
     {
-        static::addGlobalScope('tenant', function ($builder) {
-            if (auth()->check() && tenancy()->initialized) {
-                $builder->where('tenant_id', tenant()->id);
+        static::creating(function (Vehicle $vehicle) {
+            $vehicle->uuid = $vehicle->uuid ?? (string) Str::uuid();
+            $vehicle->tenant_id = $vehicle->tenant_id ?? (tenant()->id ?? 0);
+        });
+
+        static::addGlobalScope('tenant', function (Builder $builder) {
+            if (tenant()) {
+                $builder->where('auto_vehicles.tenant_id', tenant()->id);
             }
         });
     }
 
-    public function tenant(): BelongsTo
+    /**
+     * Связанные заказы на ремонт.
+     */
+    public function repairOrders(): HasMany
     {
-        return $this->belongsTo(\App\Models\Tenant::class);
+        return $this->hasMany(AutoRepairOrder::class, 'vehicle_id');
     }
 
-    public function owner(): BelongsTo
+    /**
+     * История поездок такси.
+     */
+    public function taxiRides(): HasMany
     {
-        return $this->belongsTo(\App\Models\User::class, 'owner_id');
+        return $this->hasMany(TaxiRide::class, 'vehicle_id');
     }
 
-    public function serviceOrders(): HasMany
-    {
-        return $this->hasMany(AutoServiceOrder::class);
-    }
-
+    /**
+     * Бронирования мойки.
+     */
     public function washBookings(): HasMany
     {
-        return $this->hasMany(CarWashBooking::class);
+        return $this->hasMany(WashBooking::class, 'vehicle_id');
     }
 
-    public function detailings(): HasMany
+    /**
+     * Форматированное название (Brand + Model + Plate).
+     */
+    public function getDisplayNameAttribute(): string
     {
-        return $this->hasMany(CarDetailing::class);
-    }
-
-    public function inspections(): HasMany
-    {
-        return $this->hasMany(VehicleInspection::class);
+        return "{$this->brand} {$this->model} (" . ($this->license_plate ?? 'No Plate') . ")";
     }
 }

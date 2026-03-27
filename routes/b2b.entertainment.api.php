@@ -1,7 +1,7 @@
 <?php declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
-use App\Domains\Entertainment\Http\Controllers\B2BEntertainmentController;
+use App\Domains\EventPlanning\Entertainment\Http\Controllers\B2BEntertainmentController;
 
 Route::middleware(['auth:sanctum', 'tenant'])->prefix('api/b2b/entertainment')->group(function () {
     Route::get('/', [B2BEntertainmentController::class, 'storefronts'])->name('b2b.entertainment.index');

@@ -1,12 +1,11 @@
-declare(strict_types=1);
-
 <?php
 
 declare(strict_types=1);
 
+
 namespace App\Filament\Tenant\Resources\Grocery;
 
-use App\Domains\Grocery\Models\GroceryStore;
+use App\Domains\Food\Grocery\Models\GroceryStore;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;

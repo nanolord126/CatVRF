@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Logistics\Http\Controllers;
 
@@ -40,7 +41,7 @@ class CourierRatingController
         try {
             $correlationId = Str::uuid()->toString();
 
-            $this->db->transaction(function () use ($shipmentId, $correlationId) {
+            DB::transaction(function () use ($shipmentId, $correlationId) {
                 $shipment = \App\Domains\Logistics\Models\Shipment::findOrFail($shipmentId);
 
                 CourierRating::create([
@@ -53,7 +54,7 @@ class CourierRatingController
                     'correlation_id' => $correlationId,
                 ]);
 
-                $this->log->channel('audit')->info('Courier rated', [
+                Log::channel('audit')->info('Courier rated', [
                     'shipment_id' => $shipmentId,
                     'courier_id' => $shipment->courier_service_id,
                     'rating' => request('rating'),

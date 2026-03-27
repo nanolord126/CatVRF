@@ -11,9 +11,7 @@ final class DopplerService
      */
     public static function get(string $key, mixed $default = null): mixed
     {
-        return Cache::remember('doppler:secret:' . $key, 3600, function() use ($key, $default) {
-            return env($key, $default);
-        });
+        return env($key, $default);
     }
 
     /**

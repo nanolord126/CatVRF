@@ -1,8 +1,7 @@
-declare(strict_types=1);
-
 <?php
 
 declare(strict_types=1);
+
 
 namespace App\Filament\Widgets;
 
@@ -48,7 +47,7 @@ class LiveEditingWidget extends Widget
             $this->activePresence = [];
             $this->presenceCount = 0;
         } catch (\Throwable $e) {
-            \Illuminate\Support\Facades\$this->log->channel('audit')->error('Failed to load live editing data', [
+            \Illuminate\Support\Facades\Log::channel('audit')->error('Failed to load live editing data', [
                 'error' => $e->getMessage(),
             ]);
         }

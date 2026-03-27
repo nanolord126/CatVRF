@@ -1,49 +1,71 @@
-declare(strict_types=1);
+<?php
 
-<?php declare(strict_types=1);
+declare(strict_types=1);
 
 namespace App\Domains\Auto\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 /**
- * Услуга СТО (замена масла, шиномонтаж и т.д.).
- * Production 2026.
+ * AutoService Model — Канон 2026.
+ * 
+ * Услуги автосервиса (ТО, диагностика, замена масла и т.д.).
+ * Поддержка норм-часов и привязки расходников.
  */
 final class AutoService extends Model
 {
-    use HasUuids, SoftDeletes;
+    use SoftDeletes;
 
     protected $table = 'auto_services';
 
     protected $fillable = [
+        'uuid',
         'tenant_id',
         'name',
         'description',
-        'price',
-        'duration_minutes',
-        'required_parts',
+        'category',
+        'base_price_kopecks',
+        'estimated_hours',
+        'consumables_json',
         'correlation_id',
         'tags',
+        'metadata',
+        'is_active',
     ];
 
     protected $casts = [
-        'tags' => 'collection',
-        'required_parts' => 'collection',
-        'price' => 'integer',
-        'duration_minutes' => 'integer',
+        'tenant_id' => 'integer',
+        'base_price_kopecks' => 'integer',
+        'estimated_hours' => 'float',
+        'consumables_json' => 'json',
+        'tags' => 'json',
+        'metadata' => 'json',
+        'is_active' => 'boolean',
     ];
 
+    /**
+     * Автоматическая генерация UUID и tenant scoping.
+     */
     protected static function booted(): void
     {
-        static::addGlobalScope('tenant', fn ($query) => $query->where('tenant_id', tenant('id') ?? 0));
+        static::creating(function ($model) {
+            $model->uuid = $model->uuid ?? (string) Str::uuid();
+            $model->tenant_id = $model->tenant_id ?? (tenant('id') ?? 1);
+        });
+
+        static::addGlobalScope('tenant_id', function (Builder $builder) {
+            $builder->where('auto_services.tenant_id', tenant('id') ?? 1);
+        });
     }
 
-    public function orders(): HasMany
+    /**
+     * Расчет стоимости работ на основе норм-часа.
+     */
+    public function calculateLaborCost(int $hourlyRateKopecks): int
     {
-        return $this->hasMany(AutoServiceOrder::class, 'service_id');
+        return (int) ($this->estimated_hours * $hourlyRateKopecks);
     }
 }

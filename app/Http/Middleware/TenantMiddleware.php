@@ -47,7 +47,7 @@ final class TenantMiddleware
         }
 
         // Verify tenant exists and is active
-        $tenant = \$this->db->table('tenants')
+        $tenant = \DB::table('tenants')
             ->where('id', $tenantId)
             ->where('is_active', true)
             ->first();

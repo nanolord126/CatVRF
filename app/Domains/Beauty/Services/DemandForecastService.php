@@ -38,7 +38,7 @@ final class DemandForecastService
         );
 
         try {
-            $this->log->channel('audit')->info('Forecasting consumable demand', [
+            Log::channel('audit')->info('Forecasting consumable demand', [
                 'tenant_id' => $tenantId,
                 'days_ahead' => $daysAhead,
                 'correlation_id' => $correlationId,
@@ -67,7 +67,7 @@ final class DemandForecastService
 
             return $forecasts;
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Demand forecast failed', [
+            Log::channel('audit')->error('Demand forecast failed', [
                 'tenant_id' => $tenantId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

@@ -41,7 +41,7 @@ final class HotelService
         }
         RateLimiter::hit("hotel:booking:{$userId}", 3600);
 
-        return $this->db->transaction(function () use ($userId, $hotelId, $roomTypeId, $checkIn, $checkOut, $correlationId) {
+        return DB::transaction(function () use ($userId, $hotelId, $roomTypeId, $checkIn, $checkOut, $correlationId) {
             $hotel = Hotel::findOrFail($hotelId);
             $roomType = RoomType::where("hotel_id", $hotelId)->findOrFail($roomTypeId);
             $nights = $checkIn->diffInDays($checkOut);
@@ -68,7 +68,7 @@ final class HotelService
             ]);
 
             if ($fraud["decision"] === "block") {
-                $this->log->channel("audit")->warning("Hotel: fraud block", ["user_id" => $userId, "score" => $fraud["score"]]);
+                Log::channel("audit")->warning("Hotel: fraud block", ["user_id" => $userId, "score" => $fraud["score"]]);
                 throw new \RuntimeException("Бронирование отклонено службой безопасности.", 403);
             }
 
@@ -97,7 +97,7 @@ final class HotelService
                 correlationId: $correlationId
             );
 
-            $this->log->channel("audit")->info("Hotel: booking created", ["booking_id" => $booking->id, "corr" => $correlationId]);
+            Log::channel("audit")->info("Hotel: booking created", ["booking_id" => $booking->id, "corr" => $correlationId]);
 
             return $booking;
         });
@@ -111,10 +111,10 @@ final class HotelService
         $correlationId = $correlationId ?: (string) Str::uuid();
         $booking = HotelBooking::findOrFail($bookingId);
 
-        $this->db->transaction(function () use ($booking, $correlationId) {
+        DB::transaction(function () use ($booking, $correlationId) {
             $booking->update(["status" => "checked_in"]);
             // Логика выплаты через PayoutScheduleJob (согласно канону 4 дня)
-            $this->log->channel("audit")->info("Hotel: guest checked in", ["booking_id" => $booking->id]);
+            Log::channel("audit")->info("Hotel: guest checked in", ["booking_id" => $booking->id]);
         });
     }
 
@@ -126,7 +126,7 @@ final class HotelService
         $correlationId = $correlationId ?: (string) Str::uuid();
         $booking = HotelBooking::findOrFail($bookingId);
 
-        $this->db->transaction(function () use ($booking, $reason, $correlationId) {
+        DB::transaction(function () use ($booking, $reason, $correlationId) {
             $booking->update(["status" => "cancelled", "meta" => ["cancel_reason" => $reason]]);
             
             // Снятие резерва из инвентаря
@@ -138,7 +138,7 @@ final class HotelService
                 correlationId: $correlationId
             );
 
-            $this->log->channel("audit")->info("Hotel: booking cancelled", ["booking_id" => $booking->id, "reason" => $reason]);
+            Log::channel("audit")->info("Hotel: booking cancelled", ["booking_id" => $booking->id, "reason" => $reason]);
         });
     }
 }

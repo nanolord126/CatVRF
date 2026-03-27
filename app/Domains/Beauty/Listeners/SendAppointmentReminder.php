@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Beauty\Listeners;
 
@@ -21,7 +22,7 @@ class SendAppointmentReminder
     public function handle(AppointmentScheduled $event): void
     {
         try {
-            $this->log->channel('audit')->info('Appointment reminder scheduled', [
+            Log::channel('audit')->info('Appointment reminder scheduled', [
                 'appointment_id' => $event->appointmentId,
                 'master_id' => $event->masterId,
                 'client_id' => $event->clientId,
@@ -31,7 +32,7 @@ class SendAppointmentReminder
             ]);
             // Notification::dispatch(new AppointmentReminderNotification($event), delay: 23 hours);
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Failed to schedule appointment reminder', [
+            Log::channel('audit')->error('Failed to schedule appointment reminder', [
                 'correlation_id' => $event->correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

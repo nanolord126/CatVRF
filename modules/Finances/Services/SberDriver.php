@@ -62,7 +62,7 @@ class SberDriver implements PaymentGatewayInterface
                 throw new Exception("Sber payment init failed: {$response['errorMessage']}");
             }
 
-            $this->log->info('Sber payment initiated', [
+            Log::info('Sber payment initiated', [
                 'order_id' => $data['order_id'],
                 'amount' => $data['amount'],
                 'order_id_sber' => $response['orderId'] ?? null,
@@ -75,7 +75,7 @@ class SberDriver implements PaymentGatewayInterface
                 'gateway' => 'sber',
             ];
         } catch (Exception $e) {
-            $this->log->error('Sber initPayment failed', [
+            Log::error('Sber initPayment failed', [
                 'error' => $e->getMessage(),
                 'order_id' => $data['order_id'] ?? null,
             ]);
@@ -110,14 +110,14 @@ class SberDriver implements PaymentGatewayInterface
                 throw new Exception("Sber deposit failed: {$response['errorMessage']}");
             }
 
-            $this->log->info('Sber payment captured', ['payment_id' => $paymentId]);
+            Log::info('Sber payment captured', ['payment_id' => $paymentId]);
 
             return [
                 'status' => 'settled',
                 'order_id' => $paymentId,
             ];
         } catch (Exception $e) {
-            $this->log->error('Sber capture failed', ['error' => $e->getMessage()]);
+            Log::error('Sber capture failed', ['error' => $e->getMessage()]);
             throw $e;
         }
     }
@@ -146,7 +146,7 @@ class SberDriver implements PaymentGatewayInterface
                 throw new Exception("Sber refund failed: {$response['errorMessage']}");
             }
 
-            $this->log->info('Sber refund processed', [
+            Log::info('Sber refund processed', [
                 'payment_id' => $paymentId,
                 'amount' => $amount,
             ]);
@@ -156,7 +156,7 @@ class SberDriver implements PaymentGatewayInterface
                 'order_id' => $paymentId,
             ];
         } catch (Exception $e) {
-            $this->log->error('Sber refund failed', ['error' => $e->getMessage()]);
+            Log::error('Sber refund failed', ['error' => $e->getMessage()]);
             throw $e;
         }
     }
@@ -168,7 +168,7 @@ class SberDriver implements PaymentGatewayInterface
     {
         try {
             // Sber требует специального договора для выплат
-            $this->log->info('Sber payout initiated', [
+            Log::info('Sber payout initiated', [
                 'amount' => $amount,
                 'recipient' => $recipient['phone'] ?? $recipient['account'] ?? null,
             ]);
@@ -178,7 +178,7 @@ class SberDriver implements PaymentGatewayInterface
                 'payout_id' => 'sber_payout_' . \Illuminate\Support\Str::random(20),
             ];
         } catch (Exception $e) {
-            $this->log->error('Sber payout failed', ['error' => $e->getMessage()]);
+            Log::error('Sber payout failed', ['error' => $e->getMessage()]);
             throw $e;
         }
     }
@@ -217,7 +217,7 @@ class SberDriver implements PaymentGatewayInterface
                 'order_number' => $response['OrderNumber'] ?? null,
             ];
         } catch (Exception $e) {
-            $this->log->error('Get payment status failed', ['error' => $e->getMessage()]);
+            Log::error('Get payment status failed', ['error' => $e->getMessage()]);
             throw $e;
         }
     }
@@ -256,7 +256,7 @@ class SberDriver implements PaymentGatewayInterface
                 throw new Exception("QR generation failed: {$response['errorMessage']}");
             }
 
-            $this->log->info('Sber QR generated', [
+            Log::info('Sber QR generated', [
                 'order_id' => $data['order_id'],
                 'amount' => $data['amount'],
             ]);
@@ -267,7 +267,7 @@ class SberDriver implements PaymentGatewayInterface
                 'payment_id' => $data['order_id'],
             ];
         } catch (Exception $e) {
-            $this->log->error('QR generation failed', ['error' => $e->getMessage()]);
+            Log::error('QR generation failed', ['error' => $e->getMessage()]);
             throw $e;
         }
     }
@@ -285,13 +285,13 @@ class SberDriver implements PaymentGatewayInterface
                 'description' => 'Card tokenization',
             ]);
 
-            $this->log->info('Sber card tokenization initiated', [
+            Log::info('Sber card tokenization initiated', [
                 'order_id' => $data['order_id'] ?? null,
             ]);
 
             return $result;
         } catch (Exception $e) {
-            $this->log->error('Card tokenization failed', ['error' => $e->getMessage()]);
+            Log::error('Card tokenization failed', ['error' => $e->getMessage()]);
             throw $e;
         }
     }
@@ -323,7 +323,7 @@ class SberDriver implements PaymentGatewayInterface
                 throw new Exception("Charge failed: {$response['errorMessage']}");
             }
 
-            $this->log->info('Sber recurring charge completed', [
+            Log::info('Sber recurring charge completed', [
                 'order_id' => $payload['orderNumber'],
                 'amount' => $amount,
             ]);
@@ -333,7 +333,7 @@ class SberDriver implements PaymentGatewayInterface
                 'payment_id' => $response['orderId'] ?? null,
             ];
         } catch (Exception $e) {
-            $this->log->error('Charge by token failed', ['error' => $e->getMessage()]);
+            Log::error('Charge by token failed', ['error' => $e->getMessage()]);
             throw $e;
         }
     }
@@ -353,7 +353,7 @@ class SberDriver implements PaymentGatewayInterface
                 throw new Exception('Invalid webhook signature');
             }
 
-            $this->log->info('Sber webhook processed', [
+            Log::info('Sber webhook processed', [
                 'order_id' => $payload['orderId'] ?? null,
                 'status' => $payload['status'] ?? null,
             ]);
@@ -363,7 +363,7 @@ class SberDriver implements PaymentGatewayInterface
                 'order_id' => $payload['orderId'] ?? null,
             ];
         } catch (Exception $e) {
-            $this->log->error('Webhook processing failed', ['error' => $e->getMessage()]);
+            Log::error('Webhook processing failed', ['error' => $e->getMessage()]);
             throw $e;
         }
     }
@@ -378,10 +378,10 @@ class SberDriver implements PaymentGatewayInterface
                 ->head($this->endpoint . 'health')
                 ->successful();
 
-            $this->log->info('Sber health check', ['available' => $response]);
+            Log::info('Sber health check', ['available' => $response]);
             return $response;
         } catch (Exception $e) {
-            $this->log->warning('Sber health check failed', ['error' => $e->getMessage()]);
+            Log::warning('Sber health check failed', ['error' => $e->getMessage()]);
             return false;
         }
     }

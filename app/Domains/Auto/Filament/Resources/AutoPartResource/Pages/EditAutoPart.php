@@ -38,7 +38,7 @@ final class EditAutoPart extends EditRecord
                         ->rows(3),
                 ])
                 ->action(function (array $data) {
-                    $this->db->transaction(function () use ($data) {
+                    DB::transaction(function () use ($data) {
                         $oldStock = $this->record->current_stock;
                         $this->record->current_stock += (int) $data['quantity'];
                         $this->record->save();
@@ -50,7 +50,7 @@ final class EditAutoPart extends EditRecord
                             $this->record->correlation_id
                         ));
 
-                        $this->log->channel('audit')->info('Auto part stock updated (restock)', [
+                        Log::channel('audit')->info('Auto part stock updated (restock)', [
                             'correlation_id' => $this->record->correlation_id,
                             'part_id' => $this->record->id,
                             'old_stock' => $oldStock,
@@ -70,7 +70,7 @@ final class EditAutoPart extends EditRecord
 
             Actions\DeleteAction::make()
                 ->after(function () {
-                    $this->log->channel('audit')->info('Auto part deleted', [
+                    Log::channel('audit')->info('Auto part deleted', [
                         'correlation_id' => $this->record->correlation_id,
                         'part_id' => $this->record->id,
                         'sku' => $this->record->sku,
@@ -82,7 +82,7 @@ final class EditAutoPart extends EditRecord
 
     protected function afterSave(): void
     {
-        $this->log->channel('audit')->info('Auto part updated', [
+        Log::channel('audit')->info('Auto part updated', [
             'correlation_id' => $this->record->correlation_id,
             'part_id' => $this->record->id,
             'sku' => $this->record->sku,

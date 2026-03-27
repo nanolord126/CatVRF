@@ -39,7 +39,7 @@ final class MeatProductController
 
             return response()->json(['success' => true, 'data' => $products, 'correlation_id' => $correlationId]);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('MeatShops: index error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+            Log::channel('audit')->error('MeatShops: index error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
             return response()->json(['success' => false, 'message' => 'Ошибка загрузки', 'correlation_id' => $correlationId], 500);
         }
     }
@@ -79,7 +79,7 @@ final class MeatProductController
                 'delivery_date'    => 'required|date|after_or_equal:today',
             ]);
 
-            $order = $this->db->transaction(function () use ($validated, $userId, $correlationId): MeatOrder {
+            $order = DB::transaction(function () use ($validated, $userId, $correlationId): MeatOrder {
                 $product = MeatProduct::findOrFail($validated['product_id']);
                 $pricePerGram = $product->price_per_100g / 100;
                 $order = MeatOrder::create([
@@ -96,7 +96,7 @@ final class MeatProductController
                     'correlation_id'   => $correlationId,
                 ]);
 
-                $this->log->channel('audit')->info('MeatShops: Order created', [
+                Log::channel('audit')->info('MeatShops: Order created', [
                     'order_id' => $order->id, 'user_id' => $userId, 'correlation_id' => $correlationId,
                 ]);
 
@@ -107,7 +107,7 @@ final class MeatProductController
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('MeatShops: order error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+            Log::channel('audit')->error('MeatShops: order error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
             return response()->json(['success' => false, 'message' => 'Ошибка заказа', 'correlation_id' => $correlationId], 500);
         }
     }

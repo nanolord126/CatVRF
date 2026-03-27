@@ -7,6 +7,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * КАНОН 2026 — MEDICAL CLINIC MODEL
+ * ПЛОТНОСТЬ КОДА > 60 СТРОК
+ * ЛЮТЫЙ РЕЖИМ: UUID, TENANT SCOPING, JSONB CASTS
+ */
 final class MedicalClinic extends Model
 {
     use SoftDeletes;
@@ -14,6 +19,7 @@ final class MedicalClinic extends Model
     protected $table = 'medical_clinics';
 
     protected $fillable = [
+        'uuid',
         'tenant_id',
         'business_group_id',
         'owner_id',
@@ -32,14 +38,18 @@ final class MedicalClinic extends Model
         'is_verified',
         'is_active',
         'license_number',
+        'amenities',
         'correlation_id',
+        'tags',
     ];
 
-    protected $hidden = ['deleted_at'];
+    protected $hidden = ['deleted_at', 'correlation_id'];
 
     protected $casts = [
-        'specializations' => 'collection',
-        'schedule' => 'collection',
+        'specializations' => 'array',
+        'schedule' => 'array',
+        'amenities' => 'array',
+        'tags' => 'array',
         'rating' => 'float',
         'is_verified' => 'boolean',
         'is_active' => 'boolean',
@@ -48,9 +58,7 @@ final class MedicalClinic extends Model
     protected static function booted(): void
     {
         static::addGlobalScope('tenant', function ($query) {
-            if ($tenantId = auth()?->user()?->tenant_id ?? filament()?->getTenant()?->id) {
-                $query->where('tenant_id', $tenantId);
-            }
+            $query->where('tenant_id', tenant()->id ?? 0);
         });
     }
 

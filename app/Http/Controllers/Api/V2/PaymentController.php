@@ -1,11 +1,7 @@
-declare(strict_types=1);
-
 <?php
-
+declare(strict_types=1);
 namespace App\Http\Controllers\Api\V2;
-
 use App\Http\Controllers\Controller;
-
 /**
  * PaymentController
  * 

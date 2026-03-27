@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Factories\Courses;
 
-use App\Domains\Courses\Models\Course;
+use App\Domains\Education\Courses\Models\Course;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 

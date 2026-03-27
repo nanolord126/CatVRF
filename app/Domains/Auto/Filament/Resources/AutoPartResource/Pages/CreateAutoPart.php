@@ -42,7 +42,7 @@ final class CreateAutoPart extends CreateRecord
             $this->halt();
         }
 
-        $this->log->channel('audit')->info('Creating auto part', [
+        Log::channel('audit')->info('Creating auto part', [
             'correlation_id' => $correlationId,
             'tenant_id' => filament()->getTenant()->id,
             'user_id' => auth()->id(),
@@ -54,14 +54,14 @@ final class CreateAutoPart extends CreateRecord
 
     protected function afterCreate(): void
     {
-        $this->db->transaction(function () {
+        DB::transaction(function () {
             // Событие создания запчасти
             event(new AutoPartCreated(
                 $this->record,
                 $this->record->correlation_id
             ));
 
-            $this->log->channel('audit')->info('Auto part created successfully', [
+            Log::channel('audit')->info('Auto part created successfully', [
                 'correlation_id' => $this->record->correlation_id,
                 'part_id' => $this->record->id,
                 'sku' => $this->record->sku,

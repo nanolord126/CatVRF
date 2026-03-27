@@ -19,7 +19,7 @@ class LoyaltyEngine
     public function __construct(private WalletService $wallet)
     {
         $this->correlationId = Str::uuid();
-        $this->tenantId = $this->auth->guard('tenant')?->id();
+        $this->tenantId = Auth::guard('tenant')?->id();
     }
 
     /**
@@ -30,7 +30,7 @@ class LoyaltyEngine
         $this->correlationId = Str::uuid();
 
         try {
-            $this->log->channel('marketing')->info('LoyaltyEngine: calculating cashback', [
+            Log::channel('marketing')->info('LoyaltyEngine: calculating cashback', [
                 'correlation_id' => $this->correlationId,
                 'user_id' => $user->id,
                 'order_amount' => $orderAmount,
@@ -46,11 +46,11 @@ class LoyaltyEngine
             // Прямое начисление на кошелек
             $this->wallet->credit($user, $cashback, "Loyalty Cashback (Fixed 1%)");
 
-            Audit$this->log->create([
+            AuditLog::create([
                 'entity_type' => 'LoyaltyCashback',
                 'entity_id' => $user->id,
                 'action' => 'cashback_credited',
-                'user_id' => $this->auth->id(),
+                'user_id' => Auth::id(),
                 'tenant_id' => $this->tenantId,
                 'correlation_id' => $this->correlationId,
                 'changes' => [],
@@ -62,7 +62,7 @@ class LoyaltyEngine
                 ],
             ]);
 
-            $this->log->channel('marketing')->info('LoyaltyEngine: cashback calculated', [
+            Log::channel('marketing')->info('LoyaltyEngine: cashback calculated', [
                 'correlation_id' => $this->correlationId,
                 'user_id' => $user->id,
                 'cashback' => $cashback,
@@ -70,7 +70,7 @@ class LoyaltyEngine
 
             return $cashback;
         } catch (Throwable $e) {
-            $this->log->error('LoyaltyEngine: cashback calculation failed', [
+            Log::error('LoyaltyEngine: cashback calculation failed', [
                 'correlation_id' => $this->correlationId,
                 'user_id' => $user->id,
                 'error' => $e->getMessage(),
@@ -86,7 +86,7 @@ class LoyaltyEngine
     public function getUserLoyaltyTier(User $user): string
     {
         try {
-            return $this->cache->remember("user_tier_{$user->id}", 86400, function() use ($user) {
+            return Cache::remember("user_tier_{$user->id}", 86400, function() use ($user) {
                 $totalSpent = $user->ledger()?->where('type', 'debit')->sum('amount') ?? 0;
 
                 if ($totalSpent > 100000) return 'platinum';
@@ -95,7 +95,7 @@ class LoyaltyEngine
                 return 'newbie';
             });
         } catch (Throwable $e) {
-            $this->log->error('LoyaltyEngine: tier calculation failed', [
+            Log::error('LoyaltyEngine: tier calculation failed', [
                 'correlation_id' => $this->correlationId,
                 'user_id' => $user->id,
                 'error' => $e->getMessage(),
@@ -112,7 +112,7 @@ class LoyaltyEngine
         $this->correlationId = Str::uuid();
 
         try {
-            $this->log->channel('marketing')->info('LoyaltyEngine: rewarding review', [
+            Log::channel('marketing')->info('LoyaltyEngine: rewarding review', [
                 'correlation_id' => $this->correlationId,
                 'user_id' => $user->id,
                 'media_count' => $mediaCount,
@@ -122,11 +122,11 @@ class LoyaltyEngine
 
             $this->wallet->credit($user, $bonus, "Review Reward: Media incentive");
 
-            Audit$this->log->create([
+            AuditLog::create([
                 'entity_type' => 'ReviewReward',
                 'entity_id' => $user->id,
                 'action' => 'reward_credited',
-                'user_id' => $this->auth->id(),
+                'user_id' => Auth::id(),
                 'tenant_id' => $this->tenantId,
                 'correlation_id' => $this->correlationId,
                 'changes' => [],
@@ -137,13 +137,13 @@ class LoyaltyEngine
                 ],
             ]);
 
-            $this->log->channel('marketing')->info('LoyaltyEngine: review reward credited', [
+            Log::channel('marketing')->info('LoyaltyEngine: review reward credited', [
                 'correlation_id' => $this->correlationId,
                 'user_id' => $user->id,
                 'bonus' => $bonus,
             ]);
         } catch (Throwable $e) {
-            $this->log->error('LoyaltyEngine: review reward failed', [
+            Log::error('LoyaltyEngine: review reward failed', [
                 'correlation_id' => $this->correlationId,
                 'user_id' => $user->id,
                 'error' => $e->getMessage(),

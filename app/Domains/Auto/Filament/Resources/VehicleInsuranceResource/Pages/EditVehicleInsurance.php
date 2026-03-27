@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Auto\Filament\Resources\VehicleInsuranceResource\Pages;
 
@@ -27,7 +28,7 @@ class EditVehicleInsurance extends EditRecord
         return [
             Actions\DeleteAction::make()
                 ->after(function () {
-                    $this->log->channel('audit')->info('VehicleInsurance deleted', [
+                    Log::channel('audit')->info('VehicleInsurance deleted', [
                         'correlation_id' => $this->record->correlation_id,
                         'policy_id' => $this->record->id,
                     ]);
@@ -37,7 +38,7 @@ class EditVehicleInsurance extends EditRecord
 
     protected function afterSave(): void
     {
-        $this->log->channel('audit')->info('VehicleInsurance updated', [
+        Log::channel('audit')->info('VehicleInsurance updated', [
             'correlation_id' => $this->record->correlation_id,
             'policy_id' => $this->record->id,
             'status' => $this->record->status,

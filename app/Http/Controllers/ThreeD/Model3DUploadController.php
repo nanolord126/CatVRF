@@ -1,12 +1,9 @@
 <?php
-
 declare(strict_types=1);
-
 namespace App\Http\Controllers\ThreeD;
-
-use App\Domains\ThreeD\Models\Model3D;
-use App\Domains\ThreeD\Services\Model3DService;
-use App\Domains\ThreeD\Services\Model3DValidationService;
+use App\Domains\Art\ThreeD\Models\Model3D;
+use App\Domains\Art\ThreeD\Services\Model3DService;
+use App\Domains\Art\ThreeD\Services\Model3DValidationService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Upload3DModelRequest;
 use Illuminate\Http\JsonResponse;
@@ -15,7 +12,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;
-
 final class Model3DUploadController extends Controller
 {
     public function __construct(
@@ -23,7 +19,6 @@ final class Model3DUploadController extends Controller
         private readonly Model3DValidationService $validationService,
     ) {
     }
-
     /**
      * Загрузить новую 3D модель
      *
@@ -38,7 +33,6 @@ final class Model3DUploadController extends Controller
     public function store(Upload3DModelRequest $request): JsonResponse
     {
         $correlationId = Str::uuid();
-
         try {
             // SECURITY: Rate limiting (10 загрузок в час на тенанта)
             $rateLimitKey = "upload_3d_model:tenant:" . auth()->user()->tenant_id;
@@ -47,7 +41,6 @@ final class Model3DUploadController extends Controller
                 limit: 10,
                 decay: 3600,
             );
-
             if (!$attempt) {
                 return response()->json([
                     'message' => 'Лимит загрузок превышен',
@@ -55,9 +48,7 @@ final class Model3DUploadController extends Controller
                     'retry_after' => RateLimiter::availableIn($rateLimitKey),
                 ], 429);
             }
-
             $validated = $request->validated();
-
             // SECURITY: Проверка tenant_id из сессии
             $tenantId = auth()->user()->tenant_id;
             if (!$tenantId) {
@@ -66,30 +57,26 @@ final class Model3DUploadController extends Controller
                     'correlation_id' => (string)$correlationId,
                 ], 401);
             }
-
             // SECURITY: FraudControl check перед мутацией
             if (method_exists($this, 'fraudCheck')) {
                 $fraudResult = $this->fraudCheck('upload_3d_model', [
                     'tenant_id' => $tenantId,
                     'file_size' => $request->file('model')->getSize(),
                 ]);
-
                 if (!$fraudResult['allowed']) {
-                    $this->log->channel('fraud_alert')->warning('3D модель заблокирована фрод-сервисом', [
+                    Log::channel('fraud_alert')->warning('3D модель заблокирована фрод-сервисом', [
                         'correlation_id' => (string)$correlationId,
                         'tenant_id' => $tenantId,
                         'reason' => $fraudResult['reason'] ?? 'Подозрение на мошенничество',
                     ]);
-
                     return response()->json([
                         'message' => 'Операция заблокирована',
                         'correlation_id' => (string)$correlationId,
                     ], 403);
                 }
             }
-
             // SECURITY: Сохранение модели в транзакции
-            $model = $this->db->transaction(function () use ($request, $tenantId, $correlationId): Model3D {
+            $model = DB::transaction(function () use ($request, $tenantId, $correlationId): Model3D {
                 return $this->model3DService->storeModel(
                     tenantId: $tenantId,
                     file: $request->file('model'),
@@ -98,8 +85,7 @@ final class Model3DUploadController extends Controller
                     correlationId: (string)$correlationId,
                 );
             });
-
-            $this->log->channel('audit')->info('3D модель успешно загружена', [
+            Log::channel('audit')->info('3D модель успешно загружена', [
                 'correlation_id' => (string)$correlationId,
                 'tenant_id' => $tenantId,
                 'model_id' => $model->id,
@@ -107,7 +93,6 @@ final class Model3DUploadController extends Controller
                 'file_size' => $model->file_size,
                 'hash' => $model->hash,
             ]);
-
             return response()->json([
                 'message' => 'Модель загружена успешно',
                 'correlation_id' => (string)$correlationId,
@@ -117,23 +102,19 @@ final class Model3DUploadController extends Controller
                     'status' => $model->status,
                 ],
             ], 201);
-
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Ошибка при загрузке 3D модели', [
+            Log::channel('audit')->error('Ошибка при загрузке 3D модели', [
                 'correlation_id' => (string)$correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-
             $statusCode = method_exists($e, 'getStatusCode') ? $e->getStatusCode() : 400;
-
             return response()->json([
                 'message' => $e->getMessage(),
                 'correlation_id' => (string)$correlationId,
             ], $statusCode);
         }
     }
-
     /**
      * Получить превью 3D модели (после загрузки и обработки)
      * 
@@ -154,18 +135,14 @@ final class Model3DUploadController extends Controller
                     'correlation_id' => null,
                 ], 429);
             }
-
             // SECURITY: Поиск с tenant scoping (встроен в глобальный scope)
             $model = Model3D::where('uuid', $modelUuid)
                 ->where('status', 'active')
                 ->firstOrFail();
-
             // Инкремент просмотров для аналитики
             $this->model3DService->recordView($model);
-
             // Генерируем подписанный URL для скачивания
             $downloadUrl = $this->model3DService->getSignedDownloadUrl($model);
-
             return response()->json([
                 'model' => [
                     'id' => $model->uuid,
@@ -181,13 +158,11 @@ final class Model3DUploadController extends Controller
                         ->toArray(),
                 ],
             ]);
-
         } catch (\Exception $e) {
-            $this->log->channel('audit')->warning('Ошибка при получении превью 3D модели', [
+            Log::channel('audit')->warning('Ошибка при получении превью 3D модели', [
                 'model_uuid' => $modelUuid,
                 'error' => $e->getMessage(),
             ]);
-
             return response()->json([
                 'message' => 'Модель не найдена',
                 'correlation_id' => null,

@@ -45,7 +45,7 @@ final class OrderController
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\RuntimeException $e) {
-            \$this->log->channel('audit')->error('Catering order store error', [
+            \Log::channel('audit')->error('Catering order store error', [
                 'error' => $e->getMessage(),
                 'user_id' => auth()->id(),
                 'correlation_id' => $correlationId,
@@ -92,7 +92,7 @@ final class OrderController
                 ],
             ]);
         } catch (\Exception $e) {
-            \$this->log->channel('audit')->error('Catering order show error', [
+            \Log::channel('audit')->error('Catering order show error', [
                 'order_id' => $orderId,
                 'user_id' => auth()->id(),
                 'error' => $e->getMessage(),
@@ -145,7 +145,7 @@ final class OrderController
 
             $updated = $this->service->cancelOrder($orderId, $correlationId);
 
-            \$this->log->channel('audit')->info('Catering order cancelled via API', [
+            \Log::channel('audit')->info('Catering order cancelled via API', [
                 'order_id' => $orderId,
                 'user_id' => auth()->id(),
                 'correlation_id' => $correlationId,
@@ -158,7 +158,7 @@ final class OrderController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Exception $e) {
-            \$this->log->channel('audit')->error('Catering order cancellation error', [
+            \Log::channel('audit')->error('Catering order cancellation error', [
                 'order_id' => $orderId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

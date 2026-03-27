@@ -1,37 +1,23 @@
-declare(strict_types=1);
-
 <?php declare(strict_types=1);
 
 namespace App\Domains\Logistics\Events;
 
-use App\Domains\Logistics\Models\CourierService;
+use App\Domains\Logistics\Models\Courier;
+use App\Domains\Logistics\Models\DeliveryOrder;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-final /**
- * CourierAssigned
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
+/**
+ * Courier Assigned Event (2026 Edition)
  */
-class CourierAssigned
+final class CourierAssigned
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public function __construct(
-        public CourierService $courier,
-        public string $correlationId,
-    ) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+        public readonly DeliveryOrder $order,
+        public readonly Courier $courier,
+        public readonly string $correlationId
+    ) {}
 }

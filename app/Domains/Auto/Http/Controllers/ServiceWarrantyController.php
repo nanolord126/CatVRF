@@ -35,7 +35,7 @@ final class ServiceWarrantyController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Service warranty index failed', [
+            Log::channel('audit')->error('Service warranty index failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -68,7 +68,7 @@ final class ServiceWarrantyController extends Controller
         try {
             $warranty = $this->warrantyService->createServiceWarranty($validated);
 
-            $this->log->channel('audit')->info('Service warranty created', [
+            Log::channel('audit')->info('Service warranty created', [
                 'correlation_id' => $correlationId,
                 'warranty_id' => $warranty->id,
             ]);
@@ -79,7 +79,7 @@ final class ServiceWarrantyController extends Controller
                 'correlation_id' => $correlationId,
             ], 201);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Service warranty creation failed', [
+            Log::channel('audit')->error('Service warranty creation failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -118,7 +118,7 @@ final class ServiceWarrantyController extends Controller
                 $validated['notes'] ?? null
             );
 
-            $this->log->channel('audit')->info('Service warranty claim submitted', [
+            Log::channel('audit')->info('Service warranty claim submitted', [
                 'correlation_id' => $correlationId,
                 'warranty_id' => $warranty->id,
             ]);
@@ -129,7 +129,7 @@ final class ServiceWarrantyController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Service warranty claim failed', [
+            Log::channel('audit')->error('Service warranty claim failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -162,7 +162,7 @@ final class ServiceWarrantyController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Service warranty approval failed', [
+            Log::channel('audit')->error('Service warranty approval failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -195,7 +195,7 @@ final class ServiceWarrantyController extends Controller
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Service warranty rejection failed', [
+            Log::channel('audit')->error('Service warranty rejection failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);

@@ -35,7 +35,7 @@ final class FashionReviewController
         $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
         try {
-            $this->db->transaction(function () use ($correlationId) {
+            DB::transaction(function () use ($correlationId) {
                 FashionReview::create([
                     'uuid' => Str::uuid(),
                     'tenant_id' => tenant('id'),
@@ -49,7 +49,7 @@ final class FashionReviewController
                     'correlation_id' => $correlationId,
                 ]);
 
-                $this->log->channel('audit')->info('Fashion review submitted', [
+                Log::channel('audit')->info('Fashion review submitted', [
                     'product_id' => request('product_id'),
                     'reviewer_id' => auth()->id(),
                     'correlation_id' => $correlationId,
@@ -70,9 +70,9 @@ final class FashionReviewController
         try {
             $review = FashionReview::findOrFail($id);
 
-            $this->db->transaction(function () use ($review, $correlationId) {
+            DB::transaction(function () use ($review, $correlationId) {
                 $review->update([...request()->except(['id', 'tenant_id', 'business_group_id', 'correlation_id']), 'correlation_id' => $correlationId]);
-                $this->log->channel('audit')->info('Fashion review updated', ['review_id' => $id, 'correlation_id' => $correlationId]);
+                Log::channel('audit')->info('Fashion review updated', ['review_id' => $id, 'correlation_id' => $correlationId]);
             });
 
             return response()->json(['success' => true, 'data' => $review, 'correlation_id' => $correlationId]);
@@ -87,9 +87,9 @@ final class FashionReviewController
             $review = FashionReview::findOrFail($id);
             $correlationId = Str::uuid()->toString();
 
-            $this->db->transaction(function () use ($review, $correlationId) {
+            DB::transaction(function () use ($review, $correlationId) {
                 $review->delete();
-                $this->log->channel('audit')->info('Fashion review deleted', ['review_id' => $id, 'correlation_id' => $correlationId]);
+                Log::channel('audit')->info('Fashion review deleted', ['review_id' => $id, 'correlation_id' => $correlationId]);
             });
 
             return response()->json(['success' => true, 'data' => null, 'correlation_id' => $correlationId]);
@@ -104,9 +104,9 @@ final class FashionReviewController
             $review = FashionReview::findOrFail($id);
             $correlationId = Str::uuid()->toString();
 
-            $this->db->transaction(function () use ($review, $correlationId) {
+            DB::transaction(function () use ($review, $correlationId) {
                 $review->increment('helpful_count');
-                $this->log->channel('audit')->info('Fashion review marked helpful', ['review_id' => $id, 'correlation_id' => $correlationId]);
+                Log::channel('audit')->info('Fashion review marked helpful', ['review_id' => $id, 'correlation_id' => $correlationId]);
             });
 
             return response()->json(['success' => true, 'data' => null, 'correlation_id' => $correlationId]);
@@ -131,9 +131,9 @@ final class FashionReviewController
             $review = FashionReview::findOrFail($id);
             $correlationId = Str::uuid()->toString();
 
-            $this->db->transaction(function () use ($review, $correlationId) {
+            DB::transaction(function () use ($review, $correlationId) {
                 $review->update(['status' => 'approved', 'correlation_id' => $correlationId]);
-                $this->log->channel('audit')->info('Fashion review approved', ['review_id' => $id, 'correlation_id' => $correlationId]);
+                Log::channel('audit')->info('Fashion review approved', ['review_id' => $id, 'correlation_id' => $correlationId]);
             });
 
             return response()->json(['success' => true, 'data' => $review, 'correlation_id' => $correlationId]);
@@ -148,9 +148,9 @@ final class FashionReviewController
             $review = FashionReview::findOrFail($id);
             $correlationId = Str::uuid()->toString();
 
-            $this->db->transaction(function () use ($review, $correlationId) {
+            DB::transaction(function () use ($review, $correlationId) {
                 $review->delete();
-                $this->log->channel('audit')->info('Fashion review rejected', ['review_id' => $id, 'correlation_id' => $correlationId]);
+                Log::channel('audit')->info('Fashion review rejected', ['review_id' => $id, 'correlation_id' => $correlationId]);
             });
 
             return response()->json(['success' => true, 'data' => null, 'correlation_id' => $correlationId]);

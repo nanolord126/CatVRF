@@ -28,7 +28,7 @@ final class CarWashReminderJob implements ShouldQueue
 
     public function handle(): void
     {
-        $this->log->channel('audit')->info('Car wash reminder job started', [
+        Log::channel('audit')->info('Car wash reminder job started', [
             'correlation_id' => $this->correlationId,
             'type' => $this->type,
         ]);
@@ -54,13 +54,13 @@ final class CarWashReminderJob implements ShouldQueue
                 $booking->user->notify(new CarWashReminderNotification($booking, $this->type));
             }
 
-            $this->log->channel('audit')->info('Car wash reminders sent', [
+            Log::channel('audit')->info('Car wash reminders sent', [
                 'correlation_id' => $this->correlationId,
                 'type' => $this->type,
                 'sent_count' => $bookings->count(),
             ]);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Car wash reminder job failed', [
+            Log::channel('audit')->error('Car wash reminder job failed', [
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

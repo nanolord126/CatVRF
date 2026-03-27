@@ -33,7 +33,7 @@ final class CheckResourcePolicy
             $resource = $this->resolveResource($policyClass, $resourceId);
 
             if (! $resource) {
-                $this->log->channel('audit')->warning('Resource not found for policy check', [
+                Log::channel('audit')->warning('Resource not found for policy check', [
                     'correlation_id' => $request->header('X-Correlation-ID'),
                     'policy_class' => $policyClass,
                     'resource_id' => $resourceId,
@@ -45,8 +45,8 @@ final class CheckResourcePolicy
             }
 
             // Authorize with policy
-            if (! $this->gate->authorize($ability, $resource)) {
-                $this->log->channel('audit')->warning('Policy authorization failed', [
+            if (! Gate::authorize($ability, $resource)) {
+                Log::channel('audit')->warning('Policy authorization failed', [
                     'correlation_id' => $request->header('X-Correlation-ID'),
                     'policy_class' => $policyClass,
                     'ability' => $ability,
@@ -58,7 +58,7 @@ final class CheckResourcePolicy
                 return response()->json(['error' => 'Forbidden - Policy check failed'], 403);
             }
 
-            $this->log->channel('audit')->debug('Policy authorization granted', [
+            Log::channel('audit')->debug('Policy authorization granted', [
                 'correlation_id' => $request->header('X-Correlation-ID'),
                 'policy_class' => $policyClass,
                 'ability' => $ability,

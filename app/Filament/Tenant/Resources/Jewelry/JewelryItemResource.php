@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Jewelry;
 
-use App\Domains\Jewelry\Models\JewelryItem;
+use App\Domains\Luxury\Jewelry\Models\JewelryItem;
 use App\Filament\Tenant\Resources\Jewelry\JewelryItemResource\Pages;
 use Filament\Forms;
 use Filament\Forms\Form;

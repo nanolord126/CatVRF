@@ -43,7 +43,7 @@ final class CreateCarWashBooking extends CreateRecord
             $this->halt();
         }
 
-        $this->log->channel('audit')->info('Creating car wash booking', [
+        Log::channel('audit')->info('Creating car wash booking', [
             'correlation_id' => $correlationId,
             'tenant_id' => filament()->getTenant()->id,
             'user_id' => auth()->id(),
@@ -55,14 +55,14 @@ final class CreateCarWashBooking extends CreateRecord
 
     protected function afterCreate(): void
     {
-        $this->db->transaction(function () {
+        DB::transaction(function () {
             // Событие создания брони мойки
             event(new CarWashBookingCreated(
                 $this->record,
                 $this->record->correlation_id
             ));
 
-            $this->log->channel('audit')->info('Car wash booking created successfully', [
+            Log::channel('audit')->info('Car wash booking created successfully', [
                 'correlation_id' => $this->record->correlation_id,
                 'booking_id' => $this->record->id,
                 'wash_type' => $this->record->wash_type,

@@ -1,11 +1,11 @@
 <?php declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
-use App\Domains\Courses\Http\Controllers\CourseController;
-use App\Domains\Courses\Http\Controllers\LessonController;
-use App\Domains\Courses\Http\Controllers\EnrollmentController;
-use App\Domains\Courses\Http\Controllers\CourseReviewController;
-use App\Domains\Courses\Http\Controllers\CertificateController;
+use App\Domains\Education\Courses\Http\Controllers\CourseController;
+use App\Domains\Education\Courses\Http\Controllers\LessonController;
+use App\Domains\Education\Courses\Http\Controllers\EnrollmentController;
+use App\Domains\Education\Courses\Http\Controllers\CourseReviewController;
+use App\Domains\Education\Courses\Http\Controllers\CertificateController;
 
 Route::prefix('api')->group(function () {
     // Public routes
@@ -41,7 +41,7 @@ Route::prefix('api')->group(function () {
         Route::delete('/reviews/{id}', [CourseReviewController::class, 'delete']);
 
         // Instructor routes
-        Route::post('/courses', [CourseController::class, 'store'])->can('create', 'App\Domains\Courses\Models\Course');
+        Route::post('/courses', [CourseController::class, 'store'])->can('create', 'App\Domains\Education\Courses\Models\Course');
         Route::patch('/courses/{id}', [CourseController::class, 'update']);
         Route::delete('/courses/{id}', [CourseController::class, 'delete']);
 

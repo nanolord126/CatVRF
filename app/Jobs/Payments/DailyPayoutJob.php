@@ -38,7 +38,7 @@ final class DailyPayoutJob implements ShouldQueue
     public function handle(PayoutService $payoutService): void
     {
         try {
-            $this->db->transaction(function () use ($payoutService) {
+            DB::transaction(function () use ($payoutService) {
                 $cutoffDate = now()->subDays(1)->startOfDay();
                 $pendingPayouts = $payoutService->getPendingPayouts($cutoffDate);
 
@@ -48,7 +48,7 @@ final class DailyPayoutJob implements ShouldQueue
                         $this->correlationId
                     );
 
-                    $this->log->channel('audit')->info('Payout processed', [
+                    Log::channel('audit')->info('Payout processed', [
                         'correlation_id' => $this->correlationId,
                         'payout_id' => $payout->id,
                         'tenant_id' => $payout->tenant_id,
@@ -57,12 +57,12 @@ final class DailyPayoutJob implements ShouldQueue
                 }
             });
 
-            $this->log->channel('audit')->info('Daily payout batch completed', [
+            Log::channel('audit')->info('Daily payout batch completed', [
                 'correlation_id' => $this->correlationId,
                 'processed_date' => Carbon::now()->toDateString(),
             ]);
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Daily payout job failed', [
+            Log::channel('audit')->error('Daily payout job failed', [
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

@@ -1,7 +1,7 @@
 <?php declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
-use App\Domains\PetServices\Http\Controllers\B2BPetController;
+use App\Domains\Pet\PetServices\Http\Controllers\B2BPetController;
 
 Route::middleware(['auth:sanctum', 'tenant'])->prefix('api/b2b/pet-services')->group(function () {
     Route::get('/', [B2BPetController::class, 'storefronts'])->name('b2b.pet-services.index');

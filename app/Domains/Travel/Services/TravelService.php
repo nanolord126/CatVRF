@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Travel\Services;
 
@@ -41,7 +42,7 @@ class TravelService
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-$this->db->transaction(function () use ($tourId, $seats) {
+DB::transaction(function () use ($tourId, $seats) {
             $tour = TravelTour::lockForUpdate()->find($tourId);
 
             if (!$tour || ($tour->booked + $seats) > $tour->capacity) {
@@ -50,7 +51,7 @@ $this->db->transaction(function () use ($tourId, $seats) {
 
             $tour->update(['booked' => $tour->booked + $seats]);
 
-            $this->log->channel('audit')->info('Tour booked', [
+            Log::channel('audit')->info('Tour booked', [
                 'correlation_id' => $this->correlationId,
                 'tour_id' => $tourId,
                 'seats' => $seats,

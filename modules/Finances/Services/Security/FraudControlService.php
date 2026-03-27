@@ -39,7 +39,7 @@ final class FraudControlService
                 $this->logFraudAttempt($userId, $operationType, $amount, $score, 'block', $reason, $context);
             }
 
-            $this->log->channel('audit')->info('Fraud check completed', [
+            Log::channel('audit')->info('Fraud check completed', [
                 'user_id' => $userId,
                 'operation_type' => $operationType,
                 'amount' => $amount,
@@ -54,7 +54,7 @@ final class FraudControlService
                 'reason' => $reason,
             ];
         } catch (\Throwable $e) {
-            $this->log->error('Fraud check failed', [
+            Log::error('Fraud check failed', [
                 'user_id' => $userId,
                 'error' => $e->getMessage(),
             ]);
@@ -216,7 +216,7 @@ final class FraudControlService
         array $context = []
     ): void {
         try {
-            $this->db->table('fraud_attempts')->insert([
+            DB::table('fraud_attempts')->insert([
                 'tenant_id' => auth()->user()->tenant_id ?? 'system',
                 'user_id' => $userId,
                 'operation_type' => $operationType,
@@ -229,7 +229,7 @@ final class FraudControlService
                 'created_at' => now(),
             ]);
         } catch (\Throwable $e) {
-            $this->log->warning('Failed to log fraud attempt', [
+            Log::warning('Failed to log fraud attempt', [
                 'error' => $e->getMessage(),
             ]);
         }
@@ -240,7 +240,7 @@ final class FraudControlService
      */
     private function getUserOperationCount(int $userId, string $operationType): int
     {
-        return (int) $this->db->table('balance_transactions')
+        return (int) DB::table('balance_transactions')
             ->where('user_id', $userId)
             ->where('type', $operationType)
             ->whereDate('created_at', now())
@@ -252,7 +252,7 @@ final class FraudControlService
      */
     private function getAccountAgeDays(int $userId): int
     {
-        $user = $this->db->table('users')->find($userId);
+        $user = DB::table('users')->find($userId);
 
         if (!$user) {
             return 0;
@@ -266,7 +266,7 @@ final class FraudControlService
      */
     private function getSuccessRate(int $userId, string $operationType): float
     {
-        $total = $this->db->table('balance_transactions')
+        $total = DB::table('balance_transactions')
             ->where('user_id', $userId)
             ->where('type', $operationType)
             ->count();
@@ -275,7 +275,7 @@ final class FraudControlService
             return 0.0;
         }
 
-        $successful = $this->db->table('balance_transactions')
+        $successful = DB::table('balance_transactions')
             ->where('user_id', $userId)
             ->where('type', $operationType)
             ->where('status', 'completed')
@@ -291,7 +291,7 @@ final class FraudControlService
     {
         $deviceFingerprint = $this->getDeviceFingerprint();
 
-        $existingCount = $this->db->table('user_sessions')
+        $existingCount = DB::table('user_sessions')
             ->where('user_id', $userId)
             ->where('device_fingerprint', $deviceFingerprint)
             ->count();
@@ -305,7 +305,7 @@ final class FraudControlService
     private function hasIpChange(int $userId): bool
     {
         $currentIp = request()->ip();
-        $lastIp = $this->db->table('user_sessions')
+        $lastIp = DB::table('user_sessions')
             ->where('user_id', $userId)
             ->latest('created_at')
             ->first()?->ip_address;
@@ -357,7 +357,7 @@ final class FraudControlService
                 $riskScore = max($riskScore, $mlScore);
                 $reasons[] = "ML risk: {$mlScore}";
             } catch (\Exception $e) {
-                $this->log->warning('ML fraud check failed', ['error' => $e->getMessage()]);
+                Log::warning('ML fraud check failed', ['error' => $e->getMessage()]);
             }
 
             $finalScore = min($riskScore, 100);
@@ -371,7 +371,7 @@ final class FraudControlService
                 'reasons' => $reasons,
             ];
 
-            $this->log->info('Fraud check completed', [
+            Log::info('Fraud check completed', [
                 'user_id' => $userId,
                 'risk_score' => $finalScore,
                 'action' => $result['block'] ? 'BLOCK' : ($result['require_2fa'] ? '2FA' : 'ALLOW'),
@@ -380,7 +380,7 @@ final class FraudControlService
 
             return $result;
         } catch (\Exception $e) {
-            $this->log->error('Fraud check failed', ['error' => $e->getMessage(), 'user_id' => $userId]);
+            Log::error('Fraud check failed', ['error' => $e->getMessage(), 'user_id' => $userId]);
             // По умолчанию требуем 2FA при ошибке проверки
             return ['risk_score' => 50, 'require_2fa' => true, 'error' => true];
         }
@@ -392,7 +392,7 @@ final class FraudControlService
     public function getUserDailyLimit(int $userId): float
     {
         // Может быть переопределено в профиле пользователя
-        return $this->cache->remember(
+        return Cache::remember(
             "fraud_limit_{$userId}",
             3600,
             fn() => (float) config('finances.fraud.daily_limit', 100000)
@@ -404,7 +404,7 @@ final class FraudControlService
      */
     private function getUserDailyTotal(int $userId): float
     {
-        return $this->cache->remember(
+        return Cache::remember(
             "fraud_daily_{$userId}",
             300,
             fn() => PaymentTransaction::where('user_id', $userId)
@@ -419,7 +419,7 @@ final class FraudControlService
      */
     private function getUserTransactionCount(int $userId): int
     {
-        return $this->cache->remember(
+        return Cache::remember(
             "fraud_count_{$userId}",
             300,
             fn() => PaymentTransaction::where('user_id', $userId)
@@ -434,7 +434,7 @@ final class FraudControlService
     private function isLocationSuspicious(int $userId, array $location): bool
     {
         // Получить последнюю активность пользователя
-        $lastActivity = $this->db->table('audit_logs')
+        $lastActivity = DB::table('audit_logs')
             ->where('user_id', $userId)
             ->latest('created_at')
             ->first();
@@ -485,8 +485,8 @@ final class FraudControlService
      */
     public function blockUser(int $userId, int $hours = 24): void
     {
-        $this->cache->put("fraud_block_{$userId}", true, now()->addHours($hours));
-        $this->log->warning('User temporarily blocked due to fraud suspicion', [
+        Cache::put("fraud_block_{$userId}", true, now()->addHours($hours));
+        Log::warning('User temporarily blocked due to fraud suspicion', [
             'user_id' => $userId,
             'duration_hours' => $hours,
         ]);
@@ -497,7 +497,7 @@ final class FraudControlService
      */
     public function isUserBlocked(int $userId): bool
     {
-        return $this->cache->has("fraud_block_{$userId}");
+        return Cache::has("fraud_block_{$userId}");
     }
 
     /**
@@ -516,14 +516,14 @@ final class FraudControlService
     ): array {
         try {
             // Подсчитываем количество add/remove операций в последний час
-            $recentActions = $this->cache->get("wishlist_actions_{$userId}_{$productId}", []);
+            $recentActions = Cache::get("wishlist_actions_{$userId}_{$productId}", []);
 
             if (count($recentActions) > 5) {
                 // Более 5 операций за час = подозрительно
                 $score = 0.85;
                 $reason = 'Suspicious wishlist manipulation detected';
 
-                $this->log->channel('audit')->warning('Wishlist manipulation suspected', [
+                Log::channel('audit')->warning('Wishlist manipulation suspected', [
                     'user_id' => $userId,
                     'product_id' => $productId,
                     'actions_count' => count($recentActions),
@@ -543,7 +543,7 @@ final class FraudControlService
                 'reason' => null,
             ];
         } catch (\Throwable $e) {
-            $this->log->error('Wishlist manipulation check failed', [
+            Log::error('Wishlist manipulation check failed', [
                 'user_id' => $userId,
                 'error' => $e->getMessage(),
             ]);
@@ -610,11 +610,11 @@ final class FraudControlService
             'amount' => $amountCopeki,
             'tenant_id' => $tenantId,
             'recipient_id' => $recipientId,
-            'bonus_count_today' => \$this->db->table('bonus_transactions')
+            'bonus_count_today' => \DB::table('bonus_transactions')
                 ->where('recipient_id', $recipientId)
                 ->whereDate('created_at', today())
                 ->count(),
-            'total_bonus_today' => \$this->db->table('bonus_transactions')
+            'total_bonus_today' => \DB::table('bonus_transactions')
                 ->where('recipient_id', $recipientId)
                 ->whereDate('created_at', today())
                 ->sum('amount') ?? 0,
@@ -629,12 +629,12 @@ final class FraudControlService
         return [
             'amount' => $amountCopeki,
             'tenant_id' => $tenantId,
-            'payout_count_today' => \$this->db->table('payment_transactions')
+            'payout_count_today' => \DB::table('payment_transactions')
                 ->where('tenant_id', $tenantId)
                 ->where('type', 'payout')
                 ->whereDate('created_at', today())
                 ->count(),
-            'total_payout_today' => \$this->db->table('payment_transactions')
+            'total_payout_today' => \DB::table('payment_transactions')
                 ->where('tenant_id', $tenantId)
                 ->where('type', 'payout')
                 ->whereDate('created_at', today())

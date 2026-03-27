@@ -1,38 +1,144 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 namespace App\Domains\RealEstate\Services;
-use App\Domains\RealEstate\Models\Agent;
-use App\Domains\RealEstate\Models\RealEstateTransaction;
-use App\Services\FraudControlService;
-use App\Services\WalletService;
+
+use App\Domains\RealEstate\Models\Property;
+use App\Domains\RealEstate\Models\Listing;
+use App\Domains\RealEstate\Models\RentalContract;
+use App\Services\FraudMLService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
-final /**
- * RealEstateService
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class RealEstateService{public function __construct(private readonly FraudControlService $fraud,private readonly WalletService $wallet){
+
+final readonly class RealEstateService
+{
+    public function __construct(
+        private FraudMLService $fraudService
+    ) {}
+
     /**
-     * Инициализировать класс
+     * Создать новый объект недвижимости
+     * 
+     * @param array $data
+     * @param string $correlationId
+     * @return Property
      */
-    public function __construct()
+    public function createProperty(array $data, string $correlationId): Property
     {
-        // TODO: инициализация
+        return DB::transaction(function () use ($data, $correlationId) {
+            Log::channel('audit')->info('Creating property start', [
+                'data' => $data,
+                'correlation_id' => $correlationId
+            ]);
+
+            $property = Property::create(array_merge($data, [
+                'correlation_id' => $correlationId,
+                'status' => 'available'
+            ]));
+
+            Log::channel('audit')->info('Property created successfully', [
+                'property_id' => $property->id,
+                'correlation_id' => $correlationId
+            ]);
+
+            return $property;
+        });
     }
-}
-public function createTransaction(int $agentId,$amount,$propertyAddress,$transactionType,string $correlationId=""):RealEstateTransaction{$correlationId=$correlationId?:(string)Str::uuid();if(RateLimiter::tooManyAttempts("realestate:txn:".auth()->id(),8))throw new \RuntimeException("Too many",429);RateLimiter::hit("realestate:txn:".auth()->id(),3600);
-return $this->db->transaction(function()use($agentId,$amount,$propertyAddress,$transactionType,$correlationId){$a=Agent::findOrFail($agentId);$fraud=$this->fraud->check(['user_id'=>auth()->id()??0,'operation_type'=>'realestate_transaction','correlation_id'=>$correlationId,'amount'=>$amount]);if($fraud['decision']==='block')throw new \RuntimeException("Security",403);$t=RealEstateTransaction::create(['uuid'=>Str::uuid(),'tenant_id'=>tenant()->id,'agent_id'=>$agentId,'client_id'=>auth()->id()??0,'correlation_id'=>$correlationId,'status'=>'pending_payment','total_kopecks'=>$amount,'payout_kopecks'=>(int)($amount*(1-$a->price_commission_percent/100)),'payment_status'=>'pending','property_address'=>$propertyAddress,'transaction_type'=>$transactionType,'tags'=>['realestate'=>true]]);$this->log->channel('audit')->info('Real estate transaction created',['transaction_id'=>$t->id,'correlation_id'=>$correlationId]);return $t;});
-}
-public function completeTransaction(int $transactionId,string $correlationId=""):RealEstateTransaction{$correlationId=$correlationId?:(string)Str::uuid();return $this->db->transaction(function()use($transactionId,$correlationId){$t=RealEstateTransaction::findOrFail($transactionId);if($t->payment_status!=='completed')throw new \RuntimeException("Not paid",400);$t->update(['status'=>'completed','correlation_id'=>$correlationId]);$this->wallet->credit(tenant()->id,$t->payout_kopecks,'realestate_payout',['correlation_id'=>$correlationId,'transaction_id'=>$t->id]);$this->log->channel('audit')->info('Real estate transaction completed',['transaction_id'=>$t->id]);return $t;});}
-public function cancelTransaction(int $transactionId,string $correlationId=""):RealEstateTransaction{$correlationId=$correlationId?:(string)Str::uuid();return $this->db->transaction(function()use($transactionId,$correlationId){$t=RealEstateTransaction::findOrFail($transactionId);if($t->status==='completed')throw new \RuntimeException("Cannot cancel",400);$t->update(['status'=>'cancelled','payment_status'=>'refunded','correlation_id'=>$correlationId]);if($t->payment_status==='completed')$this->wallet->credit(tenant()->id,$t->total_kopecks,'realestate_refund',['correlation_id'=>$correlationId,'transaction_id'=>$t->id]);$this->log->channel('audit')->info('Real estate transaction cancelled',['transaction_id'=>$t->id]);return $t;});}
-public function getTransaction(int $transactionId):RealEstateTransaction{return RealEstateTransaction::findOrFail($transactionId);}
-public function getUserTransactions(int $clientId){return RealEstateTransaction::where('client_id',$clientId)->orderBy('created_at','desc')->take(10)->get();}
+
+    /**
+     * Создать объявление (Listing)
+     * 
+     * @param array $data
+     * @param string $correlationId
+     * @return Listing
+     */
+    public function createListing(array $data, string $correlationId): Listing
+    {
+        return DB::transaction(function () use ($data, $correlationId) {
+            // Fraud check перед публикацией
+            $this->fraudService->checkListingAbuse($data, $correlationId);
+
+            $listing = Listing::create(array_merge($data, [
+                'uuid' => (string) Str::uuid(),
+                'correlation_id' => $correlationId,
+                'status' => 'active',
+                'published_at' => now(),
+            ]));
+
+            Log::channel('audit')->info('RealEstate listing created', [
+                'listing_id' => $listing->id,
+                'deal_type' => $listing->deal_type,
+                'correlation_id' => $correlationId
+            ]);
+
+            return $listing;
+        });
+    }
+
+    /**
+     * Оформление договора аренды
+     * 
+     * @param Listing $listing
+     * @param array $tenantData
+     * @param string $correlationId
+     * @return RentalContract
+     */
+    public function signRentalContract(Listing $listing, array $tenantData, string $correlationId): RentalContract
+    {
+        return DB::transaction(function () use ($listing, $tenantData, $correlationId) {
+            // Блокируем объявление на время сделки
+            $listing->lockForUpdate();
+
+            if ($listing->status !== 'active') {
+                throw new \Exception("Listing is not active and cannot be rented.");
+            }
+
+            // Создаем контракт
+            $contract = RentalContract::create([
+                'listing_id' => $listing->id,
+                'tenant_user_id' => $tenantData['user_id'],
+                'correlation_id' => $correlationId,
+                'start_date' => $tenantData['start_date'],
+                'end_date' => $tenantData['end_date'] ?? null,
+                'monthly_rent' => $listing->price,
+                'paid_deposit' => $listing->deposit,
+                'contract_status' => 'active',
+                'terms' => array_merge($listing->rules, ['signed_at' => now()])
+            ]);
+
+            // Обновляем статус объявления и объекта
+            $listing->update(['status' => 'rented']);
+            $listing->property->update(['status' => 'occupied']);
+
+            Log::channel('audit')->info('Rental contract signed', [
+                'contract_id' => $contract->id,
+                'listing_id' => $listing->id,
+                'correlation_id' => $correlationId
+            ]);
+
+            return $contract;
+        });
+    }
+
+    /**
+     * Завершение аренды (Check-out)
+     * 
+     * @param RentalContract $contract
+     * @param string $correlationId
+     */
+    public function completeRental(RentalContract $contract, string $correlationId): void
+    {
+        DB::transaction(function () use ($contract, $correlationId) {
+            $contract->update(['contract_status' => 'completed', 'end_date' => now()]);
+            $contract->listing->update(['status' => 'active']);
+            $contract->listing->property->update(['status' => 'available']);
+
+            Log::channel('audit')->info('Rental contract completed (check-out)', [
+                'contract_uuid' => $contract->uuid,
+                'correlation_id' => $correlationId
+            ]);
+        });
+    }
 }

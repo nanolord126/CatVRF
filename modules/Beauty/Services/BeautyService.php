@@ -31,13 +31,13 @@ final class BeautyService
         $correlationId ??= Str::uuid();
 
         try {
-            $this->log->channel('audit')->info('beauty.service.salon.create.start', [
+            Log::channel('audit')->info('beauty.service.salon.create.start', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
                 'name' => $name,
             ]);
 
-            $salon = $this->db->transaction(function () use (
+            $salon = DB::transaction(function () use (
                 $tenantId,
                 $name,
                 $address,
@@ -62,14 +62,14 @@ final class BeautyService
                 ]);
             });
 
-            $this->log->channel('audit')->info('beauty.service.salon.create.success', [
+            Log::channel('audit')->info('beauty.service.salon.create.success', [
                 'correlation_id' => $correlationId,
                 'salon_id' => $salon->id,
             ]);
 
             return $salon;
         } catch (Throwable $e) {
-            $this->log->channel('audit')->critical('beauty.service.salon.create.error', [
+            Log::channel('audit')->critical('beauty.service.salon.create.error', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -89,12 +89,12 @@ final class BeautyService
         $correlationId ??= Str::uuid();
 
         try {
-            $this->log->channel('audit')->info('beauty.service.salon.update.start', [
+            Log::channel('audit')->info('beauty.service.salon.update.start', [
                 'correlation_id' => $correlationId,
                 'salon_id' => $salon->id,
             ]);
 
-            $updated = $this->db->transaction(function () use ($salon, $data, $correlationId) {
+            $updated = DB::transaction(function () use ($salon, $data, $correlationId) {
                 $salon->update([
                     'name' => $data['name'] ?? $salon->name,
                     'address' => $data['address'] ?? $salon->address,
@@ -106,14 +106,14 @@ final class BeautyService
                 return $salon->fresh();
             });
 
-            $this->log->channel('audit')->info('beauty.service.salon.update.success', [
+            Log::channel('audit')->info('beauty.service.salon.update.success', [
                 'correlation_id' => $correlationId,
                 'salon_id' => $updated->id,
             ]);
 
             return $updated;
         } catch (Throwable $e) {
-            $this->log->channel('audit')->critical('beauty.service.salon.update.error', [
+            Log::channel('audit')->critical('beauty.service.salon.update.error', [
                 'correlation_id' => $correlationId,
                 'salon_id' => $salon->id,
                 'error' => $e->getMessage(),
@@ -168,7 +168,7 @@ final class BeautyService
 
             return $slots;
         } catch (Throwable $e) {
-            $this->log->channel('audit')->critical('beauty.service.slots.error', [
+            Log::channel('audit')->critical('beauty.service.slots.error', [
                 'error' => $e->getMessage(),
             ]);
             throw $e;
@@ -187,7 +187,7 @@ final class BeautyService
 
             return $reviews ?? 5.0;
         } catch (Throwable $e) {
-            $this->log->channel('audit')->critical('beauty.service.rating.error', [
+            Log::channel('audit')->critical('beauty.service.rating.error', [
                 'salon_id' => $salon->id,
                 'error' => $e->getMessage(),
             ]);

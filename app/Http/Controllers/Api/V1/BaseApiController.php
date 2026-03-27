@@ -1,9 +1,6 @@
 declare(strict_types=1);
-
 namespace App\Http\Controllers\Api\V1;
-
 use Illuminate\Routing\Controller;
-
 /**
  * Base API Controller.
  * Все API контроллеры должны наследовать этот класс.
@@ -23,7 +20,6 @@ abstract class BaseApiController extends Controller
     {
         return request()->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString());
     }
-
     /**
      * Получить tenant_id из текущего юзера.
      */
@@ -31,7 +27,6 @@ abstract class BaseApiController extends Controller
     {
         return auth()->user()?->tenant_id ?? filament()->getTenant()?->id ?? 1;
     }
-
     /**
      * Успешный ответ (200 OK).
      */
@@ -44,7 +39,6 @@ abstract class BaseApiController extends Controller
             'data' => $data,
         ], 200);
     }
-
     /**
      * Ошибка валидации (422 Unprocessable Entity).
      */
@@ -57,7 +51,6 @@ abstract class BaseApiController extends Controller
             'errors' => $errors,
         ], 422);
     }
-
     /**
      * Ошибка авторизации (403 Forbidden).
      */
@@ -69,7 +62,6 @@ abstract class BaseApiController extends Controller
             'correlation_id' => $this->getCorrelationId(),
         ], 403);
     }
-
     /**
      * Ошибка не найдено (404 Not Found).
      */
@@ -81,7 +73,6 @@ abstract class BaseApiController extends Controller
             'correlation_id' => $this->getCorrelationId(),
         ], 404);
     }
-
     /**
      * Ошибка сервера (500 Internal Server Error).
      */

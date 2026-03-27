@@ -1,10 +1,7 @@
 <?php
-
 declare(strict_types=1);
-
 namespace App\Http\Controllers\Analytics;
-
-use App\Domains\Analytics\Services\ComparisonHeatmapService;
+use App\Domains\Consulting\Analytics\Services\ComparisonHeatmapService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -12,7 +9,6 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-
 /**
  * API контроллер для сравнения двух периодов
  * 
@@ -26,7 +22,6 @@ final class ComparisonHeatmapController
         private readonly ComparisonHeatmapService $comparisonService,
     ) {
     }
-
     /**
      * GET /api/analytics/heatmaps/compare/geo
      * 
@@ -47,7 +42,6 @@ final class ComparisonHeatmapController
     {
         // Генерировать или получить correlation ID
         $correlationId = $request->header('X-Correlation-ID') ?? Str::uuid()->toString();
-        
         try {
             // Валидировать параметры
             $validated = $request->validate([
@@ -58,28 +52,24 @@ final class ComparisonHeatmapController
                 'period2_to' => 'required|date_format:Y-m-d|after:period2_from',
                 'metric' => 'sometimes|in:event_count,unique_users,unique_sessions',
             ]);
-
             // Rate limiting (100 req/min per tenant)
             $tenant = filament()->getTenant();
             $tenantId = $tenant?->id ?? auth()->id() ?? 0;
             $rateLimitKey = "ratelimit:compare:geo:{$tenantId}:{$validated['vertical']}";
-            
-            $count = $this->cache->increment($rateLimitKey, 1, 60);
+            $count = Cache::increment($rateLimitKey, 1, 60);
             if ($count > 100) {
-                $this->log->channel('fraud_alert')->warning('Rate limit exceeded', [
+                Log::channel('fraud_alert')->warning('Rate limit exceeded', [
                     'correlation_id' => $correlationId,
                     'tenant_id' => $tenantId,
                     'endpoint' => '/compare/geo',
                     'requests' => $count,
                 ]);
-
                 return response()->json([
                     'error' => 'Rate limit exceeded',
                     'correlation_id' => $correlationId,
                 ], 429)
                     ->header('Retry-After', '60');
             }
-
             // Извлечь параметры
             $vertical = $validated['vertical'];
             $period1From = Carbon::createFromFormat('Y-m-d', $validated['period1_from'])->startOfDay();
@@ -87,10 +77,8 @@ final class ComparisonHeatmapController
             $period2From = Carbon::createFromFormat('Y-m-d', $validated['period2_from'])->startOfDay();
             $period2To = Carbon::createFromFormat('Y-m-d', $validated['period2_to'])->endOfDay();
             $metric = $validated['metric'] ?? 'event_count';
-
             // Установить correlation ID
             $this->comparisonService->setCorrelationId($correlationId);
-
             // Получить сравнение
             $result = $this->comparisonService->compareGeoTimeSeries(
                 $tenantId,
@@ -101,8 +89,7 @@ final class ComparisonHeatmapController
                 $period2To,
                 $metric
             );
-
-            $this->log->channel('audit')->info('Geo comparison API called', [
+            Log::channel('audit')->info('Geo comparison API called', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
                 'vertical' => $vertical,
@@ -110,38 +97,32 @@ final class ComparisonHeatmapController
                 'period1_days' => $period1From->diffInDays($period1To),
                 'period2_days' => $period2From->diffInDays($period2To),
             ]);
-
             return response()->json([
                 'data' => $result,
                 'correlation_id' => $correlationId,
             ]);
-
         } catch (ValidationException $e) {
-            $this->log->channel('error')->warning('Geo comparison validation failed', [
+            Log::channel('error')->warning('Geo comparison validation failed', [
                 'correlation_id' => $correlationId,
                 'errors' => $e->errors(),
             ]);
-
             return response()->json([
                 'error' => 'Validation failed',
                 'messages' => $e->errors(),
                 'correlation_id' => $correlationId,
             ], 422);
-
         } catch (\Exception $e) {
-            $this->log->channel('error')->error('Geo comparison API error', [
+            Log::channel('error')->error('Geo comparison API error', [
                 'correlation_id' => $correlationId,
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-
             return response()->json([
                 'error' => 'Internal server error',
                 'correlation_id' => $correlationId,
             ], 500);
         }
     }
-
     /**
      * GET /api/analytics/heatmaps/compare/click
      * 
@@ -161,7 +142,6 @@ final class ComparisonHeatmapController
     {
         // Генерировать или получить correlation ID
         $correlationId = $request->header('X-Correlation-ID') ?? Str::uuid()->toString();
-        
         try {
             // Валидировать параметры
             $validated = $request->validate([
@@ -172,29 +152,25 @@ final class ComparisonHeatmapController
                 'period2_from' => 'required|date_format:Y-m-d',
                 'period2_to' => 'required|date_format:Y-m-d|after:period2_from',
             ]);
-
             // Rate limiting
             $tenant = filament()->getTenant();
             $tenantId = $tenant?->id ?? auth()->id() ?? 0;
             $pageUrlHash = md5($validated['page_url']);
             $rateLimitKey = "ratelimit:compare:click:{$tenantId}:{$pageUrlHash}";
-            
-            $count = $this->cache->increment($rateLimitKey, 1, 60);
+            $count = Cache::increment($rateLimitKey, 1, 60);
             if ($count > 100) {
-                $this->log->channel('fraud_alert')->warning('Rate limit exceeded', [
+                Log::channel('fraud_alert')->warning('Rate limit exceeded', [
                     'correlation_id' => $correlationId,
                     'tenant_id' => $tenantId,
                     'endpoint' => '/compare/click',
                     'requests' => $count,
                 ]);
-
                 return response()->json([
                     'error' => 'Rate limit exceeded',
                     'correlation_id' => $correlationId,
                 ], 429)
                     ->header('Retry-After', '60');
             }
-
             // Извлечь параметры
             $vertical = $validated['vertical'];
             $pageUrl = $validated['page_url'];
@@ -202,10 +178,8 @@ final class ComparisonHeatmapController
             $period1To = Carbon::createFromFormat('Y-m-d', $validated['period1_to'])->endOfDay();
             $period2From = Carbon::createFromFormat('Y-m-d', $validated['period2_from'])->startOfDay();
             $period2To = Carbon::createFromFormat('Y-m-d', $validated['period2_to'])->endOfDay();
-
             // Установить correlation ID
             $this->comparisonService->setCorrelationId($correlationId);
-
             // Получить сравнение
             $result = $this->comparisonService->compareClickTimeSeries(
                 $tenantId,
@@ -216,8 +190,7 @@ final class ComparisonHeatmapController
                 $period2From,
                 $period2To
             );
-
-            $this->log->channel('audit')->info('Click comparison API called', [
+            Log::channel('audit')->info('Click comparison API called', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
                 'vertical' => $vertical,
@@ -225,31 +198,26 @@ final class ComparisonHeatmapController
                 'period1_days' => $period1From->diffInDays($period1To),
                 'period2_days' => $period2From->diffInDays($period2To),
             ]);
-
             return response()->json([
                 'data' => $result,
                 'correlation_id' => $correlationId,
             ]);
-
         } catch (ValidationException $e) {
-            $this->log->channel('error')->warning('Click comparison validation failed', [
+            Log::channel('error')->warning('Click comparison validation failed', [
                 'correlation_id' => $correlationId,
                 'errors' => $e->errors(),
             ]);
-
             return response()->json([
                 'error' => 'Validation failed',
                 'messages' => $e->errors(),
                 'correlation_id' => $correlationId,
             ], 422);
-
         } catch (\Exception $e) {
-            $this->log->channel('error')->error('Click comparison API error', [
+            Log::channel('error')->error('Click comparison API error', [
                 'correlation_id' => $correlationId,
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-
             return response()->json([
                 'error' => 'Internal server error',
                 'correlation_id' => $correlationId,

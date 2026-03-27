@@ -28,32 +28,32 @@ use App\Domains\Beauty\Listeners\DeductAppointmentConsumablesListener;
 use App\Domains\Beauty\Listeners\LowStockNotificationListener;
 
 // ─── Channels ────────────────────────────────────────────────────────
-use App\Domains\Channels\Events\PostPublished;
-use App\Domains\Channels\Events\ChannelArchived;
-use App\Domains\Channels\Events\ChannelSubscribed;
-use App\Domains\Channels\Listeners\SendPostNotification;
-use App\Domains\Channels\Listeners\SendChannelArchivedNotification;
+use App\Domains\Content\Channels\Events\PostPublished;
+use App\Domains\Content\Channels\Events\ChannelArchived;
+use App\Domains\Content\Channels\Events\ChannelSubscribed;
+use App\Domains\Content\Channels\Listeners\SendPostNotification;
+use App\Domains\Content\Channels\Listeners\SendChannelArchivedNotification;
 
 // ─── Confectionery ───────────────────────────────────────────────────
 use App\Domains\Confectionery\Events\BakeryOrderCreated;
 use App\Domains\Confectionery\Events\BakeryOrderReady;
 
 // ─── Courses ─────────────────────────────────────────────────────────
-use App\Domains\Courses\Events\EnrollmentCreated;
-use App\Domains\Courses\Events\LessonCompleted;
-use App\Domains\Courses\Events\CertificateIssued;
-use App\Domains\Courses\Listeners\DeductEnrollmentCommissionListener;
-use App\Domains\Courses\Listeners\SendCertificateNotificationListener;
+use App\Domains\Education\Courses\Events\EnrollmentCreated;
+use App\Domains\Education\Courses\Events\LessonCompleted;
+use App\Domains\Education\Courses\Events\CertificateIssued;
+use App\Domains\Education\Courses\Listeners\DeductEnrollmentCommissionListener;
+use App\Domains\Education\Courses\Listeners\SendCertificateNotificationListener;
 
 // ─── Electronics ─────────────────────────────────────────────────────
 use App\Domains\Electronics\Events\WarrantyClaimSubmitted;
 
 // ─── Entertainment ───────────────────────────────────────────────────
-use App\Domains\Entertainment\Events\BookingCreated as EntertainmentBookingCreated;
-use App\Domains\Entertainment\Events\EventCancelled;
-use App\Domains\Entertainment\Events\TicketSold;
-use App\Domains\Entertainment\Listeners\DeductBookingCommissionListener as EntertainmentDeductBookingCommission;
-use App\Domains\Entertainment\Listeners\RefundBookingCommissionListener as EntertainmentRefundBookingCommission;
+use App\Domains\EventPlanning\Entertainment\Events\BookingCreated as EntertainmentBookingCreated;
+use App\Domains\EventPlanning\Entertainment\Events\EventCancelled;
+use App\Domains\EventPlanning\Entertainment\Events\TicketSold;
+use App\Domains\EventPlanning\Entertainment\Listeners\DeductBookingCommissionListener as EntertainmentDeductBookingCommission;
+use App\Domains\EventPlanning\Entertainment\Listeners\RefundBookingCommissionListener as EntertainmentRefundBookingCommission;
 
 // ─── FarmDirect ──────────────────────────────────────────────────────
 use App\Domains\FarmDirect\Events\FarmOrderCreated;
@@ -67,17 +67,19 @@ use App\Domains\Fashion\Listeners\DeductOrderCommissionListener as FashionDeduct
 use App\Domains\Fashion\Listeners\RefundOrderCommissionListener as FashionRefundCommission;
 
 // ─── Fitness ─────────────────────────────────────────────────────────
-use App\Domains\Fitness\Events\AttendanceRecorded;
-use App\Domains\Fitness\Events\MembershipCreated;
-use App\Domains\Fitness\Events\MembershipExpired;
-use App\Domains\Fitness\Listeners\DeductMembershipCommissionListener;
-use App\Domains\Fitness\Listeners\RefundMembershipCommissionListener;
+use App\Domains\Sports\Fitness\Events\AttendanceRecorded;
+use App\Domains\Sports\Fitness\Events\MembershipCreated;
+use App\Domains\Sports\Fitness\Events\MembershipExpired;
+use App\Domains\Sports\Fitness\Listeners\DeductMembershipCommissionListener;
+use App\Domains\Sports\Fitness\Listeners\RefundMembershipCommissionListener;
 
 // ─── Flowers ─────────────────────────────────────────────────────────
 use App\Domains\Flowers\Events\FlowerOrderPlaced;
+use App\Domains\Flowers\Events\FlowerOrderCreated;
 use App\Domains\Flowers\Events\FlowerDeliveryCompleted;
 use App\Domains\Flowers\Events\B2BFlowerOrderPlaced;
 use App\Domains\Flowers\Listeners\DeductFlowerOrderCommission;
+use App\Domains\Flowers\Listeners\DeductFlowerConsumables;
 use App\Domains\Flowers\Listeners\UpdateFlowerShopRating;
 
 // ─── Food ────────────────────────────────────────────────────────────
@@ -99,17 +101,17 @@ use App\Domains\Freelance\Listeners\DeductProposalCommissionListener;
 use App\Domains\Freelance\Listeners\ReleaseFreelancerPaymentListener;
 
 // ─── FreshProduce ────────────────────────────────────────────────────
-use App\Domains\FreshProduce\Events\ProduceOrderCreated;
-use App\Domains\FreshProduce\Events\BoxDelivered;
-use App\Domains\FreshProduce\Events\QualityIssueDetected;
+use App\Domains\FarmDirect\FreshProduce\Events\ProduceOrderCreated;
+use App\Domains\FarmDirect\FreshProduce\Events\BoxDelivered;
+use App\Domains\FarmDirect\FreshProduce\Events\QualityIssueDetected;
 
 // ─── Furniture ───────────────────────────────────────────────────────
 use App\Domains\Furniture\Events\FurnitureOrderCreated;
 use App\Domains\Furniture\Events\FurnitureDelivered;
 
 // ─── HealthyFood ─────────────────────────────────────────────────────
-use App\Domains\HealthyFood\Events\MealOrderCreated;
-use App\Domains\HealthyFood\Events\MealDelivered;
+use App\Domains\Food\HealthyFood\Events\MealOrderCreated;
+use App\Domains\Food\HealthyFood\Events\MealDelivered;
 
 // ─── HomeServices ────────────────────────────────────────────────────
 use App\Domains\HomeServices\Events\ServiceJobCreated;
@@ -186,7 +188,7 @@ use App\Domains\Tickets\Listeners\DeductTicketSaleCommissionListener;
 use App\Domains\Tickets\Listeners\RefundTicketSaleCommissionListener;
 
 // ─── ToysKids ────────────────────────────────────────────────────────
-use App\Domains\ToysKids\Events\ToyOrderCreated;
+use App\Domains\ToysAndGames\ToysAndGames\ToysKids\Events\ToyOrderCreated;
 
 // ─── Travel ──────────────────────────────────────────────────────────
 use App\Domains\Travel\Events\TourBooked;
@@ -217,8 +219,8 @@ final class EventServiceProvider extends ServiceProvider
         LowStockReached::class       => [LowStockNotificationListener::class],
 
         // ── Channels ────────────────────────────────────────────────
-        PostPublished::class    => [SendPost$this->notification->class],
-        ChannelArchived::class  => [SendChannelArchived$this->notification->class],
+        PostPublished::class    => [SendPostNotification::class],
+        ChannelArchived::class  => [SendChannelArchivedNotification::class],
         ChannelSubscribed::class => [],
 
         // ── Confectionery ───────────────────────────────────────────
@@ -253,9 +255,13 @@ final class EventServiceProvider extends ServiceProvider
         MembershipExpired::class  => [RefundMembershipCommissionListener::class],
 
         // ── Flowers ─────────────────────────────────────────────────
-        FlowerOrderPlaced::class       => [DeductFlowerOrderCommission::class],
+        FlowerOrderPlaced::class       => [
+            DeductFlowerOrderCommission::class,
+            DeductFlowerConsumables::class,
+        ],
+        FlowerOrderCreated::class      => [DeductFlowerConsumables::class],
         FlowerDeliveryCompleted::class => [UpdateFlowerShopRating::class],
-        B2BFlowerOrderPlaced::class    => [],
+        B2BFlowerOrderPlaced::class    => [DeductFlowerConsumables::class],
 
         // ── Food ────────────────────────────────────────────────────
         OrderCreated::class       => [NotifyRestaurantNewOrder::class],

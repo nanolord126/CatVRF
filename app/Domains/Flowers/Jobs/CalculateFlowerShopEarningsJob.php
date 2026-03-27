@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Flowers\Jobs;
 
@@ -28,7 +29,7 @@ class CalculateFlowerShopEarningsJob implements ShouldQueue
     public function handle(): void
     {
         try {
-            $this->db->transaction(function () {
+            DB::transaction(function () {
                 $shops = FlowerShop::query()
                     ->where('is_active', true)
                     ->get();
@@ -44,7 +45,7 @@ class CalculateFlowerShopEarningsJob implements ShouldQueue
                     $totalCommission = $completedOrders->sum('commission_amount');
                     $earnings = $totalEarnings - $totalCommission;
 
-                    $this->log->channel('audit')->info('Flower shop earnings calculated', [
+                    Log::channel('audit')->info('Flower shop earnings calculated', [
                         'shop_id' => $shop->id,
                         'orders_count' => $completedOrders->count(),
                         'earnings' => $earnings,
@@ -53,7 +54,7 @@ class CalculateFlowerShopEarningsJob implements ShouldQueue
                 }
             });
         } catch (\Exception $exception) {
-            $this->log->channel('audit')->error('Flower shop earnings calculation failed', [
+            Log::channel('audit')->error('Flower shop earnings calculation failed', [
                 'error' => $exception->getMessage(),
             ]);
             throw $exception;

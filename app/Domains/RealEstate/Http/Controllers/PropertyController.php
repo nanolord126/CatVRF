@@ -87,7 +87,7 @@ final class PropertyController
                 'geo_point'   => 'nullable|array',
             ]);
 
-            $property = $this->db->transaction(function () use ($data, $correlationId) {
+            $property = DB::transaction(function () use ($data, $correlationId) {
                 return Property::create([
                     ...$data,
                     'tenant_id'      => tenant('id') ?? auth()->user()?->tenant_id ?? 1,
@@ -98,7 +98,7 @@ final class PropertyController
                 ]);
             });
 
-            $this->log->channel('audit')->info('Property created', [
+            Log::channel('audit')->info('Property created', [
                 'correlation_id' => $correlationId,
                 'property_id'    => $property->id,
                 'tenant_id'      => $property->tenant_id,
@@ -114,7 +114,7 @@ final class PropertyController
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Property create failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            Log::channel('audit')->error('Property create failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json(['success' => false, 'message' => 'Ошибка создания объекта.', 'correlation_id' => $correlationId], 500);
         }
     }
@@ -142,11 +142,11 @@ final class PropertyController
 
             $before = $property->getAttributes();
 
-            $this->db->transaction(function () use ($property, $data) {
+            DB::transaction(function () use ($property, $data) {
                 $property->update($data);
             });
 
-            $this->log->channel('audit')->info('Property updated', [
+            Log::channel('audit')->info('Property updated', [
                 'correlation_id' => $correlationId,
                 'property_id'    => $property->id,
                 'tenant_id'      => $property->tenant_id,
@@ -163,7 +163,7 @@ final class PropertyController
         } catch (\Illuminate\Validation\ValidationException $e) {
             return response()->json(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Property update failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            Log::channel('audit')->error('Property update failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json(['success' => false, 'message' => 'Ошибка обновления объекта.', 'correlation_id' => $correlationId], 500);
         }
     }
@@ -178,11 +178,11 @@ final class PropertyController
         }
 
         try {
-            $this->db->transaction(function () use ($property) {
+            DB::transaction(function () use ($property) {
                 $property->delete();
             });
 
-            $this->log->channel('audit')->info('Property deleted', [
+            Log::channel('audit')->info('Property deleted', [
                 'correlation_id' => $correlationId,
                 'property_id'    => $property->id,
                 'tenant_id'      => $property->tenant_id,
@@ -194,7 +194,7 @@ final class PropertyController
                 'correlation_id' => $correlationId,
             ]);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Property delete failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            Log::channel('audit')->error('Property delete failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json(['success' => false, 'message' => 'Ошибка удаления объекта.', 'correlation_id' => $correlationId], 500);
         }
     }

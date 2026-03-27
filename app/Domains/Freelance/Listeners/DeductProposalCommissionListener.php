@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Freelance\Listeners;
 
@@ -26,26 +27,18 @@ class DeductProposalCommissionListener implements ShouldQueue
 
     public function __construct(
         private readonly BalanceTransactionService $balanceService,
-    ) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+    ) {}
 
     public function handle(ProposalAccepted $event): void
     {
-        $this->db->transaction(function () use ($event) {
+        DB::transaction(function () use ($event) {
             $proposal = $event->proposal->load('job');
             $client = $proposal->job->client;
 
             $proposedAmount = (int)($proposal->proposed_amount * 100);
             $commissionAmount = (int)($proposedAmount * 0.14);
 
-            $this->log->channel('audit')->info('Freelance proposal accepted - deducting 14% commission', [
+            Log::channel('audit')->info('Freelance proposal accepted - deducting 14% commission', [
                 'proposal_id' => $proposal->id,
                 'freelancer_id' => $proposal->freelancer_id,
                 'client_id' => $client->id,

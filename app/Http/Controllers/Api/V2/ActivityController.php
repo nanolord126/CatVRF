@@ -1,15 +1,11 @@
 <?php
-
 declare(strict_types=1);
-
 namespace App\Http\Controllers\Api\V2;
-
 use App\Http\Controllers\Api\BaseApiV2Controller;
 use App\Services\UserActivityService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-
 /**
  * Controller: Activity Feed & Tracking
  * 
@@ -27,7 +23,6 @@ final class ActivityController extends BaseApiV2Controller
     ) {
         parent::__construct();
     }
-
     /**
      * Get recent activities
      * GET /api/v2/activities
@@ -38,21 +33,18 @@ final class ActivityController extends BaseApiV2Controller
     {
         $correlationId = (string) Str::uuid()->toString();
         $tenantId = filament()->getTenant()?->id ?? auth()->user()?->tenant_id;
-
         try {
             $activities = []; // In production: fetch from database
-
             return $this->successResponse(
                 data: $activities,
                 message: 'Activities retrieved',
                 correlationId: $correlationId
             );
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Failed to get activities', [
+            Log::channel('audit')->error('Failed to get activities', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
-
             return $this->errorResponse(
                 message: 'Failed to retrieve activities',
                 statusCode: 500,
@@ -60,7 +52,6 @@ final class ActivityController extends BaseApiV2Controller
             );
         }
     }
-
     /**
      * Track user activity
      * POST /api/v2/activities/track
@@ -70,7 +61,6 @@ final class ActivityController extends BaseApiV2Controller
     public function track(): JsonResponse
     {
         $correlationId = (string) Str::uuid()->toString();
-
         try {
             $this->activityService->recordActivity(
                 userId: auth()->id() ?? 0,
@@ -78,18 +68,16 @@ final class ActivityController extends BaseApiV2Controller
                 activity: request()->get('activity', 'unknown'),
                 metadata: request()->get('metadata', [])
             );
-
             return $this->successResponse(
                 data: ['tracked' => true],
                 message: 'Activity tracked',
                 correlationId: $correlationId
             );
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Failed to track activity', [
+            Log::channel('audit')->error('Failed to track activity', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
             ]);
-
             return $this->errorResponse(
                 message: 'Failed to track activity',
                 statusCode: 500,

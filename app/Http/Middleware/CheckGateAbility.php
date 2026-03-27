@@ -33,8 +33,8 @@ class CheckGateAbility
         }
 
         // Check gate
-        if (! $this->gate->check($ability)) {
-            $this->log->channel('audit')->warning('Gate authorization failed', [
+        if (! Gate::check($ability)) {
+            Log::channel('audit')->warning('Gate authorization failed', [
                 'correlation_id' => $request->header('X-Correlation-ID'),
                 'ability' => $ability,
                 'user_id' => $user->id,
@@ -45,7 +45,7 @@ class CheckGateAbility
             return response()->json(['error' => 'Forbidden - Insufficient permissions'], 403);
         }
 
-        $this->log->channel('audit')->debug('Gate authorization granted', [
+        Log::channel('audit')->debug('Gate authorization granted', [
             'correlation_id' => $request->header('X-Correlation-ID'),
             'ability' => $ability,
             'user_id' => $user->id,

@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Auto\Events;
 
@@ -29,7 +30,7 @@ class TowingRequestCreated implements ShouldBroadcast
         public readonly TowingRequest $request,
         public readonly string $correlationId
     ) {
-        $this->log->channel('audit')->info('TowingRequestCreated event dispatched', [
+        Log::channel('audit')->info('TowingRequestCreated event dispatched', [
             'correlation_id' => $this->correlationId,
             'request_id' => $this->request->id,
             'location' => $this->request->pickup_location,

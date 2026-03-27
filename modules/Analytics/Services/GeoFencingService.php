@@ -45,7 +45,7 @@ class GeoFencingService
 
     private function triggerZoneOffer(User $user, GeoZone $zone, string $correlationId): void
     {
-        $this->log->info("GeoFencing trigger for User {$user->id} in Zone {$zone->name}");
+        Log::info("GeoFencing trigger for User {$user->id} in Zone {$zone->name}");
         // Отправка оффера...
     }
 }

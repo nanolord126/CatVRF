@@ -42,17 +42,17 @@ final class ReferralService
      */
     public function generateReferralLink(int $referrerId, string $correlationId): array
     {
-        $this->log->channel('audit')->info('Method generateReferralLink() called', [
+        Log::channel('audit')->info('Method generateReferralLink() called', [
             'correlation_id' => $correlationId ?? Str::uuid(),
         ]);
 
 
-        return $this->db->transaction(function () use ($referrerId, $correlationId): array {
+        return DB::transaction(function () use ($referrerId, $correlationId): array {
             // Generate unique code
             $code = $this->generateUniqueCode();
 
             // Create referral record
-            $referral = $this->db->table('referrals')->insertGetId([
+            $referral = DB::table('referrals')->insertGetId([
                 'referrer_id' => $referrerId,
                 'referral_code' => $code,
                 'referral_link' => route('referral.register', ['code' => $code]),
@@ -63,7 +63,7 @@ final class ReferralService
 
             $link = route('referral.register', ['code' => $code]);
 
-            $this->log->channel('referral')->info('Referral link generated', [
+            Log::channel('referral')->info('Referral link generated', [
                 'correlation_id' => $correlationId,
                 'referrer_id' => $referrerId,
                 'code' => $code,
@@ -98,14 +98,14 @@ final class ReferralService
         ]);
 
 
-        $this->log->channel('audit')->info('Method registerReferral() called', [
+        Log::channel('audit')->info('Method registerReferral() called', [
             'correlation_id' => $correlationId ?? Str::uuid(),
         ]);
 
 
-        return $this->db->transaction(function () use ($code, $newUserId, $sourcePlatform, $correlationId): array {
+        return DB::transaction(function () use ($code, $newUserId, $sourcePlatform, $correlationId): array {
             // Find referral
-            $referral = $this->db->table('referrals')
+            $referral = DB::table('referrals')
                 ->where('referral_code', $code)
                 ->where('tenant_id', tenant()->id)
                 ->lockForUpdate()
@@ -126,7 +126,7 @@ final class ReferralService
             }
 
             // Update referral
-            $this->db->table('referrals')
+            DB::table('referrals')
                 ->where('id', $referral->id)
                 ->update([
                     'referee_id' => $newUserId,
@@ -137,7 +137,7 @@ final class ReferralService
                     'updated_at' => now(),
                 ]);
 
-            $this->log->channel('referral')->info('Referral registered', [
+            Log::channel('referral')->info('Referral registered', [
                 'correlation_id' => $correlationId,
                 'referral_id' => $referral->id,
                 'referrer_id' => $referral->referrer_id,
@@ -163,13 +163,13 @@ final class ReferralService
      */
     public function checkQualification(int $referralId, string $correlationId): array
     {
-        $this->log->channel('audit')->info('Method checkQualification() called', [
+        Log::channel('audit')->info('Method checkQualification() called', [
             'correlation_id' => $correlationId ?? Str::uuid(),
         ]);
 
 
-        return $this->db->transaction(function () use ($referralId, $correlationId): array {
-            $referral = $this->db->table('referrals')
+        return DB::transaction(function () use ($referralId, $correlationId): array {
+            $referral = DB::table('referrals')
                 ->where('id', $referralId)
                 ->lockForUpdate()
                 ->first();
@@ -179,7 +179,7 @@ final class ReferralService
             }
 
             // Calculate referee spending
-            $spending = $this->db->table('balance_transactions')
+            $spending = DB::table('balance_transactions')
                 ->where('user_id', $referral->referee_id)
                 ->where('type', 'debit')
                 ->where('created_at', '>=', $referral->migrated_at ?? $referral->created_at)
@@ -212,7 +212,7 @@ final class ReferralService
             );
 
             // Create reward record
-            $this->db->table('referral_rewards')->insert([
+            DB::table('referral_rewards')->insert([
                 'referral_id' => $referral->id,
                 'recipient_type' => 'referrer',
                 'recipient_id' => $referral->referrer_id,
@@ -224,7 +224,7 @@ final class ReferralService
             ]);
 
             // Update referral status
-            $this->db->table('referrals')
+            DB::table('referrals')
                 ->where('id', $referralId)
                 ->update([
                     'status' => 'rewarded',
@@ -232,7 +232,7 @@ final class ReferralService
                     'updated_at' => now(),
                 ]);
 
-            $this->log->channel('referral')->info('Referral qualified and rewarded', [
+            Log::channel('referral')->info('Referral qualified and rewarded', [
                 'correlation_id' => $correlationId,
                 'referral_id' => $referralId,
                 'referrer_id' => $referral->referrer_id,
@@ -257,21 +257,21 @@ final class ReferralService
      */
     public function getReferralStats(int $referrerId): array
     {
-        $total = $this->db->table('referrals')
+        $total = DB::table('referrals')
             ->where('referrer_id', $referrerId)
             ->count();
 
-        $qualified = $this->db->table('referrals')
+        $qualified = DB::table('referrals')
             ->where('referrer_id', $referrerId)
             ->where('status', 'rewarded')
             ->count();
 
-        $pending = $this->db->table('referrals')
+        $pending = DB::table('referrals')
             ->where('referrer_id', $referrerId)
             ->where('status', 'registered')
             ->count();
 
-        $earnings = $this->db->table('referral_rewards')
+        $earnings = DB::table('referral_rewards')
             ->where('recipient_id', $referrerId)
             ->where('type', 'referral_bonus')
             ->sum('amount');
@@ -293,7 +293,7 @@ final class ReferralService
     {
         do {
             $code = strtoupper(Str::random(8));
-        } while ($this->db->table('referrals')->where('referral_code', $code)->exists());
+        } while (DB::table('referrals')->where('referral_code', $code)->exists());
 
         return $code;
     }

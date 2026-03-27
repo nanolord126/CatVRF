@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders\Gifts;
 
-use App\Domains\Gifts\Models\GiftProduct;
+use App\Domains\PartySupplies\Gifts\Models\GiftProduct;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 

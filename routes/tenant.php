@@ -72,7 +72,7 @@ Route::middleware([
         Route::apiResource('education', \App\Domains\Education\Http\Controllers\EducationController::class);
         
         // Events
-        Route::apiResource('events', \App\Domains\Events\Http\Controllers\EventController::class);
+        Route::apiResource('events', \App\Domains\EventPlanning\Events\Http\Controllers\EventController::class);
         
         // Beauty
         Route::apiResource('beauty', \App\Domains\Beauty\Http\Controllers\BeautyController::class);
@@ -102,7 +102,7 @@ Route::middleware([
         Route::apiResource('furniture', \App\Domains\Furniture\Http\Controllers\FurnitureItemController::class);
         
         // Construction
-        Route::apiResource('construction', \App\Domains\Construction\Http\Controllers\ProjectController::class);
+        Route::apiResource('construction', \App\Domains\ConstructionAndRepair\Construction\Http\Controllers\ProjectController::class);
         
         // Real Estate Rental
         Route::apiResource('rental', \App\Domains\RealEstateRental\Http\Controllers\RentalController::class);

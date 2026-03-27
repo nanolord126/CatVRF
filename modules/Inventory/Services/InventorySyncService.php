@@ -29,7 +29,7 @@ class InventorySyncService
     {
         $correlationId = request()->header('X-Correlation-ID', bin2hex(random_bytes(16)));
 
-        $this->db->transaction(function () use ($productId, $quantity, $referenceType, $referenceId, $correlationId) {
+        DB::transaction(function () use ($productId, $quantity, $referenceType, $referenceId, $correlationId) {
             $product = Product::findOrFail($productId);
 
             // Атомарное уменьшение остатка (database level)
@@ -50,7 +50,7 @@ class InventorySyncService
 
             // Low stock check (Канон 2026: Уведомления)
             if ($product->stock <= $product->min_stock) {
-                $this->log->warning("Inventory Alert: Product '{$product->name}' (SKU: {$product->sku}) is below minimum threshold.", [
+                Log::warning("Inventory Alert: Product '{$product->name}' (SKU: {$product->sku}) is below minimum threshold.", [
                     'current_stock' => $product->stock,
                     'min_stock' => $product->min_stock,
                     'tenant_id' => tenant('id')

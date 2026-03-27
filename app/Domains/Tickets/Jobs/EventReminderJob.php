@@ -29,12 +29,12 @@ final class EventReminderJob implements ShouldQueue
     public function handle(): void
     {
         try {
-            $this->log->channel('audit')->info('Running event reminder job', [
+            Log::channel('audit')->info('Running event reminder job', [
                 'correlation_id' => $this->correlationId,
             ]);
 
             // Find events starting in the next 24 hours
-            $events = $this->event->where('starts_at', '>=', now())
+            $events = Event::where('starts_at', '>=', now())
                 ->where('starts_at', '<=', now()->addHours(24))
                 ->where('status', 'published')
                 ->get();
@@ -54,7 +54,7 @@ final class EventReminderJob implements ShouldQueue
                                 $buyer->notify(new EventStartingNotification($event));
                             }
                         } catch (Throwable $e) {
-                            $this->log->channel('audit')->error('Failed to send reminder to buyer', [
+                            Log::channel('audit')->error('Failed to send reminder to buyer', [
                                 'buyer_id' => $buyerId,
                                 'event_id' => $event->id,
                                 'error' => $e->getMessage(),
@@ -63,13 +63,13 @@ final class EventReminderJob implements ShouldQueue
                         }
                     }
 
-                    $this->log->channel('audit')->info('Event reminders sent', [
+                    Log::channel('audit')->info('Event reminders sent', [
                         'event_id' => $event->id,
                         'buyer_count' => count($buyers),
                         'correlation_id' => $this->correlationId,
                     ]);
                 } catch (Throwable $e) {
-                    $this->log->channel('audit')->error('Failed to send event reminders', [
+                    Log::channel('audit')->error('Failed to send event reminders', [
                         'event_id' => $event->id,
                         'error' => $e->getMessage(),
                         'correlation_id' => $this->correlationId,
@@ -77,12 +77,12 @@ final class EventReminderJob implements ShouldQueue
                 }
             }
 
-            $this->log->channel('audit')->info('Event reminder job completed', [
+            Log::channel('audit')->info('Event reminder job completed', [
                 'events_count' => $events->count(),
                 'correlation_id' => $this->correlationId,
             ]);
         } catch (Throwable $e) {
-            $this->log->channel('audit')->error('Event reminder job failed', [
+            Log::channel('audit')->error('Event reminder job failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $this->correlationId,
             ]);

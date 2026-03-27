@@ -1,0 +1,48 @@
+<?php
+
+declare(strict_types=1);
+
+
+namespace App\Domains\Auto\Cars\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
+
+final /**
+ * CarBrand
+ * 
+ * Основной класс для работы с платформой CatVRF.
+ * 
+ * @author CatVRF
+ * @package %NAMESPACE%
+ * @version 1.0.0
+ */
+class CarBrand extends Model
+{
+    protected $table = 'car_brands';
+
+    protected $fillable = [
+        'uuid',
+        'name',
+        'slug',
+        'tags',
+        'correlation_id'
+    ];
+
+    protected $casts = [
+        'tags' => 'json'
+    ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Model $model) {
+            $model->uuid = $model->uuid ?? (string) Str::uuid();
+        });
+    }
+
+    public function models(): HasMany
+    {
+        return $this->hasMany(CarModel::class, 'brand_id');
+    }
+}

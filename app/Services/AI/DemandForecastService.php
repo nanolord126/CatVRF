@@ -57,9 +57,9 @@ final readonly class DemandForecastService
             // 2. CACHE CHECK
             $cacheKey = "demand_forecast:item:{$itemId}:from:{$dateFrom->format('Y-m-d')}:to:{$dateTo->format('Y-m-d')}";
 
-            $cached = $this->cache->get($cacheKey);
+            $cached = Cache::get($cacheKey);
             if ($cached) {
-                $this->log->channel('audit')->info('Forecast: Cache hit', [
+                Log::channel('audit')->info('Forecast: Cache hit', [
                     'correlation_id' => $correlationId,
                     'item_id' => $itemId,
                     'range' => "{$dateFrom->format('Y-m-d')} to {$dateTo->format('Y-m-d')}",
@@ -69,7 +69,7 @@ final readonly class DemandForecastService
             }
 
             // 3. BUILD FORECAST (исторический спрос, сезонность, погода, маркетинг)
-            $historicalDemand = $this->db->table('demand_actuals')
+            $historicalDemand = DB::table('demand_actuals')
                 ->where('item_id', $itemId)
                 ->where('date', '>=', now()->subDays(30))
                 ->selectRaw('AVG(actual_demand) as avg_demand, STDDEV(actual_demand) as stddev')
@@ -141,10 +141,10 @@ final readonly class DemandForecastService
                 default => 86400,            // 1 день для долгосрочного
             };
 
-            $this->cache->put($cacheKey, $result, $ttl);
+            Cache::put($cacheKey, $result, $ttl);
 
             // 5. AUDIT LOG
-            $this->log->channel('audit')->info('Forecast: Generated', [
+            Log::channel('audit')->info('Forecast: Generated', [
                 'correlation_id' => $correlationId,
                 'item_id' => $itemId,
                 'range' => "{$dateFrom->format('Y-m-d')} to {$dateTo->format('Y-m-d')}",
@@ -155,7 +155,7 @@ final readonly class DemandForecastService
 
             return $result;
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Forecast: Generation failed', [
+            Log::channel('audit')->error('Forecast: Generation failed', [
                 'correlation_id' => $correlationId,
                 'item_id' => $itemId,
                 'date_from' => $dateFrom->format('Y-m-d'),
@@ -191,14 +191,14 @@ final readonly class DemandForecastService
                 );
             }
 
-            $this->log->channel('audit')->info('Forecast: Bulk generated', [
+            Log::channel('audit')->info('Forecast: Bulk generated', [
                 'correlation_id' => $correlationId,
                 'items_count' => count($itemIds),
             ]);
 
             return $forecasts;
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Forecast: Bulk failed', [
+            Log::channel('audit')->error('Forecast: Bulk failed', [
                 'correlation_id' => $correlationId,
                 'items_count' => count($itemIds),
                 'error' => $e->getMessage(),
@@ -230,7 +230,7 @@ final readonly class DemandForecastService
                 'trained_at' => $accuracy?->trained_at?->toIso8601String(),
             ];
 
-            $this->log->channel('audit')->info('Forecast: Accuracy retrieved', [
+            Log::channel('audit')->info('Forecast: Accuracy retrieved', [
                 'correlation_id' => $correlationId,
                 'vertical' => $vertical,
                 'mape' => $result['mape'],
@@ -238,7 +238,7 @@ final readonly class DemandForecastService
 
             return $result;
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Forecast: Accuracy retrieval failed', [
+            Log::channel('audit')->error('Forecast: Accuracy retrieval failed', [
                 'correlation_id' => $correlationId,
                 'vertical' => $vertical,
                 'error' => $e->getMessage(),
@@ -275,7 +275,7 @@ final readonly class DemandForecastService
     private function getPromoFactor(int $itemId, Carbon $date): float
     {
         try {
-            $activPromos = $this->db->table('promo_campaigns')
+            $activPromos = DB::table('promo_campaigns')
                 ->where('status', 'active')
                 ->where('start_at', '<=', $date)
                 ->where('end_at', '>=', $date)

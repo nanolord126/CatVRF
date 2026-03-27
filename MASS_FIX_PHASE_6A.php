@@ -277,7 +277,7 @@ protected Guard $guard;
 	{
 		parent::authorizeAccess();
 
-		if ($this->record && !$this->gate->allows('view', $this->record)) {
+		if ($this->record && !Gate::allows('view', $this->record)) {
 			abort(403, __('Unauthorized'));
 		}
 	}

@@ -48,7 +48,7 @@ final class UpdateAppointmentStatusJob implements ShouldQueue
 
             $appointment->update($updates);
 
-            $this->log->channel('audit')->info('Appointment status updated via job', [
+            Log::channel('audit')->info('Appointment status updated via job', [
                 'appointment_id' => $appointment->id,
                 'doctor_id' => $appointment->doctor_id,
                 'patient_id' => $appointment->patient_id,
@@ -56,7 +56,7 @@ final class UpdateAppointmentStatusJob implements ShouldQueue
                 'correlation_id' => $this->correlationId,
             ]);
         } catch (Throwable $e) {
-            $this->log->channel('audit')->error('Failed to update appointment status', [
+            Log::channel('audit')->error('Failed to update appointment status', [
                 'appointment_id' => $this->appointmentId,
                 'error' => $e->getMessage(),
                 'correlation_id' => $this->correlationId,

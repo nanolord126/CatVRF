@@ -61,7 +61,7 @@ final class ResponseCompressionService
             $response->header('X-Original-Size', $contentSize);
             $response->header('X-Compression-Ratio', round($savings, 1) . '%');
 
-            $this->log->channel('performance')->debug('Response compressed', [
+            Log::channel('performance')->debug('Response compressed', [
                 'original_size' => $contentSize,
                 'compressed_size' => $compressedSize,
                 'savings_percent' => round($savings, 1)
@@ -70,7 +70,7 @@ final class ResponseCompressionService
             return $response;
 
         } catch (\Throwable $e) {
-            $this->log->channel('performance')->warning('Response compression failed', [
+            Log::channel('performance')->warning('Response compression failed', [
                 'error' => $e->getMessage()
             ]);
             return $response;

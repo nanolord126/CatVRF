@@ -7,6 +7,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * КАНОН 2026 — MEDICAL DOCTOR MODEL
+ */
 final class MedicalDoctor extends Model
 {
     use SoftDeletes;
@@ -14,11 +17,13 @@ final class MedicalDoctor extends Model
     protected $table = 'medical_doctors';
 
     protected $fillable = [
+        'uuid',
         'tenant_id',
         'clinic_id',
         'user_id',
         'full_name',
         'specialization',
+        'sub_specializations',
         'experience_years',
         'bio',
         'education',
@@ -32,13 +37,16 @@ final class MedicalDoctor extends Model
         'availability',
         'is_active',
         'correlation_id',
+        'tags',
     ];
 
-    protected $hidden = ['deleted_at'];
+    protected $hidden = ['deleted_at', 'correlation_id'];
 
     protected $casts = [
-        'certifications' => 'collection',
-        'availability' => 'collection',
+        'certifications' => 'array',
+        'availability' => 'array',
+        'sub_specializations' => 'array',
+        'tags' => 'array',
         'rating' => 'float',
         'consultation_price' => 'float',
         'is_active' => 'boolean',
@@ -47,9 +55,7 @@ final class MedicalDoctor extends Model
     protected static function booted(): void
     {
         static::addGlobalScope('tenant', function ($query) {
-            if ($tenantId = auth()?->user()?->tenant_id ?? filament()?->getTenant()?->id) {
-                $query->where('tenant_id', $tenantId);
-            }
+            $query->where('tenant_id', tenant()->id ?? 0);
         });
     }
 

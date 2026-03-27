@@ -16,7 +16,7 @@ use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvi
  * EventServiceProvider - регистрирует все события и listener'ы
  * 
  * Структура:
- * $this->event->class => [Listener1::class, Listener2::class]
+ * Event::class => [Listener1::class, Listener2::class]
  */
 final class NotificationEventServiceProvider extends ServiceProvider
 {
@@ -25,19 +25,19 @@ final class NotificationEventServiceProvider extends ServiceProvider
      */
     protected $listen = [
         // Payment events
-        PaymentInitiated$this->event->class => [
+        PaymentInitiatedEvent::class => [
             PaymentEventListener::class . '@handlePaymentInitiated',
         ],
-        PaymentAuthorized$this->event->class => [
+        PaymentAuthorizedEvent::class => [
             PaymentEventListener::class . '@handlePaymentAuthorized',
         ],
-        PaymentCaptured$this->event->class => [
+        PaymentCapturedEvent::class => [
             PaymentEventListener::class . '@handlePaymentCaptured',
         ],
-        PaymentFailed$this->event->class => [
+        PaymentFailedEvent::class => [
             PaymentEventListener::class . '@handlePaymentFailed',
         ],
-        PaymentRefunded$this->event->class => [
+        PaymentRefundedEvent::class => [
             PaymentEventListener::class . '@handlePaymentRefunded',
         ],
 

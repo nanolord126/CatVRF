@@ -60,7 +60,7 @@ final class TaxiRideController extends Controller
             ], 201);
 
         } catch (\Exception $e) {
-            $this->log->error('Ride creation failed', [
+            Log::error('Ride creation failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,
                 'trace' => $e->getTraceAsString(),

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Domains\Cosmetics\Http\Controllers\CosmeticProductController;
+use App\Domains\Beauty\Cosmetics\Http\Controllers\CosmeticProductController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['api', 'tenant'])->prefix('cosmetics')->group(function (): void {

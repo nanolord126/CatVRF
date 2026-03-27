@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Auto\Events;
 
@@ -29,7 +30,7 @@ class VehicleInspectionFailed implements ShouldBroadcast
         public readonly VehicleInspection $inspection,
         public readonly string $correlationId
     ) {
-        $this->log->channel('audit')->info('VehicleInspectionFailed event dispatched', [
+        Log::channel('audit')->info('VehicleInspectionFailed event dispatched', [
             'correlation_id' => $this->correlationId,
             'inspection_id' => $this->inspection->id,
             'notes' => $this->inspection->notes,

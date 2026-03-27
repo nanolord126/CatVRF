@@ -38,11 +38,11 @@ final class LowStockAlertJob implements ShouldQueue
     public function handle(InventoryManagementService $inventoryService): void
     {
         try {
-            $this->db->transaction(function () use ($inventoryService) {
+            DB::transaction(function () use ($inventoryService) {
                 $lowStockItems = $inventoryService->checkLowStock();
 
                 if ($lowStockItems->isEmpty()) {
-                    $this->log->channel('audit')->info('Low stock check completed - no items below threshold', [
+                    Log::channel('audit')->info('Low stock check completed - no items below threshold', [
                         'correlation_id' => $this->correlationId,
                     ]);
 
@@ -50,7 +50,7 @@ final class LowStockAlertJob implements ShouldQueue
                 }
 
                 $lowStockItems->each(function ($item) {
-                    $this->log->channel('audit')->warning('Item below minimum stock threshold', [
+                    Log::channel('audit')->warning('Item below minimum stock threshold', [
                         'correlation_id' => $this->correlationId,
                         'inventory_item_id' => $item->id,
                         'tenant_id' => $item->tenant_id,
@@ -61,7 +61,7 @@ final class LowStockAlertJob implements ShouldQueue
                 });
             });
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Low stock alert job failed', [
+            Log::channel('audit')->error('Low stock alert job failed', [
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

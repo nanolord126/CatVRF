@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\ShortTermRentals\Events;
 
@@ -24,13 +25,5 @@ class BookingCreated
     public function __construct(
         public readonly ApartmentBooking $booking,
         public readonly string $correlationId
-    ) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+    ) {}
 }

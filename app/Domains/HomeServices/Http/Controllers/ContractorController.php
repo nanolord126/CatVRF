@@ -65,7 +65,7 @@ final class ContractorController
                 'correlation_id' => $correlationId,
             ]);
 
-            \$this->log->channel('audit')->info('Contractor registered', [
+            \Log::channel('audit')->info('Contractor registered', [
                 'contractor_id' => $contractor->id,
                 'user_id' => auth()->id(),
                 'correlation_id' => $correlationId,
@@ -147,7 +147,7 @@ final class ContractorController
                 'schedule.*.is_available' => 'boolean',
             ]);
 
-            \$this->db->transaction(function () use ($contractor, $validated) {
+            \DB::transaction(function () use ($contractor, $validated) {
                 $contractor->schedules()->delete();
                 foreach ($validated['schedule'] as $slot) {
                     $contractor->schedules()->create($slot);

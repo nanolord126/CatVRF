@@ -2,7 +2,7 @@
 
 namespace Database\Factories\Domains\Grocery;
 
-use App\Domains\Grocery\Models\GroceryStore;
+use App\Domains\Food\Grocery\Models\GroceryStore;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 

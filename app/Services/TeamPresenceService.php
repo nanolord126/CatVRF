@@ -39,15 +39,15 @@ final class TeamPresenceService
                 'correlation_id' => $correlationId,
             ];
 
-            $this->cache->put($presenceKey, $presence, self::PRESENCE_TTL);
+            Cache::put($presenceKey, $presence, self::PRESENCE_TTL);
 
             // Добавляем в список присутствующих
             $documentPresenceKey = "collab:present:{$tenantId}:{$documentType}:{$documentId}";
-            $presentUsers = $this->cache->get($documentPresenceKey, []);
+            $presentUsers = Cache::get($documentPresenceKey, []);
             $presentUsers[$userId] = now()->toIso8601String();
-            $this->cache->put($documentPresenceKey, $presentUsers, self::PRESENCE_TTL);
+            Cache::put($documentPresenceKey, $presentUsers, self::PRESENCE_TTL);
 
-            $this->log->channel('audit')->debug('User presence registered', [
+            Log::channel('audit')->debug('User presence registered', [
                 'correlation_id' => $correlationId,
                 'user_id' => $userId,
                 'document' => "{$documentType}:{$documentId}",
@@ -55,7 +55,7 @@ final class TeamPresenceService
 
             return $presence;
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Failed to register presence', [
+            Log::channel('audit')->error('Failed to register presence', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -78,26 +78,26 @@ final class TeamPresenceService
 
         try {
             $presenceKey = "collab:presence:{$tenantId}:{$documentType}:{$documentId}:{$userId}";
-            $this->cache->forget($presenceKey);
+            Cache::forget($presenceKey);
 
             $documentPresenceKey = "collab:present:{$tenantId}:{$documentType}:{$documentId}";
-            $presentUsers = $this->cache->get($documentPresenceKey, []);
+            $presentUsers = Cache::get($documentPresenceKey, []);
             unset($presentUsers[$userId]);
 
             if (empty($presentUsers)) {
-                $this->cache->forget($documentPresenceKey);
+                Cache::forget($documentPresenceKey);
             } else {
-                $this->cache->put($documentPresenceKey, $presentUsers, self::PRESENCE_TTL);
+                Cache::put($documentPresenceKey, $presentUsers, self::PRESENCE_TTL);
             }
 
-            $this->log->channel('audit')->debug('User presence unregistered', [
+            Log::channel('audit')->debug('User presence unregistered', [
                 'correlation_id' => $correlationId,
                 'user_id' => $userId,
             ]);
 
             return true;
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Failed to unregister presence', [
+            Log::channel('audit')->error('Failed to unregister presence', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -121,7 +121,7 @@ final class TeamPresenceService
 
         try {
             $presenceKey = "collab:presence:{$tenantId}:{$documentType}:{$documentId}:{$userId}";
-            $presence = $this->cache->get($presenceKey);
+            $presence = Cache::get($presenceKey);
 
             if (!$presence) {
                 throw new \Exception("Presence not found for user {$userId}");
@@ -130,11 +130,11 @@ final class TeamPresenceService
             $presence['status'] = $status;
             $presence['last_active'] = now()->toIso8601String();
 
-            $this->cache->put($presenceKey, $presence, self::PRESENCE_TTL);
+            Cache::put($presenceKey, $presence, self::PRESENCE_TTL);
 
             return true;
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Failed to update status', [
+            Log::channel('audit')->error('Failed to update status', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -152,13 +152,13 @@ final class TeamPresenceService
         int $documentId
     ): array {
         $documentPresenceKey = "collab:present:{$tenantId}:{$documentType}:{$documentId}";
-        $presentUsers = $this->cache->get($documentPresenceKey, []);
+        $presentUsers = Cache::get($documentPresenceKey, []);
 
         $presence = [];
 
         foreach ($presentUsers as $userId => $timestamp) {
             $presenceKey = "collab:presence:{$tenantId}:{$documentType}:{$documentId}:{$userId}";
-            $userPresence = $this->cache->get($presenceKey);
+            $userPresence = Cache::get($presenceKey);
 
             if ($userPresence) {
                 $presence[] = $userPresence;
@@ -177,7 +177,7 @@ final class TeamPresenceService
         int $documentId
     ): int {
         $documentPresenceKey = "collab:present:{$tenantId}:{$documentType}:{$documentId}";
-        $presentUsers = $this->cache->get($documentPresenceKey, []);
+        $presentUsers = Cache::get($documentPresenceKey, []);
 
         return count($presentUsers);
     }

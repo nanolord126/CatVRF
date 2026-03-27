@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Jobs;
 
@@ -36,13 +37,13 @@ final class ViewingReminderJob implements ShouldQueue
     public function handle(): void
     {
         try {
-            $this->log->channel('audit')->info('Viewing reminder job executed', [
+            Log::channel('audit')->info('Viewing reminder job executed', [
                 'appointment_id' => $this->appointment->id,
                 'datetime' => $this->appointment->datetime,
                 'correlation_id' => $this->correlationId,
             ]);
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Viewing reminder job failed', [
+            Log::channel('audit')->error('Viewing reminder job failed', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $this->correlationId,
             ]);

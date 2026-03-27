@@ -109,14 +109,14 @@ final class TenantPanelProvider extends PanelProvider
                 InitializeTenancyByDomain::class,
                 PreventAccessFromCentralDomains::class,
                 \Illuminate\Cookie\Middleware\EncryptCookies::class,
-                \Illuminate\Cookie\Middleware\AddQueuedCookiesTo$this->response->class,
-                \Illuminate\Session\Middleware\Start$this->session->class,
-                \Illuminate\Session\Middleware\Authenticate$this->session->class,
-                \Illuminate\View\Middleware\ShareErrorsFrom$this->session->class,
+                \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+                \Illuminate\Session\Middleware\StartSession::class,
+                \Illuminate\Session\Middleware\AuthenticateSession::class,
+                \Illuminate\View\Middleware\ShareErrorsFromSession::class,
                 \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
                 \Illuminate\Routing\Middleware\SubstituteBindings::class,
                 \Filament\Http\Middleware\DisableBladeIconComponents::class,
-                \Filament\Http\Middleware\DispatchServingFilament$this->event->class,
+                \Filament\Http\Middleware\DispatchServingFilamentEvent::class,
             ])
             ->authMiddleware([
                 \Filament\Http\Middleware\Authenticate::class,
@@ -126,44 +126,44 @@ final class TenantPanelProvider extends PanelProvider
 
     public function boot(): void
     {
-        $this->route->middleware(['web'])->group(function (): void {
-            $this->route->get('/admin/marketplace/beauty/salons', function () {
+        Route::middleware(['web'])->group(function (): void {
+            Route::get('/admin/marketplace/beauty/salons', function () {
                 return app('router')->dispatch(Request::create('/tenant/beauty-salons', 'GET'));
             });
 
-            $this->route->get('/admin/marketplace/beauty/salons/create', function () {
+            Route::get('/admin/marketplace/beauty/salons/create', function () {
                 return app('router')->dispatch(Request::create('/tenant/beauty-salons/create', 'GET'));
             });
 
-            $this->route->get('/admin/marketplace/beauty/services', function () {
+            Route::get('/admin/marketplace/beauty/services', function () {
                 return app('router')->dispatch(Request::create('/tenant/beauty-services', 'GET'));
             });
 
-            $this->route->get('/admin/marketplace/beauty/services/create', function () {
+            Route::get('/admin/marketplace/beauty/services/create', function () {
                 return app('router')->dispatch(Request::create('/tenant/beauty-services/create', 'GET'));
             });
 
-            $this->route->get('/admin/marketplace/beauty/bookings', function () {
+            Route::get('/admin/marketplace/beauty/bookings', function () {
                 return app('router')->dispatch(Request::create('/tenant/appointments', 'GET'));
             });
 
-            $this->route->get('/admin/marketplace/beauty/bookings/create', function () {
+            Route::get('/admin/marketplace/beauty/bookings/create', function () {
                 return app('router')->dispatch(Request::create('/tenant/appointments/create', 'GET'));
             });
 
-            $this->route->get('/admin/marketplace/beauty/stylists', function () {
+            Route::get('/admin/marketplace/beauty/stylists', function () {
                 return app('router')->dispatch(Request::create('/admin/marketplace/beauty/salons', 'GET'));
             });
 
-            $this->route->get('/admin/marketplace/beauty/stylists/create', function () {
+            Route::get('/admin/marketplace/beauty/stylists/create', function () {
                 return app('router')->dispatch(Request::create('/admin/marketplace/beauty/salons/create', 'GET'));
             });
 
-            $this->route->get('/admin/marketplace/beauty/portfolio', function () {
+            Route::get('/admin/marketplace/beauty/portfolio', function () {
                 return app('router')->dispatch(Request::create('/admin/marketplace/beauty/salons', 'GET'));
             });
 
-            $this->route->get('/admin/marketplace/beauty/products', function () {
+            Route::get('/admin/marketplace/beauty/products', function () {
                 return app('router')->dispatch(Request::create('/admin/marketplace/beauty/services', 'GET'));
             });
         });

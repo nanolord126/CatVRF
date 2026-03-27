@@ -22,7 +22,7 @@ final class ReleaseHoldJob implements ShouldQueue
     public function handle(): void
     {
         try {
-            $this->log->channel('audit')->info('ReleaseHoldJob started');
+            Log::channel('audit')->info('ReleaseHoldJob started');
 
             // Найти все AUTHORIZED платежи с холдом, которые зависают > 24 часов
             $expiryTime = now()->subHours(24);
@@ -35,7 +35,7 @@ final class ReleaseHoldJob implements ShouldQueue
                 ->limit(100)
                 ->get();
 
-            $this->log->channel('audit')->info('Found expired holds', [
+            Log::channel('audit')->info('Found expired holds', [
                 'count' => $expiredPayments->count(),
                 'expiry_time' => $expiryTime->toIso8601String(),
             ]);
@@ -45,7 +45,7 @@ final class ReleaseHoldJob implements ShouldQueue
             }
 
         } catch (Exception $e) {
-            $this->log->channel('audit')->error('ReleaseHoldJob failed', [
+            Log::channel('audit')->error('ReleaseHoldJob failed', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
@@ -60,7 +60,7 @@ final class ReleaseHoldJob implements ShouldQueue
     private function releasePaymentHold(PaymentTransaction $payment): void
     {
         try {
-            $this->db->transaction(function () use ($payment) {
+            DB::transaction(function () use ($payment) {
                 // Обновить платёж на CANCELLED (холд не был захвачен)
                 $payment->update([
                     'status' => PaymentTransaction::STATUS_CANCELLED,
@@ -71,7 +71,7 @@ final class ReleaseHoldJob implements ShouldQueue
                 if ($payment->wallet) {
                     $payment->wallet->decrement('hold_amount', $payment->hold_amount ?? $payment->amount);
 
-                    $this->log->channel('audit')->info('Hold released', [
+                    Log::channel('audit')->info('Hold released', [
                         'payment_id' => $payment->id,
                         'wallet_id' => $payment->wallet->id,
                         'hold_amount' => $payment->hold_amount ?? $payment->amount,
@@ -81,7 +81,7 @@ final class ReleaseHoldJob implements ShouldQueue
             });
 
         } catch (Exception $e) {
-            $this->log->channel('audit')->error('Failed to release hold', [
+            Log::channel('audit')->error('Failed to release hold', [
                 'payment_id' => $payment->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $payment->correlation_id,

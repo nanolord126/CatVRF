@@ -33,7 +33,7 @@ final readonly class FiscalService
         string $paymentMethod = 'card',
     ): array {
         try {
-            $this->log->channel('audit')->info('Регистрация чека ОФД', [
+            Log::channel('audit')->info('Регистрация чека ОФД', [
                 'payment_id' => $paymentId,
                 'tenant_id' => $tenantId,
                 'amount' => $amountCopeki,
@@ -51,7 +51,7 @@ final readonly class FiscalService
             };
 
             // Логируем факт фискализации
-            $this->log->channel('audit')->info('Чек зафискализирован', [
+            Log::channel('audit')->info('Чек зафискализирован', [
                 'payment_id' => $paymentId,
                 'receipt_id' => $receiptId,
                 'correlation_id' => $correlationId,
@@ -63,7 +63,7 @@ final readonly class FiscalService
                 'fiscalized_at' => now()->toIso8601String(),
             ];
         } catch (Exception $e) {
-            $this->log->channel('audit')->error('Ошибка при фискализации чека', [
+            Log::channel('audit')->error('Ошибка при фискализации чека', [
                 'payment_id' => $paymentId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -93,7 +93,7 @@ final readonly class FiscalService
         string $correlationId = '',
     ): array {
         try {
-            $this->log->channel('audit')->info('Регистрация возврата ОФД', [
+            Log::channel('audit')->info('Регистрация возврата ОФД', [
                 'payment_id' => $paymentId,
                 'tenant_id' => $tenantId,
                 'amount' => $amountCopeki,
@@ -103,7 +103,7 @@ final readonly class FiscalService
 
             $refundReceiptId = 'refund_' . uniqid();
 
-            $this->log->channel('audit')->info('Возврат зафискализирован', [
+            Log::channel('audit')->info('Возврат зафискализирован', [
                 'payment_id' => $paymentId,
                 'refund_receipt_id' => $refundReceiptId,
                 'correlation_id' => $correlationId,
@@ -115,7 +115,7 @@ final readonly class FiscalService
                 'refunded_at' => now()->toIso8601String(),
             ];
         } catch (Exception $e) {
-            $this->log->channel('audit')->error('Ошибка при регистрации возврата', [
+            Log::channel('audit')->error('Ошибка при регистрации возврата', [
                 'payment_id' => $paymentId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -185,7 +185,7 @@ final readonly class FiscalService
         // https://yookassa.ru/developers/api
         $receiptId = 'yandex_' . uniqid();
         
-        $this->log->channel('audit')->info('Yandex OFD registration', [
+        Log::channel('audit')->info('Yandex OFD registration', [
             'payment_id' => $paymentId,
             'receipt_id' => $receiptId,
             'correlation_id' => $correlationId,
@@ -212,7 +212,7 @@ final readonly class FiscalService
         // Интеграция с АТОЛ Онлайн API
         $receiptId = 'atol_' . uniqid();
         
-        $this->log->channel('audit')->info('АТОЛ OFD registration', [
+        Log::channel('audit')->info('АТОЛ OFD registration', [
             'payment_id' => $paymentId,
             'receipt_id' => $receiptId,
             'correlation_id' => $correlationId,
@@ -239,7 +239,7 @@ final readonly class FiscalService
         // Интеграция с Оранжевая Дата API
         $receiptId = 'od_' . uniqid();
         
-        $this->log->channel('audit')->info('Оранжевая Дата OFD registration', [
+        Log::channel('audit')->info('Оранжевая Дата OFD registration', [
             'payment_id' => $paymentId,
             'receipt_id' => $receiptId,
             'correlation_id' => $correlationId,

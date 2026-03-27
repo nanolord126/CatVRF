@@ -31,8 +31,8 @@ final class HotelPropertyService
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-$this->db->transaction(function () use ($data, $tenantId, $correlationId) {
-            $this->log->channel('audit')->info('Creating hotel property', [
+DB::transaction(function () use ($data, $tenantId, $correlationId) {
+            Log::channel('audit')->info('Creating hotel property', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,
             ]);
@@ -62,7 +62,7 @@ $this->db->transaction(function () use ($data, $tenantId, $correlationId) {
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-$this->db->transaction(function () use ($data, $propertyId, $correlationId) {
+DB::transaction(function () use ($data, $propertyId, $correlationId) {
             return Room::create([
                 'property_id' => $propertyId,
                 'room_number' => $data['room_number'],
@@ -87,8 +87,8 @@ $this->db->transaction(function () use ($data, $propertyId, $correlationId) {
             null,
             $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
         );
-$this->db->transaction(function () use ($data, $propertyId, $userId, $correlationId) {
-            $this->log->channel('audit')->info('Creating hotel booking', [
+DB::transaction(function () use ($data, $propertyId, $userId, $correlationId) {
+            Log::channel('audit')->info('Creating hotel booking', [
                 'correlation_id' => $correlationId,
                 'property_id' => $propertyId,
                 'user_id' => $userId,

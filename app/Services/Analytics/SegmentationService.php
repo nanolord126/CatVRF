@@ -47,7 +47,7 @@ final class SegmentationService
             $segments = $segments->merge($this->segmentByLocation($tenantId, $correlationId));
         }
 
-        $this->log->channel('analytics')->info('Customer segmentation completed', [
+        Log::channel('analytics')->info('Customer segmentation completed', [
             'correlation_id' => $correlationId,
             'tenant_id' => $tenantId,
             'segments_count' => $segments->count(),
@@ -63,7 +63,7 @@ final class SegmentationService
         $correlationId = $correlationId ?: Str::uuid()->toString();
         $cacheKey = "segments:by_value:{$tenantId}";
 
-        $cached = $this->cache->get($cacheKey);
+        $cached = Cache::get($cacheKey);
         if ($cached !== null) {
             return collect($cached);
         }
@@ -95,9 +95,9 @@ final class SegmentationService
             ],
         ];
 
-        $this->cache->put($cacheKey, $segments, self::CACHE_TTL);
+        Cache::put($cacheKey, $segments, self::CACHE_TTL);
 
-        $this->log->channel('analytics')->info('Value segmentation completed', [
+        Log::channel('analytics')->info('Value segmentation completed', [
             'correlation_id' => $correlationId,
             'tenant_id' => $tenantId,
             'segments_count' => count($segments),
@@ -113,7 +113,7 @@ final class SegmentationService
         $correlationId = $correlationId ?: Str::uuid()->toString();
         $cacheKey = "segments:by_behavior:{$tenantId}";
 
-        $cached = $this->cache->get($cacheKey);
+        $cached = Cache::get($cacheKey);
         if ($cached !== null) {
             return collect($cached);
         }
@@ -145,9 +145,9 @@ final class SegmentationService
             ],
         ];
 
-        $this->cache->put($cacheKey, $segments, self::CACHE_TTL);
+        Cache::put($cacheKey, $segments, self::CACHE_TTL);
 
-        $this->log->channel('analytics')->info('Behavior segmentation completed', [
+        Log::channel('analytics')->info('Behavior segmentation completed', [
             'correlation_id' => $correlationId,
             'tenant_id' => $tenantId,
             'segments_count' => count($segments),
@@ -167,7 +167,7 @@ final class SegmentationService
         $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
         $cacheKey = "segments:metrics:{$tenantId}:{$segment}";
 
-        $cached = $this->cache->get($cacheKey);
+        $cached = Cache::get($cacheKey);
         if ($cached !== null) {
             return $cached;
         }
@@ -185,7 +185,7 @@ final class SegmentationService
             'correlation_id' => $correlationId,
         ];
 
-        $this->cache->put($cacheKey, $metrics, self::CACHE_TTL);
+        Cache::put($cacheKey, $metrics, self::CACHE_TTL);
 
         return $metrics;
     }
@@ -226,7 +226,7 @@ final class SegmentationService
             ],
         ];
 
-        $this->log->channel('analytics')->info('Segment comparison completed', [
+        Log::channel('analytics')->info('Segment comparison completed', [
             'correlation_id' => $correlationId,
             'tenant_id' => $tenantId,
             'segment_1' => $segment1,

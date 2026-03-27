@@ -29,7 +29,7 @@ class MarketingAutomationService
     {
         // 1. Проверяем, не предлагали ли уже
         // 2. Генерируем оффер
-        $this->log->info("Triggering cross-sell Flowers for User {$user->id} after Hotel Booking {$hotelBookingId}");
+        Log::info("Triggering cross-sell Flowers for User {$user->id} after Hotel Booking {$hotelBookingId}");
 
         // Эффект: отправка Push-уведомления со скидкой 10% на букет
         $correlationId = session()->get('correlation_id', Str::uuid()->toString());
@@ -42,7 +42,7 @@ class MarketingAutomationService
      */
     public function getPersonalizedDiscount(User $user, string $vertical): float
     {
-        $stats = Behavioral$this->event->where('user_id', $user->id)
+        $stats = BehavioralEvent::where('user_id', $user->id)
             ->where('event_type', 'view')
             ->where('vertical', $vertical)
             ->get();

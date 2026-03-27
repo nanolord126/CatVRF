@@ -1,7 +1,7 @@
 <?php declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
-use App\Domains\Courses\Http\Controllers\B2BCourseController;
+use App\Domains\Education\Courses\Http\Controllers\B2BCourseController;
 
 Route::middleware(['auth:sanctum', 'tenant'])->prefix('api/b2b/courses')->group(function () {
     Route::get('/', [B2BCourseController::class, 'storefronts'])->name('b2b.courses.index');

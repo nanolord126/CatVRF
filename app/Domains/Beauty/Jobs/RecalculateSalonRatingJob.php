@@ -1,8 +1,7 @@
-declare(strict_types=1);
-
 <?php
 
 declare(strict_types=1);
+
 
 namespace App\Domains\Beauty\Jobs;
 
@@ -33,26 +32,18 @@ class RecalculateSalonRatingJob implements ShouldQueue
 
     public function __construct(
         private readonly string $correlationId,
-    ) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+    ) {}
 
     public function handle(): void
     {
         $salons = BeautySalon::query()->with('reviews')->get();
 
-        $this->db->transaction(function () use ($salons): void {
+        DB::transaction(function () use ($salons): void {
             foreach ($salons as $salon) {
                 $avgRating = $salon->reviews()->avg('rating') ?? 0.0;
                 $salon->update(['rating' => $avgRating]);
 
-                $this->log->channel('audit')->info('Salon rating updated', [
+                Log::channel('audit')->info('Salon rating updated', [
                     'salon_id' => $salon->id,
                     'rating' => $avgRating,
                     'correlation_id' => $this->correlationId,

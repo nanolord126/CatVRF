@@ -1,8 +1,7 @@
-declare(strict_types=1);
-
 <?php
 
 declare(strict_types=1);
+
 
 namespace App\Domains\Photography\Events;
 
@@ -27,13 +26,5 @@ class SessionCreated
 	public function __construct(
 		public readonly PhotoSession $session,
 		public readonly string $correlationId
-	) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+	) {}
 }

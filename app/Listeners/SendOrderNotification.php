@@ -31,12 +31,12 @@ final class SendOrderNotification implements ShouldQueue
     public function handle(OrderCreated $event): void
     {
         try {
-            $this->db->transaction(function () use ($event) {
+            DB::transaction(function () use ($event) {
                 // Get order with related data
                 $order = $event->order->load(['user', 'items', 'tenant']);
 
                 // Log event
-                $this->log->channel('audit')->info('Order notification sent', [
+                Log::channel('audit')->info('Order notification sent', [
                     'order_id' => $order->id,
                     'order_uuid' => $order->uuid,
                     'user_id' => $order->user_id,
@@ -67,7 +67,7 @@ final class SendOrderNotification implements ShouldQueue
                 }
             });
         } catch (\Throwable $e) {
-            $this->log->channel('audit')->error('Failed to send order notification', [
+            Log::channel('audit')->error('Failed to send order notification', [
                 'error' => $e->getMessage(),
                 'correlation_id' => $event->correlationId,
                 'trace' => $e->getTraceAsString(),

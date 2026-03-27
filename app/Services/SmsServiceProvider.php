@@ -63,7 +63,7 @@ class SmsService
                 ]
             );
 
-            $this->log->channel('audit')->info('SMS sent', [
+            Log::channel('audit')->info('SMS sent', [
                 'to' => $this->maskPhone($to),
                 'correlation_id' => $correlationId,
             ]);
@@ -71,7 +71,7 @@ class SmsService
             return true;
 
         } catch (\Exception $e) {
-            $this->log->error('Failed to send SMS', [
+            Log::error('Failed to send SMS', [
                 'to' => isset($to) ? $this->maskPhone($to) : 'unknown',
                 'error' => $e->getMessage(),
                 'correlation_id' => $correlationId,

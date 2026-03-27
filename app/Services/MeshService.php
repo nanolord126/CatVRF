@@ -35,7 +35,7 @@ final class MeshService
 
         $roomId = "stream.{$stream->id}";
         
-        $this->log->channel('audit')->info('WebRTC room created', [
+        Log::channel('audit')->info('WebRTC room created', [
             'stream_id' => $stream->id,
             'tenant_id' => $stream->tenant_id,
             'room_id' => $roomId,
@@ -65,7 +65,7 @@ final class MeshService
         ], $correlationId);
 
         // Create peer connection record with transaction
-        $peerConnection = $this->db->transaction(function () use (
+        $peerConnection = DB::transaction(function () use (
             $stream,
             $user,
             $peerId,
@@ -90,7 +90,7 @@ final class MeshService
         broadcast(new PeerJoined($stream->id, $peerId, $user->name ?? 'Guest'))
             ->toOthers();
 
-        $this->log->channel('audit')->info('Peer joined stream', [
+        Log::channel('audit')->info('Peer joined stream', [
             'peer_id' => $peerId,
             'stream_id' => $stream->id,
             'user_id' => $user->id,
@@ -120,7 +120,7 @@ final class MeshService
         broadcast(new OfferSent($stream->id, $fromPeerId, $toPeerId, $sdp))
             ->toOthers();
 
-        $this->log->channel('audit')->debug('WebRTC offer sent', [
+        Log::channel('audit')->debug('WebRTC offer sent', [
             'from' => $fromPeerId,
             'to' => $toPeerId,
             'stream_id' => $stream->id,
@@ -145,7 +145,7 @@ final class MeshService
         $this->validatePeers($stream, [$fromPeerId, $toPeerId], $correlationId);
 
         // Store answer in peer connection
-        $this->db->transaction(function () use ($fromPeerId, $sdp): void {
+        DB::transaction(function () use ($fromPeerId, $sdp): void {
             StreamPeerConnection::where('peer_id', $fromPeerId)
                 ->update(['remote_sdp' => $sdp]);
         });
@@ -154,7 +154,7 @@ final class MeshService
         broadcast(new AnswerSent($stream->id, $fromPeerId, $toPeerId, $sdp))
             ->toOthers();
 
-        $this->log->channel('audit')->debug('WebRTC answer sent', [
+        Log::channel('audit')->debug('WebRTC answer sent', [
             'from' => $fromPeerId,
             'to' => $toPeerId,
             'stream_id' => $stream->id,
@@ -177,7 +177,7 @@ final class MeshService
         $correlationId ??= Str::uuid()->toString();
 
         // Find peer connection and add candidate
-        $peerConnection = $this->db->transaction(function () use (
+        $peerConnection = DB::transaction(function () use (
             $peerId,
             $candidate,
             $sdpMLineIndex,
@@ -198,7 +198,7 @@ final class MeshService
         });
 
         if (!$peerConnection) {
-            $this->log->channel('fraud_alert')->warning('ICE candidate received for non-existent peer', [
+            Log::channel('fraud_alert')->warning('ICE candidate received for non-existent peer', [
                 'peer_id' => $peerId,
                 'stream_id' => $stream->id,
                 'correlation_id' => $correlationId,
@@ -225,7 +225,7 @@ final class MeshService
             )->toOthers();
         }
 
-        $this->log->channel('audit')->debug('ICE candidate added', [
+        Log::channel('audit')->debug('ICE candidate added', [
             'peer_id' => $peerId,
             'stream_id' => $stream->id,
             'candidates_count' => count($peerConnection->ice_candidates ?? []),
@@ -238,14 +238,14 @@ final class MeshService
      */
     public function markConnected(string $peerId): void
     {
-        $this->db->transaction(function () use ($peerId): void {
+        DB::transaction(function () use ($peerId): void {
             $peer = StreamPeerConnection::where('peer_id', $peerId)->first();
             if ($peer) {
                 $peer->markConnected();
             }
         });
 
-        $this->log->channel('audit')->info('Peer connection established', [
+        Log::channel('audit')->info('Peer connection established', [
             'peer_id' => $peerId,
         ]);
     }
@@ -255,14 +255,14 @@ final class MeshService
      */
     public function markFailed(string $peerId, string $reason = ''): void
     {
-        $this->db->transaction(function () use ($peerId, $reason): void {
+        DB::transaction(function () use ($peerId, $reason): void {
             $peer = StreamPeerConnection::where('peer_id', $peerId)->first();
             if ($peer) {
                 $peer->markFailed($reason);
             }
         });
 
-        $this->log->channel('fraud_alert')->warning('Peer connection failed', [
+        Log::channel('fraud_alert')->warning('Peer connection failed', [
             'peer_id' => $peerId,
             'reason' => $reason,
         ]);
@@ -280,7 +280,7 @@ final class MeshService
 
         if ($connectedCount > $threshold) {
             // Switch to SFU topology
-            $this->db->transaction(function () use ($stream): void {
+            DB::transaction(function () use ($stream): void {
                 $stream->update(['topology' => 'sfu']);
                 
                 // Update all peers to SFU
@@ -288,7 +288,7 @@ final class MeshService
                     ->update(['connection_type' => 'sfu']);
             });
 
-            $this->log->channel('audit')->warning('Topology switched to SFU', [
+            Log::channel('audit')->warning('Topology switched to SFU', [
                 'stream_id' => $stream->id,
                 'peer_count' => $connectedCount,
                 'threshold' => $threshold,
@@ -324,7 +324,7 @@ final class MeshService
      */
     public function cleanupClosedConnections(int $olderThanMinutes = 60): int
     {
-        return $this->db->transaction(function () use ($olderThanMinutes): int {
+        return DB::transaction(function () use ($olderThanMinutes): int {
             $cutoffTime = now()->subMinutes($olderThanMinutes);
 
             $deleted = StreamPeerConnection::where('status', 'closed')
@@ -332,7 +332,7 @@ final class MeshService
                 ->delete();
 
             if ($deleted > 0) {
-                $this->log->channel('audit')->info('Cleaned up closed peer connections', [
+                Log::channel('audit')->info('Cleaned up closed peer connections', [
                     'count' => $deleted,
                     'older_than_minutes' => $olderThanMinutes,
                 ]);
@@ -355,7 +355,7 @@ final class MeshService
         $missingPeers = array_diff($peerIds, $existingPeers);
 
         if (!empty($missingPeers)) {
-            $this->log->channel('fraud_alert')->warning('Invalid peer IDs in SDP exchange', [
+            Log::channel('fraud_alert')->warning('Invalid peer IDs in SDP exchange', [
                 'stream_id' => $stream->id,
                 'missing_peers' => $missingPeers,
                 'correlation_id' => $correlationId,

@@ -28,7 +28,7 @@ final class OrderPolicy
     {
         // CANON 2026: Strict tenant scoping check
         if (isset($order->tenant_id) && $user->tenant_id !== $order->tenant_id && !$user->hasRole('admin')) {
-            \Illuminate\Support\Facades\$this->log->warning('Tenant mismatch in ' . __CLASS__ . '::' . __FUNCTION__, [
+            \Illuminate\Support\Facades\Log::warning('Tenant mismatch in ' . __CLASS__ . '::' . __FUNCTION__, [
                 'user_id' => $user->id,
                 'user_tenant_id' => $user->tenant_id,
                 'model_tenant_id' => $order->tenant_id,
@@ -43,7 +43,7 @@ final class OrderPolicy
         );
 
         if (!$allowed) {
-            $this->log->warning('Unauthorized order view attempt', [
+            Log::warning('Unauthorized order view attempt', [
                 'user_id' => $user->id,
                 'order_id' => $order->id,
                 'order_user_id' => $order->user_id,
@@ -72,7 +72,7 @@ final class OrderPolicy
         // CANON 2026 FRAUD: Predict/check operation before mutating
         $fraudScore = 0; // fraud check at service layer
         if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-            \Illuminate\Support\Facades\$this->log->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+            \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                 'user_id' => $user->id,
                 'score' => $fraudScore
             ]);
@@ -82,7 +82,7 @@ final class OrderPolicy
         $allowed = $user->email_verified_at !== null;
 
         if (!$allowed) {
-            $this->log->info('Unverified user order creation attempt', [
+            Log::info('Unverified user order creation attempt', [
                 'user_id' => $user->id,
                 'email' => $user->email,
             ]);
@@ -101,7 +101,7 @@ final class OrderPolicy
         // CANON 2026 FRAUD: Predict/check operation before mutating
         $fraudScore = 0; // fraud check at service layer
         if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-            \Illuminate\Support\Facades\$this->log->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+            \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                 'user_id' => $user->id,
                 'score' => $fraudScore
             ]);
@@ -115,7 +115,7 @@ final class OrderPolicy
         );
 
         if (!$allowed) {
-            $this->log->warning('Unauthorized order update attempt', [
+            Log::warning('Unauthorized order update attempt', [
                 'user_id' => $user->id,
                 'order_id' => $order->id,
                 'order_status' => $order->status,
@@ -141,7 +141,7 @@ final class OrderPolicy
         );
 
         if (!$allowed) {
-            $this->log->warning('Unauthorized order cancellation attempt', [
+            Log::warning('Unauthorized order cancellation attempt', [
                 'user_id' => $user->id,
                 'order_id' => $order->id,
                 'order_status' => $order->status,
@@ -166,7 +166,7 @@ final class OrderPolicy
         );
 
         if (!$allowed) {
-            $this->log->info('Unauthorized checkout attempt', [
+            Log::info('Unauthorized checkout attempt', [
                 'user_id' => $user->id,
                 'order_id' => $order->id,
                 'order_status' => $order->status,
@@ -191,7 +191,7 @@ final class OrderPolicy
         );
 
         if (!$allowed) {
-            $this->log->warning('Unauthorized order confirmation attempt', [
+            Log::warning('Unauthorized order confirmation attempt', [
                 'user_id' => $user->id,
                 'tenant_id' => $user->tenant_id,
                 'order_business_id' => $order->business_id,
@@ -327,7 +327,7 @@ final class OrderPolicy
         // CANON 2026 FRAUD: Predict/check operation before mutating
         $fraudScore = 0; // fraud check at service layer
         if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-            \Illuminate\Support\Facades\$this->log->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+            \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                 'user_id' => $user->id,
                 'score' => $fraudScore
             ]);
@@ -345,7 +345,7 @@ final class OrderPolicy
         // CANON 2026 FRAUD: Predict/check operation before mutating
         $fraudScore = 0; // fraud check at service layer
         if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-            \Illuminate\Support\Facades\$this->log->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+            \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                 'user_id' => $user->id,
                 'score' => $fraudScore
             ]);
@@ -364,7 +364,7 @@ final class OrderPolicy
         // CANON 2026 FRAUD: Predict/check operation before mutating
         $fraudScore = 0; // fraud check at service layer
         if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-            \Illuminate\Support\Facades\$this->log->warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+            \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
                 'user_id' => $user->id,
                 'score' => $fraudScore
             ]);

@@ -42,7 +42,7 @@ final class ExportService
             'correlation_id' => $correlationId,
         ];
 
-        $this->log->channel('audit')->info('CSV export created', [
+        Log::channel('audit')->info('CSV export created', [
             'correlation_id' => $correlationId,
             'filename' => $filename,
             'size' => $result['size_bytes'],
@@ -87,7 +87,7 @@ final class ExportService
             'correlation_id' => $correlationId,
         ];
 
-        $this->log->channel('audit')->info('JSON export created', [
+        Log::channel('audit')->info('JSON export created', [
             'correlation_id' => $correlationId,
             'filename' => $filename,
             'size' => $result['size_bytes'],
@@ -122,7 +122,7 @@ final class ExportService
         $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
         $cacheKey = "exports:history:{$tenantId}";
 
-        $cached = $this->cache->get($cacheKey);
+        $cached = Cache::get($cacheKey);
         if ($cached !== null) {
             return $cached;
         }
@@ -151,7 +151,7 @@ final class ExportService
             ],
         ];
 
-        $this->cache->put($cacheKey, $history, self::CACHE_TTL);
+        Cache::put($cacheKey, $history, self::CACHE_TTL);
 
         return array_slice($history, 0, $limit);
     }

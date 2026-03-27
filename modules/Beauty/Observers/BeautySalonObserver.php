@@ -30,7 +30,7 @@ class BeautySalonObserver
                 ],
             ]);
 
-            \$this->log->info('Wallet account created for salon', [
+            \Log::info('Wallet account created for salon', [
                 'salon_id' => $salon->id,
                 'tenant_id' => $salon->tenant_id,
             ]);
@@ -40,7 +40,7 @@ class BeautySalonObserver
     public function deleted(BeautySalon $salon): void
     {
         // Log deletion with audit trail
-        \$this->log->warning('Beauty salon deleted', [
+        \Log::warning('Beauty salon deleted', [
             'salon_id' => $salon->id,
             'name' => $salon->name,
             'tenant_id' => $salon->tenant_id,

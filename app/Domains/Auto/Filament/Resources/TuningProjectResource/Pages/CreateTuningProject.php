@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Auto\Filament\Resources\TuningProjectResource\Pages;
 
@@ -49,8 +50,8 @@ class CreateTuningProject extends CreateRecord
 
     protected function afterCreate(): void
     {
-        $this->db->transaction(function () {
-            $this->log->channel('audit')->info('TuningProject created', [
+        DB::transaction(function () {
+            Log::channel('audit')->info('TuningProject created', [
                 'correlation_id' => $this->record->correlation_id,
                 'project_id' => $this->record->id,
             ]);

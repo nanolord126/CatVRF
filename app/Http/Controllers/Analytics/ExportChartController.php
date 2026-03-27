@@ -1,9 +1,6 @@
 <?php
-
 declare(strict_types=1);
-
 namespace App\Http\Controllers\Analytics;
-
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -11,7 +8,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Barryvdh\DomPDF\Facade\Pdf;
-
 /**
  * Контроллер для экспорта графиков в PNG/PDF
  * 
@@ -32,53 +28,43 @@ final class ExportChartController extends Controller
                 'chart_image' => 'required|string', // Base64 image data
                 'filename' => 'nullable|string|max:255',
             ]);
-
             $correlationId = $request->header('X-Correlation-ID') ?? Str::uuid();
-
             // Base64 decode image
             if (!preg_match('/^data:image\/png;base64,/', $validated['chart_image'])) {
-                $this->log->channel('error')->error('Invalid PNG data format', [
+                Log::channel('error')->error('Invalid PNG data format', [
                     'correlation_id' => $correlationId,
                     'provided_format' => substr($validated['chart_image'], 0, 50),
                 ]);
                 return response('Invalid image format', 400);
             }
-
             $imageData = base64_decode(
                 preg_replace('/^data:image\/png;base64,/', '', $validated['chart_image']),
                 true
             );
-
             if ($imageData === false) {
                 throw new \Exception('Failed to decode PNG image');
             }
-
             $filename = $validated['filename'] ?? 'chart-' . now()->format('Y-m-d-H-i-s') . '.png';
-
-            $this->log->channel('audit')->info('Chart PNG exported', [
+            Log::channel('audit')->info('Chart PNG exported', [
                 'correlation_id' => $correlationId,
                 'filename' => $filename,
                 'size_bytes' => strlen($imageData),
                 'tenant_id' => auth()->user()->current_tenant_id,
             ]);
-
             return response($imageData)
                 ->header('Content-Type', 'image/png')
                 ->header('Content-Disposition', "attachment; filename=\"{$filename}\"")
                 ->header('X-Correlation-ID', $correlationId);
-
         } catch (\Exception $e) {
-            $this->log->channel('error')->error('PNG export failed', [
+            Log::channel('error')->error('PNG export failed', [
                 'correlation_id' => $request->header('X-Correlation-ID'),
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-
             return response('Export failed: ' . $e->getMessage(), 500)
                 ->header('X-Correlation-ID', $request->header('X-Correlation-ID'));
         }
     }
-
     /**
      * Экспортировать график в PDF с метаданными
      * 
@@ -94,10 +80,8 @@ final class ExportChartController extends Controller
                 'metadata' => 'nullable|array',
                 'chart_image' => 'nullable|string', // Base64 PNG
             ]);
-
             $correlationId = $request->header('X-Correlation-ID') ?? Str::uuid();
             $tenant = auth()->user()->currentTenant;
-
             // Подготовить данные для PDF
             $pdfData = [
                 'title' => $validated['title'] ?? 'Analytics Report',
@@ -109,7 +93,6 @@ final class ExportChartController extends Controller
                 'metadata' => $validated['metadata'] ?? [],
                 'chart_image' => $validated['chart_image'] ?? null,
             ];
-
             // Генерировать PDF
             $pdf = Pdf::loadView('exports.chart-pdf', $pdfData)
                 ->setOption('defaultFont', 'sans-serif')
@@ -117,32 +100,26 @@ final class ExportChartController extends Controller
                 ->setOption('margin-bottom', 10)
                 ->setOption('margin-left', 10)
                 ->setOption('margin-right', 10);
-
             $filename = $validated['title'] ?? 'analytics-report';
             $filename = Str::slug($filename) . '-' . now()->format('Y-m-d-H-i-s') . '.pdf';
-
-            $this->log->channel('audit')->info('Chart PDF exported', [
+            Log::channel('audit')->info('Chart PDF exported', [
                 'correlation_id' => $correlationId,
                 'filename' => $filename,
                 'title' => $pdfData['title'],
                 'tenant_id' => $tenant->id,
             ]);
-
             return $pdf->download($filename)
                 ->header('X-Correlation-ID', $correlationId);
-
         } catch (\Exception $e) {
-            $this->log->channel('error')->error('PDF export failed', [
+            Log::channel('error')->error('PDF export failed', [
                 'correlation_id' => $request->header('X-Correlation-ID'),
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-
             return response('Export failed: ' . $e->getMessage(), 500)
                 ->header('X-Correlation-ID', $request->header('X-Correlation-ID'));
         }
     }
-
     /**
      * Экспортировать через Browsershot (более качественный PNG)
      * Требует установленного Chrome/Chromium
@@ -156,16 +133,12 @@ final class ExportChartController extends Controller
                 'width' => 'nullable|integer|min:400|max:2000',
                 'height' => 'nullable|integer|min:300|max:2000',
             ]);
-
             $correlationId = $request->header('X-Correlation-ID') ?? Str::uuid();
-
             $width = $validated['width'] ?? 1200;
             $height = $validated['height'] ?? 600;
-
             // Использовать Browsershot для высокого качества
             // ТРЕБУЕТ установленного Chrome: https://github.com/spatie/browsershot
             // npm install puppeteer (or install Chrome system-wide)
-            
             // Для простоты - используем базовый PNG экспорт
             // В production используйте:
             // $image = Browsershot::html($validated['html_content'])
@@ -173,26 +146,21 @@ final class ExportChartController extends Controller
             //     ->setNpmBinary('/usr/bin/npm')
             //     ->windowSize($width, $height)
             //     ->screenshot();
-
-            $this->log->channel('audit')->info('Browsershot PNG export attempted', [
+            Log::channel('audit')->info('Browsershot PNG export attempted', [
                 'correlation_id' => $correlationId,
                 'width' => $width,
                 'height' => $height,
             ]);
-
             return response('Browsershot PNG export requires Chrome installation. Use basic PNG export instead.', 501)
                 ->header('X-Correlation-ID', $correlationId);
-
         } catch (\Exception $e) {
-            $this->log->channel('error')->error('Browsershot PNG export failed', [
+            Log::channel('error')->error('Browsershot PNG export failed', [
                 'correlation_id' => $request->header('X-Correlation-ID'),
                 'message' => $e->getMessage(),
             ]);
-
             return response('Browsershot export failed: ' . $e->getMessage(), 500);
         }
     }
-
     /**
      * Быстрый экспорт - сохранить PNG в storage и вернуть URL
      */
@@ -203,48 +171,38 @@ final class ExportChartController extends Controller
                 'chart_image' => 'required|string',
                 'export_type' => 'required|in:png,pdf',
             ]);
-
             $correlationId = $request->header('X-Correlation-ID') ?? Str::uuid();
             $tenant = auth()->user()->currentTenant;
-
             $filename = 'analytics/' . $tenant->id . '/' . now()->format('Y-m-d') . '/' 
                 . Str::uuid() . '.' . $validated['export_type'];
-
             if ($validated['export_type'] === 'png') {
                 $imageData = base64_decode(
                     preg_replace('/^data:image\/png;base64,/', '', $validated['chart_image']),
                     true
                 );
-
-                $this->storage->disk('public')->put($filename, $imageData);
-
+                Storage::disk('public')->put($filename, $imageData);
             } elseif ($validated['export_type'] === 'pdf') {
                 $filename = str_replace('.pdf', '', $filename) . '.pdf';
             }
-
-            $url = $this->storage->disk('public')->url($filename);
-
-            $this->log->channel('audit')->info('Quick export completed', [
+            $url = Storage::disk('public')->url($filename);
+            Log::channel('audit')->info('Quick export completed', [
                 'correlation_id' => $correlationId,
                 'type' => $validated['export_type'],
                 'filename' => $filename,
                 'url' => $url,
                 'tenant_id' => $tenant->id,
             ]);
-
             return response()->json([
                 'success' => true,
                 'url' => $url,
                 'filename' => basename($filename),
                 'correlation_id' => $correlationId,
             ]);
-
         } catch (\Exception $e) {
-            $this->log->channel('error')->error('Quick export failed', [
+            Log::channel('error')->error('Quick export failed', [
                 'correlation_id' => $request->header('X-Correlation-ID'),
                 'message' => $e->getMessage(),
             ]);
-
             return response()->json([
                 'success' => false,
                 'error' => 'Export failed: ' . $e->getMessage(),

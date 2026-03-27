@@ -36,7 +36,7 @@ class DeductAppointmentConsumables
             if (str_contains(strtolower($appointment->service_name), strtolower($service))) {
                 $product = Product::where('sku', $data['sku'])->first();
                 if ($product) {
-                    $this->db->transaction(function () use ($product, $data, $appointment) {
+                    DB::transaction(function () use ($product, $data, $appointment) {
                         $product->decrement('stock', $data['qty']);
                         
                         StockMovement::create([

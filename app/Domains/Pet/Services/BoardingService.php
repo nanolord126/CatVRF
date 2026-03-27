@@ -21,7 +21,7 @@ final class BoardingService
         $correlationId ??= Str::uuid()->toString();
 
         try {
-            return $this->db->transaction(function () use ($data, $correlationId) {
+            return DB::transaction(function () use ($data, $correlationId) {
                 $this->fraudControl->check(0, 'create_boarding_reservation', 0, null, null, $correlationId);
 
                 $reservation = PetBoardingReservation::create([
@@ -35,7 +35,7 @@ final class BoardingService
 
                 BoardingReservationCreated::dispatch($reservation, $correlationId);
 
-                $this->log->channel('audit')->info('Pet boarding reservation created', [
+                Log::channel('audit')->info('Pet boarding reservation created', [
                     'reservation_id' => $reservation->id,
                     'clinic_id' => $reservation->clinic_id,
                     'owner_id' => $reservation->owner_id,
@@ -47,7 +47,7 @@ final class BoardingService
                 return $reservation;
             });
         } catch (\Throwable $e) {
-            $this->log->error('Failed to create boarding reservation', [
+            Log::error('Failed to create boarding reservation', [
                 'data' => $data,
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
@@ -62,7 +62,7 @@ final class BoardingService
         $correlationId ??= Str::uuid()->toString();
 
         try {
-            return $this->db->transaction(function () use ($reservation, $correlationId) {
+            return DB::transaction(function () use ($reservation, $correlationId) {
                 $reservation->update([
                     'status' => 'completed',
                     'actual_check_out' => now(),
@@ -70,7 +70,7 @@ final class BoardingService
                     'correlation_id' => $correlationId,
                 ]);
 
-                $this->log->channel('audit')->info('Pet boarding reservation completed', [
+                Log::channel('audit')->info('Pet boarding reservation completed', [
                     'reservation_id' => $reservation->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -78,7 +78,7 @@ final class BoardingService
                 return $reservation;
             });
         } catch (\Throwable $e) {
-            $this->log->error('Failed to complete boarding reservation', [
+            Log::error('Failed to complete boarding reservation', [
                 'reservation_id' => $reservation->id,
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
@@ -93,7 +93,7 @@ final class BoardingService
         $correlationId ??= Str::uuid()->toString();
 
         try {
-            return $this->db->transaction(function () use ($reservation, $correlationId) {
+            return DB::transaction(function () use ($reservation, $correlationId) {
                 if ($reservation->status === 'completed' || $reservation->status === 'cancelled') {
                     throw new \RuntimeException('Cannot cancel completed or already cancelled reservation');
                 }
@@ -125,7 +125,7 @@ final class BoardingService
                     ]);
                 }
 
-                $this->log->channel('audit')->info('Pet boarding reservation cancelled', [
+                Log::channel('audit')->info('Pet boarding reservation cancelled', [
                     'reservation_id' => $reservation->id,
                     'correlation_id' => $correlationId,
                 ]);
@@ -133,7 +133,7 @@ final class BoardingService
                 return $reservation;
             });
         } catch (\Throwable $e) {
-            $this->log->error('Failed to cancel boarding reservation', [
+            Log::error('Failed to cancel boarding reservation', [
                 'reservation_id' => $reservation->id,
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),

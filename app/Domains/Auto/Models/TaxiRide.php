@@ -4,70 +4,76 @@ declare(strict_types=1);
 
 namespace App\Domains\Auto\Models;
 
-use App\Traits\BelongsToTenant;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
 /**
- * Модель Поездки (Такси/Грузоперевозки)
+ * КАНОН 2026: TaxiRide.
+ * Модель поездки такси (Агрегатор / Свой автопарк).
  */
 final class TaxiRide extends Model
 {
-    use HasFactory, BelongsToTenant, SoftDeletes;
-
-    protected $table = 'taxi_rides';
+    protected $table = 'auto_taxi_rides';
 
     protected $fillable = [
         'uuid',
         'tenant_id',
-        'business_group_id',
-        'passenger_id',
-        'driver_id',
         'vehicle_id',
+        'driver_id',
+        'passenger_id',
+        'pickup_point',
+        'dropoff_point',
         'pickup_address',
-        'dest_address',
-        'pickup_location', // PostGIS Point
-        'dest_location',   // PostGIS Point
-        'status',          // pending, accepted, on_way, arrived, started, completed, cancelled
-        'price_cents',
-        'distance_meters',
-        'duration_seconds',
+        'dropoff_address',
+        'status',
+        'price_kopecks',
         'surge_multiplier',
-        'cargo_type',      // passenger, express, cargo, oversized
-        'cargo_weight_kg',
+        'started_at',
+        'finished_at',
         'correlation_id',
-        'tags',
     ];
 
     protected $casts = [
-        'pickup_location' => 'string', // Требует кастомный каст для PostGIS или обработки в Service
-        'dest_location' => 'string',
-        'price_cents' => 'integer',
-        'distance_meters' => 'integer',
-        'duration_seconds' => 'integer',
+        'price_kopecks' => 'integer',
         'surge_multiplier' => 'float',
-        'tags' => 'json',
+        'started_at' => 'datetime',
+        'finished_at' => 'datetime',
+        'pickup_point' => 'string', // PostGIS Point handling required if raw
+        'dropoff_point' => 'string', 
     ];
 
+    /**
+     * КАНОН 2026: Automatic ID & Tenant Scoping.
+     */
     protected static function booted(): void
     {
-        static::creating(function (self $model) {
-            $model->uuid = $model->uuid ?? (string) Str::uuid();
-            $model->correlation_id = $model->correlation_id ?? request()->header('X-Correlation-ID', (string) Str::uuid());
-            $model->surge_multiplier = $model->surge_multiplier ?? 1.0;
+        static::creating(function (TaxiRide $ride) {
+            $ride->uuid = $ride->uuid ?? (string) Str::uuid();
+            $ride->tenant_id = $ride->tenant_id ?? (tenant()->id ?? 0);
+        });
+
+        static::addGlobalScope('tenant', function (Builder $builder) {
+            if (tenant()) {
+                $builder->where('auto_taxi_rides.tenant_id', tenant()->id);
+            }
         });
     }
 
-    public function passenger(): BelongsTo
+    /**
+     * Связь с ТС.
+     */
+    public function vehicle(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class, 'passenger_id');
+        return $this->belongsTo(Vehicle::class, 'vehicle_id');
     }
 
-    public function driver(): BelongsTo
+    /**
+     * Расчет базового дохода водителя.
+     */
+    public function getEstimatedDriverEarnings(): int
     {
-        return $this->belongsTo(TaxiDriver::class, 'driver_id');
+        return (int) ($this->price_kopecks * 0.85); // Пример комиссии 15%
     }
 }

@@ -22,17 +22,17 @@ use App\Jobs\ReleaseHoldJob;
 
 // ─── Domain Jobs ─────────────────────────────────────────────────────────────
 use App\Domains\Beauty\Jobs\AppointmentReminderJob;
-use App\Domains\Channels\Jobs\ArchiveInactiveChannelsJob;
-use App\Domains\Channels\Jobs\PostSchedulerJob;
-use App\Domains\Channels\Jobs\SubscriptionRenewalJob;
-use App\Domains\Courses\Jobs\CertificateGenerationJob;
-use App\Domains\Courses\Jobs\EnrollmentReminderJob;
-use App\Domains\Entertainment\Jobs\CalculateEntertainerEarningsJob;
-use App\Domains\Entertainment\Jobs\SendEventReminderJob;
+use App\Domains\Content\Channels\Jobs\ArchiveInactiveChannelsJob;
+use App\Domains\Content\Channels\Jobs\PostSchedulerJob;
+use App\Domains\Content\Channels\Jobs\SubscriptionRenewalJob;
+use App\Domains\Education\Courses\Jobs\CertificateGenerationJob;
+use App\Domains\Education\Courses\Jobs\EnrollmentReminderJob;
+use App\Domains\EventPlanning\Entertainment\Jobs\CalculateEntertainerEarningsJob;
+use App\Domains\EventPlanning\Entertainment\Jobs\SendEventReminderJob;
 use App\Domains\Fashion\Jobs\CalculateStoreEarningsJob;
 use App\Domains\Fashion\Jobs\UpdateOrderStatusJob;
-use App\Domains\Fitness\Jobs\CalculateTrainerEarningsJob;
-use App\Domains\Fitness\Jobs\SendClassReminderJob;
+use App\Domains\Sports\Fitness\Jobs\CalculateTrainerEarningsJob;
+use App\Domains\Sports\Fitness\Jobs\SendClassReminderJob;
 use App\Domains\Flowers\Jobs\CalculateFlowerShopEarningsJob;
 use App\Domains\Flowers\Jobs\ProcessFlowerOrderStatusJob;
 use App\Domains\Food\Jobs\AutoCloseOrderJob;
@@ -256,6 +256,7 @@ Schedule::job(new SendJobReminderJob())
 // ══════════════════════════════════════════════════════════════════════════════
 // HOTELS
 // ══════════════════════════════════════════════════════════════════════════════
+/*
 Schedule::job(new AutoCheckOutJob())
     ->hourly()
     ->name('hotels.auto-checkout')
@@ -265,6 +266,7 @@ Schedule::job(new CheckInReminderJob())
     ->dailyAt('09:00')
     ->name('hotels.check-in-reminder')
     ->withoutOverlapping(30);
+*/
 
 // ══════════════════════════════════════════════════════════════════════════════
 // LOGISTICS

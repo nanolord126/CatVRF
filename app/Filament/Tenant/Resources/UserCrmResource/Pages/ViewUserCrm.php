@@ -27,7 +27,7 @@ final class ViewUserCrm extends ViewRecord
                 ])
                 ->action(function (array $data) {
                     $correlationId = (string) \Illuminate\Support\Str::uuid()->toString();
-                    \Illuminate\Support\Facades\$this->log->channel('audit')->info('CRM: Send notification', [
+                    \Illuminate\Support\Facades\Log::channel('audit')->info('CRM: Send notification', [
                         'user_id' => $this->record->id,
                         'tenant_id' => filament()->getTenant()?->id,
                         'correlation_id' => $correlationId,

@@ -43,9 +43,9 @@ final class DashboardCustomizationService
         ];
 
         $cacheKey = "dashboard:layout:{$tenantId}:{$userId}";
-        $this->cache->put($cacheKey, $layout, self::CACHE_TTL);
+        Cache::put($cacheKey, $layout, self::CACHE_TTL);
 
-        $this->log->channel('audit')->info('Dashboard layout saved', [
+        Log::channel('audit')->info('Dashboard layout saved', [
             'correlation_id' => $correlationId,
             'user_id' => $userId,
             'tenant_id' => $tenantId,
@@ -62,7 +62,7 @@ final class DashboardCustomizationService
         $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
         $cacheKey = "dashboard:layout:{$tenantId}:{$userId}";
 
-        $cached = $this->cache->get($cacheKey);
+        $cached = Cache::get($cacheKey);
         if ($cached !== null) {
             return $cached;
         }
@@ -81,7 +81,7 @@ final class DashboardCustomizationService
             'correlation_id' => $correlationId,
         ];
 
-        $this->cache->put($cacheKey, $defaultLayout, self::CACHE_TTL);
+        Cache::put($cacheKey, $defaultLayout, self::CACHE_TTL);
 
         return $defaultLayout;
     }
@@ -93,9 +93,9 @@ final class DashboardCustomizationService
         $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
         $cacheKey = "dashboard:layout:{$tenantId}:{$userId}";
 
-        $this->cache->forget($cacheKey);
+        Cache::forget($cacheKey);
 
-        $this->log->channel('audit')->info('Dashboard layout deleted', [
+        Log::channel('audit')->info('Dashboard layout deleted', [
             'correlation_id' => $correlationId,
             'user_id' => $userId,
             'tenant_id' => $tenantId,
@@ -132,9 +132,9 @@ final class DashboardCustomizationService
         ];
 
         $cacheKey = "dashboard:name:{$tenantId}:{$userId}";
-        $this->cache->put($cacheKey, $nameData, self::CACHE_TTL);
+        Cache::put($cacheKey, $nameData, self::CACHE_TTL);
 
-        $this->log->channel('audit')->info('Dashboard name saved', [
+        Log::channel('audit')->info('Dashboard name saved', [
             'correlation_id' => $correlationId,
             'user_id' => $userId,
             'tenant_id' => $tenantId,

@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Channels\Pages;
 
@@ -28,7 +29,7 @@ class CreatePost extends CreateRecord
         $data['tenant_id']   = filament()->getTenant()?->id ?? '0';
 
         // channel_id — найти канал тенанта
-        $channel = \App\Domains\Channels\Models\BusinessChannel::withoutGlobalScopes()
+        $channel = \App\Domains\Content\Channels\Models\BusinessChannel::withoutGlobalScopes()
             ->where('tenant_id', $data['tenant_id'])
             ->first();
 

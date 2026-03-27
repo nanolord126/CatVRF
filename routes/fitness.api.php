@@ -1,11 +1,11 @@
 <?php declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
-use App\Domains\Fitness\Http\Controllers\GymController;
-use App\Domains\Fitness\Http\Controllers\FitnessClassController;
-use App\Domains\Fitness\Http\Controllers\TrainerController;
-use App\Domains\Fitness\Http\Controllers\MembershipController;
-use App\Domains\Fitness\Http\Controllers\AttendanceController;
+use App\Domains\Sports\Fitness\Http\Controllers\GymController;
+use App\Domains\Sports\Fitness\Http\Controllers\FitnessClassController;
+use App\Domains\Sports\Fitness\Http\Controllers\TrainerController;
+use App\Domains\Sports\Fitness\Http\Controllers\MembershipController;
+use App\Domains\Sports\Fitness\Http\Controllers\AttendanceController;
 
 Route::prefix('fitness')->group(function () {
     Route::get('/gyms', [GymController::class, 'index']);

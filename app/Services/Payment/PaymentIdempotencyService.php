@@ -1,7 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php
-declare(strict_types=1);
 
 namespace App\Services\Payment;
 
@@ -25,7 +25,7 @@ class PaymentIdempotencyService
     {
         $payloadHash = hash('sha256', json_encode($payload));
         
-        $record = $this->db->table('payment_idempotency_records')
+        $record = DB::table('payment_idempotency_records')
             ->where('tenant_id', $tenantId)
             ->where('idempotency_key', $idempotencyKey)
             ->first();
@@ -41,7 +41,7 @@ class PaymentIdempotencyService
     {
         $payloadHash = hash('sha256', json_encode($payload));
 
-        $this->db->table('payment_idempotency_records')->insert([
+        DB::table('payment_idempotency_records')->insert([
             'tenant_id' => $tenantId,
             'idempotency_key' => $idempotencyKey,
             'payload_hash' => $payloadHash,

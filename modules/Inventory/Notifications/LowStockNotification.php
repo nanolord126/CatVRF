@@ -39,7 +39,7 @@ class LowStockNotification extends Notification
 
     public function toArray($notifiable): array
     {
-        Filament$this->notification->make()
+        FilamentNotification->make()
             ->title('Low Stock Alert: ' . $this->product->name)
             ->body("SKU {$this->product->sku} is below threshold: current {$this->product->stock}")
             ->danger()

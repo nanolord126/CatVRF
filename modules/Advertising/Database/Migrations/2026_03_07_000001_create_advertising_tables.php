@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration {
     public function up(): void {
-        $this->schema->create('ad_campaigns', function (Blueprint $t) {
+        Schema::create('ad_campaigns', function (Blueprint $t) {
             $t->id(); $t->string('tenant_id')->index(); $t->string('name');
             $t->decimal('budget', 12, 2)->default(0); $t->string('vertical');
             $t->boolean('is_active')->default(1); $t->string('erid')->nullable();
@@ -13,7 +13,7 @@ return new class extends Migration {
             $t->string('correlation_id')->index()->nullable(); $t->timestamps();
         });
 
-        $this->schema->create('ad_creatives', function (Blueprint $t) {
+        Schema::create('ad_creatives', function (Blueprint $t) {
             $t->id(); $t->foreignId('campaign_id')->constrained('ad_campaigns')->onDelete('cascade');
             $t->string('title'); $t->text('content')->nullable();
             $t->string('link'); $t->string('type')->default('banner');
@@ -22,6 +22,6 @@ return new class extends Migration {
     }
 
     public function down(): void {
-        $this->schema->dropIfExists('ad_creatives'); $this->schema->dropIfExists('ad_campaigns');
+        Schema::dropIfExists('ad_creatives'); Schema::dropIfExists('ad_campaigns');
     }
 };

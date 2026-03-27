@@ -2,7 +2,7 @@
 
 namespace Database\Factories;
 
-use App\Domains\ConstructionMaterials\Models\MaterialOrder;
+use App\Domains\ConstructionAndRepair\ConstructionAndRepair\ConstructionMaterials\Models\MaterialOrder;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 

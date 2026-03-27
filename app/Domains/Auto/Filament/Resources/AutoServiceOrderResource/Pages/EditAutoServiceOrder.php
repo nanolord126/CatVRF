@@ -43,7 +43,7 @@ final class EditAutoServiceOrder extends EditRecord
                         ->rows(3),
                 ])
                 ->action(function (array $data) {
-                    $this->db->transaction(function () use ($data) {
+                    DB::transaction(function () use ($data) {
                         $this->record->status = 'completed';
                         $this->record->total_price = (int) $data['final_price'];
                         $this->record->work_description = $data['work_description'];
@@ -56,7 +56,7 @@ final class EditAutoServiceOrder extends EditRecord
                             $this->record->correlation_id
                         ));
 
-                        $this->log->channel('audit')->info('Auto service order completed', [
+                        Log::channel('audit')->info('Auto service order completed', [
                             'correlation_id' => $this->record->correlation_id,
                             'order_id' => $this->record->id,
                             'final_price' => $data['final_price'],
@@ -74,7 +74,7 @@ final class EditAutoServiceOrder extends EditRecord
 
             Actions\DeleteAction::make()
                 ->after(function () {
-                    $this->log->channel('audit')->info('Auto service order deleted', [
+                    Log::channel('audit')->info('Auto service order deleted', [
                         'correlation_id' => $this->record->correlation_id,
                         'order_id' => $this->record->id,
                         'user_id' => auth()->id(),
@@ -85,7 +85,7 @@ final class EditAutoServiceOrder extends EditRecord
 
     protected function afterSave(): void
     {
-        $this->log->channel('audit')->info('Auto service order updated', [
+        Log::channel('audit')->info('Auto service order updated', [
             'correlation_id' => $this->record->correlation_id,
             'order_id' => $this->record->id,
             'status' => $this->record->status,

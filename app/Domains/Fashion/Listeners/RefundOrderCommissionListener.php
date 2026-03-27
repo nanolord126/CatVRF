@@ -15,7 +15,7 @@ final class RefundOrderCommissionListener implements ShouldQueue
     public function handle(ReturnRequested $event): void
     {
         try {
-            $this->db->transaction(function () use ($event) {
+            DB::transaction(function () use ($event) {
                 $order = $event->return->order;
 
                 $wallet = Wallet::where('tenant_id', $event->return->tenant_id)
@@ -41,7 +41,7 @@ final class RefundOrderCommissionListener implements ShouldQueue
                     'correlation_id' => $event->correlationId,
                 ]);
 
-                $this->log->channel('audit')->info('Order return refund credited', [
+                Log::channel('audit')->info('Order return refund credited', [
                     'return_id' => $event->return->id,
                     'order_id' => $order->id,
                     'customer_id' => $event->return->customer_id,
@@ -50,7 +50,7 @@ final class RefundOrderCommissionListener implements ShouldQueue
                 ]);
             });
         } catch (Throwable $e) {
-            $this->log->channel('audit')->error('Failed to refund order return', [
+            Log::channel('audit')->error('Failed to refund order return', [
                 'return_id' => $event->return->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $event->correlationId,

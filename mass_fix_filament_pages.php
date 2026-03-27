@@ -192,13 +192,13 @@ final class $className extends CreateRecord
         \$this->rateLimiter->hit(\$key, 3600);
 
         try {
-            return \$this->db->transaction(function () use (\$data, \$user) {
+            return \DB::transaction(function () use (\$data, \$user) {
                 \$filtered = array_filter(\$data, static fn(\$value) => \$value !== null);
                 \$record = parent::handleRecordCreation(\$filtered);
 
                 if (\$record && \$user) {
                     \$correlationId = \$this->request->header('X-Correlation-ID') ?? (string) Str::uuid();
-                    \$this->log->channel('audit')->info('Record created', [
+                    \Log::channel('audit')->info('Record created', [
                         'id' => \$record->id,
                         'user_id' => \$user->id,
                         'tenant_id' => filament()->getTenant()?->id,
@@ -212,7 +212,7 @@ final class $className extends CreateRecord
             });
         } catch (Throwable \$e) {
             \$user = \$this->guard->user();
-            \$this->log->channel('audit')->error('Creation failed', [
+            \Log::channel('audit')->error('Creation failed', [
                 'error' => \$e->getMessage(),
                 'user_id' => \$user?->id,
             ]);
@@ -282,14 +282,14 @@ final class $className extends EditRecord
     protected function handleRecordUpdate(Model \$record, array \$data): Model
     {
         try {
-            return \$this->db->transaction(function () use (\$record, \$data) {
+            return \DB::transaction(function () use (\$record, \$data) {
                 \$user = \$this->guard->user();
                 \$filtered = array_filter(\$data, static fn(\$value) => \$value !== null);
                 \$record = parent::handleRecordUpdate(\$record, \$filtered);
 
                 if (\$user) {
                     \$correlationId = \$this->request->header('X-Correlation-ID') ?? (string) Str::uuid();
-                    \$this->log->channel('audit')->info('Record updated', [
+                    \Log::channel('audit')->info('Record updated', [
                         'id' => \$record->id,
                         'user_id' => \$user->id,
                         'tenant_id' => filament()->getTenant()?->id,
@@ -301,7 +301,7 @@ final class $className extends EditRecord
                 return \$record;
             });
         } catch (Throwable \$e) {
-            \$this->log->channel('audit')->error('Update failed', [
+            \Log::channel('audit')->error('Update failed', [
                 'id' => \$record->id,
                 'error' => \$e->getMessage(),
             ]);
@@ -360,7 +360,7 @@ final class $className extends ViewRecord
         parent::authorizeAccess();
 
         \$user = \$this->guard->user();
-        \$this->log->channel('audit')->info('Record viewed', [
+        \Log::channel('audit')->info('Record viewed', [
             'id' => \$this->record?->id,
             'user_id' => \$user?->id,
             'tenant_id' => filament()->getTenant()?->id,
@@ -418,7 +418,7 @@ final class $className extends ListRecords
         parent::authorizeAccess();
 
         \$user = \$this->guard->user();
-        \$this->log->channel('audit')->info('List accessed', [
+        \Log::channel('audit')->info('List accessed', [
             'user_id' => \$user?->id,
             'tenant_id' => filament()->getTenant()?->id,
             'ip' => \$this->request->ip(),

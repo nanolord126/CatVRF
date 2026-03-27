@@ -21,7 +21,7 @@ final class DeductTourBookingCommissionListener implements ShouldQueue
     public function handle(TourBooked $event): void
     {
         try {
-            $this->db->transaction(function () use ($event) {
+            DB::transaction(function () use ($event) {
                 $wallet = $event->booking->agency->owner->wallet;
 
                 if ($wallet === null) {
@@ -45,7 +45,7 @@ final class DeductTourBookingCommissionListener implements ShouldQueue
                     'correlation_id' => $event->correlationId,
                 ]);
 
-                $this->log->channel('audit')->info('Travel commission deducted', [
+                Log::channel('audit')->info('Travel commission deducted', [
                     'booking_id' => $event->booking->id,
                     'booking_number' => $event->booking->booking_number,
                     'agency_id' => $event->booking->agency_id,
@@ -56,7 +56,7 @@ final class DeductTourBookingCommissionListener implements ShouldQueue
                 ]);
             });
         } catch (Throwable $e) {
-            $this->log->channel('audit')->error('Travel commission deduction failed', [
+            Log::channel('audit')->error('Travel commission deduction failed', [
                 'booking_id' => $event->booking->id,
                 'error' => $e->getMessage(),
                 'correlation_id' => $event->correlationId,

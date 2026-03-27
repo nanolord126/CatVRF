@@ -62,7 +62,7 @@ final readonly class PriceSuggestionService
             $cacheKey = "price_suggestion:tenant:{$tenantId}:item:{$itemId}";
 
             // Check cache first
-            $cached = $this->cache->get($cacheKey);
+            $cached = Cache::get($cacheKey);
             if ($cached !== null) {
                 return array_merge($cached, ['correlation_id' => $correlationId, 'from_cache' => true]);
             }
@@ -130,10 +130,10 @@ final readonly class PriceSuggestionService
 
             // 12. Cache result (with appropriate TTL)
             $cacheTtl = $this->determineCacheTTL($demandFactor, $inventoryFactor);
-            $this->cache->put($cacheKey, $result, $cacheTtl);
+            Cache::put($cacheKey, $result, $cacheTtl);
 
             // 13. Audit log
-            $this->db->transaction(function () use (
+            DB::transaction(function () use (
                 $itemId,
                 $tenantId,
                 $currentPrice,
@@ -143,7 +143,7 @@ final readonly class PriceSuggestionService
                 $confidence,
                 $correlationId,
             ) {
-                $this->log->channel('audit')->info('PriceML: suggestion generated', [
+                Log::channel('audit')->info('PriceML: suggestion generated', [
                     'correlation_id' => $correlationId,
                     'tenant_id' => $tenantId,
                     'item_id' => $itemId,
@@ -158,7 +158,7 @@ final readonly class PriceSuggestionService
 
             return array_merge($result, ['correlation_id' => $correlationId, 'from_cache' => false]);
         } catch (\Throwable $e) {
-            $this->log->channel('fraud_alert')->error('PriceML: suggestion failed', [
+            Log::channel('fraud_alert')->error('PriceML: suggestion failed', [
                 'correlation_id' => $correlationId,
                 'item_id' => $itemId,
                 'error' => $e->getMessage(),
@@ -189,13 +189,13 @@ final readonly class PriceSuggestionService
         $last30Days = now()->subDays(30)->startOfDay();
 
         // Views in last 30 days
-        $views = $context['views_30d'] ?? $this->db->table('product_views')
+        $views = $context['views_30d'] ?? DB::table('product_views')
             ->where('product_id', $itemId)
             ->where('created_at', '>=', $last30Days)
             ->count();
 
         // Sales in last 30 days
-        $sales = $context['sales_30d'] ?? $this->db->table('order_items')
+        $sales = $context['sales_30d'] ?? DB::table('order_items')
             ->where('product_id', $itemId)
             ->where('created_at', '>=', $last30Days)
             ->count();
@@ -204,12 +204,12 @@ final readonly class PriceSuggestionService
         $conversionRate = $views > 0 ? ($sales / $views) : 0;
 
         // Trend (sales last 7 days vs previous 7 days)
-        $salesLast7 = $this->db->table('order_items')
+        $salesLast7 = DB::table('order_items')
             ->where('product_id', $itemId)
             ->where('created_at', '>=', now()->subDays(7))
             ->count();
 
-        $salesPrev7 = $this->db->table('order_items')
+        $salesPrev7 = DB::table('order_items')
             ->where('product_id', $itemId)
             ->where('created_at', '>=', now()->subDays(14))
             ->where('created_at', '<', now()->subDays(7))
@@ -240,13 +240,13 @@ final readonly class PriceSuggestionService
      */
     private function calculateCompetitionFactor(int $itemId, int $currentPrice, array $context): float
     {
-        $product = $this->db->table('products')->find($itemId);
+        $product = DB::table('products')->find($itemId);
         if (!$product) {
             return 1.0;
         }
 
         // Get competitor average price in same category
-        $competitorAvgPrice = $context['competitor_avg_price'] ?? $this->db->table('products')
+        $competitorAvgPrice = $context['competitor_avg_price'] ?? DB::table('products')
             ->where('category_id', $product->category_id)
             ->where('id', '!=', $itemId)
             ->where('status', 'active')
@@ -277,7 +277,7 @@ final readonly class PriceSuggestionService
      */
     private function calculateInventoryFactor(int $itemId, array $context): float
     {
-        $currentStock = $context['current_stock'] ?? $this->db->table('inventory_items')
+        $currentStock = $context['current_stock'] ?? DB::table('inventory_items')
             ->where('product_id', $itemId)
             ->value('current_stock') ?? 0;
 
@@ -307,13 +307,13 @@ final readonly class PriceSuggestionService
         $quarter = (int)ceil($month / 3);
 
         // Historical sales for this month vs average
-        $historyMonthSales = $this->db->table('order_items')
+        $historyMonthSales = DB::table('order_items')
             ->where('product_id', $itemId)
             ->whereRaw('MONTH(created_at) = ?', [$month])
             ->where('created_at', '>=', now()->subYears(2))
             ->count();
 
-        $totalSales = $this->db->table('order_items')
+        $totalSales = DB::table('order_items')
             ->where('product_id', $itemId)
             ->where('created_at', '>=', now()->subYears(2))
             ->count();
@@ -424,9 +424,9 @@ final readonly class PriceSuggestionService
     public function invalidateCache(int $itemId, int $tenantId): void
     {
         $cacheKey = "price_suggestion:tenant:{$tenantId}:item:{$itemId}";
-        $this->cache->forget($cacheKey);
+        Cache::forget($cacheKey);
 
-        $this->log->channel('audit')->debug('PriceML: cache invalidated', [
+        Log::channel('audit')->debug('PriceML: cache invalidated', [
             'tenant_id' => $tenantId,
             'item_id' => $itemId,
         ]);
@@ -438,7 +438,7 @@ final readonly class PriceSuggestionService
      */
     public function getElasticity(int $itemId, int $days = 60): array
     {
-        $priceChanges = $this->db->table('price_history')
+        $priceChanges = DB::table('price_history')
             ->where('product_id', $itemId)
             ->where('created_at', '>=', now()->subDays($days))
             ->orderBy('created_at')

@@ -29,7 +29,7 @@ class ChatSecurityService
     public function __construct()
     {
         $this->correlationId = Str::uuid();
-        $this->tenantId = $this->auth->guard('tenant')?->id();
+        $this->tenantId = Auth::guard('tenant')?->id();
     }
 
     /**
@@ -40,7 +40,7 @@ class ChatSecurityService
         $this->correlationId = Str::uuid();
 
         try {
-            $this->log->channel('chat')->info('ChatSecurity: processing message', [
+            Log::channel('chat')->info('ChatSecurity: processing message', [
                 'correlation_id' => $this->correlationId,
                 'sender_id' => $sender->id,
                 'receiver_id' => $receiver->id,
@@ -53,14 +53,14 @@ class ChatSecurityService
             $archive = $this->archiveMessage($sender, $receiver, $content, $sanitizedContent, $isSanitized);
 
             if ($isSanitized) {
-                $this->log->warning('ChatSecurity: contact swap attempt', [
+                Log::warning('ChatSecurity: contact swap attempt', [
                     'correlation_id' => $this->correlationId,
                     'sender_id' => $sender->id,
                     'receiver_id' => $receiver->id,
                     'archive_id' => $archive->id,
                 ]);
 
-                Audit$this->log->create([
+                AuditLog::create([
                     'entity_type' => 'ChatArchive',
                     'entity_id' => $archive->id,
                     'action' => 'sanitized_contact_attempt',
@@ -76,7 +76,7 @@ class ChatSecurityService
                 ]);
             }
 
-            $this->log->channel('chat')->info('ChatSecurity: message processed', [
+            Log::channel('chat')->info('ChatSecurity: message processed', [
                 'correlation_id' => $this->correlationId,
                 'archive_id' => $archive->id,
                 'is_sanitized' => $isSanitized,
@@ -84,7 +84,7 @@ class ChatSecurityService
 
             return $sanitizedContent;
         } catch (Throwable $e) {
-            $this->log->error('ChatSecurity: message processing failed', [
+            Log::error('ChatSecurity: message processing failed', [
                 'correlation_id' => $this->correlationId,
                 'sender_id' => $sender->id,
                 'receiver_id' => $receiver->id,
@@ -150,11 +150,11 @@ class ChatSecurityService
                 ]
             ]);
 
-            Audit$this->log->create([
+            AuditLog::create([
                 'entity_type' => ChatArchive::class,
                 'entity_id' => $archive->id,
                 'action' => 'created',
-                'user_id' => $this->auth->id(),
+                'user_id' => Auth::id(),
                 'tenant_id' => $this->tenantId,
                 'correlation_id' => $this->correlationId,
                 'changes' => [
@@ -170,7 +170,7 @@ class ChatSecurityService
 
             return $archive;
         } catch (Throwable $e) {
-            $this->log->error('ChatSecurity: archive creation failed', [
+            Log::error('ChatSecurity: archive creation failed', [
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -185,7 +185,7 @@ class ChatSecurityService
     public function searchInHistory(array $filters): \Illuminate\Database\Eloquent\Collection
     {
         try {
-            $this->log->channel('chat')->info('ChatSecurity: history search', [
+            Log::channel('chat')->info('ChatSecurity: history search', [
                 'correlation_id' => $this->correlationId,
                 'filters' => array_keys($filters),
             ]);
@@ -213,14 +213,14 @@ class ChatSecurityService
 
             $results = $query->get();
 
-            $this->log->channel('chat')->info('ChatSecurity: history search completed', [
+            Log::channel('chat')->info('ChatSecurity: history search completed', [
                 'correlation_id' => $this->correlationId,
                 'results_count' => $results->count(),
             ]);
 
             return $results;
         } catch (Throwable $e) {
-            $this->log->error('ChatSecurity: history search failed', [
+            Log::error('ChatSecurity: history search failed', [
                 'correlation_id' => $this->correlationId,
                 'error' => $e->getMessage(),
             ]);

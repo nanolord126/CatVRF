@@ -29,7 +29,7 @@ final class WalletController extends Controller
         $correlationId = Str::uuid();
         
         try {
-            $this->log->channel('audit')->info('wallet.transactions.index.start', [
+            Log::channel('audit')->info('wallet.transactions.index.start', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => tenant('id'),
                 'user_id' => auth()->id(),
@@ -41,7 +41,7 @@ final class WalletController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->paginate($perPage);
 
-            $this->log->channel('audit')->info('wallet.transactions.index.success', [
+            Log::channel('audit')->info('wallet.transactions.index.success', [
                 'correlation_id' => $correlationId,
                 'count' => $transactions->count(),
             ]);
@@ -52,7 +52,7 @@ final class WalletController extends Controller
                 'correlation_id' => (string) $correlationId,
             ]);
         } catch (Throwable $e) {
-            $this->log->channel('audit')->critical('wallet.transactions.index.error', [
+            Log::channel('audit')->critical('wallet.transactions.index.error', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -75,7 +75,7 @@ final class WalletController extends Controller
         $correlationId = Str::uuid();
         
         try {
-            $this->log->channel('audit')->info('wallet.balance.start', [
+            Log::channel('audit')->info('wallet.balance.start', [
                 'correlation_id' => $correlationId,
                 'user_id' => auth()->id(),
             ]);
@@ -85,7 +85,7 @@ final class WalletController extends Controller
                 ->where('status', 'completed')
                 ->sum('amount');
 
-            $this->log->channel('audit')->info('wallet.balance.success', [
+            Log::channel('audit')->info('wallet.balance.success', [
                 'correlation_id' => $correlationId,
                 'balance' => $balance ?? 0,
             ]);
@@ -96,7 +96,7 @@ final class WalletController extends Controller
                 'correlation_id' => (string) $correlationId,
             ]);
         } catch (Throwable $e) {
-            $this->log->channel('audit')->critical('wallet.balance.error', [
+            Log::channel('audit')->critical('wallet.balance.error', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -127,7 +127,7 @@ final class WalletController extends Controller
             ]);
 
             if ($fraudScore > 80) {
-                $this->log->channel('audit')->warning('wallet.deposit.fraud.blocked', [
+                Log::channel('audit')->warning('wallet.deposit.fraud.blocked', [
                     'correlation_id' => $correlationId,
                     'fraud_score' => $fraudScore,
                 ]);
@@ -139,14 +139,14 @@ final class WalletController extends Controller
                 ], 403);
             }
 
-            $this->log->channel('audit')->info('wallet.deposit.start', [
+            Log::channel('audit')->info('wallet.deposit.start', [
                 'correlation_id' => $correlationId,
                 'amount' => $request->amount,
                 'fraud_score' => $fraudScore,
             ]);
 
             // Транзакция БД обязательна для всех мутаций
-            $transaction = $this->db->transaction(function () use ($request, $correlationId) {
+            $transaction = DB::transaction(function () use ($request, $correlationId) {
                 return WalletTransaction::create([
                     'tenant_id' => tenant('id'),
                     'user_id' => auth()->id(),
@@ -160,7 +160,7 @@ final class WalletController extends Controller
                 ]);
             });
 
-            $this->log->channel('audit')->info('wallet.deposit.success', [
+            Log::channel('audit')->info('wallet.deposit.success', [
                 'correlation_id' => $correlationId,
                 'transaction_id' => $transaction->id,
                 'amount' => $transaction->amount,
@@ -172,7 +172,7 @@ final class WalletController extends Controller
                 'correlation_id' => (string) $correlationId,
             ], 201);
         } catch (Throwable $e) {
-            $this->log->channel('audit')->critical('wallet.deposit.error', [
+            Log::channel('audit')->critical('wallet.deposit.error', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -203,7 +203,7 @@ final class WalletController extends Controller
             ]);
 
             if ($fraudScore > 80) {
-                $this->log->channel('audit')->warning('wallet.withdraw.fraud.blocked', [
+                Log::channel('audit')->warning('wallet.withdraw.fraud.blocked', [
                     'correlation_id' => $correlationId,
                     'fraud_score' => $fraudScore,
                 ]);
@@ -215,13 +215,13 @@ final class WalletController extends Controller
                 ], 403);
             }
 
-            $this->log->channel('audit')->info('wallet.withdraw.start', [
+            Log::channel('audit')->info('wallet.withdraw.start', [
                 'correlation_id' => $correlationId,
                 'amount' => $request->amount,
             ]);
 
             // Транзакция БД
-            $transaction = $this->db->transaction(function () use ($request, $correlationId) {
+            $transaction = DB::transaction(function () use ($request, $correlationId) {
                 $currentBalance = WalletTransaction::where('tenant_id', tenant('id'))
                     ->where('user_id', auth()->id())
                     ->where('status', 'completed')
@@ -245,7 +245,7 @@ final class WalletController extends Controller
                 ]);
             });
 
-            $this->log->channel('audit')->info('wallet.withdraw.success', [
+            Log::channel('audit')->info('wallet.withdraw.success', [
                 'correlation_id' => $correlationId,
                 'transaction_id' => $transaction->id,
                 'amount' => $transaction->amount,
@@ -257,7 +257,7 @@ final class WalletController extends Controller
                 'correlation_id' => (string) $correlationId,
             ], 201);
         } catch (\DomainException $e) {
-            $this->log->channel('audit')->warning('wallet.withdraw.insufficient_balance', [
+            Log::channel('audit')->warning('wallet.withdraw.insufficient_balance', [
                 'correlation_id' => $correlationId,
                 'amount' => $request->amount,
             ]);
@@ -268,7 +268,7 @@ final class WalletController extends Controller
                 'correlation_id' => (string) $correlationId,
             ], 422);
         } catch (Throwable $e) {
-            $this->log->channel('audit')->critical('wallet.withdraw.error', [
+            Log::channel('audit')->critical('wallet.withdraw.error', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -293,7 +293,7 @@ final class WalletController extends Controller
         try {
             $this->authorize('view', $transaction);
 
-            $this->log->channel('audit')->info('wallet.transaction.show', [
+            Log::channel('audit')->info('wallet.transaction.show', [
                 'correlation_id' => $correlationId,
                 'transaction_id' => $transaction->id,
                 'user_id' => auth()->id(),
@@ -305,7 +305,7 @@ final class WalletController extends Controller
                 'correlation_id' => (string) $correlationId,
             ]);
         } catch (Throwable $e) {
-            $this->log->channel('audit')->warning('wallet.transaction.unauthorized', [
+            Log::channel('audit')->warning('wallet.transaction.unauthorized', [
                 'correlation_id' => $correlationId,
                 'transaction_id' => $transaction->id,
                 'user_id' => auth()->id(),
@@ -328,7 +328,7 @@ final class WalletController extends Controller
         $correlationId = Str::uuid();
         
         try {
-            $this->log->channel('audit')->info('wallet.history.start', [
+            Log::channel('audit')->info('wallet.history.start', [
                 'correlation_id' => $correlationId,
                 'user_id' => auth()->id(),
             ]);
@@ -339,7 +339,7 @@ final class WalletController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->paginate($perPage);
 
-            $this->log->channel('audit')->info('wallet.history.success', [
+            Log::channel('audit')->info('wallet.history.success', [
                 'correlation_id' => $correlationId,
                 'count' => $history->count(),
             ]);
@@ -350,7 +350,7 @@ final class WalletController extends Controller
                 'correlation_id' => (string) $correlationId,
             ]);
         } catch (Throwable $e) {
-            $this->log->channel('audit')->critical('wallet.history.error', [
+            Log::channel('audit')->critical('wallet.history.error', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
@@ -372,7 +372,7 @@ final class WalletController extends Controller
         $correlationId = Str::uuid();
         
         try {
-            $this->log->channel('audit')->info('wallet.statement.start', [
+            Log::channel('audit')->info('wallet.statement.start', [
                 'correlation_id' => $correlationId,
                 'user_id' => auth()->id(),
             ]);
@@ -393,7 +393,7 @@ final class WalletController extends Controller
             
             $statement = $query->orderBy('created_at', 'desc')->get();
 
-            $this->log->channel('audit')->info('wallet.statement.success', [
+            Log::channel('audit')->info('wallet.statement.success', [
                 'correlation_id' => $correlationId,
                 'count' => $statement->count(),
                 'period' => ['from' => $fromDate, 'to' => $toDate],
@@ -405,7 +405,7 @@ final class WalletController extends Controller
                 'correlation_id' => (string) $correlationId,
             ]);
         } catch (Throwable $e) {
-            $this->log->channel('audit')->critical('wallet.statement.error', [
+            Log::channel('audit')->critical('wallet.statement.error', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);

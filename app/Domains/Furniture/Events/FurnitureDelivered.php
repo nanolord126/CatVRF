@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Furniture\Events;
 
@@ -25,13 +26,5 @@ class FurnitureDelivered
         public readonly int $furnitureOrderId,
         public readonly int $tenantId,
         public readonly string $correlationId,
-    ) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
-    {
-        // TODO: инициализация
-    }
-}
+    ) {}
 }

@@ -32,7 +32,7 @@ final class ListingService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-            $this->db->transaction(function () use ($contractorId, $categoryId, $name, $description, $type, $basePrice, $correlationId) {
+            DB::transaction(function () use ($contractorId, $categoryId, $name, $description, $type, $basePrice, $correlationId) {
                 $listing = ServiceListing::create([
                     'tenant_id' => tenant('id'),
                     'contractor_id' => $contractorId,
@@ -45,7 +45,7 @@ final class ListingService
                     'correlation_id' => $correlationId,
                 ]);
 
-                \$this->log->channel('audit')->info('Service listing created', [
+                \Log::channel('audit')->info('Service listing created', [
                     'listing_id' => $listing->id,
                     'contractor_id' => $contractorId,
                     'correlation_id' => $correlationId,
@@ -54,7 +54,7 @@ final class ListingService
                 return $listing;
             });
         } catch (\Throwable $e) {
-            \$this->log->channel('audit')->error('Failed to create listing', ['error' => $e->getMessage()]);
+            \Log::channel('audit')->error('Failed to create listing', ['error' => $e->getMessage()]);
             throw $e;
         }
     }
@@ -72,12 +72,12 @@ final class ListingService
                 null,
                 $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
             );
-            $this->db->transaction(function () use ($listing, $data, $correlationId) {
+            DB::transaction(function () use ($listing, $data, $correlationId) {
                 $listing->update($data + ['correlation_id' => $correlationId]);
                 return $listing;
             });
         } catch (\Throwable $e) {
-            \$this->log->channel('audit')->error('Failed to update listing', ['error' => $e->getMessage()]);
+            \Log::channel('audit')->error('Failed to update listing', ['error' => $e->getMessage()]);
             throw $e;
         }
     }

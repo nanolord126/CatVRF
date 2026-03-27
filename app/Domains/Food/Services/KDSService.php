@@ -30,12 +30,12 @@ final class KDSService
      */
     public function sendToKitchen(int $orderId, array $items, string $correlationId): array
     {
-        return $this->db->transaction(function () use ($orderId, $items, $correlationId): array {
+        return DB::transaction(function () use ($orderId, $items, $correlationId): array {
             // Get order
-            $order = $this->db->table('restaurant_orders')->findOrFail($orderId);
+            $order = DB::table('restaurant_orders')->findOrFail($orderId);
 
             // Update order status
-            $this->db->table('restaurant_orders')
+            DB::table('restaurant_orders')
                 ->where('id', $orderId)
                 ->update([
                     'status' => 'cooking',
@@ -52,7 +52,7 @@ final class KDSService
                 'priority' => $this->calculatePriority($order->total_price),
             ]);
 
-            $this->log->channel('audit')->info('Order sent to KDS', [
+            Log::channel('audit')->info('Order sent to KDS', [
                 'correlation_id' => $correlationId,
                 'order_id' => $orderId,
                 'restaurant_id' => $order->restaurant_id,
@@ -76,12 +76,12 @@ final class KDSService
      */
     public function markOrderReady(int $orderId, string $correlationId): array
     {
-        return $this->db->transaction(function () use ($orderId, $correlationId): array {
+        return DB::transaction(function () use ($orderId, $correlationId): array {
             // Get order
-            $order = $this->db->table('restaurant_orders')->findOrFail($orderId);
+            $order = DB::table('restaurant_orders')->findOrFail($orderId);
 
             // Update status
-            $this->db->table('restaurant_orders')
+            DB::table('restaurant_orders')
                 ->where('id', $orderId)
                 ->update([
                     'status' => 'ready',
@@ -96,7 +96,7 @@ final class KDSService
                 'restaurant_id' => $order->restaurant_id,
             ]);
 
-            $this->log->channel('audit')->info('Order marked as ready', [
+            Log::channel('audit')->info('Order marked as ready', [
                 'correlation_id' => $correlationId,
                 'order_id' => $orderId,
                 'cooking_time_minutes' => now()->diffInMinutes($order->cooking_started_at),
@@ -120,12 +120,12 @@ final class KDSService
      */
     public function cancelOrder(int $orderId, string $reason, string $correlationId): bool
     {
-        return $this->db->transaction(function () use ($orderId, $reason, $correlationId): bool {
+        return DB::transaction(function () use ($orderId, $reason, $correlationId): bool {
             // Get order
-            $order = $this->db->table('restaurant_orders')->findOrFail($orderId);
+            $order = DB::table('restaurant_orders')->findOrFail($orderId);
 
             // Update status
-            $this->db->table('restaurant_orders')
+            DB::table('restaurant_orders')
                 ->where('id', $orderId)
                 ->update([
                     'status' => 'cancelled',
@@ -142,7 +142,7 @@ final class KDSService
                 'reason' => $reason,
             ]);
 
-            $this->log->channel('audit')->info('Order cancelled in KDS', [
+            Log::channel('audit')->info('Order cancelled in KDS', [
                 'correlation_id' => $correlationId,
                 'order_id' => $orderId,
                 'reason' => $reason,
@@ -160,7 +160,7 @@ final class KDSService
      */
     public function getKitchenQueue(int $restaurantId): array
     {
-        return $this->db->table('restaurant_orders')
+        return DB::table('restaurant_orders')
             ->where('restaurant_id', $restaurantId)
             ->whereIn('status', ['cooking', 'ready'])
             ->orderBy('cooking_started_at', 'asc')
@@ -193,9 +193,9 @@ final class KDSService
     {
         try {
             // For now, this is a stub
-            $this->log->channel('audit')->debug('KDS API call', $payload);
+            Log::channel('audit')->debug('KDS API call', $payload);
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('KDS API failed', [
+            Log::channel('audit')->error('KDS API failed', [
                 'error' => $e->getMessage(),
                 'payload' => $payload,
             ]);

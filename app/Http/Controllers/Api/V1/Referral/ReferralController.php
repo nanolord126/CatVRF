@@ -1,7 +1,5 @@
 declare(strict_types=1);
-
 namespace App\Http\Controllers\Api\V1\Referral;
-
 use App\Http\Controllers\Api\V1\BaseApiController;
 use App\Http\Requests\Referral\GenerateReferralRequest;
 use App\Http\Requests\Referral\RegisterReferralRequest;
@@ -14,7 +12,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-
 /**
  * Referral Program API Controller.
  * Workflow: Generate link → Register → Qualify (5000₽ spent) → Award bonus.
@@ -39,7 +36,6 @@ final class ReferralController extends BaseApiController
         private readonly FraudControlService $fraudService,
         private readonly WalletService $walletService,
     ) {}
-
     /**
      * POST /api/v1/referral/generate
      * Создать реферальную ссылку.
@@ -51,12 +47,10 @@ final class ReferralController extends BaseApiController
         $correlationId = $request->getCorrelationId();
         $tenantId = $request->getTenantId();
         $referrerId = auth()->id();
-
         try {
-            return $this->db->transaction(function () use ($referrerId, $correlationId, $tenantId, $request) {
+            return DB::transaction(function () use ($referrerId, $correlationId, $tenantId, $request) {
                 // Создать referral record
                 $referralCode = strtoupper(Str::random(8));
-
                 $referral = Referral::create([
                     'referrer_id' => $referrerId,
                     'referral_code' => $referralCode,
@@ -64,15 +58,12 @@ final class ReferralController extends BaseApiController
                     'correlation_id' => $correlationId,
                     'uuid' => Str::uuid(),
                 ]);
-
                 $referralLink = route('referral.register', ['code' => $referralCode]);
-
-                $this->log->channel('audit')->info('Referral link generated', [
+                Log::channel('audit')->info('Referral link generated', [
                     'correlation_id' => $correlationId,
                     'referrer_id' => $referrerId,
                     'referral_code' => $referralCode,
                 ]);
-
                 return response()->json([
                     'success' => true,
                     'message' => 'Referral link generated',
@@ -85,11 +76,10 @@ final class ReferralController extends BaseApiController
                 ], 201);
             });
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Referral link generation failed', [
+            Log::channel('audit')->error('Referral link generation failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
-
             return response()->json([
                 'success' => false,
                 'message' => 'Link generation failed',
@@ -97,7 +87,6 @@ final class ReferralController extends BaseApiController
             ], 500);
         }
     }
-
     /**
      * POST /api/v1/referral/register
      * Зарегистрировать приглашённого пользователя.
@@ -109,12 +98,10 @@ final class ReferralController extends BaseApiController
         $correlationId = $request->getCorrelationId();
         $code = $request->input('referral_code');
         $refereeId = auth()->id();
-
         try {
-            return $this->db->transaction(function () use ($code, $refereeId, $correlationId, $request) {
+            return DB::transaction(function () use ($code, $refereeId, $correlationId, $request) {
                 // 1. Найти реферральный код
                 $referral = Referral::where('referral_code', $code)->first();
-
                 if (!$referral) {
                     return response()->json([
                         'success' => false,
@@ -122,7 +109,6 @@ final class ReferralController extends BaseApiController
                         'correlation_id' => $correlationId,
                     ], 404)->send();
                 }
-
                 // 2. Проверить самореферал
                 if ($referral->referrer_id === $refereeId) {
                     return response()->json([
@@ -131,12 +117,10 @@ final class ReferralController extends BaseApiController
                         'correlation_id' => $correlationId,
                     ], 400)->send();
                 }
-
                 // 3. Проверить дубликаты
                 $existingReferral = Referral::where('referrer_id', $referral->referrer_id)
                     ->where('referee_id', $refereeId)
                     ->first();
-
                 if ($existingReferral) {
                     return response()->json([
                         'success' => false,
@@ -144,7 +128,6 @@ final class ReferralController extends BaseApiController
                         'correlation_id' => $correlationId,
                     ], 400)->send();
                 }
-
                 // 4. Обновить реферральный рекорд
                 $referral->update([
                     'referee_id' => $refereeId,
@@ -153,30 +136,26 @@ final class ReferralController extends BaseApiController
                     'source_platform' => $request->input('source_platform'),
                     'correlation_id' => $correlationId,
                 ]);
-
                 // 5. Fraud check
                 $fraudResult = $this->fraudService->checkReferralAbuse(
                     referrer_id: $referral->referrer_id,
                     referee_id: $refereeId,
                     correlation_id: $correlationId,
                 );
-
                 if ($fraudResult['decision'] === 'block') {
-                    $this->log->channel('fraud_alert')->warning('Referral abuse detected', [
+                    Log::channel('fraud_alert')->warning('Referral abuse detected', [
                         'correlation_id' => $correlationId,
                         'referrer_id' => $referral->referrer_id,
                     ]);
                 }
-
                 // 6. Логирование
-                $this->log->channel('audit')->info('Referral registered', [
+                Log::channel('audit')->info('Referral registered', [
                     'correlation_id' => $correlationId,
                     'referral_id' => $referral->id,
                     'referrer_id' => $referral->referrer_id,
                     'referee_id' => $refereeId,
                     'source_platform' => $request->input('source_platform'),
                 ]);
-
                 return response()->json([
                     'success' => true,
                     'message' => 'Registered successfully',
@@ -188,11 +167,10 @@ final class ReferralController extends BaseApiController
                 ], 200);
             });
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Referral registration failed', [
+            Log::channel('audit')->error('Referral registration failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
-
             return response()->json([
                 'success' => false,
                 'message' => 'Registration failed',
@@ -200,7 +178,6 @@ final class ReferralController extends BaseApiController
             ], 500);
         }
     }
-
     /**
      * POST /api/v1/referral/{id}/qualify
      * Проверить квалификацию (5000₽ минимум).
@@ -211,9 +188,8 @@ final class ReferralController extends BaseApiController
     {
         $correlationId = $request->getCorrelationId();
         $qualificationThreshold = 500000; // 5000₽ in kopeks
-
         try {
-            return $this->db->transaction(function () use ($referral, $correlationId, $qualificationThreshold) {
+            return DB::transaction(function () use ($referral, $correlationId, $qualificationThreshold) {
                 // 1. Проверить статус
                 if ($referral->status !== 'registered') {
                     return response()->json([
@@ -222,12 +198,10 @@ final class ReferralController extends BaseApiController
                         'correlation_id' => $correlationId,
                     ], 400)->send();
                 }
-
                 // 2. Рассчитать общий расход (все вертикали)
                 $totalSpending = \App\Models\Payment\PaymentTransaction::where('user_id', $referral->referee_id)
                     ->where('status', 'captured')
                     ->sum('amount');
-
                 // 3. Проверить квалификацию
                 if ($totalSpending < $qualificationThreshold) {
                     return response()->json([
@@ -240,28 +214,23 @@ final class ReferralController extends BaseApiController
                         ],
                     ], 400)->send();
                 }
-
                 // 4. Обновить статус реферрала
                 $referral->update([
                     'status' => 'qualified',
                     'qualified_at' => now(),
                 ]);
-
                 // 5. Начислить бонус рефереру (200₽ = 20000 копеек)
                 $bonusAmount = 20000;
-                
                 $referrerWallet = \App\Models\User::find($referral->referrer_id)->wallet 
                     ?? Wallet::factory()->create([
                         'user_id' => $referral->referrer_id,
                     ]);
-
                 $this->walletService->credit(
                     wallet_id: $referrerWallet->id,
                     amount: $bonusAmount,
                     reason: 'Referral reward for ' . $referral->referee_id,
                     correlation_id: $correlationId,
                 );
-
                 // 6. Создать ReferralReward рекорд
                 ReferralReward::create([
                     'referral_id' => $referral->id,
@@ -273,16 +242,14 @@ final class ReferralController extends BaseApiController
                     'credited_at' => now(),
                     'correlation_id' => $correlationId,
                 ]);
-
                 // 7. Логирование
-                $this->log->channel('audit')->info('Referral qualified', [
+                Log::channel('audit')->info('Referral qualified', [
                     'correlation_id' => $correlationId,
                     'referral_id' => $referral->id,
                     'referrer_id' => $referral->referrer_id,
                     'bonus_amount' => $bonusAmount,
                     'total_spending' => $totalSpending,
                 ]);
-
                 return response()->json([
                     'success' => true,
                     'message' => 'Referral qualified, bonus awarded',
@@ -295,11 +262,10 @@ final class ReferralController extends BaseApiController
                 ], 200);
             });
         } catch (\Exception $e) {
-            $this->log->channel('audit')->error('Referral qualification failed', [
+            Log::channel('audit')->error('Referral qualification failed', [
                 'correlation_id' => $correlationId,
                 'error' => $e->getMessage(),
             ]);
-
             return response()->json([
                 'success' => false,
                 'message' => 'Qualification failed',
@@ -307,7 +273,6 @@ final class ReferralController extends BaseApiController
             ], 500);
         }
     }
-
     /**
      * GET /api/v1/referral/stats
      * Получить статистику рефереров.
@@ -316,14 +281,11 @@ final class ReferralController extends BaseApiController
     {
         $correlationId = $request->getCorrelationId();
         $referrerId = auth()->id();
-
         $referrals = Referral::where('referrer_id', $referrerId)
             ->with('rewards')
             ->get();
-
         $totalRewards = $referrals->flatMap(fn ($r) => $r->rewards)->sum('amount');
         $qualifiedCount = $referrals->where('status', 'qualified')->count();
-
         return response()->json([
             'success' => true,
             'correlation_id' => $correlationId,

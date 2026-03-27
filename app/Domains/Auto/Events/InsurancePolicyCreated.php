@@ -1,6 +1,7 @@
+<?php
+
 declare(strict_types=1);
 
-<?php declare(strict_types=1);
 
 namespace App\Domains\Auto\Events;
 
@@ -29,7 +30,7 @@ class InsurancePolicyCreated implements ShouldBroadcast
         public readonly VehicleInsurance $insurance,
         public readonly string $correlationId
     ) {
-        $this->log->channel('audit')->info('InsurancePolicyCreated event dispatched', [
+        Log::channel('audit')->info('InsurancePolicyCreated event dispatched', [
             'correlation_id' => $this->correlationId,
             'insurance_id' => $this->insurance->id,
             'policy_number' => $this->insurance->policy_number,

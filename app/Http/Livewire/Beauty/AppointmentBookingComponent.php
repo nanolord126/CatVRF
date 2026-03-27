@@ -41,7 +41,7 @@ final class AppointmentBookingComponent extends Component
                 $date
             );
         } catch (\Exception $e) {
-            \$this->log->channel('error')->error('Failed to load available slots', [
+            \Log::channel('error')->error('Failed to load available slots', [
                 'master_id' => $this->masterId,
                 'date' => $this->appointmentDate,
                 'exception' => $e->getMessage(),
@@ -77,7 +77,7 @@ final class AppointmentBookingComponent extends Component
             $this->emit('appointmentBooked', $appointment->id);
             $this->message = 'Запись успешно создана!';
 
-            \$this->log->channel('audit')->info('Appointment booked', [
+            \Log::channel('audit')->info('Appointment booked', [
                 'appointment_id' => $appointment->id,
                 'master_id' => $this->masterId,
                 'user_id' => auth()->user()->id,
@@ -88,7 +88,7 @@ final class AppointmentBookingComponent extends Component
             $this->reset(['masterId', 'serviceId', 'appointmentDate', 'appointmentTime']);
 
         } catch (\Exception $e) {
-            \$this->log->channel('error')->error('Failed to book appointment', [
+            \Log::channel('error')->error('Failed to book appointment', [
                 'exception' => $e->getMessage(),
                 'correlation_id' => (string) Str::uuid(),
             ]);
