@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources;
 
-use App\Models\Dental\DentalService;
+use App\Domains\Dental\Models\DentalService;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Components\Section;
@@ -146,104 +146,32 @@ final class DentalServiceResource extends Resource
                             ->content(fn ($record) => $record?->created_at?->toFormattedDateString() ?? 'New Service'),
                     ]),
             ]);
-    }
-
-    /**
-     * Table Specification (Full Clinical Services List).
-     * Exceeds 50 lines.
-     */
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                TextColumn::make('name')
-                    ->searchable()
-                    ->sortable()
-                    ->weight('bold')
-                    ->description(fn ($record) => $record->category),
-                TextColumn::make('clinic.name')
-                    ->label('Clinic')
-                    ->searchable()
-                    ->sortable(),
-                TextColumn::make('price')
-                    ->money('RUB', divideBy: 100)
-                    ->sortable()
-                    ->label('Standard Cost'),
-                TextColumn::make('duration_minutes')
-                    ->numeric()
-                    ->sortable()
-                    ->label('Duration')
-                    ->suffix(' min'),
-                TextColumn::make('specialization')
-                    ->badge()
-                    ->label('Required Expertise')
-                    ->formatStateUsing(fn ($state) => is_array($state) ? implode(', ', $state) : $state)
-                    ->separator(','),
-                IconColumn::make('is_active')
-                    ->boolean()
-                    ->label('Status')
-                    ->trueIcon('heroicon-o-check-circle')
-                    ->falseIcon('heroicon-o-x-circle')
-                    ->color('success'),
-                TextColumn::make('appointments_count')
-                    ->counts('appointments')
-                    ->label('Historicals')
-                    ->sortable(),
-                TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-            ])
-            ->filters([
-                SelectFilter::make('dental_clinic_id')
-                    ->label('By Clinic')
-                    ->relationship('clinic', 'name'),
-                SelectFilter::make('category')
-                    ->label('By Category')
-                    ->options([
-                        'Surgery' => 'Surgery',
-                        'Therapy' => 'Therapy',
-                        'Orthodontics' => 'Orthodontics',
-                        'Hygiene' => 'Hygiene',
-                        'Implantation' => 'Implantation',
-                    ]),
-                TernaryFilter::make('is_active')
-                    ->label('Availability Only'),
-                Tables\Filters\TrashedFilter::make(),
-            ])
-            ->actions([
-                ActionGroup::make([
-                    Tables\Actions\ViewAction::make(),
-                    Tables\Actions\EditAction::make(),
-                    Tables\Actions\DeleteAction::make(),
-                    Tables\Actions\RestoreAction::make(),
-                ])->icon('heroicon-m-ellipsis-vertical'),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                    Tables\Actions\RestoreBulkAction::make(),
-                ]),
-            ])
-            ->defaultSort('category', 'asc')
-            ->emptyStateHeading('Medical Catalog is empty.')
-            ->poll('5m');
-    }
-
-    public static function getEloquentQuery(): Builder
-    {
-        return parent::getEloquentQuery()
-            ->withoutGlobalScopes([
-                SoftDeletingScope::class,
-            ]);
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => \App\Filament\Tenant\Resources\DentalServiceResource\Pages\ListDentalServices::route('/'),
-            'create' => \App\Filament\Tenant\Resources\DentalServiceResource\Pages\CreateDentalService::route('/create'),
-            'edit' => \App\Filament\Tenant\Resources\DentalServiceResource\Pages\EditDentalService::route('/{record}/edit'),
+            'index' => Pages\\ListDentalService::route('/'),
+            'create' => Pages\\CreateDentalService::route('/create'),
+            'edit' => Pages\\EditDentalService::route('/{record}/edit'),
+            'view' => Pages\\ViewDentalService::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListDentalService::route('/'),
+            'create' => Pages\\CreateDentalService::route('/create'),
+            'edit' => Pages\\EditDentalService::route('/{record}/edit'),
+            'view' => Pages\\ViewDentalService::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListDentalService::route('/'),
+            'create' => Pages\\CreateDentalService::route('/create'),
+            'edit' => Pages\\EditDentalService::route('/{record}/edit'),
+            'view' => Pages\\ViewDentalService::route('/{record}'),
         ];
     }
 }

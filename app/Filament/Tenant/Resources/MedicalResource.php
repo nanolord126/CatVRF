@@ -2,66 +2,87 @@
 
 declare(strict_types=1);
 
-
 namespace App\Filament\Tenant\Resources;
 
-use Filament\Forms;
-use Filament\Tables;
-use Filament\Resources\Resource;
-use Filament\Tables\Table;
+use App\Models\Medical;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Form;
-use App\Domains\Medical\Models\B2BMedicalOrder;
+use Filament\Resources\Resource;
+use Filament\Tables\Actions\DeleteAction;
+use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
-/**
- * MedicalResource
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class MedicalResource extends Resource
+final class MedicalResource extends Resource
 {
-    protected static ?string $model = B2BMedicalOrder::class;
-    
-    protected static ?string $navigationIcon = 'heroicon-o-collection';
-    
+    protected static ?string $model = Medical::class;
+
+    protected static ?string $slug = 'medicals';
+
+    protected static ?string $recordTitleAttribute = 'name';
+
     public static function form(Form $form): Form
     {
-        return $form->schema([
-            // Add your schema here
-            Forms\Components\TextInput::make('name')->required(),
-        ]);
+        return $form
+            ->schema([
+                TextInput::make('name')
+                    ->required()
+                    ->maxLength(255)
+                    ->label('Medical Service Name'),
+                TextInput::make('description')
+                    ->maxLength(500)
+                    ->label('Description'),
+                TextInput::make('price')
+                    ->numeric()
+                    ->minValue(0)
+                    ->label('Price'),
+                Textarea::make('notes')
+                    ->maxLength(1000)
+                    ->columnSpan('full'),
+            ]);
     }
-    
+
     public static function table(Table $table): Table
     {
-        return $table->columns([
-            Tables\Columns\TextColumn::make('id')->sortable(),
-            Tables\Columns\TextColumn::make('created_at')->dateTime(),
-        ])
-        ->filters([
-            //
-        ])
-        ->actions([
-            Tables\Actions\EditAction::make(),
-        ])
-        ->bulkActions([
-            Tables\Actions\DeleteBulkAction::make(),
-        ]);
+        return $table
+            ->columns([
+                TextColumn::make('name')
+                    ->searchable()
+                    ->sortable(),
+                TextColumn::make('description')
+                    ->limit(50)
+                    ->sortable(),
+                TextColumn::make('price')
+                    ->sortable(),
+                TextColumn::make('created_at')
+                    ->dateTime()
+                    ->sortable(),
+            ])
+            ->filters([
+                //
+            ])
+            ->actions([
+                EditAction::make(),
+                DeleteAction::make(),
+            ])
+            ->bulkActions([
+                DeleteBulkAction::make(),
+            ]);
     }
-    
-    public static function getEloquentQuery(): Builder
-    {
-        return parent::getEloquentQuery()->where('tenant_id', filament()->getTenant()->id);
-    }
-    
+
     public static function getPages(): array
     {
         return [
-            'index' => \Filament\Resources\Pages\ListRecords::route('/'),
+            'index' => Pages\ListMedical::route('/'),
+            'create' => Pages\CreateMedical::route('/create'),
+            'edit' => Pages\EditMedical::route('/{record}/edit'),
+            'view' => Pages\ViewMedical::route('/{record}'),
         ];
     }
 }

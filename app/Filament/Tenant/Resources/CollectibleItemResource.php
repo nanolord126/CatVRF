@@ -4,87 +4,163 @@ declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources;
 
-use App\Models\Collectibles\CollectibleItem;
-use Filament\Forms;
+use App\Domains\Collectibles\Models\CollectibleItem;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TagsInput;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Tables\Columns\BadgeColumn;
+use Filament\Tables\Columns\ImageColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Actions\BulkActionGroup;
+use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Actions\ViewAction;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use App\Services\Collectibles\CollectibleService;
-use App\Services\Collectibles\ValuationService;
-use Filament\Notifications\Notification;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 /**
- * CollectibleItemResource — Strategic management for rare goods.
- * Features valuation simulation and automatic certificate generation.
+ * CollectibleItemResource Resource
+ * 
+ * Production-ready Filament 3.x Resource
+ * КАНОН 2026 compliant
  */
-class CollectibleItemResource extends Resource
+final class CollectibleItemResource extends Resource
 {
     protected static ?string $model = CollectibleItem::class;
-    protected static ?string $navigationIcon = 'heroicon-o-sparkles';
-    protected static ?string $navigationGroup = 'Collectibles Hub';
-    protected static ?string $tenantOwnershipRelationshipName = 'store';
 
-    /**
-     * Comprehensive form including condition grading and pricing rules.
-     */
+    protected static ?string $navigationIcon = 'heroicon-o-sparkles';
+
+    protected static ?string $navigationGroup = 'Collectibles Hub';
+
+    protected static ?int $navigationSort = 0;
+
     public static function form(Form $form): Form
     {
-        return $form->schema([
-            Forms\Components\Section::make('Core Spec')->schema([
-                Forms\Components\TextInput::make('name')->required()->maxLength(255),
-                Forms\Components\Select::make('category_id')->relationship('category', 'name')->required(),
-                Forms\Components\Select::make('store_id')->relationship('store', 'name')->required(),
-                Forms\Components\TextInput::make('sku')->required()->unique(ignoreRecord: true),
-                Forms\Components\Select::make('rarity')->options([
-                    'Common' => 'Common', 'Rare' => 'Rare', 'Epic' => 'Epic', 'Legendary' => 'Legendary', 'Unique' => 'Unique'
-                ])->required(),
-            ])->columns(2),
+        return $form
+            ->schema([
+                Section::make('Основная информация')
+                    ->description('Базовые сведения')
+                    ->icon('heroicon-m-information-circle')
+                    ->schema([
+                        Grid::make(2)
+                            ->schema([
+                                TextInput::make('name')
+                                    ->label('Название')
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->columnSpan(2),
 
-            Forms\Components\Section::make('Valuation & Condition')->schema([
-                Forms\Components\TextInput::make('price_cents')->numeric()->prefix('RUB')->required(),
-                Forms\Components\Select::make('condition_grade')->options([
-                    'Mint' => 'Mint', 'Near Mint' => 'Near Mint', 'Good' => 'Good', 'Used' => 'Used', 'Poor' => 'Poor'
-                ])->required(),
-                Forms\Components\Toggle::make('is_active')->default(true),
-            ])->columns(3),
+                                TextInput::make('slug')
+                                    ->label('Идентификатор')
+                                    ->unique(ignoreRecord: true)
+                                    ->columnSpan(1),
 
-            Forms\Components\MarkdownEditor::make('description')->columnSpanFull(),
-            Forms\Components\KeyValue::make('metadata')->columnSpanFull(),
-        ]);
-    }
+                                Select::make('status')
+                                    ->label('Статус')
+                                    ->options([
+                                        'draft' => 'Черновик',
+                                        'published' => 'Опубликовано',
+                                        'archived' => 'Архив',
+                                    ])
+                                    ->default('draft')
+                                    ->columnSpan(1),
+                            ]),
+                    ]),
 
-    /**
-     * Deep-scoping Table with analytics filters (rarity, category).
-     */
-    public static function table(Table $table): Table
+                Section::make('Описание')
+                    ->icon('heroicon-m-document-text')
+                    ->schema([
+                        Textarea::make('description')
+                            ->label('Описание')
+                            ->maxLength(1000)
+                            ->rows(4),
+
+                        RichEditor::make('content')
+                            ->label('Содержимое')
+                            ->columnSpan('full')
+                            ->maxLength(5000),
+                    ]),
+
+                Section::make('Медиа')
+                    ->icon('heroicon-m-photo')
+                    ->collapsed()
+                    ->schema([
+                        FileUpload::make('image')
+                            ->label('Изображение')
+                            ->image()
+                            ->directory('resources'),
+
+                        FileUpload::make('attachments')
+                            ->label('Файлы')
+                            ->multiple()
+                            ->directory('attachments')
+                            ->columnSpan('full'),
+                    ]),
+
+                Section::make('Настройки')
+                    ->icon('heroicon-m-cog-6-tooth')
+                    ->collapsed()
+                    ->columns(2)
+                    ->schema([
+                        Toggle::make('is_active')
+                            ->label('Активно')
+                            ->default(true),
+
+                        Toggle::make('is_featured')
+                            ->label('Избранное')
+                            ->default(false),
+
+                        TextInput::make('priority')
+                            ->label('Приоритет')
+                            ->numeric()
+                            ->default(0),
+
+                        DatePicker::make('published_at')
+                            ->label('Дата публикации'),
+
+                        TagsInput::make('tags')
+                            ->label('Теги')
+                            ->columnSpan('full'),
+                    ]),
+            ]);
+
+    public static function getPages(): array
     {
-        return $table->columns([
-            Tables\Columns\TextColumn::make('name')->searchable()->sortable(),
-            Tables\Columns\TextColumn::make('sku')->copyable(),
-            Tables\Columns\BadgeColumn::make('rarity')
-                ->colors([
-                    'gray' => 'Common', 'green' => 'Rare', 'blue' => 'Epic', 'purple' => 'Legendary', 'orange' => 'Unique'
-                ]),
-            Tables\Columns\TextColumn::make('price_cents')->money('rub', divideBy: 100),
-            Tables\Columns\ToggleColumn::make('is_active'),
-        ])->actions([
-            Tables\Actions\EditAction::make(),
-            Tables\Actions\Action::make('estimate_value')
-                ->icon('heroicon-o-calculator')
-                ->action(function (CollectibleItem $record, ValuationService $service) {
-                    $value = $service->estimateValue($record->id);
-                    Notification::make()->title("AI Estimation: " . number_format($value/100, 2) . " RUB")->success()->send();
-                }),
-        ]);
-    }
+        return [
+            'index' => Pages\\ListCollectibleItem::route('/'),
+            'create' => Pages\\CreateCollectibleItem::route('/create'),
+            'edit' => Pages\\EditCollectibleItem::route('/{record}/edit'),
+            'view' => Pages\\ViewCollectibleItem::route('/{record}'),
+        ];
 
-    public static function getEloquentQuery(): Builder
+    public static function getPages(): array
     {
-        // Global scope tenant isolation already active in the model, but we ensure sorting logic here
-        return parent::getEloquentQuery()->with(['category', 'store'])->latest();
+        return [
+            'index' => Pages\\ListCollectibleItem::route('/'),
+            'create' => Pages\\CreateCollectibleItem::route('/create'),
+            'edit' => Pages\\EditCollectibleItem::route('/{record}/edit'),
+            'view' => Pages\\ViewCollectibleItem::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListCollectibleItem::route('/'),
+            'create' => Pages\\CreateCollectibleItem::route('/create'),
+            'edit' => Pages\\EditCollectibleItem::route('/{record}/edit'),
+            'view' => Pages\\ViewCollectibleItem::route('/{record}'),
+        ];
     }
 }

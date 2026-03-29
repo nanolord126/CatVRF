@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources;
 
-use App\Models\Dental\DentalAppointment;
+use App\Domains\Dental\Models\DentalAppointment;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Components\Section;
@@ -164,109 +164,32 @@ final class DentalAppointmentResource extends Resource
                             ->content(fn ($record) => $record?->created_at?->toDateTimeString() ?? 'New Row'),
                     ]),
             ]);
-    }
-
-    /**
-     * Table Specification (Full Treatment Schedule).
-     * Exceeds 50 lines.
-     */
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                TextColumn::make('datetime_start')
-                    ->dateTime()
-                    ->sortable()
-                    ->label('Date & Time')
-                    ->weight('bold'),
-                TextColumn::make('client.name')
-                    ->label('Patient')
-                    ->searchable()
-                    ->sortable(),
-                TextColumn::make('dentist.full_name')
-                    ->label('Physician')
-                    ->searchable()
-                    ->sortable()
-                    ->color('info'),
-                TextColumn::make('clinic.name')
-                    ->label('Clinic')
-                    ->searchable()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('service.name')
-                    ->label('Procedure'),
-                TextColumn::make('status')
-                    ->badge()
-                    ->sortable()
-                    ->color(fn (string $state): string => match ($state) {
-                        'pending' => 'warning',
-                        'confirmed' => 'info',
-                        'completed' => 'success',
-                        'cancelled' => 'danger',
-                        default => 'gray',
-                    }),
-                TextColumn::make('payment_status')
-                    ->badge()
-                    ->sortable()
-                    ->color(fn (string $state): string => match ($state) {
-                        'paid' => 'success',
-                        'partially_paid' => 'warning',
-                        'unpaid' => 'danger',
-                        default => 'gray',
-                    }),
-                TextColumn::make('price')
-                    ->money('RUB', divideBy: 100)
-                    ->sortable()
-                    ->label('Revenue'),
-            ])
-            ->filters([
-                SelectFilter::make('status')
-                    ->label('By Workflow State')
-                    ->options([
-                        'pending' => 'Pending',
-                        'confirmed' => 'Confirmed',
-                        'completed' => 'Completed',
-                        'cancelled' => 'Cancelled',
-                    ]),
-                SelectFilter::make('dentist_id')
-                    ->label('By Doctor')
-                    ->relationship('dentist', 'full_name'),
-                Filter::make('future_only')
-                    ->label('Upcoming Appointments')
-                    ->query(fn (Builder $query): Builder => $query->where('datetime_start', '>=', now())),
-                Tables\Filters\TrashedFilter::make(),
-            ])
-            ->actions([
-                ActionGroup::make([
-                    Tables\Actions\ViewAction::make(),
-                    Tables\Actions\EditAction::make(),
-                    Tables\Actions\DeleteAction::make(),
-                ])->icon('heroicon-m-ellipsis-vertical'),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ])
-            ->defaultSort('datetime_start', 'desc')
-            ->emptyStateHeading('No Medical Appointments scheduled.')
-            ->poll('15s');
-    }
-
-    public static function getEloquentQuery(): Builder
-    {
-        return parent::getEloquentQuery()
-            ->withoutGlobalScopes([
-                SoftDeletingScope::class,
-            ]);
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => \App\Filament\Tenant\Resources\DentalAppointmentResource\Pages\ListDentalAppointments::route('/'),
-            'create' => \App\Filament\Tenant\Resources\DentalAppointmentResource\Pages\CreateDentalAppointment::route('/create'),
-            'edit' => \App\Filament\Tenant\Resources\DentalAppointmentResource\Pages\EditDentalAppointment::route('/{record}/edit'),
+            'index' => Pages\\ListDentalAppointment::route('/'),
+            'create' => Pages\\CreateDentalAppointment::route('/create'),
+            'edit' => Pages\\EditDentalAppointment::route('/{record}/edit'),
+            'view' => Pages\\ViewDentalAppointment::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListDentalAppointment::route('/'),
+            'create' => Pages\\CreateDentalAppointment::route('/create'),
+            'edit' => Pages\\EditDentalAppointment::route('/{record}/edit'),
+            'view' => Pages\\ViewDentalAppointment::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListDentalAppointment::route('/'),
+            'create' => Pages\\CreateDentalAppointment::route('/create'),
+            'edit' => Pages\\EditDentalAppointment::route('/{record}/edit'),
+            'view' => Pages\\ViewDentalAppointment::route('/{record}'),
         ];
     }
 }

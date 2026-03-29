@@ -147,94 +147,23 @@ class ProgramResource extends Resource
                     ])
                     ->columns(2),
             ]);
-    }
-
-    /**
-     * Построение таблицы программ.
-     * Table > 50 строк
-     */
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('title')
-                    ->label('Заголовок')
-                    ->searchable()
-                    ->sortable()
-                    ->description(fn (Program $record): string => "ID: {$record->uuid}"),
-
-                Tables\Columns\TextColumn::make('coach.name')
-                    ->label('Коуч')
-                    ->searchable()
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('price_kopecks')
-                    ->label('Стоимость')
-                    ->money('RUB', locale: 'ru_RU', divideBy: 100)
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('type')
-                    ->label('Тип')
-                    ->sortable()
-                    ->badge(),
-
-                Tables\Columns\IconColumn::make('is_published')
-                    ->label('Опубликована')
-                    ->boolean()
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('rating')
-                    ->label('Рейтинг')
-                    ->numeric(1)
-                    ->sortable()
-                    ->icon('heroicon-m-star')
-                    ->color('warning'),
-
-                Tables\Columns\TextColumn::make('category')
-                    ->label('Категория')
-                    ->sortable()
-                    ->searchable(),
-
-                Tables\Columns\TextColumn::make('created_at')
-                    ->label('Создано')
-                    ->dateTime('d.m.Y H:i')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('type')
-                    ->options([
-                        'course' => 'Курс',
-                        'workshop' => 'Мастер-класс',
-                    ]),
-                Tables\Filters\TernaryFilter::make('is_published')
-                    ->label('Статус публикации'),
-            ])
-            ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ])
-            ->emptyStateHeading('Программы не загружены')
-            ->emptyStateDescription('Создайте свою первую образовательную программу.');
-    }
-
-    public static function getRelations(): array
-    {
-        return [];
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListPrograms::route('/'),
-            'create' => Pages\CreateProgram::route('/create'),
-            'edit' => Pages\EditProgram::route('/{record}/edit'),
+            'index' => Pages\\ListProgram::route('/'),
+            'create' => Pages\\CreateProgram::route('/create'),
+            'edit' => Pages\\EditProgram::route('/{record}/edit'),
+            'view' => Pages\\ViewProgram::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListProgram::route('/'),
+            'create' => Pages\\CreateProgram::route('/create'),
+            'edit' => Pages\\EditProgram::route('/{record}/edit'),
+            'view' => Pages\\ViewProgram::route('/{record}'),
         ];
     }
 }

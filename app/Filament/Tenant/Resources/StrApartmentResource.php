@@ -81,58 +81,23 @@ final class StrApartmentResource extends Resource
                             ->helperText('Дополнительные параметры (удобства, правила)'),
                     ])->columns(1),
             ]);
-    }
-
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('property.name')
-                    ->sortable()
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('name')
-                    ->sortable()
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('room_number'),
-                Tables\Columns\TextColumn::make('base_price')
-                    ->money('RUB')
-                    ->description(fn (StrApartment $record) => "Deposit: " . number_format($record->deposit_amount / 100, 2) . " ₽")
-                    ->sortable(),
-                Tables\Columns\IconColumn::make('is_active')
-                    ->boolean(),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('property')
-                    ->relationship('property', 'name'),
-                Tables\Filters\TernaryFilter::make('is_active'),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
-    }
-
-    public static function getEloquentQuery(): Builder
-    {
-        return parent::getEloquentQuery()
-            ->where('tenant_id', tenant()->id);
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListStrApartments::route('/'),
-            'create' => Pages\CreateStrApartment::route('/create'),
-            'edit' => Pages\EditStrApartment::route('/{record}/edit'),
+            'index' => Pages\\ListStrApartment::route('/'),
+            'create' => Pages\\CreateStrApartment::route('/create'),
+            'edit' => Pages\\EditStrApartment::route('/{record}/edit'),
+            'view' => Pages\\ViewStrApartment::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListStrApartment::route('/'),
+            'create' => Pages\\CreateStrApartment::route('/create'),
+            'edit' => Pages\\EditStrApartment::route('/{record}/edit'),
+            'view' => Pages\\ViewStrApartment::route('/{record}'),
         ];
     }
 }

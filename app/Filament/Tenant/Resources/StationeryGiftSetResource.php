@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources;
 
-use App\Models\Stationery\StationeryGiftSet;
-use App\Models\Stationery\StationeryStore;
-use App\Models\Stationery\StationeryCategory;
+use App\Domains\Stationery\Models\StationeryGiftSet;
+use App\Domains\Stationery\Models\StationeryStore;
+use App\Domains\Stationery\Models\StationeryCategory;
 use App\Services\Stationery\StationeryGiftService;
 use App\Services\AI\AIStationeryConstructor;
 use Filament\Forms;
@@ -117,86 +117,23 @@ class StationeryGiftSetResource extends Resource
                     ->content(fn ($record) => $record?->correlation_id ?? 'No AI matching performed.'),
             ])->columns(2),
         ]);
-    }
 
-    /**
-     * Gift Set Table with Kitting Actions.
-     */
-    public static function table(Table $table): Table
+    public static function getPages(): array
     {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('name')
-                    ->searchable()
-                    ->sortable()
-                    ->limit(50),
+        return [
+            'index' => Pages\\ListStationeryGiftSet::route('/'),
+            'create' => Pages\\CreateStationeryGiftSet::route('/create'),
+            'edit' => Pages\\EditStationeryGiftSet::route('/{record}/edit'),
+            'view' => Pages\\ViewStationeryGiftSet::route('/{record}'),
+        ];
 
-                Tables\Columns\TextColumn::make('store.name')
-                    ->label('Store')
-                    ->searchable(),
-
-                Tables\Columns\TextColumn::make('theme')
-                    ->badge()
-                    ->color(static function ($state): string {
-                        return match ($state) {
-                            'premium' => 'primary',
-                            'office' => 'success',
-                            'school' => 'warning',
-                            default => 'gray',
-                        };
-                    })
-                    ->sortable()
-                    ->formatStateUsing(fn ($state) => Str::headline($state)),
-
-                Tables\Columns\TextColumn::make('price_cents')
-                    ->label('Price')
-                    ->money('rub', divideBy: 100)
-                    ->sortable(),
-
-                Tables\Columns\IconColumn::make('is_active')
-                    ->boolean()
-                    ->label('Active Status'),
-
-                Tables\Columns\TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->toggleable(isToggledHiddenByDefault: true),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('theme'),
-                Tables\Filters\TernaryFilter::make('is_active'),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Action::make('ai_validate')
-                    ->icon('heroicon-o-sparkles')
-                    ->label('AI Match')
-                    ->action(function (StationeryGiftSet $record, AIStationeryConstructor $ai) {
-                        try {
-                            $kit = $ai->constructRecommendedKit($record->theme, 10000);
-                            Notification::make()
-                                ->title("AI Matching Successful for Theme: {$record->theme}")
-                                ->body("Suggested items: " . count($kit))
-                                ->success()
-                                ->send();
-                        } catch (\Throwable $e) {
-                            Notification::make()
-                                ->title("AI Error: {$e->getMessage()}")
-                                ->danger()
-                                ->send();
-                        }
-                    }),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
-    }
-
-    public static function getEloquentQuery(): Builder
+    public static function getPages(): array
     {
-        return parent::getEloquentQuery()
-            ->with(['store', 'category'])
-            ->latest('updated_at');
+        return [
+            'index' => Pages\\ListStationeryGiftSet::route('/'),
+            'create' => Pages\\CreateStationeryGiftSet::route('/create'),
+            'edit' => Pages\\EditStationeryGiftSet::route('/{record}/edit'),
+            'view' => Pages\\ViewStationeryGiftSet::route('/{record}'),
+        ];
     }
 }

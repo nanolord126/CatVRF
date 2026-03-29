@@ -65,49 +65,23 @@ class StrPropertyResource extends Resource
                         Forms\Components\JsonEditor::make('schedule_json')->label('Расписание и Правила'),
                     ]),
             ]);
-    }
-
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('name')->searchable()->sortable(),
-                Tables\Columns\TextColumn::make('city')->sortable(),
-                Tables\Columns\TextColumn::make('type')->badge(),
-                Tables\Columns\IconColumn::make('is_active')->boolean(),
-                Tables\Columns\IconColumn::make('is_verified')->boolean(),
-                Tables\Columns\TextColumn::make('rating')->numeric(1)->sortable(),
-                Tables\Columns\TextColumn::make('review_count')->label('Отзывы'),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('type'),
-                Tables\Filters\TernaryFilter::make('is_active'),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
-    }
-
-    public static function getEloquentQuery(): Builder
-    {
-        return parent::getEloquentQuery()
-            ->withoutGlobalScopes([
-                // Здесь можно добавить фильтры по tenant через scope
-            ]);
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => StrPropertyResource\Pages\ListStrProperties::route('/'),
-            'create' => StrPropertyResource\Pages\CreateStrProperty::route('/create'),
-            'edit' => StrPropertyResource\Pages\EditStrProperty::route('/{record}/edit'),
+            'index' => Pages\\ListStrProperty::route('/'),
+            'create' => Pages\\CreateStrProperty::route('/create'),
+            'edit' => Pages\\EditStrProperty::route('/{record}/edit'),
+            'view' => Pages\\ViewStrProperty::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListStrProperty::route('/'),
+            'create' => Pages\\CreateStrProperty::route('/create'),
+            'edit' => Pages\\EditStrProperty::route('/{record}/edit'),
+            'view' => Pages\\ViewStrProperty::route('/{record}'),
         ];
     }
 }

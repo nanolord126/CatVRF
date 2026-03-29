@@ -5,6 +5,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources;
 
+use App\Domains\Veterinary\Models\Pet;
 use Filament\Forms;
 use Filament\Tables;
 use Filament\Resources\Resource;
@@ -155,55 +156,23 @@ class PetResource extends Resource
                 ])
                 ->columnSpanFull(),
         ]);
-    }
 
-    public static function table(Table $table): Table
-    {
-        return $table->columns([
-            Tables\Columns\TextColumn::make('name')
-                ->searchable()
-                ->sortable(),
-            Tables\Columns\TextColumn::make('species')
-                ->badge()
-                ->color(fn (string $state): string => match ($state) {
-                    'dog' => 'info',
-                    'cat' => 'success',
-                    default => 'gray',
-                }),
-            Tables\Columns\TextColumn::make('breed'),
-            Tables\Columns\TextColumn::make('passport_number')
-                ->label('Passport')
-                ->toggleable(),
-            Tables\Columns\TextColumn::make('weight')
-                ->suffix(' kg'),
-            Tables\Columns\IconColumn::make('chip_number')
-                ->label('Chipped')
-                ->boolean(fn ($state) => !empty($state)),
-            Tables\Columns\TextColumn::make('created_at')
-                ->dateTime()
-                ->sortable()
-                ->toggleable(isToggledHiddenByDefault: true),
-        ])
-        ->filters([
-            //
-        ])
-        ->actions([
-            Tables\Actions\EditAction::make(),
-        ])
-        ->bulkActions([
-            Tables\Actions\DeleteBulkAction::make(),
-        ]);
-    }
-    
-    public static function getEloquentQuery(): Builder
-    {
-        return parent::getEloquentQuery()->where('tenant_id', filament()->getTenant()->id);
-    }
-    
     public static function getPages(): array
     {
         return [
-            'index' => \Filament\Resources\Pages\ListRecords::route('/'),
+            'index' => Pages\\ListPet::route('/'),
+            'create' => Pages\\CreatePet::route('/create'),
+            'edit' => Pages\\EditPet::route('/{record}/edit'),
+            'view' => Pages\\ViewPet::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListPet::route('/'),
+            'create' => Pages\\CreatePet::route('/create'),
+            'edit' => Pages\\EditPet::route('/{record}/edit'),
+            'view' => Pages\\ViewPet::route('/{record}'),
         ];
     }
 }

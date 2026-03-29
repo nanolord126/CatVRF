@@ -119,56 +119,32 @@ final class AutoRepairOrderResource extends Resource
                             ->columnSpanFull(),
                     ]),
             ]);
-    }
-
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('uuid')
-                    ->label('ID')
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('vehicle.license_plate')
-                    ->label('Авто')
-                    ->searchable()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('client.name')
-                    ->label('Клиент')
-                    ->searchable(),
-                Tables\Columns\BadgeColumn::make('status')
-                    ->colors([
-                        'warning' => 'pending',
-                        'primary' => 'in_progress',
-                        'danger' => 'waiting_parts',
-                        'success' => 'completed',
-                        'secondary' => 'cancelled',
-                    ])
-                    ->label('Статус'),
-                Tables\Columns\TextColumn::make('total_cost_kopecks')
-                    ->money('rub', shouldConvert: true)
-                    ->label('Сумма'),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->label('Создан'),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('status'),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
-            ]);
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListAutoRepairOrders::route('/'),
-            'create' => Pages\CreateAutoRepairOrder::route('/create'),
-            'edit' => Pages\EditAutoRepairOrder::route('/{record}/edit'),
+            'index' => Pages\\ListAutoRepairOrder::route('/'),
+            'create' => Pages\\CreateAutoRepairOrder::route('/create'),
+            'edit' => Pages\\EditAutoRepairOrder::route('/{record}/edit'),
+            'view' => Pages\\ViewAutoRepairOrder::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListAutoRepairOrder::route('/'),
+            'create' => Pages\\CreateAutoRepairOrder::route('/create'),
+            'edit' => Pages\\EditAutoRepairOrder::route('/{record}/edit'),
+            'view' => Pages\\ViewAutoRepairOrder::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListAutoRepairOrder::route('/'),
+            'create' => Pages\\CreateAutoRepairOrder::route('/create'),
+            'edit' => Pages\\EditAutoRepairOrder::route('/{record}/edit'),
+            'view' => Pages\\ViewAutoRepairOrder::route('/{record}'),
         ];
     }
 }

@@ -120,87 +120,32 @@ class CoachResource extends Resource
                     ])
                     ->columns(2),
             ]);
-    }
-
-    /**
-     * Построение таблицы коучей.
-     * Table > 50 строк
-     */
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('name')
-                    ->label('Коуч')
-                    ->searchable()
-                    ->sortable()
-                    ->description(fn (Coach $record): string => Str::limit($record->bio, 50)),
-
-                Tables\Columns\TextColumn::make('hourly_rate_kopecks')
-                    ->label('Ставка (коп.)')
-                    ->money('RUB', locale: 'ru_RU', divideBy: 100)
-                    ->sortable(),
-
-                Tables\Columns\BadgeColumn::make('specializations')
-                    ->label('Специализации')
-                    ->separator(',')
-                    ->badge(),
-
-                Tables\Columns\IconColumn::make('is_active')
-                    ->label('Статус')
-                    ->boolean()
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('rating')
-                    ->label('Рейтинг')
-                    ->numeric(1)
-                    ->sortable()
-                    ->icon('heroicon-m-star')
-                    ->color('warning'),
-
-                Tables\Columns\TextColumn::make('created_at')
-                    ->label('Создан')
-                    ->dateTime('d.m.Y H:i')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-            ])
-            ->filters([
-                Tables\Filters\TernaryFilter::make('is_active')
-                    ->label('Активность'),
-                
-                Tables\Filters\SelectFilter::make('specializations')
-                    ->label('По специализации')
-                    ->options([
-                        'time-management' => 'Time Management',
-                        'career' => 'Career',
-                        'motivation' => 'Motivation',
-                    ]),
-            ])
-            ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ])
-            ->emptyStateHeading('Коучи не найдены')
-            ->emptyStateDescription('Создайте своего первого наставника для развития бизнеса.');
-    }
-
-    public static function getRelations(): array
-    {
-        return [];
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListCoaches::route('/'),
-            'create' => Pages\CreateCoach::route('/create'),
-            'edit' => Pages\EditCoach::route('/{record}/edit'),
+            'index' => Pages\\ListCoach::route('/'),
+            'create' => Pages\\CreateCoach::route('/create'),
+            'edit' => Pages\\EditCoach::route('/{record}/edit'),
+            'view' => Pages\\ViewCoach::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListCoach::route('/'),
+            'create' => Pages\\CreateCoach::route('/create'),
+            'edit' => Pages\\EditCoach::route('/{record}/edit'),
+            'view' => Pages\\ViewCoach::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListCoach::route('/'),
+            'create' => Pages\\CreateCoach::route('/create'),
+            'edit' => Pages\\EditCoach::route('/{record}/edit'),
+            'view' => Pages\\ViewCoach::route('/{record}'),
         ];
     }
 }

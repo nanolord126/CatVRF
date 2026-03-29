@@ -152,24 +152,3 @@ final class PetClinicResource extends Resource
         ];
     }
 }
-                Forms\Components\TextInput::make('phone')->tel()->required(),
-                Forms\Components\TextInput::make('rating')->numeric(),
-            ]),
-        ]);
-    }
-
-    public static function table(Tables\Table $table): Tables\Table
-    {
-        return $table->columns([
-            Tables\Columns\TextColumn::make('name')->sortable(),
-            Tables\Columns\TextColumn::make('address')->sortable(),
-            Tables\Columns\TextColumn::make('phone'),
-            Tables\Columns\TextColumn::make('rating')->sortable(),
-        ]);
-    }
-
-    public static function getPages(): array
-    {
-        return ['index' => \App\Filament\Tenant\Resources\Pet\PetClinicResource\Pages\ListPetClinics::route('/')];
-    }
-}

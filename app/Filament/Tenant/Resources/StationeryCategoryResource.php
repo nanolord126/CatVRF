@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources;
 
-use App\Models\Stationery\StationeryCategory;
-use App\Models\Stationery\StationeryStore;
+use App\Domains\Stationery\Models\StationeryCategory;
+use App\Domains\Stationery\Models\StationeryStore;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -89,65 +89,23 @@ class StationeryCategoryResource extends Resource
                     ->content(fn ($record) => $record?->products_count ?? 'Calculating...'),
             ])->columns(2),
         ]);
-    }
 
-    /**
-     * Category Table with Discovery and Management controls.
-     */
-    public static function table(Table $table): Table
+    public static function getPages(): array
     {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('name')
-                    ->searchable()
-                    ->sortable()
-                    ->limit(50),
+        return [
+            'index' => Pages\\ListStationeryCategory::route('/'),
+            'create' => Pages\\CreateStationeryCategory::route('/create'),
+            'edit' => Pages\\EditStationeryCategory::route('/{record}/edit'),
+            'view' => Pages\\ViewStationeryCategory::route('/{record}'),
+        ];
 
-                Tables\Columns\TextColumn::make('store.name')
-                    ->label('Store')
-                    ->searchable(),
-
-                Tables\Columns\TextColumn::make('products_count')
-                    ->label('Items')
-                    ->numeric()
-                    ->counts('products')
-                    ->sortable(),
-
-                Tables\Columns\IconColumn::make('is_active')
-                    ->boolean()
-                    ->label('Active'),
-
-                Tables\Columns\TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->toggleable(isToggledHiddenByDefault: true),
-            ])
-            ->filters([
-                Tables\Filters\TernaryFilter::make('is_active'),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Action::make('bulk_reprice')
-                    ->icon('heroicon-o-currency-dollar')
-                    ->label('Reprice Category')
-                    ->requiresConfirmation()
-                    ->action(function (StationeryCategory $record) {
-                        Notification::make()
-                            ->title("Bulk repricing logic would be triggered here.")
-                            ->info()
-                            ->send();
-                    }),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
-    }
-
-    public static function getEloquentQuery(): Builder
+    public static function getPages(): array
     {
-        return parent::getEloquentQuery()
-            ->withCount('products')
-            ->latest('updated_at');
+        return [
+            'index' => Pages\\ListStationeryCategory::route('/'),
+            'create' => Pages\\CreateStationeryCategory::route('/create'),
+            'edit' => Pages\\EditStationeryCategory::route('/{record}/edit'),
+            'view' => Pages\\ViewStationeryCategory::route('/{record}'),
+        ];
     }
 }

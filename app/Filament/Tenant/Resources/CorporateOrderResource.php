@@ -1,65 +1,166 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources;
 
-use App\Domains\OfficeCatering\Models\CorporateOrder;
+use App\Domains\Food\Models\CorporateOrder;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TagsInput;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
+use Filament\Tables\Columns\BadgeColumn;
+use Filament\Tables\Columns\ImageColumn;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Actions\BulkActionGroup;
-use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Actions\DeleteBulkAction;
 use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Actions\ViewAction;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
+/**
+ * CorporateOrderResource Resource
+ * 
+ * Production-ready Filament 3.x Resource
+ * КАНОН 2026 compliant
+ */
 final class CorporateOrderResource extends Resource
 {
     protected static ?string $model = CorporateOrder::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-building-office';
-    protected static ?string $navigationLabel = 'Catering Orders';
+
     protected static ?string $navigationGroup = 'OfficeCatering';
+
+    protected static ?int $navigationSort = 0;
 
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Select::make('client_id')
-                    ->relationship('client', 'company_name')
-                    ->required(),
-                Select::make('menu_id')
-                    ->relationship('menu', 'name')
-                    ->required(),
-                TextInput::make('portions')->numeric()->required()->minValue(1),
-                Select::make('status')
-                    ->options(['pending' => 'Pending', 'delivered' => 'Delivered'])
-                    ->required(),
+                Section::make('Основная информация')
+                    ->description('Базовые сведения')
+                    ->icon('heroicon-m-information-circle')
+                    ->schema([
+                        Grid::make(2)
+                            ->schema([
+                                TextInput::make('name')
+                                    ->label('Название')
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->columnSpan(2),
+
+                                TextInput::make('slug')
+                                    ->label('Идентификатор')
+                                    ->unique(ignoreRecord: true)
+                                    ->columnSpan(1),
+
+                                Select::make('status')
+                                    ->label('Статус')
+                                    ->options([
+                                        'draft' => 'Черновик',
+                                        'published' => 'Опубликовано',
+                                        'archived' => 'Архив',
+                                    ])
+                                    ->default('draft')
+                                    ->columnSpan(1),
+                            ]),
+                    ]),
+
+                Section::make('Описание')
+                    ->icon('heroicon-m-document-text')
+                    ->schema([
+                        Textarea::make('description')
+                            ->label('Описание')
+                            ->maxLength(1000)
+                            ->rows(4),
+
+                        RichEditor::make('content')
+                            ->label('Содержимое')
+                            ->columnSpan('full')
+                            ->maxLength(5000),
+                    ]),
+
+                Section::make('Медиа')
+                    ->icon('heroicon-m-photo')
+                    ->collapsed()
+                    ->schema([
+                        FileUpload::make('image')
+                            ->label('Изображение')
+                            ->image()
+                            ->directory('resources'),
+
+                        FileUpload::make('attachments')
+                            ->label('Файлы')
+                            ->multiple()
+                            ->directory('attachments')
+                            ->columnSpan('full'),
+                    ]),
+
+                Section::make('Настройки')
+                    ->icon('heroicon-m-cog-6-tooth')
+                    ->collapsed()
+                    ->columns(2)
+                    ->schema([
+                        Toggle::make('is_active')
+                            ->label('Активно')
+                            ->default(true),
+
+                        Toggle::make('is_featured')
+                            ->label('Избранное')
+                            ->default(false),
+
+                        TextInput::make('priority')
+                            ->label('Приоритет')
+                            ->numeric()
+                            ->default(0),
+
+                        DatePicker::make('published_at')
+                            ->label('Дата публикации'),
+
+                        TagsInput::make('tags')
+                            ->label('Теги')
+                            ->columnSpan('full'),
+                    ]),
             ]);
-    }
 
-    public static function table(Table $table): Table
+    public static function getPages(): array
     {
-        return $table
-            ->columns([
-                TextColumn::make('id')->sortable(),
-                TextColumn::make('client.company_name')->sortable(),
-                TextColumn::make('portions')->sortable(),
-                TextColumn::make('total_price')->money('rub'),
-                TextColumn::make('is_recurring')->boolean(),
-                TextColumn::make('created_at')->dateTime(),
-            ])
-            ->filters([SelectFilter::make('is_recurring')])
-            ->actions([EditAction::make(), DeleteAction::make()])
-            ->bulkActions([BulkActionGroup::make([DeleteBulkAction::make()])]);
-    }
+        return [
+            'index' => Pages\\ListCorporateOrder::route('/'),
+            'create' => Pages\\CreateCorporateOrder::route('/create'),
+            'edit' => Pages\\EditCorporateOrder::route('/{record}/edit'),
+            'view' => Pages\\ViewCorporateOrder::route('/{record}'),
+        ];
 
-    public static function getEloquentQuery()
+    public static function getPages(): array
     {
-        return parent::getEloquentQuery()
-            ->where('tenant_id', filament()->getTenant()->id)
-            ->with('client', 'menu');
+        return [
+            'index' => Pages\\ListCorporateOrder::route('/'),
+            'create' => Pages\\CreateCorporateOrder::route('/create'),
+            'edit' => Pages\\EditCorporateOrder::route('/{record}/edit'),
+            'view' => Pages\\ViewCorporateOrder::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListCorporateOrder::route('/'),
+            'create' => Pages\\CreateCorporateOrder::route('/create'),
+            'edit' => Pages\\EditCorporateOrder::route('/{record}/edit'),
+            'view' => Pages\\ViewCorporateOrder::route('/{record}'),
+        ];
     }
 }

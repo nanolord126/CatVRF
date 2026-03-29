@@ -1,0 +1,62 @@
+<?php declare(strict_types=1);
+
+namespace App\Filament\Tenant\Resources\Beauty\Pages;
+
+use App\Filament\Tenant\Resources\Beauty\BeautyResource;
+use Filament\Actions\{CreateAction,DeleteBulkAction};
+use Filament\Resources\Pages\ListRecords;
+use Illuminate\Support\Facades\{Log,DB};
+use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Builder;
+
+final class ListBeauties extends ListRecords
+{
+    protected static string $resource = BeautyResource::class;
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()
+                ->label('Новый салон')
+                ->icon('heroicon-m-plus'),
+        ];
+    }
+
+    protected function getTableQuery(): Builder
+    {
+        $tenantId = filament()->getTenant()->id;
+        $userId = auth()->id();
+        $correlationId = Str::uuid()->toString();
+
+        Log::channel('audit')->info('Beauty ListRecords accessed', [
+            'tenant_id' => $tenantId,
+            'user_id' => $userId,
+            'correlation_id' => $correlationId,
+        ]);
+
+        return BeautyResource::getEloquentQuery()
+            ->where('tenant_id', $tenantId)
+            ->whereNull('deleted_at')
+            ->with(['tenant', 'businessGroup', 'masters'])
+            ->orderBy('created_at', 'desc');
+    }
+
+    protected function getTableBulkActions(): array
+    {
+        return [
+            DeleteBulkAction::make()
+                ->label('Удалить выбранные')
+                ->icon('heroicon-m-trash'),
+        ];
+    }
+
+    public function render()
+    {
+        Log::channel('audit')->info('ListBeauties page rendered', [
+            'user_id' => auth()->id(),
+            'tenant_id' => filament()->getTenant()->id,
+        ]);
+
+        return parent::render();
+    }
+}

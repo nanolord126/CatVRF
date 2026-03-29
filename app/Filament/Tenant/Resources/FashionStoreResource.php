@@ -97,86 +97,32 @@ final class FashionStoreResource extends Resource
                             ->content(fn ($record) => $record?->created_at?->diffForHumans() ?? 'Новый'),
                     ]),
             ]);
-    }
-
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('name')
-                    ->label('Название')
-                    ->searchable()
-                    ->sortable()
-                    ->weight('bold'),
-
-                Tables\Columns\TextColumn::make('inn')
-                    ->label('ИНН')
-                    ->copyable()
-                    ->fontFamily('mono'),
-
-                Tables\Columns\BadgeColumn::make('type')
-                    ->label('Тип')
-                    ->colors([
-                        'primary' => 'b2c',
-                        'success' => 'b2b',
-                        'warning' => 'hybrid',
-                    ]),
-
-                Tables\Columns\IconColumn::make('is_active')
-                    ->label('Статус')
-                    ->boolean(),
-
-                Tables\Columns\TextColumn::make('rating')
-                    ->label('Рейтинг')
-                    ->numeric(1)
-                    ->icon('heroicon-s-star')
-                    ->color('warning'),
-
-                Tables\Columns\TextColumn::make('created_at')
-                    ->label('Создан')
-                    ->dateTime()
-                    ->toggleable(isToggledHiddenByDefault: true),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('type')
-                    ->options([
-                        'b2c' => 'B2C',
-                        'b2b' => 'B2B',
-                        'hybrid' => 'Hybrid',
-                    ]),
-                Tables\Filters\TernaryFilter::make('is_active')
-                    ->label('Только активные'),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make()
-                    ->before(function ($record, array $data) {
-                        $correlationId = $data['correlation_id'] ?? (string) Str::uuid();
-                        Log::channel('audit')->info('FashionStore edit initiated', [
-                            'store_id' => $record->id,
-                            'correlation_id' => $correlationId,
-                        ]);
-                        FraudControlService::check(['action' => 'store_update', 'id' => $record->id]);
-                    }),
-                Tables\Actions\DeleteAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
-            ]);
-    }
-
-    public static function getEloquentQuery(): Builder
-    {
-        return parent::getEloquentQuery()
-            ->where('tenant_id', filament()->getTenant()->id)
-            ->withCount(['products' => fn ($query) => $query->where('is_active', true)]);
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => \App\Filament\Tenant\Resources\FashionStoreResource\Pages\ListFashionStores::route('/'),
-            'create' => \App\Filament\Tenant\Resources\FashionStoreResource\Pages\CreateFashionStore::route('/create'),
-            'edit' => \App\Filament\Tenant\Resources\FashionStoreResource\Pages\EditFashionStore::route('/{record}/edit'),
+            'index' => Pages\\ListFashionStore::route('/'),
+            'create' => Pages\\CreateFashionStore::route('/create'),
+            'edit' => Pages\\EditFashionStore::route('/{record}/edit'),
+            'view' => Pages\\ViewFashionStore::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListFashionStore::route('/'),
+            'create' => Pages\\CreateFashionStore::route('/create'),
+            'edit' => Pages\\EditFashionStore::route('/{record}/edit'),
+            'view' => Pages\\ViewFashionStore::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListFashionStore::route('/'),
+            'create' => Pages\\CreateFashionStore::route('/create'),
+            'edit' => Pages\\EditFashionStore::route('/{record}/edit'),
+            'view' => Pages\\ViewFashionStore::route('/{record}'),
         ];
     }
 }

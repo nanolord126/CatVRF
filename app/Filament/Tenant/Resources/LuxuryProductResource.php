@@ -89,71 +89,23 @@ final class LuxuryProductResource extends Resource
                     ->label('Описание')
                     ->columnSpanFull(),
             ]);
-    }
-
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('name')
-                    ->searchable()
-                    ->sortable()
-                    ->label('Товар'),
-                Tables\Columns\TextColumn::make('brand.name')
-                    ->label('Бренд'),
-                Tables\Columns\TextColumn::make('price_kopecks')
-                    ->formatStateUsing(fn ($state) => number_format($state / 100, 2) . ' ₽')
-                    ->label('Цена'),
-                Tables\Columns\TextColumn::make('current_stock')
-                    ->badge()
-                    ->color(fn ($state) => $state > 0 ? 'success' : 'danger')
-                    ->label('Склад'),
-                Tables\Columns\IconColumn::make('is_personalized')
-                    ->boolean()
-                    ->label('VIP'),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('brand')
-                    ->relationship('brand', 'name')
-                    ->label('Фильтр по бренду'),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make()
-                    ->before(function () {
-                        Log::channel('audit')->info('Attempting to edit Luxury Product', [
-                            'user_id' => auth()->id(),
-                            'correlation_id' => Str::uuid()->toString(),
-                        ]);
-                    }),
-                Tables\Actions\ViewAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
-    }
-
-    public static function getRelations(): array
-    {
-        return [];
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListLuxuryProducts::route('/'),
-            'create' => Pages\CreateLuxuryProduct::route('/create'),
-            'edit' => Pages\EditLuxuryProduct::route('/{record}/edit'),
+            'index' => Pages\\ListLuxuryProduct::route('/'),
+            'create' => Pages\\CreateLuxuryProduct::route('/create'),
+            'edit' => Pages\\EditLuxuryProduct::route('/{record}/edit'),
+            'view' => Pages\\ViewLuxuryProduct::route('/{record}'),
         ];
-    }
 
-    public static function getEloquentQuery(): Builder
+    public static function getPages(): array
     {
-        // Канон 2026: Всегда tenant scoping в Filament
-        return parent::getEloquentQuery()
-            ->withoutGlobalScopes([
-                // Если нужно обойти какие-то дефолт затычки, но tenant scope должен работать
-            ]);
+        return [
+            'index' => Pages\\ListLuxuryProduct::route('/'),
+            'create' => Pages\\CreateLuxuryProduct::route('/create'),
+            'edit' => Pages\\EditLuxuryProduct::route('/{record}/edit'),
+            'view' => Pages\\ViewLuxuryProduct::route('/{record}'),
+        ];
     }
 }

@@ -67,82 +67,32 @@ final class AppointmentResource extends Resource
                 ->default('pending')
                 ->label('Статус оплаты'),
         ]);
-    }
-
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('salon.name')
-                    ->searchable()
-                    ->label('Салон'),
-                Tables\Columns\TextColumn::make('master.full_name')
-                    ->searchable()
-                    ->label('Мастер'),
-                Tables\Columns\TextColumn::make('service.name')
-                    ->searchable()
-                    ->label('Услуга'),
-                Tables\Columns\TextColumn::make('client.name')
-                    ->searchable()
-                    ->label('Клиент'),
-                Tables\Columns\TextColumn::make('datetime_start')
-                    ->dateTime()
-                    ->sortable()
-                    ->label('Дата и время'),
-                Tables\Columns\BadgeColumn::make('status')
-                    ->colors([
-                        'warning' => 'pending',
-                        'success' => 'confirmed',
-                        'primary' => 'completed',
-                        'danger' => 'cancelled',
-                    ])
-                    ->label('Статус'),
-                Tables\Columns\TextColumn::make('price')
-                    ->money('RUB')
-                    ->label('Цена'),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('status')
-                    ->options([
-                        'pending' => 'Ожидает',
-                        'confirmed' => 'Подтверждена',
-                        'completed' => 'Завершена',
-                        'cancelled' => 'Отменена',
-                    ]),
-                Tables\Filters\SelectFilter::make('salon_id')
-                    ->relationship('salon', 'name')
-                    ->label('Салон'),
-            ])
-            ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
-            ]);
-    }
-
-    public static function getEloquentQuery(): Builder
-    {
-        $query = parent::getEloquentQuery()
-            ->where('tenant_id', filament()->getTenant()->id);
-
-        if (session()->has('business_card_id')) {
-            $query->whereHas('salon', function ($q) {
-                $q->where('business_group_id', session('business_card_id'));
-            });
-        }
-
-        return $query;
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => \App\Filament\Tenant\Resources\AppointmentResource\Pages\ListAppointments::route('/'),
-            'create' => \App\Filament\Tenant\Resources\AppointmentResource\Pages\CreateAppointment::route('/create'),
-            'edit' => \App\Filament\Tenant\Resources\AppointmentResource\Pages\EditAppointment::route('/{record}/edit'),
-            'view' => \App\Filament\Tenant\Resources\AppointmentResource\Pages\ViewAppointment::route('/{record}'),
+            'index' => Pages\\ListAppointment::route('/'),
+            'create' => Pages\\CreateAppointment::route('/create'),
+            'edit' => Pages\\EditAppointment::route('/{record}/edit'),
+            'view' => Pages\\ViewAppointment::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListAppointment::route('/'),
+            'create' => Pages\\CreateAppointment::route('/create'),
+            'edit' => Pages\\EditAppointment::route('/{record}/edit'),
+            'view' => Pages\\ViewAppointment::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListAppointment::route('/'),
+            'create' => Pages\\CreateAppointment::route('/create'),
+            'edit' => Pages\\EditAppointment::route('/{record}/edit'),
+            'view' => Pages\\ViewAppointment::route('/{record}'),
         ];
     }
 }

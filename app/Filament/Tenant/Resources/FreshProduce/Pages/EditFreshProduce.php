@@ -1,0 +1,8 @@
+<?php
+declare(strict_types=1);
+namespace App\Filament\Tenant\Resources\FreshProduce\Pages;
+use App\Filament\Tenant\Resources\FreshProduceResource;
+use Filament\Resources\Pages\EditRecord;
+final class EditRecordFreshProduce extends EditRecord {
+    protected static string $resource = FreshProduceResource::class;
+}

@@ -176,120 +176,23 @@ class WellnessCenterResource extends Resource
                     ])
                     ->columnSpanFull(),
             ]);
-    }
-
-    /**
-     * Health & Wellness Center Table view.
-     */
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('name')
-                    ->label('Center Name')
-                    ->searchable()
-                    ->sortable()
-                    ->description(fn (WellnessCenter $record): string => $record->type),
-                Tables\Columns\TextColumn::make('type')
-                    ->badge()
-                    ->colors([
-                        'primary' => 'spa',
-                        'success' => 'yoga_studio',
-                        'warning' => 'gym',
-                        'danger' => 'clinic',
-                    ]),
-                Tables\Columns\TextColumn::make('rating')
-                    ->icon('heroicon-s-star')
-                    ->color('warning')
-                    ->sortable(),
-                Tables\Columns\ToggleColumn::make('is_active')
-                    ->label('Open'),
-                Tables\Columns\TextColumn::make('specialists_count')
-                    ->label('Staff')
-                    ->counts('specialists')
-                    ->badge(),
-                Tables\Columns\TextColumn::make('services_count')
-                    ->label('Services')
-                    ->counts('services')
-                    ->badge(),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('type')
-                    ->options([
-                        'spa' => 'Spa',
-                        'yoga_studio' => 'Yoga',
-                        'gym' => 'Gym',
-                        'clinic' => 'Clinic',
-                    ]),
-                Tables\Filters\TernaryFilter::make('is_active')
-                    ->label('Status (Open/Closed)'),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\ViewAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
-    }
-
-    /**
-     * Ensure Tenant isolation and Eager Loading.
-     */
-    public static function getEloquentQuery(): Builder
-    {
-        return parent::getEloquentQuery()
-            ->withCount(['specialists', 'services'])
-            ->withoutGlobalScopes([
-                // If soft deletes or other scopes need to be bypassed for listing
-            ]);
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListWellnessCenters::route('/'),
-            'create' => Pages\CreateWellnessCenter::route('/create'),
-            'edit' => Pages\EditWellnessCenter::route('/{record}/edit'),
-            'view' => Pages\ViewWellnessCenter::route('/{record}'),
+            'index' => Pages\\ListWellnessCenter::route('/'),
+            'create' => Pages\\CreateWellnessCenter::route('/create'),
+            'edit' => Pages\\EditWellnessCenter::route('/{record}/edit'),
+            'view' => Pages\\ViewWellnessCenter::route('/{record}'),
         ];
-    }
-}
 
-namespace App\Filament\Tenant\Resources\WellnessCenterResource\Pages;
-
-use App\Filament\Tenant\Resources\WellnessCenterResource;
-use Filament\Actions;
-use Filament\Resources\Pages\ListRecords;
-use Filament\Resources\Pages\CreateRecord;
-use Filament\Resources\Pages\EditRecord;
-use Filament\Resources\Pages\ViewRecord;
-use Illuminate\Support\Facades\Log;
-
-class ListWellnessCenters extends ListRecords {}
-class CreateWellnessCenter extends CreateRecord 
-{
-    protected function beforeCreate(): void
-    {
-        Log::channel('audit')->info('Creating New Wellness Center', [
-            'tenant_id' => tenant()->id,
-            'user_id' => auth()->id(),
-        ]);
-    }
-}
-class EditWellnessCenter extends EditRecord 
-{
-    protected function getHeaderActions(): array
+    public static function getPages(): array
     {
         return [
-            Actions\DeleteAction::make(),
+            'index' => Pages\\ListWellnessCenter::route('/'),
+            'create' => Pages\\CreateWellnessCenter::route('/create'),
+            'edit' => Pages\\EditWellnessCenter::route('/{record}/edit'),
+            'view' => Pages\\ViewWellnessCenter::route('/{record}'),
         ];
     }
 }
-class ViewWellnessCenter extends ViewRecord {}

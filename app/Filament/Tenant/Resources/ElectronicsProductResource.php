@@ -153,101 +153,32 @@ final class ElectronicsProductResource extends Resource
                             ->suffix('months'),
                     ])->columns(2),
             ]);
-    }
 
-    /**
-     * Table configuration with Tenant Scoping, B2B filters, and stock analysis.
-     */
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                TextColumn::make('name')
-                    ->searchable()
-                    ->sortable()
-                    ->description(fn (ElectronicsProduct $record) => $record->brand . ' | ' . $record->sku),
-                
-                TextColumn::make('category.name')
-                    ->badge()
-                    ->color('info'),
-                
-                TextColumn::make('price')
-                    ->label('B2C Price')
-                    ->money('RUB', divideBy: 100)
-                    ->sortable(),
-                
-                TextColumn::make('b2b_price')
-                    ->label('B2B Price')
-                    ->money('RUB', divideBy: 100)
-                    ->placeholder('N/A'),
-                
-                BadgeColumn::make('availability_status')
-                    ->colors([
-                        'success' => 'in_stock',
-                        'warning' => 'low_stock',
-                        'danger' => 'out_of_stock',
-                        'primary' => 'pre_order',
-                        'gray' => 'refurbished',
-                    ])
-                    ->formatStateUsing(fn (string $state): string => Str::headline($state)),
-
-                TextColumn::make('store.name')
-                    ->label('Store Location')
-                    ->toggleable(isToggledHiddenByDefault: true),
-                
-                TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('availability_status')
-                    ->options([
-                        'in_stock' => 'In Stock',
-                        'out_of_stock' => 'Out of Stock',
-                    ]),
-                Tables\Filters\TernaryFilter::make('is_b2b_available'),
-            ])
-            ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make()
-                    ->before(function (ElectronicsProduct $record, array $data) {
-                        // LAYER-5: Fraud Control before manual update
-                        app(FraudControlService::class)->check('electronics_product_update', [
-                            'user_id' => auth()->id(),
-                            'product_id' => $record->id,
-                            'new_price' => $data['price'],
-                        ]);
-                    }),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
-    }
-
-    /**
-     * Requirement: Proper global scoping for multi-tenancy.
-     */
-    public static function getEloquentQuery(): Builder
-    {
-        return parent::getEloquentQuery()
-            ->withoutGlobalScopes([
-                SoftDeletingScope::class,
-            ]);
-    }
-
-    /**
-     * Pages mapping (List, Create, Edit, View).
-     */
     public static function getPages(): array
     {
         return [
-            'index' => ElectronicsProductResource\Pages\ListElectronicsProducts::route('/'),
-            'create' => ElectronicsProductResource\Pages\CreateElectronicsProduct::route('/create'),
-            'view' => ElectronicsProductResource\Pages\ViewElectronicsProduct::route('/{record}'),
-            'edit' => ElectronicsProductResource\Pages\EditElectronicsProduct::route('/{record}/edit'),
+            'index' => Pages\\ListElectronicsProduct::route('/'),
+            'create' => Pages\\CreateElectronicsProduct::route('/create'),
+            'edit' => Pages\\EditElectronicsProduct::route('/{record}/edit'),
+            'view' => Pages\\ViewElectronicsProduct::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListElectronicsProduct::route('/'),
+            'create' => Pages\\CreateElectronicsProduct::route('/create'),
+            'edit' => Pages\\EditElectronicsProduct::route('/{record}/edit'),
+            'view' => Pages\\ViewElectronicsProduct::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListElectronicsProduct::route('/'),
+            'create' => Pages\\CreateElectronicsProduct::route('/create'),
+            'edit' => Pages\\EditElectronicsProduct::route('/{record}/edit'),
+            'view' => Pages\\ViewElectronicsProduct::route('/{record}'),
         ];
     }
 }

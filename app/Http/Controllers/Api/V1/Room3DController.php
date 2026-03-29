@@ -1,31 +1,28 @@
-<?php
-declare(strict_types=1);
+<?php declare(strict_types=1);
+
 namespace App\Http\Controllers\API\V1;
+
 use App\Http\Controllers\Controller;
 use App\Services\ThreeD\Room3DVisualizerService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-final /**
+
+/**
  * Room3DController
  * 
  * Основной класс для работы с платформой CatVRF.
  * 
  * @author CatVRF
- * @package %NAMESPACE%
+ * @package App\Http\Controllers\API\V1
  * @version 1.0.0
  */
-class Room3DController extends Controller
+final class Room3DController extends Controller
 {
-    public function __construct(private readonly Room3DVisualizerService $service) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
+    public function __construct(private readonly Room3DVisualizerService $service)
     {
-        // TODO: инициализация
     }
-}
+
     public function visualize(int $roomId, Request $request): JsonResponse
     {
         $roomData = $request->validate([

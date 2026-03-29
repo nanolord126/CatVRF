@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources;
 
-use App\Models\Stationery\StationeryStore;
-use App\Models\Stationery\StationerySubscription;
-use App\Models\Stationery\StationeryGiftSet;
+use App\Domains\Stationery\Models\StationeryStore;
+use App\Domains\Stationery\Models\StationerySubscription;
+use App\Domains\Stationery\Models\StationeryGiftSet;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
@@ -93,71 +93,23 @@ class StationeryStoreResource extends Resource
                     ->columnSpanFull(),
             ])->columns(2),
         ]);
-    }
 
-    /**
-     * Store Table with deep performance analysis tools.
-     */
-    public static function table(Table $table): Table
+    public static function getPages(): array
     {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('name')
-                    ->searchable()
-                    ->sortable()
-                    ->limit(50),
+        return [
+            'index' => Pages\\ListStationeryStore::route('/'),
+            'create' => Pages\\CreateStationeryStore::route('/create'),
+            'edit' => Pages\\EditStationeryStore::route('/{record}/edit'),
+            'view' => Pages\\ViewStationeryStore::route('/{record}'),
+        ];
 
-                Tables\Columns\TextColumn::make('address')
-                    ->searchable()
-                    ->sortable()
-                    ->limit(30),
-
-                Tables\Columns\TextColumn::make('products_count')
-                    ->label('Products')
-                    ->numeric()
-                    ->counts('products')
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('rating')
-                    ->label('Rating')
-                    ->numeric(1)
-                    ->sortable(),
-
-                Tables\Columns\IconColumn::make('is_active')
-                    ->boolean()
-                    ->label('Active'),
-
-                Tables\Columns\TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->toggleable(isToggledHiddenByDefault: true),
-            ])
-            ->filters([
-                Tables\Filters\TernaryFilter::make('is_active'),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Action::make('recalculate_inventory')
-                    ->icon('heroicon-o-arrow-path')
-                    ->label('Audit Stock')
-                    ->action(function (StationeryStore $record, StationeryService $service) {
-                        // CANON 2026 Audit Logic Placeholder
-                        Notification::make()
-                            ->title("Auditing system initialized for store {$record->name}")
-                            ->success()
-                            ->send();
-                    }),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
-    }
-
-    public static function getEloquentQuery(): Builder
+    public static function getPages(): array
     {
-        return parent::getEloquentQuery()
-            ->withCount('products')
-            ->latest('updated_at');
+        return [
+            'index' => Pages\\ListStationeryStore::route('/'),
+            'create' => Pages\\CreateStationeryStore::route('/create'),
+            'edit' => Pages\\EditStationeryStore::route('/{record}/edit'),
+            'view' => Pages\\ViewStationeryStore::route('/{record}'),
+        ];
     }
 }

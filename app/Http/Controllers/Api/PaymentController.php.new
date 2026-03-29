@@ -1,0 +1,254 @@
+<?php declare(strict_types=1);
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Requests\Api\PaymentInitRequest;
+use App\Services\Payment\PaymentService;
+use App\Exceptions\DuplicatePaymentException;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+
+/**
+ * PaymentController — Управление платежами
+ * 
+ * Production 2026 CANON
+ * 
+ * Middleware обработка ПЕРЕД этим контроллером:
+ * - correlation-id    (1st) — инжекция X-Correlation-ID
+ * - auth:sanctum      (2nd) — валидация API token
+ * - tenant            (3rd) — scoping по tenant
+ * - idempotency-check (4th) — детекция дубликатов
+ * - b2c-b2b           (5th) — определение режима
+ * - fraud-check       (6th) — ML-скоринг фрода
+ * - rate-limit        (7th) — ограничение по запросам
+ * 
+ * В этом контроллере только бизнес-логика платежей.
+ * Все проверки уже выполнены middleware'ом.
+ * 
+ * @author CatVRF Team
+ * @version 2026.03.29
+ */
+final class PaymentController extends BaseApiController
+{
+    public function __construct(
+        private readonly PaymentService $paymentService,
+    ) {}
+
+    /**
+     * Инициировать платёж (создать на холд)
+     * 
+     * POST /api/v1/payments/init
+     * Middleware: correlation-id, auth:sanctum, tenant, idempotency-check, b2c-b2b, fraud-check, rate-limit:10,1
+     */
+    public function init(PaymentInitRequest $request): JsonResponse
+    {
+        $correlationId = $this->getCorrelationId();
+        try {
+            $validated = $request->validated();
+            
+            // Fraud score уже проверен middleware'ом
+            // Если мы здесь - fraud_score < threshold (по умолчанию 0.85)
+            $fraudScore = $request->attributes->get('fraud_score', 0);
+
+            $payment = DB::transaction(function () use ($validated, $correlationId) {
+                return $this->paymentService->initPayment(
+                    tenantId: (int)($validated['tenant_id'] ?? auth()->user()->tenant_id),
+                    userId: (int)auth()->id(),
+                    amount: (int)$validated['amount'],
+                    currency: $validated['currency'] ?? 'RUB',
+                    isHold: (bool)($validated['hold'] ?? true),
+                    idempotencyKey: $validated['idempotency_key'] ?? null,
+                    correlationId: $correlationId
+                );
+            });
+
+            $this->auditLog('Payment::init - Success', [
+                'payment_id' => $payment->uuid,
+                'amount' => $payment->amount,
+                'fraud_score' => $fraudScore,
+                'status' => $payment->status,
+            ]);
+
+            return $this->successResponse(
+                data: [
+                    'id' => $payment->uuid,
+                    'status' => $payment->status,
+                    'amount' => $payment->amount,
+                    'currency' => $payment->currency,
+                    'hold' => $payment->is_hold,
+                    'created_at' => $payment->created_at,
+                ],
+                message: 'Payment initiated successfully',
+                code: 201
+            );
+
+        } catch (DuplicatePaymentException $e) {
+            $this->auditLog('Payment::init - Duplicate', [
+                'error' => 'Duplicate payment detected',
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return $this->errorResponse(
+                message: 'Duplicate payment detected',
+                code: 409,
+                errors: ['idempotency_key' => 'Payment with this key already exists']
+            );
+        } catch (\Exception $e) {
+            Log::channel('audit')->error('Payment::init - Error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return $this->errorResponse(
+                message: 'Payment initialization failed',
+                code: 400,
+                errors: ['payment' => $e->getMessage()]
+            );
+        }
+    }
+
+    /**
+     * Список платежей пользователя
+     * 
+     * GET /api/v1/payments
+     */
+    public function index(): JsonResponse
+    {
+        $payments = DB::table('payment_transactions')
+            ->where('user_id', auth()->id())
+            ->where('tenant_id', auth()->user()->tenant_id)
+            ->orderByDesc('created_at')
+            ->paginate(20);
+
+        $this->auditLog('Payment::index - Listed', [
+            'count' => $payments->count(),
+        ]);
+
+        return $this->successResponse(
+            data: $payments,
+            message: 'Payments retrieved successfully'
+        );
+    }
+
+    /**
+     * Посмотреть платёж по ID
+     * 
+     * GET /api/v1/payments/{payment}
+     */
+    public function show(string $paymentId): JsonResponse
+    {
+        $payment = DB::table('payment_transactions')
+            ->where('uuid', $paymentId)
+            ->where('user_id', auth()->id())
+            ->where('tenant_id', auth()->user()->tenant_id)
+            ->first();
+
+        if (!$payment) {
+            return $this->errorResponse(
+                message: 'Payment not found',
+                code: 404
+            );
+        }
+
+        $this->auditLog('Payment::show - Viewed', [
+            'payment_id' => $paymentId,
+        ]);
+
+        return $this->successResponse(
+            data: $payment,
+            message: 'Payment retrieved successfully'
+        );
+    }
+
+    /**
+     * Захватить платёж (списать со счёта)
+     * 
+     * POST /api/v1/payments/{payment}/capture
+     * Middleware: fraud-check, rate-limit:5,1 (extra strict)
+     */
+    public function capture(string $paymentId): JsonResponse
+    {
+        $correlationId = $this->getCorrelationId();
+        try {
+            $payment = DB::transaction(function () use ($paymentId, $correlationId) {
+                return $this->paymentService->capturePayment(
+                    paymentId: $paymentId,
+                    userId: (int)auth()->id(),
+                    correlationId: $correlationId
+                );
+            });
+
+            $this->auditLog('Payment::capture - Success', [
+                'payment_id' => $paymentId,
+                'amount' => $payment->amount,
+                'status' => $payment->status,
+            ]);
+
+            return $this->successResponse(
+                data: [
+                    'id' => $payment->uuid,
+                    'status' => $payment->status,
+                    'captured_at' => $payment->captured_at,
+                ],
+                message: 'Payment captured successfully',
+                code: 200
+            );
+        } catch (\Exception $e) {
+            Log::channel('audit')->error('Payment::capture - Error', [
+                'payment_id' => $paymentId,
+                'error' => $e->getMessage(),
+            ]);
+            return $this->errorResponse(
+                message: 'Payment capture failed',
+                code: 400,
+                errors: ['payment' => $e->getMessage()]
+            );
+        }
+    }
+
+    /**
+     * Возврат платежа (refund)
+     * 
+     * POST /api/v1/payments/{payment}/refund
+     * Middleware: fraud-check, rate-limit:3,1 (most strict)
+     */
+    public function refund(string $paymentId): JsonResponse
+    {
+        $correlationId = $this->getCorrelationId();
+        try {
+            $payment = DB::transaction(function () use ($paymentId, $correlationId) {
+                return $this->paymentService->refundPayment(
+                    paymentId: $paymentId,
+                    userId: (int)auth()->id(),
+                    correlationId: $correlationId
+                );
+            });
+
+            $this->auditLog('Payment::refund - Success', [
+                'payment_id' => $paymentId,
+                'refund_amount' => $payment->refund_amount,
+                'status' => $payment->status,
+            ]);
+
+            return $this->successResponse(
+                data: [
+                    'id' => $payment->uuid,
+                    'status' => $payment->status,
+                    'refund_amount' => $payment->refund_amount,
+                    'refunded_at' => $payment->refunded_at,
+                ],
+                message: 'Payment refunded successfully',
+                code: 200
+            );
+        } catch (\Exception $e) {
+            Log::channel('audit')->error('Payment::refund - Error', [
+                'payment_id' => $paymentId,
+                'error' => $e->getMessage(),
+            ]);
+            return $this->errorResponse(
+                message: 'Payment refund failed',
+                code: 400,
+                errors: ['payment' => $e->getMessage()]
+            );
+        }
+    }
+}

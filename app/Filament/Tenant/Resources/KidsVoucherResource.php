@@ -139,102 +139,23 @@ final class KidsVoucherResource extends Resource
                             ]),
                     ])->columnSpan(['lg' => 1]),
             ])->columns(3);
-    }
-
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('code')
-                    ->searchable()
-                    ->sortable()
-                    ->weight('bold')
-                    ->copyable(),
-                Tables\Columns\TextColumn::make('name')
-                    ->searchable()
-                    ->limit(20),
-                Tables\Columns\TextColumn::make('voucher_type')
-                    ->label('Type')
-                    ->badge()
-                    ->color('info'),
-                Tables\Columns\TextColumn::make('face_value')
-                    ->label('Value')
-                    ->money('rub', 100)
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('status')
-                    ->badge()
-                    ->color(fn ($state) => match ($state) {
-                        'active' => 'success',
-                        'used' => 'gray',
-                        'expired', 'blocked' => 'danger',
-                        default => 'warning'
-                    }),
-                Tables\Columns\TextColumn::make('valid_until')
-                    ->dateTime()
-                    ->sortable()
-                    ->color(fn ($record) => $record->valid_until && $record->valid_until->isPast() ? 'danger' : null),
-                Tables\Columns\TextColumn::make('user.name')
-                    ->label('User')
-                    ->searchable(),
-            ])
-            ->filters([
-                Tables\Filters\TrashedFilter::make(),
-                Tables\Filters\SelectFilter::make('status')
-                    ->options([
-                        'active' => 'Active',
-                        'used' => 'Used',
-                        'expired' => 'Expired',
-                        'blocked' => 'Blocked',
-                    ]),
-                Tables\Filters\SelectFilter::make('voucher_type')
-                    ->options([
-                        'gift_card' => 'Gift Balance',
-                        'trial_pass' => 'Trial Pass',
-                        'service_coupon' => 'Coupon',
-                    ]),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\Action::make('Redeem')
-                    ->label('Manual Redeem')
-                    ->icon('heroicon-o-check-circle')
-                    ->color('success')
-                    ->requiresConfirmation()
-                    ->hidden(fn ($record) => $record->status !== 'active')
-                    ->action(fn ($record) => $record->update(['status' => 'used', 'used_at' => now()])),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                    Tables\Actions\BulkAction::make('Block All')
-                        ->icon('heroicon-o-no-symbol')
-                        ->color('danger')
-                        ->requiresConfirmation()
-                        ->action(fn ($records) => $records->each->update(['status' => 'blocked'])),
-                ]),
-            ]);
-    }
-
-    public static function getRelations(): array
-    {
-        return [];
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListKidsVouchers::route('/'),
-            'create' => Pages\CreateKidsVoucher::route('/create'),
-            'edit' => Pages\EditKidsVoucher::route('/{record}/edit'),
+            'index' => Pages\\ListKidsVoucher::route('/'),
+            'create' => Pages\\CreateKidsVoucher::route('/create'),
+            'edit' => Pages\\EditKidsVoucher::route('/{record}/edit'),
+            'view' => Pages\\ViewKidsVoucher::route('/{record}'),
         ];
-    }
 
-    public static function getEloquentQuery(): Builder
+    public static function getPages(): array
     {
-        return parent::getEloquentQuery()
-            ->withoutGlobalScopes([
-                SoftDeletingScope::class,
-            ]);
+        return [
+            'index' => Pages\\ListKidsVoucher::route('/'),
+            'create' => Pages\\CreateKidsVoucher::route('/create'),
+            'edit' => Pages\\EditKidsVoucher::route('/{record}/edit'),
+            'view' => Pages\\ViewKidsVoucher::route('/{record}'),
+        ];
     }
 }

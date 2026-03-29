@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources;
 
-use App\Models\Stationery\StationerySubscription;
-use App\Models\Stationery\StationeryStore;
+use App\Domains\Stationery\Models\StationerySubscription;
+use App\Domains\Stationery\Models\StationeryStore;
 use App\Services\Stationery\StationerySubscriptionService;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -113,97 +113,23 @@ class StationerySubscriptionResource extends Resource
                     ->content(fn ($record) => $record?->correlation_id ?? 'No billing events yet.'),
             ])->columns(2),
         ]);
-    }
 
-    /**
-     * Subscription Table with Billing controls.
-     */
-    public static function table(Table $table): Table
+    public static function getPages(): array
     {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('user.name')
-                    ->label('Customer')
-                    ->searchable()
-                    ->sortable(),
+        return [
+            'index' => Pages\\ListStationerySubscription::route('/'),
+            'create' => Pages\\CreateStationerySubscription::route('/create'),
+            'edit' => Pages\\EditStationerySubscription::route('/{record}/edit'),
+            'view' => Pages\\ViewStationerySubscription::route('/{record}'),
+        ];
 
-                Tables\Columns\TextColumn::make('box_tier')
-                    ->label('Tier')
-                    ->badge()
-                    ->color(static function ($state): string {
-                        return match ($state) {
-                            'Premium' => 'primary',
-                            'Executive' => 'success',
-                            'Basic' => 'gray',
-                            default => 'warning',
-                        };
-                    })
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('price_cents')
-                    ->label('Monthly')
-                    ->money('rub', divideBy: 100)
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('billing_period')
-                    ->label('Billing')
-                    ->formatStateUsing(fn ($state) => ucfirst($state)),
-
-                Tables\Columns\TextColumn::make('next_billing_at')
-                    ->label('Next Payout')
-                    ->date('d.m.Y')
-                    ->sortable(),
-
-                Tables\Columns\IconColumn::make('is_active')
-                    ->boolean()
-                    ->label('Status'),
-
-                Tables\Columns\TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->toggleable(isToggledHiddenByDefault: true),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('box_tier')
-                    ->options([
-                        'Basic' => 'Basic',
-                        'Premium' => 'Premium',
-                        'Executive' => 'Executive',
-                    ]),
-
-                Tables\Filters\TernaryFilter::make('is_active'),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Action::make('process_billing')
-                    ->icon('heroicon-o-currency-dollar')
-                    ->label('Force Billing')
-                    ->requiresConfirmation()
-                    ->action(function (StationerySubscription $record, StationerySubscriptionService $service) {
-                        try {
-                            $service->processMonthlyBilling($record->id);
-                            Notification::make()
-                                ->title("Billing processed for subscription {$record->id}")
-                                ->success()
-                                ->send();
-                        } catch (\Throwable $e) {
-                            Notification::make()
-                                ->title("Billing failed: {$e->getMessage()}")
-                                ->danger()
-                                ->send();
-                        }
-                    }),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
-    }
-
-    public static function getEloquentQuery(): Builder
+    public static function getPages(): array
     {
-        return parent::getEloquentQuery()
-            ->with(['user', 'store'])
-            ->latest('next_billing_at');
+        return [
+            'index' => Pages\\ListStationerySubscription::route('/'),
+            'create' => Pages\\CreateStationerySubscription::route('/create'),
+            'edit' => Pages\\EditStationerySubscription::route('/{record}/edit'),
+            'view' => Pages\\ViewStationerySubscription::route('/{record}'),
+        ];
     }
 }

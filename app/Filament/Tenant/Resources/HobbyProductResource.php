@@ -116,75 +116,23 @@ class HobbyProductResource extends Resource
                         ->label('Enable for Marketplace Sales'),
                 ])->columns(1),
         ]);
-    }
 
-    /**
-     * Define the management table for Hobby Products.
-     */
-    public static function table(Table $table): Table
+    public static function getPages(): array
     {
-        return $table->columns([
-            Tables\Columns\TextColumn::make('sku')
-                ->searchable()
-                ->sortable()
-                ->label('SKU'),
+        return [
+            'index' => Pages\\ListHobbyProduct::route('/'),
+            'create' => Pages\\CreateHobbyProduct::route('/create'),
+            'edit' => Pages\\EditHobbyProduct::route('/{record}/edit'),
+            'view' => Pages\\ViewHobbyProduct::route('/{record}'),
+        ];
 
-            Tables\Columns\TextColumn::make('title')
-                ->searchable()
-                ->limit(30)
-                ->label('Material/Tool'),
-
-            Tables\Columns\TextColumn::make('price_b2c')
-                ->money('RUB', locale: 'ru_RU', divideBy: 100)
-                ->label('Retail Price')
-                ->sortable(),
-
-            Tables\Columns\TextColumn::make('stock_quantity')
-                ->numeric()
-                ->label('Stock')
-                ->sortable()
-                ->badge()
-                ->color(fn (int $state): string => $state < 5 ? 'danger' : ($state < 20 ? 'warning' : 'success')),
-
-            Tables\Columns\BadgeColumn::make('skill_level')
-                ->colors([
-                    'success' => 'beginner',
-                    'warning' => 'intermediate',
-                    'danger' => 'advanced'
-                ])
-                ->label('Difficulty'),
-
-            Tables\Columns\IconColumn::make('is_active')
-                ->boolean()
-                ->label('Status'),
-
-            Tables\Columns\TextColumn::make('created_at')
-                ->dateTime()
-                ->label('Added On')
-                ->toggleable(isToggledHiddenByDefault: true),
-        ])
-        ->filters([
-            Tables\Filters\SelectFilter::make('skill_level')
-                ->options(['beginner' => 'Beginner', 'intermediate' => 'Intermediate', 'advanced' => 'Advanced']),
-            Tables\Filters\TernaryFilter::make('is_active')
-                ->label('Marketplace Visibility'),
-        ])
-        ->actions([
-            Tables\Actions\EditAction::make(),
-            Tables\Actions\DeleteAction::make(),
-        ])
-        ->bulkActions([
-            Tables\Actions\DeleteBulkAction::make(),
-        ]);
-    }
-
-    /**
-     * Enforce Tenant Scoping.
-     */
-    public static function getEloquentQuery(): Builder
+    public static function getPages(): array
     {
-        return parent::getEloquentQuery()
-            ->with(['store', 'category'])
-            ->latest();
+        return [
+            'index' => Pages\\ListHobbyProduct::route('/'),
+            'create' => Pages\\CreateHobbyProduct::route('/create'),
+            'edit' => Pages\\EditHobbyProduct::route('/{record}/edit'),
+            'view' => Pages\\ViewHobbyProduct::route('/{record}'),
+        ];
     }
 }

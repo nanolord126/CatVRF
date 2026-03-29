@@ -127,85 +127,23 @@ final class KidsProductResource extends Resource
                             ]),
                     ])->columnSpan(['lg' => 1]),
             ])->columns(3);
-    }
-
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('name')
-                    ->searchable()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('price')
-                    ->label('Price')
-                    ->money('rub', 100)
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('stock_quantity')
-                    ->label('Stock')
-                    ->badge()
-                    ->color(fn (int $state): string => $state < 5 ? 'danger' : 'success')
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('safety_class')
-                    ->label('Safety')
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'A' => 'success',
-                        'B' => 'warning',
-                        'C' => 'info',
-                    }),
-                Tables\Columns\TextColumn::make('age_range_label')
-                    ->label('Target Age')
-                    ->getStateUsing(fn($record) => floor($record->age_range['min_months'] / 12) . '-' . floor($record->age_range['max_months'] / 12) . ' yr'),
-                Tables\Columns\TextColumn::make('sku')
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-            ])
-            ->filters([
-                Tables\Filters\TrashedFilter::make(),
-                Tables\Filters\SelectFilter::make('safety_class')
-                    ->options([
-                        'A' => 'Class A (0+)',
-                        'B' => 'Class B (3+)',
-                        'C' => 'Class C (8+)',
-                    ]),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\ViewAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                    Tables\Actions\ForceDeleteBulkAction::make(),
-                    Tables\Actions\RestoreBulkAction::make(),
-                ]),
-            ]);
-    }
-
-    public static function getRelations(): array
-    {
-        return [
-            // Toy, Clothing metadata relations
-        ];
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListKidsProducts::route('/'),
-            'create' => Pages\CreateKidsProduct::route('/create'),
-            'edit' => Pages\EditKidsProduct::route('/{record}/edit'),
+            'index' => Pages\\ListKidsProduct::route('/'),
+            'create' => Pages\\CreateKidsProduct::route('/create'),
+            'edit' => Pages\\EditKidsProduct::route('/{record}/edit'),
+            'view' => Pages\\ViewKidsProduct::route('/{record}'),
         ];
-    }
 
-    public static function getEloquentQuery(): Builder
+    public static function getPages(): array
     {
-        return parent::getEloquentQuery()
-            ->withoutGlobalScopes([
-                SoftDeletingScope::class,
-            ]);
+        return [
+            'index' => Pages\\ListKidsProduct::route('/'),
+            'create' => Pages\\CreateKidsProduct::route('/create'),
+            'edit' => Pages\\EditKidsProduct::route('/{record}/edit'),
+            'view' => Pages\\ViewKidsProduct::route('/{record}'),
+        ];
     }
 }

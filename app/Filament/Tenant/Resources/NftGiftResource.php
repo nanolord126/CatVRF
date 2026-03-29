@@ -157,151 +157,23 @@ final class NftGiftResource extends Resource
                             ->columnSpan('full'),
                     ])->columns(2),
             ]);
-    }
-
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                TextColumn::make('sender.name')
-                    ->label('Отправитель')
-                    ->searchable()
-                    ->sortable(),
-
-                TextColumn::make('stream.blogger.display_name')
-                    ->label('Блогер')
-                    ->searchable()
-                    ->sortable(),
-
-                BadgeColumn::make('gift_type')
-                    ->label('Тип подарка')
-                    ->colors([
-                        'gray' => 'bronze',
-                        'info' => 'silver',
-                        'warning' => 'gold',
-                        'success' => 'diamond',
-                        'danger' => 'platinum',
-                    ])
-                    ->formatStateUsing(fn (string $state) => match($state) {
-                        'bronze' => 'Бронза',
-                        'silver' => 'Серебро',
-                        'gold' => 'Золото',
-                        'diamond' => 'Алмаз',
-                        'platinum' => 'Платина',
-                    })
-                    ->sortable(),
-
-                TextColumn::make('amount')
-                    ->label('Сумма')
-                    ->formatStateUsing(fn (int $state) => '₽' . ($state / 100))
-                    ->sortable(),
-
-                BadgeColumn::make('minting_status')
-                    ->label('Минтинг')
-                    ->colors([
-                        'gray' => 'pending',
-                        'info' => 'minting',
-                        'success' => 'minted',
-                        'danger' => 'failed',
-                    ])
-                    ->formatStateUsing(fn (string $state) => match($state) {
-                        'pending' => 'На ожидании',
-                        'minting' => 'Минтится',
-                        'minted' => 'Отчеканено',
-                        'failed' => 'Ошибка',
-                    })
-                    ->sortable(),
-
-                BadgeColumn::make('is_upgraded')
-                    ->label('Апгрейдно')
-                    ->colors([
-                        'gray' => false,
-                        'success' => true,
-                    ])
-                    ->formatStateUsing(fn (bool $state) => $state ? '✓' : '✗')
-                    ->sortable(),
-
-                TextColumn::make('created_at')
-                    ->label('Дата')
-                    ->dateTime('d.m.Y H:i')
-                    ->sortable(),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('gift_type')
-                    ->label('Тип подарка')
-                    ->options([
-                        'bronze' => 'Бронза',
-                        'silver' => 'Серебро',
-                        'gold' => 'Золото',
-                        'diamond' => 'Алмаз',
-                        'platinum' => 'Платина',
-                    ]),
-
-                Tables\Filters\SelectFilter::make('minting_status')
-                    ->label('Статус минтинга')
-                    ->options([
-                        'pending' => 'На ожидании',
-                        'minting' => 'Минтится',
-                        'minted' => 'Отчеканено',
-                        'failed' => 'Ошибка',
-                    ]),
-
-                Tables\Filters\TernaryFilter::make('is_upgraded')
-                    ->label('Апгрейдно'),
-            ])
-            ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make()
-                    ->visible(fn (NftGift $record) => $record->minting_status === 'failed'),
-                Tables\Actions\Action::make('retry_mint')
-                    ->label('Повторить минтинг')
-                    ->icon('heroicon-o-arrow-path')
-                    ->color('info')
-                    ->requiresConfirmation()
-                    ->action(function (NftGift $record) {
-                        $record->update(['minting_status' => 'pending']);
-                        \App\Domains\Content\Bloggers\Jobs\MintNftGiftJob::dispatch($record);
-                    })
-                    ->visible(fn (NftGift $record) => $record->minting_status === 'failed'),
-                Tables\Actions\Action::make('view_nft')
-                    ->label('Просмотр NFT')
-                    ->icon('heroicon-o-link')
-                    ->url(function (NftGift $record) {
-                        return "https://testnet.tonscan.org/address/{$record->nft_address}";
-                    })
-                    ->openUrlInNewTab()
-                    ->visible(fn (NftGift $record) => !empty($record->nft_address)),
-                Tables\Actions\Action::make('flag')
-                    ->label('Отметить')
-                    ->icon('heroicon-o-flag')
-                    ->color('warning')
-                    ->requiresConfirmation()
-                    ->form([
-                        Textarea::make('moderation_notes')
-                            ->label('Причина')
-                            ->required(),
-                    ])
-                    ->action(function (NftGift $record, array $data) {
-                        $record->update([
-                            'moderation_status' => 'flagged',
-                            'moderation_notes' => $data['moderation_notes'],
-                        ]);
-                    }),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => \App\Filament\Tenant\Resources\NftGiftResource\Pages\ListNftGifts::route('/'),
-            'create' => \App\Filament\Tenant\Resources\NftGiftResource\Pages\CreateNftGift::route('/create'),
-            'view' => \App\Filament\Tenant\Resources\NftGiftResource\Pages\ViewNftGift::route('/{record}'),
-            'edit' => \App\Filament\Tenant\Resources\NftGiftResource\Pages\EditNftGift::route('/{record}/edit'),
+            'index' => Pages\\ListNftGift::route('/'),
+            'create' => Pages\\CreateNftGift::route('/create'),
+            'edit' => Pages\\EditNftGift::route('/{record}/edit'),
+            'view' => Pages\\ViewNftGift::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListNftGift::route('/'),
+            'create' => Pages\\CreateNftGift::route('/create'),
+            'edit' => Pages\\EditNftGift::route('/{record}/edit'),
+            'view' => Pages\\ViewNftGift::route('/{record}'),
         ];
     }
 }

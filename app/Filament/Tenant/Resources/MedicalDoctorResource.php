@@ -22,7 +22,7 @@ use Illuminate\Database\Eloquent\Builder;
  */
 final class MedicalDoctorResource extends Resource
 {
-    protected static ?string $model = \App\Domains\Medical\Models\MedicalDoctor::class;
+    protected static ?string $model = \App\Domains\Medical\Models\Doctor::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-user-plus';
     protected static ?string $navigationGroup = 'Medical Platform';
@@ -72,47 +72,23 @@ final class MedicalDoctorResource extends Resource
                 ->label('Public Biography')
                 ->columnSpanFull(),
         ]);
-    }
 
-    /**
-     * Таблица врачей клиники.
-     * 
-     * @param Table $table
-     * @return Table
-     */
-    public static function table(Table $table): Table
+    public static function getPages(): array
     {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('full_name')->searchable()->sortable(),
-                Tables\Columns\BadgeColumn::make('specialization')
-                    ->label('Spec')
-                    ->colors(['primary']),
-                Tables\Columns\TextColumn::make('experience_years')->label('Exp')->sortable(),
-                Tables\Columns\IconColumn::make('is_active')->boolean()->sortable(),
-                Tables\Columns\TextColumn::make('rating')->label('⭐')->sortable(),
-                Tables\Columns\TextColumn::make('medical_appointments_count')
-                    ->label('Visits')
-                    ->counts('medicalAppointments'),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('specialization'),
-                Tables\Filters\TernaryFilter::make('is_active'),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
-            ]);
-    }
+        return [
+            'index' => Pages\\ListMedicalDoctor::route('/'),
+            'create' => Pages\\CreateMedicalDoctor::route('/create'),
+            'edit' => Pages\\EditMedicalDoctor::route('/{record}/edit'),
+            'view' => Pages\\ViewMedicalDoctor::route('/{record}'),
+        ];
 
-    /**
-     * Глобальный скоп по арендатору.
-     * 
-     * @return Builder
-     */
-    public static function getEloquentQuery(): Builder
+    public static function getPages(): array
     {
-        return parent::getEloquentQuery()
-            ->where('tenant_id', filament()->getTenant()->id);
+        return [
+            'index' => Pages\\ListMedicalDoctor::route('/'),
+            'create' => Pages\\CreateMedicalDoctor::route('/create'),
+            'edit' => Pages\\EditMedicalDoctor::route('/{record}/edit'),
+            'view' => Pages\\ViewMedicalDoctor::route('/{record}'),
+        ];
     }
 }

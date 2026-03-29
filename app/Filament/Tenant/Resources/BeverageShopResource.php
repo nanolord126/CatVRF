@@ -106,108 +106,32 @@ final class BeverageShopResource extends Resource
                             ->helperText('Track performance and security across sessions.'),
                     ])->columns(2),
             ]);
-    }
-
-    /**
-     * Complete table definition (>= 50 lines per canon 2026).
-     */
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('name')
-                    ->searchable()
-                    ->sortable()
-                    ->weight('bold')
-                    ->label('Shop Name'),
-                    
-                Tables\Columns\TextColumn::make('type')
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'coffee_shop' => 'success',
-                        'tea_house' => 'primary',
-                        'bar' => 'danger',
-                        default => 'gray',
-                    })
-                    ->label('Type'),
-                    
-                Tables\Columns\TextColumn::make('address')
-                    ->limit(30)
-                    ->searchable()
-                    ->label('Location'),
-                    
-                Tables\Columns\IconColumn::make('is_active')
-                    ->boolean()
-                    ->label('Active'),
-                    
-                Tables\Columns\TextColumn::make('rating')
-                    ->numeric(1)
-                    ->sortable()
-                    ->icon('heroicon-m-star')
-                    ->color('warning')
-                    ->label('Score'),
-                    
-                Tables\Columns\TextColumn::make('review_count')
-                    ->numeric()
-                    ->label('Reviews'),
-                    
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('type')
-                    ->options([
-                        'coffee_shop' => 'Coffee',
-                        'tea_house' => 'Tea',
-                        'bar' => 'Bar',
-                    ]),
-                Tables\Filters\TernaryFilter::make('is_active')
-                    ->label('Only Active Venues'),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make()
-                    ->before(function (BeverageShop $record) {
-                        // Canon: Audit log before surgery
-                        Log::channel('audit')->info('Filament: Preparing to edit beverage shop', [
-                            'shop_id' => $record->id,
-                            'correlation_id' => $record->correlation_id,
-                        ]);
-                    }),
-                Tables\Actions\DeleteAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
-    }
-
-    /**
-     * Canon: Global Scope via getEloquentQuery.
-     */
-    public static function getEloquentQuery(): Builder
-    {
-        return parent::getEloquentQuery()
-            ->withoutGlobalScopes([
-                SoftDeletingScope::class,
-            ]);
-    }
-
-    public static function getRelations(): array
-    {
-        return [
-            // Relations for categories and items should be here
-        ];
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => \App\Filament\Tenant\Resources\BeverageShopResource\Pages\ListBeverageShops::route('/'),
-            'create' => \App\Filament\Tenant\Resources\BeverageShopResource\Pages\CreateBeverageShop::route('/create'),
-            'edit' => \App\Filament\Tenant\Resources\BeverageShopResource\Pages\EditBeverageShop::route('/{record}/edit'),
+            'index' => Pages\\ListBeverageShop::route('/'),
+            'create' => Pages\\CreateBeverageShop::route('/create'),
+            'edit' => Pages\\EditBeverageShop::route('/{record}/edit'),
+            'view' => Pages\\ViewBeverageShop::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListBeverageShop::route('/'),
+            'create' => Pages\\CreateBeverageShop::route('/create'),
+            'edit' => Pages\\EditBeverageShop::route('/{record}/edit'),
+            'view' => Pages\\ViewBeverageShop::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListBeverageShop::route('/'),
+            'create' => Pages\\CreateBeverageShop::route('/create'),
+            'edit' => Pages\\EditBeverageShop::route('/{record}/edit'),
+            'view' => Pages\\ViewBeverageShop::route('/{record}'),
         ];
     }
 }

@@ -101,67 +101,23 @@ final class VIPBookingResource extends Resource
                     ->label('Заметки консьержа')
                     ->columnSpanFull(),
             ]);
-    }
-
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('uuid')
-                    ->label('UUID (Booking)'),
-                Tables\Columns\TextColumn::make('client.uuid')
-                    ->label('Client'),
-                Tables\Columns\TextColumn::make('booking_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->label('Дата'),
-                Tables\Columns\SelectColumn::make('status')
-                    ->options([
-                        'pending' => 'Ожидание',
-                        'confirmed' => 'Подтверждено',
-                        'fulfilled' => 'Выполнено',
-                        'cancelled' => 'Отменено',
-                    ])
-                    ->label('Статус'),
-                Tables\Columns\TextColumn::make('total_price_kopecks')
-                    ->formatStateUsing(fn ($state) => number_format($state / 100, 2) . ' ₽')
-                    ->label('Сумма'),
-                Tables\Columns\TextColumn::make('payment_status')
-                    ->badge()
-                    ->label('Оплата'),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('status')
-                    ->options([
-                        'pending' => 'Ожидание',
-                        'confirmed' => 'Подтверждено',
-                        'fulfilled' => 'Выполнено',
-                        'cancelled' => 'Отменено',
-                    ])
-                    ->label('Статус'),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\ViewAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
-    }
-
-    public static function getRelations(): array
-    {
-        return [];
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListVIPBookings::route('/'),
-            'create' => Pages\CreateVIPBooking::route('/create'),
-            'edit' => Pages\EditVIPBooking::route('/{record}/edit'),
+            'index' => Pages\\ListVIPBooking::route('/'),
+            'create' => Pages\\CreateVIPBooking::route('/create'),
+            'edit' => Pages\\EditVIPBooking::route('/{record}/edit'),
+            'view' => Pages\\ViewVIPBooking::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListVIPBooking::route('/'),
+            'create' => Pages\\CreateVIPBooking::route('/create'),
+            'edit' => Pages\\EditVIPBooking::route('/{record}/edit'),
+            'view' => Pages\\ViewVIPBooking::route('/{record}'),
         ];
     }
 }

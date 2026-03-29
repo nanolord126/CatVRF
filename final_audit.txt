@@ -1,0 +1,85 @@
+
+тХФтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХЧ
+тХС           COMPREHENSIVE VERTICAL LOGIC AUDIT 2026             тХС
+тХЪтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХЭ
+
+ЁЯУК Processing 135 verticals...
+
+  [10/135] тЬЕ Processed Beauty
+  [20/135] тЭМ Processed BooksAndLiterature
+  [30/135] тЭМ Processed ConstructionAndRepair
+  [50/135] тЭМ Processed FarmDirectResource
+  [60/135] тЭМ Processed Gardening
+  [70/135] тЬЕ Processed Hotels
+  [80/135] тЬЕ Processed Manufacturing
+  [90/135] тЪая╕П Processed MedicalSupplies
+  [100/135] тЪая╕П Processed PharmacyResource
+  [110/135] тЭМ Processed Ritual
+
+тХФтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХЧ
+тХС                      AUDIT RESULTS                            тХС
+тХЪтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХЭ
+
+ЁЯУК RESOURCES:
+
+   Total verticals: 135
+   тЬУ OK: 90
+   тЬЧ Errors: 45
+   Compliance: 66.7%
+
+ЁЯУД PAGES:
+
+   Total needed: 540
+   тЬУ Found: 206
+   тЬЧ Missing: 154
+   Compliance: 57.2%
+
+тЪая╕П  CRITICAL ERRORS (81):
+   тАв .: No pages found
+   тАв ..: No *Resource.php file
+   тАв AppointmentResource: No *Resource.php file
+   тАв Art: No pages found
+   тАв AutoPartResource: No *Resource.php file
+   тАв AutoRepairOrderResource: No *Resource.php file
+   тАв B2BDealResource: No *Resource.php file
+   тАв BeautyProductResource: No *Resource.php file
+   тАв BeautyResource: No *Resource.php file
+   тАв BeverageItemResource: No *Resource.php file
+   тАв BeverageOrderResource: No *Resource.php file
+   тАв BeverageReviewResource: No *Resource.php file
+   тАв BeverageShopResource: No *Resource.php file
+   тАв BeverageSubscriptionResource: No *Resource.php file
+   тАв BookingResource: No *Resource.php file
+   тАв BooksAndLiterature: No pages found
+   тАв Cleaning: No pages found
+   тАв CleaningServices: No pages found
+   тАв Collectibles: No pages found
+   тАв ConfectioneryResource: No pages found
+   ... ╨╕ ╨╡╤Й╨╡ 61 ╨╛╤И╨╕╨▒╨╛╨║
+
+тЪая╕П  WARNINGS (7):
+   тАв CarRental: Only 1/4 pages found
+   тАв LanguageLearning: Only 2/4 pages found
+   тАв MeatShopResource: Only 3/4 pages found
+   тАв MedicalSupplies: Only 3/4 pages found
+   тАв OfficeCateringResource: Only 3/4 pages found
+   тАв PharmacyResource: Only 3/4 pages found
+   тАв SportingGoods: Only 3/4 pages found
+
+ЁЯФЧ LOGIC ISSUES (90):
+   тАв .: getPages() method missing
+   тАв Art: getPages() method missing
+   тАв Auto: getPages() method missing
+   тАв AutoParts: getPages() method missing
+   тАв Beauty: getPages() method missing
+   тАв Books: getPages() method missing
+   тАв BooksAndLiterature: getPages() method missing
+   тАв CarRental: getPages() method missing
+   тАв Channels: getPages() method missing
+   тАв Cleaning: getPages() method missing
+
+тЭМ  OVERALL SYSTEM COMPLIANCE: 62%
+
+тХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХР
+
+Report generated: 2026-03-29 14:00:11

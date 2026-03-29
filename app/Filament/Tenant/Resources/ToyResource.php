@@ -134,77 +134,23 @@ class ToyResource extends Resource
                     ]),
                 ]),
         ]);
-    }
-
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                ImageColumn::make('images')
-                    ->limit(1)
-                    ->circular(),
-                TextColumn::make('title')
-                    ->searchable()
-                    ->sortable()
-                    ->description(fn(Toy $record) => $record->sku),
-                TextColumn::make('category.name')
-                    ->badge()
-                    ->sortable(),
-                TextColumn::make('ageGroup.name')
-                    ->label('Age')
-                    ->sortable(),
-                TextColumn::make('price_b2c')
-                    ->label('B2C Price')
-                    ->money('RUB', divideBy: 100)
-                    ->sortable(),
-                TextColumn::make('stock_quantity')
-                    ->label('Qty')
-                    ->numeric()
-                    ->badge()
-                    ->color(fn(int $state) => $state < 10 ? 'danger' : 'success')
-                    ->sortable(),
-                IconColumn::make('is_active')
-                    ->boolean()
-                    ->sortable(),
-                TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-            ])
-            ->filters([
-                SelectFilter::make('category_id')
-                    ->label('Category')
-                    ->relationship('category', 'name'),
-                SelectFilter::make('age_group_id')
-                    ->label('Age')
-                    ->relationship('ageGroup', 'name'),
-                TernaryFilter::make('is_active'),
-                TernaryFilter::make('stock_status')
-                    ->label('In Stock Only')
-                    ->query(fn(Builder $query) => $query->where('stock_quantity', '>', 0)),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
-    }
-
-    public static function getRelations(): array
-    {
-        return [];
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => \App\Filament\Tenant\Resources\ToyResource\Pages\ListToys::route('/'),
-            'create' => \App\Filament\Tenant\Resources\ToyResource\Pages\CreateToy::route('/create'),
-            'edit' => \App\Filament\Tenant\Resources\ToyResource\Pages\EditToy::route('/{record}/edit'),
+            'index' => Pages\\ListToy::route('/'),
+            'create' => Pages\\CreateToy::route('/create'),
+            'edit' => Pages\\EditToy::route('/{record}/edit'),
+            'view' => Pages\\ViewToy::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListToy::route('/'),
+            'create' => Pages\\CreateToy::route('/create'),
+            'edit' => Pages\\EditToy::route('/{record}/edit'),
+            'view' => Pages\\ViewToy::route('/{record}'),
         ];
     }
 }

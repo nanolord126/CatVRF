@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources;
 
-use App\Models\Dental\Dentist;
+use App\Domains\Dental\Models\Dentist;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Components\Section;
@@ -139,100 +139,32 @@ final class DentistResource extends Resource
                             ->content(fn ($record) => $record?->created_at?->diffForHumans() ?? 'New Professional'),
                     ])->columns(3),
             ]);
-    }
-
-    /**
-     * Table Specification (Full Medical Directory).
-     * Exceeds 50 lines.
-     */
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                TextColumn::make('full_name')
-                    ->searchable()
-                    ->sortable()
-                    ->weight('bold')
-                    ->description(fn ($record) => "License: {$record->license_number}"),
-                TextColumn::make('clinic.name')
-                    ->label('Clinic')
-                    ->searchable()
-                    ->sortable(),
-                TextColumn::make('specialization')
-                    ->badge()
-                    ->label('Focus Areas')
-                    ->formatStateUsing(fn ($state) => is_array($state) ? implode(', ', $state) : $state)
-                    ->separator(','),
-                TextColumn::make('experience_years')
-                    ->numeric()
-                    ->sortable()
-                    ->label('Exp (Years)')
-                    ->suffix(' years'),
-                TextColumn::make('rating')
-                    ->numeric()
-                    ->sortable()
-                    ->label('Rating')
-                    ->badge()
-                    ->color(fn ($state) => match (true) {
-                        $state >= 95 => 'success',
-                        $state >= 80 => 'info',
-                        $state >= 60 => 'warning',
-                        default => 'danger',
-                    }),
-                IconColumn::make('is_active')
-                    ->boolean()
-                    ->label('Ready')
-                    ->trueIcon('heroicon-o-check-circle')
-                    ->falseIcon('heroicon-o-x-circle')
-                    ->color('success'),
-                TextColumn::make('appointments_count')
-                    ->counts('appointments')
-                    ->label('Patients')
-                    ->sortable(),
-                TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-            ])
-            ->filters([
-                SelectFilter::make('dental_clinic_id')
-                    ->label('By Clinic')
-                    ->relationship('clinic', 'name'),
-                TernaryFilter::make('is_active')
-                    ->label('Status (Active)'),
-                Tables\Filters\TrashedFilter::make(),
-            ])
-            ->actions([
-                ActionGroup::make([
-                    Tables\Actions\ViewAction::make(),
-                    Tables\Actions\EditAction::make(),
-                    Tables\Actions\DeleteAction::make(),
-                ])->icon('heroicon-m-ellipsis-vertical'),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                    Tables\Actions\RestoreBulkAction::make(),
-                ]),
-            ])
-            ->emptyStateHeading('No Dentists registered.')
-            ->poll('1m');
-    }
-
-    public static function getEloquentQuery(): Builder
-    {
-        return parent::getEloquentQuery()
-            ->withoutGlobalScopes([
-                SoftDeletingScope::class,
-            ]);
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => \App\Filament\Tenant\Resources\DentistResource\Pages\ListDentists::route('/'),
-            'create' => \App\Filament\Tenant\Resources\DentistResource\Pages\CreateDentist::route('/create'),
-            'edit' => \App\Filament\Tenant\Resources\DentistResource\Pages\EditDentist::route('/{record}/edit'),
+            'index' => Pages\\ListDentist::route('/'),
+            'create' => Pages\\CreateDentist::route('/create'),
+            'edit' => Pages\\EditDentist::route('/{record}/edit'),
+            'view' => Pages\\ViewDentist::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListDentist::route('/'),
+            'create' => Pages\\CreateDentist::route('/create'),
+            'edit' => Pages\\EditDentist::route('/{record}/edit'),
+            'view' => Pages\\ViewDentist::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListDentist::route('/'),
+            'create' => Pages\\CreateDentist::route('/create'),
+            'edit' => Pages\\EditDentist::route('/{record}/edit'),
+            'view' => Pages\\ViewDentist::route('/{record}'),
         ];
     }
 }

@@ -96,67 +96,23 @@ class FurnitureCustomOrderResource extends Resource
                             ->label('Date of Order Arrival'),
                     ]),
             ]);
-    }
 
-    public static function table(Table $table): Table
+    public static function getPages(): array
     {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('customer_name')
-                    ->sortable()
-                    ->searchable(),
-                Tables\Columns\BadgeColumn::make('status')
-                    ->colors([
-                        'warning' => 'pending',
-                        'primary' => 'confirmed',
-                        'info' => 'processing',
-                        'success' => 'completed',
-                        'danger' => 'cancelled',
-                    ])
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('total_price_kopecks')
-                    ->money('RUB', locale: 'ru')
-                    ->state(fn (FurnitureCustomOrder $record) => $record->total_price_kopecks / 100)
-                    ->sortable()
-                    ->label('Total (RUB)'),
-                Tables\Columns\TextColumn::make('roomType.name')
-                    ->sortable()
-                    ->label('Room Concept'),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->label('Order Date'),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('status')
-                    ->options([
-                        'pending' => 'Pending',
-                        'confirmed' => 'Confirmed',
-                        'processing' => 'Processing',
-                        'completed' => 'Completed',
-                        'cancelled' => 'Cancelled',
-                    ]),
-                Tables\Filters\SelectFilter::make('room_type_id')
-                    ->relationship('roomType', 'name'),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\Action::make('Confirm Project')
-                    ->icon('heroicon-o-check-circle')
-                    ->requiresConfirmation()
-                    ->action(fn (FurnitureCustomOrder $record) => $record->update(['status' => 'confirmed']))
-                    ->visible(fn (FurnitureCustomOrder $record) => $record->status === 'pending'),
-            ])
-            ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
-            ]);
-    }
+        return [
+            'index' => Pages\\ListFurnitureCustomOrder::route('/'),
+            'create' => Pages\\CreateFurnitureCustomOrder::route('/create'),
+            'edit' => Pages\\EditFurnitureCustomOrder::route('/{record}/edit'),
+            'view' => Pages\\ViewFurnitureCustomOrder::route('/{record}'),
+        ];
 
-    public static function getEloquentQuery(): Builder
+    public static function getPages(): array
     {
-        return parent::getEloquentQuery()
-            ->with(['store', 'roomType'])
-            ->latest();
+        return [
+            'index' => Pages\\ListFurnitureCustomOrder::route('/'),
+            'create' => Pages\\CreateFurnitureCustomOrder::route('/create'),
+            'edit' => Pages\\EditFurnitureCustomOrder::route('/{record}/edit'),
+            'view' => Pages\\ViewFurnitureCustomOrder::route('/{record}'),
+        ];
     }
 }

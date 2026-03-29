@@ -114,79 +114,23 @@ class JewelryCustomOrderResource extends Resource
                             ->hint('Auto-assigned for audit logging.'),
                     ]),
             ]);
-    }
 
-    public static function table(Table $table): Table
+    public static function getPages(): array
     {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('user.name')
-                    ->sortable()
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('order_uuid')
-                    ->label('Request ID')
-                    ->searchable()
-                    ->copyable()
-                    ->badge(),
-                Tables\Columns\BadgeColumn::make('status')
-                    ->colors([
-                        'primary' => 'pending',
-                        'warning' => 'processing',
-                        'success' => 'ready',
-                        'success' => 'completed',
-                        'danger' => 'cancelled',
-                    ]),
-                Tables\Columns\TextColumn::make('total_price')
-                    ->money('RUB', locale: 'ru')
-                    ->state(fn (JewelryCustomOrder $record) => $record->total_price / 100)
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('manufacturing_days_est')
-                    ->label('Est Days')
-                    ->sortable(),
-                Tables\Columns\IconColumn::make('is_paid')
-                    ->boolean()
-                    ->label('Paid'),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('status')
-                    ->options([
-                        'pending' => 'Pending Approval',
-                        'approved' => 'Approved',
-                        'processing' => 'In Manufacture',
-                        'ready' => 'Ready',
-                        'completed' => 'Completed',
-                        'cancelled' => 'Cancelled',
-                    ]),
-                Tables\Filters\TernaryFilter::make('is_paid'),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\Action::make('mark_as_qa')
-                    ->label('Quality Assay')
-                    ->icon('heroicon-o-magnifying-glass')
-                    ->color('warning')
-                    ->action(fn (JewelryCustomOrder $record) => $record->update(['status' => 'qa']))
-                    ->visible(fn ($record) => $record->status === 'processing'),
-                Tables\Actions\Action::make('mark_as_ready')
-                    ->label('Set Ready')
-                    ->icon('heroicon-o-check')
-                    ->color('success')
-                    ->action(fn (JewelryCustomOrder $record) => $record->update(['status' => 'ready']))
-                    ->visible(fn ($record) => $record->status === 'qa'),
-            ])
-            ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
-            ]);
-    }
+        return [
+            'index' => Pages\\ListJewelryCustomOrder::route('/'),
+            'create' => Pages\\CreateJewelryCustomOrder::route('/create'),
+            'edit' => Pages\\EditJewelryCustomOrder::route('/{record}/edit'),
+            'view' => Pages\\ViewJewelryCustomOrder::route('/{record}'),
+        ];
 
-    public static function getEloquentQuery(): Builder
+    public static function getPages(): array
     {
-        return parent::getEloquentQuery()
-            ->with(['user', 'productReference'])
-            ->latest();
+        return [
+            'index' => Pages\\ListJewelryCustomOrder::route('/'),
+            'create' => Pages\\CreateJewelryCustomOrder::route('/create'),
+            'edit' => Pages\\EditJewelryCustomOrder::route('/{record}/edit'),
+            'view' => Pages\\ViewJewelryCustomOrder::route('/{record}'),
+        ];
     }
 }

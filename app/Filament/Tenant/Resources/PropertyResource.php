@@ -125,70 +125,23 @@ final class PropertyResource extends Resource
                         ->label('Asset UUID'),
                 ])->columns(2),
         ]);
-    }
-
-    /**
-     * МОЩНАЯ ТАБЛИЦА (КАНОН).
-     */
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('uuid')
-                    ->label('ID')
-                    ->copyable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('name')
-                    ->searchable()
-                    ->sortable()
-                    ->weight('bold'),
-                Tables\Columns\TextColumn::make('category')
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'apartment' => 'info',
-                        'house' => 'success',
-                        'commercial' => 'warning',
-                        default => 'gray',
-                    }),
-                Tables\Columns\TextColumn::make('address')
-                    ->limit(30)
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('area_total')
-                    ->label('Area')
-                    ->suffix(' m²')
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('status')
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'active' => 'success',
-                        'sold', 'rented' => 'danger',
-                        'maintenance' => 'warning',
-                        default => 'gray',
-                    }),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('category'),
-                Tables\Filters\TernaryFilter::make('is_active')
-                    ->label('Active only')
-                    ->query(fn (Builder $query) => $query->where('status', 'active')),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListProperties::route('/'),
-            'create' => Pages\CreateProperty::route('/create'),
-            'edit' => Pages\EditProperty::route('/{record}/edit'),
+            'index' => Pages\\ListProperty::route('/'),
+            'create' => Pages\\CreateProperty::route('/create'),
+            'edit' => Pages\\EditProperty::route('/{record}/edit'),
+            'view' => Pages\\ViewProperty::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListProperty::route('/'),
+            'create' => Pages\\CreateProperty::route('/create'),
+            'edit' => Pages\\EditProperty::route('/{record}/edit'),
+            'view' => Pages\\ViewProperty::route('/{record}'),
         ];
     }
 }

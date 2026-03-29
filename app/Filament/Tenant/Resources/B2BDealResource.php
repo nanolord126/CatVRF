@@ -93,90 +93,32 @@ final class B2BDealResource extends Resource
                                             ->body($e->getMessage())
                                             ->danger()
                                             ->send();
-                                    }
-                                }),
-                        ]),
-                        Forms\Components\KeyValue::make('deal_terms')
-                            ->label('Условия и прогнозы')
-                            ->placeholder('ROI_Forecast, Payback_Years, Discount_Requested')
-                            ->addActionLabel('Добавить условие'),
-                    ]),
-
-                Forms\Components\Section::make('Метаданные и Скрытые параметры')
-                    ->schema([
-                        Forms\Components\KeyValue::make('metadata')
-                           ->label('Технические метаданные сделки')
-                           ->columnSpanFull(),
-                    ]),
-            ]);
-    }
-
-    public static function table(Table $table): Table
+                                
+    public static function getPages(): array
     {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('uuid')
-                    ->label('ID')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('listing.title')
-                    ->label('Объект/Оффер')
-                    ->sortable()
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('investor.name')
-                    ->label('Инвестор')
-                    ->sortable()
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('offered_price')
-                    ->label('Предложение')
-                    ->money('RUB', divideBy: 100)
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('status')
-                    ->badge()
-                    ->label('Статус')
-                    ->color(fn (string $state): string => match ($state) {
-                        'closed' => 'success',
-                        'new' => 'info',
-                        'negotiation' => 'warning',
-                        'rejected' => 'danger',
-                        'due_diligence' => 'primary',
-                        default => 'gray',
-                    }),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->label('Дата'),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('status')
-                    ->options([
-                        'new' => 'Новая',
-                        'closed' => 'Закрыта',
-                        'rejected' => 'Отклонена',
-                    ]),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\ViewAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
-    }
-
-    public static function getRelations(): array
-    {
-        return [];
-    }
+        return [
+            'index' => Pages\\ListB2BDeal::route('/'),
+            'create' => Pages\\CreateB2BDeal::route('/create'),
+            'edit' => Pages\\EditB2BDeal::route('/{record}/edit'),
+            'view' => Pages\\ViewB2BDeal::route('/{record}'),
+        ];
 
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListB2BDeals::route('/'),
-            'create' => Pages\CreateB2BDeal::route('/create'),
-            'edit' => Pages\EditB2BDeal::route('/{record}/edit'),
+            'index' => Pages\\ListB2BDeal::route('/'),
+            'create' => Pages\\CreateB2BDeal::route('/create'),
+            'edit' => Pages\\EditB2BDeal::route('/{record}/edit'),
+            'view' => Pages\\ViewB2BDeal::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListB2BDeal::route('/'),
+            'create' => Pages\\CreateB2BDeal::route('/create'),
+            'edit' => Pages\\EditB2BDeal::route('/{record}/edit'),
+            'view' => Pages\\ViewB2BDeal::route('/{record}'),
         ];
     }
 }

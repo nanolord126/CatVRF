@@ -107,64 +107,23 @@ final class PhotoStudioResource extends Resource
                             ->placeholder('лофт, неон, аквазона'),
                     ])->columns(2),
             ]);
-    }
-
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('name')
-                    ->label('Студия')
-                    ->searchable()
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('address')
-                    ->label('Адрес')
-                    ->limit(30)
-                    ->tooltip(fn ($state) => $state),
-
-                Tables\Columns\IconColumn::make('is_verified')
-                    ->label('Статус')
-                    ->boolean(),
-
-                Tables\Columns\TextColumn::make('rating')
-                    ->label('★')
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('created_at')
-                    ->label('Дата создания')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-            ])
-            ->filters([
-                Tables\Filters\TernaryFilter::make('is_verified')
-                    ->label('Только верифицированные'),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\ViewAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
-    }
-
-    public static function getRelations(): array
-    {
-        return [
-            // Relations: Photographers, Bookings
-        ];
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => \App\Filament\Tenant\Resources\PhotoStudioResource\Pages\ListPhotoStudios::route('/'),
-            'create' => \App\Filament\Tenant\Resources\PhotoStudioResource\Pages\CreatePhotoStudio::route('/create'),
-            'edit' => \App\Filament\Tenant\Resources\PhotoStudioResource\Pages\EditPhotoStudio::route('/{record}/edit'),
+            'index' => Pages\\ListPhotoStudio::route('/'),
+            'create' => Pages\\CreatePhotoStudio::route('/create'),
+            'edit' => Pages\\EditPhotoStudio::route('/{record}/edit'),
+            'view' => Pages\\ViewPhotoStudio::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListPhotoStudio::route('/'),
+            'create' => Pages\\CreatePhotoStudio::route('/create'),
+            'edit' => Pages\\EditPhotoStudio::route('/{record}/edit'),
+            'view' => Pages\\ViewPhotoStudio::route('/{record}'),
         ];
     }
 }

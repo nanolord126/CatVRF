@@ -132,79 +132,32 @@ class BookOrderResource extends Resource
                             ->itemLabel(fn (array $state): ?string => Book::find($state['book_id'] ?? null)?->title ?? 'New Line Item'),
                     ]),
             ]);
-    }
 
-    public static function table(Table $table): Table
+    public static function getPages(): array
     {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('store.name')
-                    ->sortable()
-                    ->searchable()
-                    ->label('Bookstore'),
-                Tables\Columns\TextColumn::make('user.name')
-                    ->sortable()
-                    ->searchable()
-                    ->label('Customer'),
-                Tables\Columns\BadgeColumn::make('status')
-                    ->colors([
-                        'warning' => 'pending',
-                        'primary' => 'processing',
-                        'success' => 'delivered',
-                        'danger' => 'returned',
-                        'secondary' => 'cancelled',
-                    ])
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('total_amount')
-                    ->money('RUB', locale: 'ru')
-                    ->state(fn (BookOrder $record) => $record->total_amount / 100)
-                    ->sortable()
-                    ->label('Total (RUB)'),
-                Tables\Columns\BadgeColumn::make('payment_status')
-                    ->colors([
-                        'danger' => 'unpaid',
-                        'success' => 'paid',
-                        'warning' => 'refunded',
-                        'secondary' => 'failed',
-                    ])
-                    ->sortable(),
-                Tables\Columns\IconColumn::make('b2b_company_id')
-                    ->boolean()
-                    ->label('B2B Order')
-                    ->trueIcon('heroicon-o-building-office')
-                    ->falseIcon('heroicon-o-user')
-                    ->trueColor('primary')
-                    ->falseColor('secondary'),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->label('Placed At'),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('status'),
-                Tables\Filters\SelectFilter::make('payment_status'),
-                Tables\Filters\TernaryFilter::make('b2b_company_id')
-                    ->label('B2B vs B2C')
-                    ->nullable()
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\Action::make('mark_paid')
-                    ->action(fn (BookOrder $record) => $record->update(['payment_status' => 'paid']))
-                    ->visible(fn (BookOrder $record) => $record->payment_status === 'unpaid')
-                    ->icon('heroicon-o-check-circle')
-                    ->color('success'),
-                Tables\Actions\ViewAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
-            ]);
-    }
+        return [
+            'index' => Pages\\ListBookOrder::route('/'),
+            'create' => Pages\\CreateBookOrder::route('/create'),
+            'edit' => Pages\\EditBookOrder::route('/{record}/edit'),
+            'view' => Pages\\ViewBookOrder::route('/{record}'),
+        ];
 
-    public static function getEloquentQuery(): Builder
+    public static function getPages(): array
     {
-        return parent::getEloquentQuery()
-            ->with(['user', 'store', 'b2bCompany'])
-            ->latest();
+        return [
+            'index' => Pages\\ListBookOrder::route('/'),
+            'create' => Pages\\CreateBookOrder::route('/create'),
+            'edit' => Pages\\EditBookOrder::route('/{record}/edit'),
+            'view' => Pages\\ViewBookOrder::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListBookOrder::route('/'),
+            'create' => Pages\\CreateBookOrder::route('/create'),
+            'edit' => Pages\\EditBookOrder::route('/{record}/edit'),
+            'view' => Pages\\ViewBookOrder::route('/{record}'),
+        ];
     }
 }

@@ -122,8 +122,6 @@ final class DeliveryOrderResource extends Resource
                 Tables\Actions\EditAction::make(),
             ]);
     }
-            ]);
-    }
 
     public static function getEloquentQuery(): Builder
     {

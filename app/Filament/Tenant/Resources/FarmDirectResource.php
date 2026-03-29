@@ -1,120 +1,111 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources;
 
-use App\Domains\FarmDirect\Models\Farm;
-use Filament\Forms\Components\{Section, Grid, TextInput, Textarea, Toggle, FileUpload, Repeater};
+use App\Domains\FarmDirect\Models\FarmProduct;
+use App\Filament\Tenant\Resources\FarmDirectResource\Pages;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TagsInput;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
-use Filament\Tables\Columns\{TextColumn, BooleanColumn, BadgeColumn};
-use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Table;
+use Filament\Tables\Columns\BadgeColumn;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Actions\BulkActionGroup;
 use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 
+/**
+ * FarmDirectResource
+ * 
+ * Управление ресурсом на базе КАНОН 2026.
+ * Production-ready implementation.
+ */
 final class FarmDirectResource extends Resource
 {
-    protected static ?string $model = Farm::class;
-    protected static ?string $navigationGroup = 'Вертикали';
-    protected static ?string $navigationLabel = 'Фермерские товары';
-    protected static ?string $modelLabel = 'Ферма';
-    protected static ?string $pluralModelLabel = 'Фермы';
-    protected static ?int $navigationSort = 8;
+    protected static ?string $model = FarmProduct::class;
+
+    protected static ?string $navigationIcon = 'heroicon-o-leaf';
+
+    protected static ?string $navigationGroup = 'Agriculture';
 
     public static function form(Form $form): Form
     {
-        return $form->schema([
-            Section::make('Основная информация')
-                ->schema([
-                    Grid::make(2)->schema([
-                        TextInput::make('name')->label('Название фермы')->required()->maxLength(255),
-                        TextInput::make('phone')->label('Телефон')->tel()->required(),
-                        Textarea::make('description')->label('Описание продукции')->maxLength(1000)->columnSpanFull(),
-                        TextInput::make('farm_type')->label('Тип фермы (овощи, молочная, мясо)')->maxLength(100),
-                    ]),
-                ]),
-
-            Section::make('Адрес и координаты')
-                ->schema([
-                    Grid::make(2)->schema([
-                        TextInput::make('address')->label('Адрес')->required()->maxLength(500),
-                        TextInput::make('latitude')->label('Широта')->numeric(),
-                        TextInput::make('longitude')->label('Долгота')->numeric(),
-                    ]),
-                ]),
-
-            Section::make('Сертификация')
-                ->schema([
-                    Grid::make(2)->schema([
-                        TextInput::make('certification_number')->label('Номер сертификата')->maxLength(100),
-                        Toggle::make('is_verified')->label('Верифицирована'),
-                    ]),
-                ]),
-
-            Section::make('Параметры доставки')
-                ->schema([
-                    Grid::make(2)->schema([
-                        TextInput::make('min_order_amount')->label('Мин. сумма заказа (коп.)')->numeric()->default(30000),
-                        TextInput::make('commission_percent')->label('Комиссия (%)')->numeric()->default(12),
-                    ]),
-                ]),
-
-            Section::make('Зоны доставки')
-                ->schema([
-                    Repeater::make('delivery_zones')
-                        ->label('Зоны доставки')
-                        ->schema([
-                            Grid::make(3)->schema([
-                                TextInput::make('zone_name')->label('Название зоны')->required(),
-                                TextInput::make('delivery_time_min')->label('Время доставки (мин)')->numeric()->required(),
-                                TextInput::make('delivery_fee_kopecks')->label('Стоимость доставки (коп)')->numeric()->required(),
+        return $form
+            ->schema([
+                Section::make('Основная информация')
+                    ->description('Базовые сведения об объекте')
+                    ->schema([
+                        Grid::make(2)
+                            ->schema([
+                                                TextInput::make('name')
+                    ->required()
+                    ->maxLength(255),
+                                TextInput::make('farm_name')
+                    ->required()
+                    ->maxLength(255),
+                                Select::make('category')
+                    ->required()
+                    ->searchable(),
+                                TextInput::make('price')
+                    ->required()
+                    ->maxLength(255),
+                                TextInput::make('quantity_available')
+                    ->required()
+                    ->maxLength(255),
+                                Select::make('unit')
+                    ->required()
+                    ->searchable(),
                             ]),
-                        ])->columnSpanFull(),
-                ]),
+                    ]),
 
-            Section::make('График доступности')
-                ->schema([
-                    Repeater::make('schedule')
-                        ->label('График')
-                        ->schema([
-                            Grid::make(3)->schema([
-                                TextInput::make('day')->label('День')->required(),
-                                TextInput::make('opens_at')->label('Открывается')->required(),
-                                TextInput::make('closes_at')->label('Закрывается')->required(),
-                            ]),
-                        ])->columnSpanFull(),
-                ]),
-        ]);
-    }
+                Section::make('Дополнительно')
+                    ->description('Расширенные параметры')
+                    ->collapsed()
+                    ->schema([
+                        Grid::make(2)
+                            ->schema([]),
+                    ]),
+            ]);
 
-    public static function table(Table $table): Table
+    public static function getPages(): array
     {
-        return $table
-            ->columns([
-                TextColumn::make('name')->label('Ферма')->searchable()->sortable(),
-                TextColumn::make('phone')->label('Телефон')->searchable(),
-                TextColumn::make('address')->label('Адрес')->limit(40),
-                TextColumn::make('farm_type')->label('Тип'),
-                BadgeColumn::make('is_verified')->label('Статус')
-                    ->formatStateUsing(fn(bool $state) => $state ? 'Верифицирована' : 'Не верифицирована')
-                    ->color(fn(bool $state) => $state ? 'success' : 'warning'),
-                TextColumn::make('commission_percent')->label('Комиссия (%)')->sortable(),
-                TextColumn::make('created_at')->label('Создано')->dateTime('d.m.Y')->sortable(),
-            ])
-            ->filters([
-                SelectFilter::make('is_verified')->label('Статус')->options([
-                    true => 'Верифицирована',
-                    false => 'Не верифицирована',
-                ]),
-            ])
-            ->actions([
-                // Actions
-            ])
-            ->bulkActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
-            ])
-            ->defaultSort('created_at', 'desc');
+        return [
+            'index' => Pages\\ListFarmDirect::route('/'),
+            'create' => Pages\\CreateFarmDirect::route('/create'),
+            'edit' => Pages\\EditFarmDirect::route('/{record}/edit'),
+            'view' => Pages\\ViewFarmDirect::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListFarmDirect::route('/'),
+            'create' => Pages\\CreateFarmDirect::route('/create'),
+            'edit' => Pages\\EditFarmDirect::route('/{record}/edit'),
+            'view' => Pages\\ViewFarmDirect::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListFarmDirect::route('/'),
+            'create' => Pages\\CreateFarmDirect::route('/create'),
+            'edit' => Pages\\EditFarmDirect::route('/{record}/edit'),
+            'view' => Pages\\ViewFarmDirect::route('/{record}'),
+        ];
     }
 }

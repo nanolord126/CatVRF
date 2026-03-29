@@ -151,64 +151,32 @@ final class FreshProduceResource extends Resource
                         ->placeholder("organic, local, premium"),
                 ]),
         ]);
-    }
-
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make("name")
-                    ->label("Продукт")
-                    ->sortable()
-                    ->searchable(),
-                Tables\Columns\TextColumn::make("farmSupplier.name")
-                    ->label("Ферма")
-                    ->badge()
-                    ->color("success"),
-                Tables\Columns\TextColumn::make("category")
-                    ->label("Категория"),
-                Tables\Columns\TextColumn::make("price_per_unit")
-                    ->label("Цена")
-                    ->formatStateUsing(fn ($state) => number_format($state / 100, 2) . " ₽")
-                    ->sortable(),
-                Tables\Columns\TextColumn::make("current_stock")
-                    ->label("Остаток")
-                    ->sortable()
-                    ->color(fn ($record) => $record->current_stock <= $record->min_stock_threshold ? "danger" : "success"),
-                Tables\Columns\IconColumn::make("is_eco_certified")
-                    ->label("ECO")
-                    ->boolean(),
-                Tables\Columns\TextColumn::make("harvest_date")
-                    ->label("Сбор")
-                    ->date("d.m.Y"),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make("category")
-                    ->options([
-                        "fruits" => "Фрукты",
-                        "vegetables" => "Овощи",
-                        "greens" => "Зелень"
-                    ]),
-                Tables\Filters\TernaryFilter::make("is_seasonal")
-                    ->label("Сезонные"),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
-    }
 
     public static function getPages(): array
     {
         return [
-            "index" => Pages\ListFreshProduces::route("/"),
-            "create" => Pages\CreateFreshProduces::route("/create"),
-            "edit" => Pages\EditFreshProduces::route("/{record}/edit"),
+            'index' => Pages\\ListFreshProduce::route('/'),
+            'create' => Pages\\CreateFreshProduce::route('/create'),
+            'edit' => Pages\\EditFreshProduce::route('/{record}/edit'),
+            'view' => Pages\\ViewFreshProduce::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListFreshProduce::route('/'),
+            'create' => Pages\\CreateFreshProduce::route('/create'),
+            'edit' => Pages\\EditFreshProduce::route('/{record}/edit'),
+            'view' => Pages\\ViewFreshProduce::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListFreshProduce::route('/'),
+            'create' => Pages\\CreateFreshProduce::route('/create'),
+            'edit' => Pages\\EditFreshProduce::route('/{record}/edit'),
+            'view' => Pages\\ViewFreshProduce::route('/{record}'),
         ];
     }
 }

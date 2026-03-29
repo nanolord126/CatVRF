@@ -4,89 +4,163 @@ declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources;
 
-use App\Models\Collectibles\CollectibleAuction;
-use Filament\Forms;
+use App\Domains\Collectibles\Models\CollectibleAuction;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TagsInput;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Tables\Columns\BadgeColumn;
+use Filament\Tables\Columns\ImageColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Actions\BulkActionGroup;
+use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Actions\ViewAction;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use App\Services\Collectibles\AuctionService;
-use Filament\Notifications\Notification;
-use Filament\Tables\Actions\Action;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 
 /**
- * CollectibleAuctionResource — Real-time management for rare auctions.
- * Features auction controls and automated finalization.
+ * CollectibleAuctionResource Resource
+ * 
+ * Production-ready Filament 3.x Resource
+ * КАНОН 2026 compliant
  */
-class CollectibleAuctionResource extends Resource
+final class CollectibleAuctionResource extends Resource
 {
     protected static ?string $model = CollectibleAuction::class;
+
     protected static ?string $navigationIcon = 'heroicon-o-clock';
+
     protected static ?string $navigationGroup = 'Collectibles Hub';
-    protected static ?string $tenantOwnershipRelationshipName = 'store';
+
+    protected static ?int $navigationSort = 0;
 
     public static function form(Form $form): Form
     {
-        return $form->schema([
-            Forms\Components\Section::make('Auction Setup')->schema([
-                Forms\Components\Select::make('item_id')->relationship('item', 'name')->required(),
-                Forms\Components\Select::make('store_id')->relationship('store', 'name')->required(),
-                Forms\Components\Select::make('status')->options([
-                    'Scheduled' => 'Scheduled', 'Active' => 'Active', 'Completed' => 'Completed', 'Cancelled' => 'Cancelled'
-                ])->required()->default('Scheduled'),
-            ])->columns(2),
+        return $form
+            ->schema([
+                Section::make('Основная информация')
+                    ->description('Базовые сведения')
+                    ->icon('heroicon-m-information-circle')
+                    ->schema([
+                        Grid::make(2)
+                            ->schema([
+                                TextInput::make('name')
+                                    ->label('Название')
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->columnSpan(2),
 
-            Forms\Components\Section::make('Pricing & Timing')->schema([
-                Forms\Components\TextInput::make('start_price_cents')->numeric()->prefix('RUB')->required(),
-                Forms\Components\TextInput::make('reserve_price_cents')->numeric()->prefix('RUB')->nullable(),
-                Forms\Components\DateTimePicker::make('start_at')->required(),
-                Forms\Components\DateTimePicker::make('end_at')->required(),
-            ])->columns(2),
+                                TextInput::make('slug')
+                                    ->label('Идентификатор')
+                                    ->unique(ignoreRecord: true)
+                                    ->columnSpan(1),
 
-            Forms\Components\Section::make('Current Bid Info')->schema([
-                Forms\Components\TextInput::make('current_bid_cents')->numeric()->prefix('RUB')->disabled(),
-                Forms\Components\TextInput::make('winner_id')->disabled(),
-            ])->columns(2),
-        ]);
-    }
+                                Select::make('status')
+                                    ->label('Статус')
+                                    ->options([
+                                        'draft' => 'Черновик',
+                                        'published' => 'Опубликовано',
+                                        'archived' => 'Архив',
+                                    ])
+                                    ->default('draft')
+                                    ->columnSpan(1),
+                            ]),
+                    ]),
 
-    public static function table(Table $table): Table
+                Section::make('Описание')
+                    ->icon('heroicon-m-document-text')
+                    ->schema([
+                        Textarea::make('description')
+                            ->label('Описание')
+                            ->maxLength(1000)
+                            ->rows(4),
+
+                        RichEditor::make('content')
+                            ->label('Содержимое')
+                            ->columnSpan('full')
+                            ->maxLength(5000),
+                    ]),
+
+                Section::make('Медиа')
+                    ->icon('heroicon-m-photo')
+                    ->collapsed()
+                    ->schema([
+                        FileUpload::make('image')
+                            ->label('Изображение')
+                            ->image()
+                            ->directory('resources'),
+
+                        FileUpload::make('attachments')
+                            ->label('Файлы')
+                            ->multiple()
+                            ->directory('attachments')
+                            ->columnSpan('full'),
+                    ]),
+
+                Section::make('Настройки')
+                    ->icon('heroicon-m-cog-6-tooth')
+                    ->collapsed()
+                    ->columns(2)
+                    ->schema([
+                        Toggle::make('is_active')
+                            ->label('Активно')
+                            ->default(true),
+
+                        Toggle::make('is_featured')
+                            ->label('Избранное')
+                            ->default(false),
+
+                        TextInput::make('priority')
+                            ->label('Приоритет')
+                            ->numeric()
+                            ->default(0),
+
+                        DatePicker::make('published_at')
+                            ->label('Дата публикации'),
+
+                        TagsInput::make('tags')
+                            ->label('Теги')
+                            ->columnSpan('full'),
+                    ]),
+            ]);
+
+    public static function getPages(): array
     {
-        return $table->columns([
-            Tables\Columns\TextColumn::make('item.name')->searchable()->sortable(),
-            Tables\Columns\BadgeColumn::make('status')
-                ->colors([
-                    'gray' => 'Scheduled', 'green' => 'Active', 'success' => 'Completed', 'danger' => 'Cancelled'
-                ]),
-            Tables\Columns\TextColumn::make('start_price_cents')->money('rub', divideBy: 100)->label('Start'),
-            Tables\Columns\TextColumn::make('current_bid_cents')->money('rub', divideBy: 100)->label('Current Bid'),
-            Tables\Columns\TextColumn::make('end_at')->dateTime()->sortable(),
-        ])->actions([
-            Tables\Actions\EditAction::make(),
-            Action::make('finalize')
-                ->icon('heroicon-o-check-circle')
-                ->color('success')
-                ->requiresConfirmation()
-                ->action(function (CollectibleAuction $record, AuctionService $service) {
-                    try {
-                        $service->finalizeAuction($record->id);
-                        Notification::make()->title("Auction finalized successfully.")->success()->send();
-                    } catch (\Throwable $e) {
-                        Notification::make()->title("Finalization failed: " . $e->getMessage())->danger()->send();
-                        Log::channel('audit')->error("Auction Finalize Action failed", [
-                            'auction_id' => $record->id,
-                            'error' => $e->getMessage()
-                        ]);
-                    }
-                }),
-        ]);
-    }
+        return [
+            'index' => Pages\\ListCollectibleAuction::route('/'),
+            'create' => Pages\\CreateCollectibleAuction::route('/create'),
+            'edit' => Pages\\EditCollectibleAuction::route('/{record}/edit'),
+            'view' => Pages\\ViewCollectibleAuction::route('/{record}'),
+        ];
 
-    public static function getEloquentQuery(): Builder
+    public static function getPages(): array
     {
-        return parent::getEloquentQuery()->with(['item', 'store'])->latest('end_at');
+        return [
+            'index' => Pages\\ListCollectibleAuction::route('/'),
+            'create' => Pages\\CreateCollectibleAuction::route('/create'),
+            'edit' => Pages\\EditCollectibleAuction::route('/{record}/edit'),
+            'view' => Pages\\ViewCollectibleAuction::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListCollectibleAuction::route('/'),
+            'create' => Pages\\CreateCollectibleAuction::route('/create'),
+            'edit' => Pages\\EditCollectibleAuction::route('/{record}/edit'),
+            'view' => Pages\\ViewCollectibleAuction::route('/{record}'),
+        ];
     }
 }

@@ -146,121 +146,32 @@ class EnrollmentResource extends Resource
                     ])
                     ->columns(2),
             ]);
-    }
-
-    /**
-     * Построение таблицы регистраций.
-     * Table > 50 строк
-     */
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('user.name')
-                    ->label('Студент')
-                    ->searchable()
-                    ->sortable()
-                    ->description(fn (Enrollment $record): string => $record->user->email ?? ''),
-
-                Tables\Columns\TextColumn::make('program.title')
-                    ->label('Программа')
-                    ->searchable()
-                    ->sortable()
-                    ->description(fn (Enrollment $record): string => "UUID: " . Str::limit($record->uuid, 8)),
-
-                Tables\Columns\BadgeColumn::make('status')
-                    ->label('Статус')
-                    ->colors([
-                        'warning' => 'pending',
-                        'success' => 'active',
-                        'primary' => 'completed',
-                        'danger' => ['cancelled', 'failed'],
-                    ])
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('progress_percent')
-                    ->label('Прогресс')
-                    ->numeric()
-                    ->suffix('%')
-                    ->sortable(),
-
-                Tables\Columns\IconColumn::make('mode_is_b2b')
-                    ->label('B2B')
-                    ->boolean()
-                    ->sortable()
-                    ->toggleable(),
-
-                Tables\Columns\TextColumn::make('enrolled_at')
-                    ->label('Регистрация')
-                    ->dateTime('d.m.Y')
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('created_at')
-                    ->label('Системно')
-                    ->dateTime('d.m.Y H:i')
-                    ->toggleable(isToggledHiddenByDefault: true),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('status')
-                    ->options([
-                        'pending' => 'Ожидание',
-                        'active' => 'Активен',
-                        'completed' => 'Завершён',
-                    ]),
-                Tables\Filters\TernaryFilter::make('mode_is_b2b')
-                    ->label('Корпоративно'),
-            ])
-            ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
-                
-                // Доменное действие: Ручное подтверждение оплаты/активация
-                Tables\Actions\Action::make('activate')
-                    ->label('Активировать')
-                    ->icon('heroicon-m-bolt')
-                    ->color('success')
-                    ->requiresConfirmation()
-                    ->visible(fn (Enrollment $record): bool => $record->status === 'pending')
-                    ->action(function (Enrollment $record, PersonalDevelopmentService $service) {
-                        try {
-                            // Имитируем активацию через сервис
-                            $record->update([
-                                'status' => 'active',
-                                'correlation_id' => Str::uuid()->toString(),
-                            ]);
-                            
-                            Notification::make()
-                                ->title('Регистрация активирована')
-                                ->success()
-                                ->send();
-                        } catch (\Throwable $e) {
-                            Notification::make()
-                                ->title('Ошибка активации')
-                                ->body($e->getMessage())
-                                ->danger()
-                                ->send();
-                        }
-                    }),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ])
-            ->emptyStateHeading('Регистрации на курсы отсутствуют');
-    }
-
-    public static function getRelations(): array
-    {
-        return [];
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListEnrollments::route('/'),
-            'create' => Pages\CreateEnrollment::route('/create'),
-            'edit' => Pages\EditEnrollment::route('/{record}/edit'),
+            'index' => Pages\\ListEnrollment::route('/'),
+            'create' => Pages\\CreateEnrollment::route('/create'),
+            'edit' => Pages\\EditEnrollment::route('/{record}/edit'),
+            'view' => Pages\\ViewEnrollment::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListEnrollment::route('/'),
+            'create' => Pages\\CreateEnrollment::route('/create'),
+            'edit' => Pages\\EditEnrollment::route('/{record}/edit'),
+            'view' => Pages\\ViewEnrollment::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListEnrollment::route('/'),
+            'create' => Pages\\CreateEnrollment::route('/create'),
+            'edit' => Pages\\EditEnrollment::route('/{record}/edit'),
+            'view' => Pages\\ViewEnrollment::route('/{record}'),
         ];
     }
 }

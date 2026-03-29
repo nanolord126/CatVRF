@@ -130,8 +130,6 @@ final class CourierResource extends Resource
                 ]),
             ]);
     }
-            ]);
-    }
 
     public static function getEloquentQuery(): Builder
     {

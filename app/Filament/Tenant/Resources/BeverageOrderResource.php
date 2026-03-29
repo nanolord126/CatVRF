@@ -143,111 +143,32 @@ final class BeverageOrderResource extends Resource
                             ->label('Analytical Tags'),
                     ]),
             ]);
-    }
-
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('uuid')
-                    ->label('ID')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('user.name')
-                    ->label('Customer')
-                    ->sortable()
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('shop.name')
-                    ->label('Venue')
-                    ->sortable()
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('total_price')
-                    ->money('RUB', divideBy: 100)
-                    ->label('Total')
-                    ->sortable()
-                    ->color('success')
-                    ->weight('bold'),
-                Tables\Columns\SelectColumn::make('status')
-                    ->options([
-                        'pending' => 'Pending',
-                        'confirmed' => 'Verified',
-                        'preparing' => 'Kitchen',
-                        'ready' => 'Ready',
-                        'completed' => 'Finalized',
-                        'cancelled' => 'Dropped',
-                    ])
-                    ->label('Fulfillment'),
-                Tables\Columns\BadgeColumn::make('payment_status')
-                    ->colors([
-                        'warning' => 'pending',
-                        'info' => 'authorized',
-                        'success' => 'captured',
-                        'danger' => ['failed', 'refunded'],
-                    ])
-                    ->label('Fin Status'),
-                Tables\Columns\TextColumn::make('ml_fraud_score')
-                    ->label('Risk')
-                    ->formatStateUsing(fn ($state) => number_format((float)$state, 2))
-                    ->color(fn ($state) => (float)$state > 0.7 ? 'danger' : ((float)$state > 0.3 ? 'warning' : 'success'))
-                    ->weight('bold'),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime('d.m.Y H:i')
-                    ->label('Ordered At')
-                    ->sortable(),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('status')
-                    ->options([
-                        'pending' => 'Pending Confirmation',
-                        'preparing' => 'Currently Preparing',
-                        'ready' => 'Ready for Handover',
-                    ]),
-                Tables\Filters\SelectFilter::make('shop_id')
-                    ->relationship('shop', 'name')
-                    ->label('Filter by Venue'),
-                Tables\Filters\TernaryFilter::make('is_suspicious')
-                    ->label('High Fraud Risk')
-                    ->queries(
-                        true: fn (Builder $query) => $query->where('ml_fraud_score', '>', 0.7),
-                        false: fn (Builder $query) => $query->where('ml_fraud_score', '<=', 0.7),
-                    ),
-            ])
-            ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\Action::make('mark_ready')
-                    ->label('Set Ready')
-                    ->icon('heroicon-o-check-circle')
-                    ->color('success')
-                    ->action(fn (BeverageOrder $record) => $record->update(['status' => 'ready']))
-                    ->visible(fn (BeverageOrder $record) => $record->status === 'preparing'),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ])
-            ->defaultSort('created_at', 'desc');
-    }
-
-    public static function getRelations(): array
-    {
-        return [];
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListBeverageOrders::route('/'),
-            'create' => Pages\CreateBeverageOrder::route('/create'),
-            'edit' => Pages\EditBeverageOrder::route('/{record}/edit'),
+            'index' => Pages\\ListBeverageOrder::route('/'),
+            'create' => Pages\\CreateBeverageOrder::route('/create'),
+            'edit' => Pages\\EditBeverageOrder::route('/{record}/edit'),
+            'view' => Pages\\ViewBeverageOrder::route('/{record}'),
         ];
-    }
 
-    public static function getEloquentQuery(): Builder
+    public static function getPages(): array
     {
-        return parent::getEloquentQuery()
-            ->with(['shop', 'user', 'items'])
-            ->latest();
+        return [
+            'index' => Pages\\ListBeverageOrder::route('/'),
+            'create' => Pages\\CreateBeverageOrder::route('/create'),
+            'edit' => Pages\\EditBeverageOrder::route('/{record}/edit'),
+            'view' => Pages\\ViewBeverageOrder::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListBeverageOrder::route('/'),
+            'create' => Pages\\CreateBeverageOrder::route('/create'),
+            'edit' => Pages\\EditBeverageOrder::route('/{record}/edit'),
+            'view' => Pages\\ViewBeverageOrder::route('/{record}'),
+        ];
     }
 }

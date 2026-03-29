@@ -60,56 +60,23 @@ final class MedicalClinicResource extends Resource
                         ->default(true),
                 ]),
         ]);
-    }
-
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('name')
-                    ->searchable()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('address')
-                    ->limit(30),
-                Tables\Columns\BadgeColumn::make('rating')
-                    ->sortable()
-                    ->colors([
-                        'danger' => static fn ($state): bool => $state < 3,
-                        'warning' => static fn ($state): bool => $state >= 3 && $state < 4,
-                        'success' => static fn ($state): bool => $state >= 4,
-                    ]),
-                Tables\Columns\IconColumn::make('is_verified')
-                    ->boolean()
-                    ->label('Verified'),
-                Tables\Columns\IconColumn::make('is_active')
-                    ->boolean(),
-            ])
-            ->filters([
-                Tables\Filters\TernaryFilter::make('is_verified'),
-                Tables\Filters\TernaryFilter::make('is_active'),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\ViewAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
-            ]);
-    }
-
-    public static function getRelations(): array
-    {
-        return [
-            // DoctorsRelationManager, ServicesRelationManager
-        ];
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => \App\Filament\Tenant\Resources\MedicalClinicResource\Pages\ListMedicalClinics::route('/'),
-            'create' => \App\Filament\Tenant\Resources\MedicalClinicResource\Pages\CreateMedicalClinic::route('/create'),
-            'edit' => \App\Filament\Tenant\Resources\MedicalClinicResource\Pages\EditMedicalClinic::route('/{record}/edit'),
+            'index' => Pages\\ListMedicalClinic::route('/'),
+            'create' => Pages\\CreateMedicalClinic::route('/create'),
+            'edit' => Pages\\EditMedicalClinic::route('/{record}/edit'),
+            'view' => Pages\\ViewMedicalClinic::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListMedicalClinic::route('/'),
+            'create' => Pages\\CreateMedicalClinic::route('/create'),
+            'edit' => Pages\\EditMedicalClinic::route('/{record}/edit'),
+            'view' => Pages\\ViewMedicalClinic::route('/{record}'),
         ];
     }
 }

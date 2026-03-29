@@ -78,6 +78,25 @@ final class Kernel extends HttpKernel
         'signed' => \Illuminate\Routing\Middleware\ValidateSignature::class,
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
+        
+        // ===== CORE MIDDLEWARE (API v1 Standard Order) =====
+        'correlation-id'        => \App\Http\Middleware\CorrelationIdMiddleware::class,  // 1st - Always first
+        'idempotency-check'     => \App\Http\Middleware\IdempotencyCheckMiddleware::class,  // 4th - Before fraud-check
+        'tenant'                => TenantScoping::class,  // 3rd
+        'b2c-b2b'               => \App\Http\Middleware\B2CB2BMiddleware::class,  // 5th
+        'fraud-check'           => \App\Http\Middleware\FraudCheckMiddleware::class,  // 6th
+        'rate-limit'            => \App\Http\Middleware\RateLimitingMiddleware::class,  // 7th
+        'age-verify'            => \App\Http\Middleware\AgeVerificationMiddleware::class,  // 8th - Last
+        
+        // ===== PAYMENT-SPECIFIC RATE LIMITS =====
+        'rate-limit:10,1'       => \App\Http\Middleware\RateLimitingMiddleware::class.':10,1',
+        'rate-limit:5,1'        => \App\Http\Middleware\RateLimitingMiddleware::class.':5,1',
+        'rate-limit:3,1'        => \App\Http\Middleware\RateLimitingMiddleware::class.':3,1',
+        'rate-limit:50,1'       => \App\Http\Middleware\RateLimitingMiddleware::class.':50,1',
+        'rate-limit:100,1'      => \App\Http\Middleware\RateLimitingMiddleware::class.':100,1',
+        'rate-limit:1000,1'     => \App\Http\Middleware\RateLimitingMiddleware::class.':1000,1',
+        
+        // ===== LEGACY/ADDITIONAL MIDDLEWARE =====
         'two-factor' => \App\Http\Middleware\TwoFactorAuthentication::class,
         'business-guard' => \App\Http\Middleware\BusinessGroupGuard::class,
         'fraud-control' => \App\Http\Middleware\FraudControlMiddleware::class,
@@ -95,13 +114,12 @@ final class Kernel extends HttpKernel
         'api-rate-limit' => \App\Http\Middleware\ApiRateLimiter::class,
         'api-key-auth' => \App\Http\Middleware\ApiKeyAuthentication::class,
         'business-crm' => \App\Http\Middleware\BusinessCRMMiddleware::class,
-        'fraud-check' => \App\Http\Middleware\FraudCheckMiddleware::class,
-        'rate-limit' => \App\Http\Middleware\RateLimitingMiddleware::class,
         'validate-webhook' => \App\Http\Middleware\ValidateWebhookSignature::class,
         'rate-limit-auth' => \App\Http\Middleware\RateLimitingMiddleware::class.':auth',
-        'b2c-b2b' => \App\Http\Middleware\B2CB2BMiddleware::class,
-        'age-verify' => \App\Http\Middleware\AgeVerificationMiddleware::class,
-        'correlation-id' => \App\Http\Middleware\CorrelationIdMiddleware::class,
+        'b2c-b2b-cache' => \App\Http\Middleware\B2CB2BCacheMiddleware::class,
+        'response-cache' => \App\Http\Middleware\ResponseCacheMiddleware::class,
+        'user-taste-cache' => \App\Http\Middleware\UserTasteCacheMiddleware::class,
         'enrich-context' => \App\Http\Middleware\EnrichRequestContextMiddleware::class,
+        'webhook-signature' => \App\Http\Middleware\WebhookSignatureMiddleware::class,
     ];
 }

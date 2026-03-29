@@ -212,133 +212,23 @@ final class OrderResource extends Resource
                             ->columnSpan(1),
                     ])->columns(2),
             ]);
-    }
-
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                TextColumn::make('order_number')
-                    ->label('Номер')
-                    ->searchable()
-                    ->sortable(),
-
-                TextColumn::make('buyer.name')
-                    ->label('Покупатель')
-                    ->searchable()
-                    ->sortable(),
-
-                TextColumn::make('stream.blogger.display_name')
-                    ->label('Блогер')
-                    ->searchable()
-                    ->sortable(),
-
-                TextColumn::make('total')
-                    ->label('Сумма')
-                    ->formatStateUsing(fn (int $state) => '₽' . ($state / 100))
-                    ->sortable(),
-
-                BadgeColumn::make('payment_status')
-                    ->label('Платёж')
-                    ->colors([
-                        'gray' => 'pending',
-                        'success' => 'confirmed',
-                        'danger' => 'failed',
-                        'info' => 'refunded',
-                    ])
-                    ->formatStateUsing(fn (string $state) => match($state) {
-                        'pending' => 'На рассмотрении',
-                        'confirmed' => 'Подтвержден',
-                        'failed' => 'Ошибка',
-                        'refunded' => 'Возвращен',
-                    })
-                    ->sortable(),
-
-                BadgeColumn::make('status')
-                    ->label('Статус')
-                    ->colors([
-                        'gray' => 'pending',
-                        'info' => 'confirmed',
-                        'warning' => 'processing',
-                        'success' => 'delivered',
-                        'danger' => 'cancelled',
-                    ])
-                    ->sortable(),
-
-                TextColumn::make('blogger_earnings')
-                    ->label('Заработок блогера')
-                    ->formatStateUsing(fn (int $state) => '₽' . ($state / 100))
-                    ->sortable(),
-
-                TextColumn::make('created_at')
-                    ->label('Дата')
-                    ->dateTime('d.m.Y H:i')
-                    ->sortable(),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('payment_status')
-                    ->label('Статус платежа')
-                    ->options([
-                        'pending' => 'На рассмотрении',
-                        'confirmed' => 'Подтвержден',
-                        'failed' => 'Ошибка',
-                        'refunded' => 'Возвращен',
-                    ]),
-
-                Tables\Filters\SelectFilter::make('status')
-                    ->label('Статус заказа')
-                    ->options([
-                        'pending' => 'На рассмотрении',
-                        'confirmed' => 'Подтвержден',
-                        'processing' => 'В обработке',
-                        'shipped' => 'Отправлен',
-                        'delivered' => 'Доставлен',
-                        'cancelled' => 'Отменен',
-                        'refunded' => 'Возвращен',
-                    ]),
-
-                Tables\Filters\SelectFilter::make('refund_status')
-                    ->label('Возврат')
-                    ->options([
-                        'none' => 'Нет возврата',
-                        'requested' => 'Запрошен',
-                        'processing' => 'В обработке',
-                        'completed' => 'Завершен',
-                    ]),
-
-                Tables\Filters\Filter::make('high_value')
-                    ->label('Дорогие заказы (>5k)')
-                    ->query(fn ($query) => $query->where('total', '>', 500000)),
-            ])
-            ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\Action::make('refund')
-                    ->label('Вернуть')
-                    ->icon('heroicon-o-arrow-uturn-left')
-                    ->color('danger')
-                    ->requiresConfirmation()
-                    ->action(function (StreamOrder $record) {
-                        $record->update([
-                            'refund_status' => 'processing',
-                            'refund_amount' => $record->total,
-                        ]);
-                    })
-                    ->visible(fn (StreamOrder $record) => 
-                        $record->payment_status === 'confirmed' && $record->refund_status === 'none'
-                    ),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => \App\Filament\Tenant\Resources\OrderResource\Pages\ListOrders::route('/'),
-            'view' => \App\Filament\Tenant\Resources\OrderResource\Pages\ViewOrder::route('/{record}'),
+            'index' => Pages\\ListOrder::route('/'),
+            'create' => Pages\\CreateOrder::route('/create'),
+            'edit' => Pages\\EditOrder::route('/{record}/edit'),
+            'view' => Pages\\ViewOrder::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListOrder::route('/'),
+            'create' => Pages\\CreateOrder::route('/create'),
+            'edit' => Pages\\EditOrder::route('/{record}/edit'),
+            'view' => Pages\\ViewOrder::route('/{record}'),
         ];
     }
 }

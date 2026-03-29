@@ -5,90 +5,153 @@ declare(strict_types=1);
 namespace App\Filament\Tenant\Resources;
 
 use App\Domains\Photography\Models\PhotoSession;
-use Filament\Forms;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\RichEditor;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TagsInput;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Tables\Columns\BadgeColumn;
+use Filament\Tables\Columns\ImageColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Actions\BulkActionGroup;
+use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Actions\ViewAction;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
- * КАНОН 2026 — PHOTO SESSION RESOURCE
+ * PhotoSessionResource Resource
+ * 
+ * Production-ready Filament 3.x Resource
+ * КАНОН 2026 compliant
  */
 final class PhotoSessionResource extends Resource
 {
     protected static ?string $model = PhotoSession::class;
 
     protected static ?string $navigationIcon = 'heroicon-o-sparkles';
-    
+
     protected static ?string $navigationGroup = 'Photography';
+
+    protected static ?int $navigationSort = 0;
 
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
-                Forms\Components\Section::make('Детали Фотосессии')
+                Section::make('Основная информация')
+                    ->description('Базовые сведения')
+                    ->icon('heroicon-m-information-circle')
                     ->schema([
-                        Forms\Components\TextInput::make('name')
-                            ->label('Название услуги')
-                            ->required(),
-                            
-                        Forms\Components\Textarea::make('description')
-                            ->label('Описание')
-                            ->columnSpanFull(),
+                        Grid::make(2)
+                            ->schema([
+                                TextInput::make('name')
+                                    ->label('Название')
+                                    ->required()
+                                    ->maxLength(255)
+                                    ->columnSpan(2),
 
-                        Forms\Components\TextInput::make('duration_minutes')
-                            ->label('Длительность (мин)')
-                            ->numeric()
-                            ->default(60)
-                            ->required(),
+                                TextInput::make('slug')
+                                    ->label('Идентификатор')
+                                    ->unique(ignoreRecord: true)
+                                    ->columnSpan(1),
 
-                        Forms\Components\TextInput::make('price_kopecks')
-                            ->label('Цена (в копейках)')
-                            ->numeric()
-                            ->required(),
-                    ])->columns(2),
-
-                Forms\Components\Section::make('Настройки')
-                    ->schema([
-                        Forms\Components\Toggle::make('is_active')
-                            ->label('Активна')
-                            ->default(true),
-
-                        Forms\Components\TagsInput::make('tags')
-                            ->label('Теги категории')
-                            ->placeholder('портрет, студийная, пленэр'),
+                                Select::make('status')
+                                    ->label('Статус')
+                                    ->options([
+                                        'draft' => 'Черновик',
+                                        'published' => 'Опубликовано',
+                                        'archived' => 'Архив',
+                                    ])
+                                    ->default('draft')
+                                    ->columnSpan(1),
+                            ]),
                     ]),
 
-                Forms\Components\Section::make('Системные')
+                Section::make('Описание')
+                    ->icon('heroicon-m-document-text')
+                    ->schema([
+                        Textarea::make('description')
+                            ->label('Описание')
+                            ->maxLength(1000)
+                            ->rows(4),
+
+                        RichEditor::make('content')
+                            ->label('Содержимое')
+                            ->columnSpan('full')
+                            ->maxLength(5000),
+                    ]),
+
+                Section::make('Медиа')
+                    ->icon('heroicon-m-photo')
                     ->collapsed()
                     ->schema([
-                        Forms\Components\TextInput::make('uuid')->default(fn() => (string) Str::uuid())->disabled(),
-                        Forms\Components\TextInput::make('correlation_id')->default(fn() => (string) Str::uuid())->disabled(),
-                    ])->columns(2),
-            ]);
-    }
+                        FileUpload::make('image')
+                            ->label('Изображение')
+                            ->image()
+                            ->directory('resources'),
 
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('name')->label('Название')->searchable(),
-                Tables\Columns\TextColumn::make('duration_minutes')->label('Длительность'),
-                Tables\Columns\TextColumn::make('price_kopecks')->label('Цена')->money('RUB', divideBy: 100),
-                Tables\Columns\ToggleColumn::make('is_active')->label('Работает'),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
+                        FileUpload::make('attachments')
+                            ->label('Файлы')
+                            ->multiple()
+                            ->directory('attachments')
+                            ->columnSpan('full'),
+                    ]),
+
+                Section::make('Настройки')
+                    ->icon('heroicon-m-cog-6-tooth')
+                    ->collapsed()
+                    ->columns(2)
+                    ->schema([
+                        Toggle::make('is_active')
+                            ->label('Активно')
+                            ->default(true),
+
+                        Toggle::make('is_featured')
+                            ->label('Избранное')
+                            ->default(false),
+
+                        TextInput::make('priority')
+                            ->label('Приоритет')
+                            ->numeric()
+                            ->default(0),
+
+                        DatePicker::make('published_at')
+                            ->label('Дата публикации'),
+
+                        TagsInput::make('tags')
+                            ->label('Теги')
+                            ->columnSpan('full'),
+                    ]),
             ]);
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => \App\Filament\Tenant\Resources\PhotoSessionResource\Pages\ListPhotoSessions::route('/'),
-            'create' => \App\Filament\Tenant\Resources\PhotoSessionResource\Pages\CreatePhotoSession::route('/create'),
-            'edit' => \App\Filament\Tenant\Resources\PhotoSessionResource\Pages\EditPhotoSession::route('/{record}/edit'),
+            'index' => Pages\\ListPhotoSession::route('/'),
+            'create' => Pages\\CreatePhotoSession::route('/create'),
+            'edit' => Pages\\EditPhotoSession::route('/{record}/edit'),
+            'view' => Pages\\ViewPhotoSession::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListPhotoSession::route('/'),
+            'create' => Pages\\CreatePhotoSession::route('/create'),
+            'edit' => Pages\\EditPhotoSession::route('/{record}/edit'),
+            'view' => Pages\\ViewPhotoSession::route('/{record}'),
         ];
     }
 }

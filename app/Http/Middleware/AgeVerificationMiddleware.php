@@ -9,9 +9,9 @@ use Illuminate\Support\Str;
 use Carbon\Carbon;
 
 /**
- * AgeVerificationMiddleware - Проверка возраста пользователя
+ * AgeVerificationMiddleware — Проверка возраста пользователя для чувствительных вертикалей
  *
- * PRODUCTION-READY 2026 CANON
+ * Production 2026 CANON
  *
  * Проверяет возраст пользователя для чувствительных вертикалей:
  * - Pharmacy (18+) - лекарства
@@ -29,8 +29,10 @@ use Carbon\Carbon;
  * - 14+ (старшие подростки): YogaPilates, Freelance
  * - 18+ (взрослые): Pharmacy, Medical, Vapes, Alcohol, Bars, KaraokeLounges, Casinos
  *
+ * ✓ Middleware execution order: 7th (correlation-id → auth:sanctum → tenant → b2c-b2b → rate-limit → fraud-check → age-verify)
+ *
  * @author CatVRF Team
- * @version 2026.03.27
+ * @version 2026.03.28
  */
 final class AgeVerificationMiddleware
 {
@@ -73,7 +75,7 @@ final class AgeVerificationMiddleware
 
     public function handle(Request $request, Closure $next, ?string $vertical = null): mixed
     {
-        $correlationId = $request->header('X-Correlation-ID') ?? Str::uuid()->toString();
+        $correlationId = $request->attributes->get('correlation_id') ?? $request->header('X-Correlation-ID') ?? Str::uuid()->toString();
 
         try {
             // Если не указана вертикаль, извлекаем из пути
@@ -160,6 +162,7 @@ final class AgeVerificationMiddleware
                 'error' => $e->getMessage(),
                 'path' => $request->path(),
                 'correlation_id' => $correlationId,
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([

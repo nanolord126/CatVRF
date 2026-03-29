@@ -67,80 +67,23 @@ final class TaxiRideResource extends Resource
                             ->required(),
                     ]),
             ]);
-    }
-
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('uuid')->label('ID')->copyable(),
-                Tables\Columns\TextColumn::make('passenger.name')->label('Пассажир')->searchable(),
-                Tables\Columns\TextColumn::make('driver.full_name')->label('Водитель')->searchable(),
-                Tables\Columns\TextColumn::make('price')
-                    ->label('Сумма (руб)')
-                    ->getStateUsing(fn ($record) => $record->price / 100)
-                    ->money('RUB'),
-                Tables\Columns\TextColumn::make('status')
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'completed' => 'success',
-                        'cancelled' => 'danger',
-                        'on_way' => 'warning',
-                        default => 'gray',
-                    }),
-                Tables\Columns\TextColumn::make('created_at')->dateTime()->label('Создан'),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('status')
-                    ->options([
-                        'completed' => 'Завершена',
-                        'on_way' => 'В пути',
-                        'cancelled' => 'Отменена',
-                    ]),
-            ])
-            ->actions([
-                Tables\Actions\Action::make('checkFraud')
-                    ->label('ML Фрод-чек')
-                    ->icon('heroicon-o-shield-check')
-                    ->action(function (TaxiRide $record, FraudMLService $fraudService) {
-                        $score = $fraudService->scoreTaxiRide($record);
-                        
-                        $isFraud = $score > 0.7; // Порог КАНОНА 2026
-
-                        Notification::make()
-                            ->title($isFraud ? 'ПОДОЗРЕНИЕ НА ФРОД' : 'Чистая поездка')
-                            ->body("ML Score: " . number_format($score, 3))
-                            ->status($isFraud ? 'danger' : 'success')
-                            ->send();
-
-                        Log::channel('fraud_alert')->info('Taxi ride manual fraud check', [
-                            'ride_id' => $record->id,
-                            'score' => $score,
-                            'correlation_id' => $record->correlation_id,
-                        ]);
-                    }),
-                Tables\Actions\EditAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
-    }
-
-    public static function getEloquentQuery(): Builder
-    {
-        return parent::getEloquentQuery()
-            ->with(['passenger', 'driver'])
-            ->latest();
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListTaxiRides::route('/'),
-            'create' => Pages\CreateTaxiRide::route('/create'),
-            'edit' => Pages\EditTaxiRide::route('/{record}/edit'),
+            'index' => Pages\\ListTaxiRide::route('/'),
+            'create' => Pages\\CreateTaxiRide::route('/create'),
+            'edit' => Pages\\EditTaxiRide::route('/{record}/edit'),
+            'view' => Pages\\ViewTaxiRide::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListTaxiRide::route('/'),
+            'create' => Pages\\CreateTaxiRide::route('/create'),
+            'edit' => Pages\\EditTaxiRide::route('/{record}/edit'),
+            'view' => Pages\\ViewTaxiRide::route('/{record}'),
         ];
     }
 }

@@ -85,72 +85,23 @@ final class VehicleResource extends Resource
                             ->label('Теги'),
                     ]),
             ]);
-    }
-
-    /**
-     * Таблица списка авто.
-     */
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('brand')
-                    ->searchable()
-                    ->sortable()
-                    ->label('Марка'),
-                Tables\Columns\TextColumn::make('model')
-                    ->searchable()
-                    ->label('Модель'),
-                Tables\Columns\TextColumn::make('license_plate')
-                    ->copyable()
-                    ->label('Госномер'),
-                Tables\Columns\BadgeColumn::make('status')
-                    ->colors([
-                        'success' => 'active',
-                        'warning' => 'busy',
-                        'danger' => 'repair',
-                        'secondary' => 'inactive',
-                    ])
-                    ->label('Статус'),
-                Tables\Columns\TextColumn::make('car_class')
-                    ->label('Класс'),
-                Tables\Columns\TextColumn::make('vin')
-                    ->toggleable(isToggledHiddenByDefault: true)
-                    ->label('VIN'),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('status')
-                    ->options([
-                        'active' => 'Активен',
-                        'busy' => 'В поездке',
-                        'repair' => 'В ремонте',
-                    ]),
-                Tables\Filters\SelectFilter::make('car_class')
-                    ->options([
-                        'economy' => 'Эконом',
-                        'comfort' => 'Комфорт',
-                        'business' => 'Бизнес',
-                    ]),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\ViewAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
-            ]);
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListVehicles::route('/'),
-            'create' => Pages\CreateVehicle::route('/create'),
-            'edit' => Pages\EditVehicle::route('/{record}/edit'),
+            'index' => Pages\\ListVehicle::route('/'),
+            'create' => Pages\\CreateVehicle::route('/create'),
+            'edit' => Pages\\EditVehicle::route('/{record}/edit'),
+            'view' => Pages\\ViewVehicle::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListVehicle::route('/'),
+            'create' => Pages\\CreateVehicle::route('/create'),
+            'edit' => Pages\\EditVehicle::route('/{record}/edit'),
+            'view' => Pages\\ViewVehicle::route('/{record}'),
         ];
     }
 }

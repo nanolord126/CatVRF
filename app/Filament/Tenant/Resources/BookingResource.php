@@ -89,38 +89,32 @@ final class BookingResource extends Resource
                             ->disabled(),
                     ])->columns(2),
             ]);
-    }
-
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('client.name')->label('Клиент'),
-                Tables\Columns\TextColumn::make('session.name')->label('Услуга'),
-                Tables\Columns\TextColumn::make('photographer.full_name')->label('Мастер'),
-                Tables\Columns\TextColumn::make('starts_at')->label('Время')->dateTime(),
-                Tables\Columns\BadgeColumn::make('status')
-                    ->colors([
-                        'warning' => 'pending',
-                        'success' => 'confirmed',
-                        'primary' => 'completed',
-                        'danger' => 'cancelled',
-                    ]),
-                Tables\Columns\TextColumn::make('total_amount_kopecks')
-                    ->label('Цена')
-                    ->money('RUB', divideBy: 100),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-            ]);
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => \App\Filament\Tenant\Resources\BookingResource\Pages\ListBookings::route('/'),
-            'create' => \App\Filament\Tenant\Resources\BookingResource\Pages\CreateBooking::route('/create'),
-            'edit' => \App\Filament\Tenant\Resources\BookingResource\Pages\EditBooking::route('/{record}/edit'),
+            'index' => Pages\\ListBooking::route('/'),
+            'create' => Pages\\CreateBooking::route('/create'),
+            'edit' => Pages\\EditBooking::route('/{record}/edit'),
+            'view' => Pages\\ViewBooking::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListBooking::route('/'),
+            'create' => Pages\\CreateBooking::route('/create'),
+            'edit' => Pages\\EditBooking::route('/{record}/edit'),
+            'view' => Pages\\ViewBooking::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListBooking::route('/'),
+            'create' => Pages\\CreateBooking::route('/create'),
+            'edit' => Pages\\EditBooking::route('/{record}/edit'),
+            'view' => Pages\\ViewBooking::route('/{record}'),
         ];
     }
 }

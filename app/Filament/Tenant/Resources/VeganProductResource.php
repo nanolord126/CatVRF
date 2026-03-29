@@ -128,70 +128,23 @@ class VeganProductResource extends Resource
                             ->default(fn () => (string) Str::uuid()),
                     ]),
             ]);
-    }
-
-    /**
-     * Define the data table for managing products.
-     */
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('name')
-                    ->searchable()
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('store.name')
-                    ->label('Store')
-                    ->searchable()
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('price_b2c')
-                    ->label('B2C Price')
-                    ->formatStateUsing(fn ($state) => number_format((float) $state / 100, 2) . ' ₽'),
-
-                Tables\Columns\TextColumn::make('stock_quantity')
-                    ->label('In Stock')
-                    ->badge()
-                    ->color(fn ($state) => $state > 0 ? 'success' : 'danger'),
-
-                Tables\Columns\IconColumn::make('is_active')
-                    ->boolean()
-                    ->label('Active'),
-
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('vegan_store_id')
-                    ->label('By Store')
-                    ->relationship('store', 'name'),
-
-                Tables\Filters\TernaryFilter::make('is_active')
-                    ->label('Visibility'),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
-            ]);
-    }
-
-    public static function getRelations(): array
-    {
-        return [];
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListVeganProducts::route('/'),
-            'create' => Pages\CreateVeganProduct::route('/create'),
-            'edit' => Pages\EditVeganProduct::route('/{record}/edit'),
+            'index' => Pages\\ListVeganProduct::route('/'),
+            'create' => Pages\\CreateVeganProduct::route('/create'),
+            'edit' => Pages\\EditVeganProduct::route('/{record}/edit'),
+            'view' => Pages\\ViewVeganProduct::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListVeganProduct::route('/'),
+            'create' => Pages\\CreateVeganProduct::route('/create'),
+            'edit' => Pages\\EditVeganProduct::route('/{record}/edit'),
+            'view' => Pages\\ViewVeganProduct::route('/{record}'),
         ];
     }
 }

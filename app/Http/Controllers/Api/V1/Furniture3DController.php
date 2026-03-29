@@ -1,31 +1,28 @@
-<?php
-declare(strict_types=1);
+<?php declare(strict_types=1);
+
 namespace App\Http\Controllers\API\V1;
+
 use App\Http\Controllers\Controller;
 use App\Services\ThreeD\FurnitureARService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
-final /**
+
+/**
  * Furniture3DController
  * 
  * Основной класс для работы с платформой CatVRF.
  * 
  * @author CatVRF
- * @package %NAMESPACE%
+ * @package App\Http\Controllers\API\V1
  * @version 1.0.0
  */
-class Furniture3DController extends Controller
+final class Furniture3DController extends Controller
 {
-    public function __construct(private readonly FurnitureARService $service) {
-    /**
-     * Инициализировать класс
-     */
-    public function __construct()
+    public function __construct(private readonly FurnitureARService $service)
     {
-        // TODO: инициализация
     }
-}
+
     public function generate(int $furnitureId, Request $request): JsonResponse
     {
         $furnitureData = $request->validate([

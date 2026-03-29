@@ -216,150 +216,32 @@ final class BloggerProfileResource extends Resource
                             ->columnSpan(1),
                     ])->columns(2),
             ]);
-    }
-
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                ImageColumn::make('profile_picture')
-                    ->label('Фото')
-                    ->circular()
-                    ->size(40),
-
-                TextColumn::make('user.name')
-                    ->label('Пользователь')
-                    ->searchable()
-                    ->sortable(),
-
-                TextColumn::make('display_name')
-                    ->label('Имя для отображения')
-                    ->searchable()
-                    ->sortable(),
-
-                BadgeColumn::make('verification_status')
-                    ->label('Верификация')
-                    ->colors([
-                        'primary' => 'pending',
-                        'success' => 'verified',
-                        'danger' => 'rejected',
-                        'warning' => 'suspended',
-                    ])
-                    ->sortable(),
-
-                BadgeColumn::make('moderation_status')
-                    ->label('Модерация')
-                    ->colors([
-                        'success' => 'active',
-                        'warning' => 'warned',
-                        'danger' => 'suspended',
-                        'gray' => 'banned',
-                    ])
-                    ->sortable(),
-
-                TextColumn::make('total_streams')
-                    ->label('Потоков')
-                    ->numeric()
-                    ->sortable(),
-
-                TextColumn::make('total_followers')
-                    ->label('Фолловеров')
-                    ->numeric()
-                    ->sortable(),
-
-                TextColumn::make('rating')
-                    ->label('Рейтинг')
-                    ->numeric()
-                    ->sortable(),
-
-                TextColumn::make('created_at')
-                    ->label('Дата регистрации')
-                    ->dateTime('d.m.Y H:i')
-                    ->sortable(),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('verification_status')
-                    ->label('Верификация')
-                    ->options([
-                        'pending' => 'На рассмотрении',
-                        'verified' => 'Верифицирован',
-                        'rejected' => 'Отклонен',
-                        'suspended' => 'Приостановлен',
-                    ]),
-
-                Tables\Filters\SelectFilter::make('moderation_status')
-                    ->label('Модерация')
-                    ->options([
-                        'active' => 'Активен',
-                        'warned' => 'Предупреждение',
-                        'suspended' => 'Приостановлен',
-                        'banned' => 'Заблокирован',
-                    ]),
-
-                Tables\Filters\TernaryFilter::make('is_featured')
-                    ->label('Рекомендуемый'),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\Action::make('verify')
-                    ->label('Верифицировать')
-                    ->icon('heroicon-o-check')
-                    ->color('success')
-                    ->requiresConfirmation()
-                    ->action(function (BloggerProfile $record) {
-                        $record->update([
-                            'verification_status' => 'verified',
-                            'verified_at' => now(),
-                        ]);
-                    })
-                    ->visible(fn (BloggerProfile $record) => $record->verification_status === 'pending'),
-                Tables\Actions\Action::make('reject')
-                    ->label('Отклонить')
-                    ->icon('heroicon-o-x-mark')
-                    ->color('danger')
-                    ->requiresConfirmation()
-                    ->form([
-                        Textarea::make('rejection_reason')
-                            ->label('Причина отклонения')
-                            ->required(),
-                    ])
-                    ->action(function (BloggerProfile $record, array $data) {
-                        $record->update([
-                            'verification_status' => 'rejected',
-                            'rejection_reason' => $data['rejection_reason'],
-                        ]);
-                    })
-                    ->visible(fn (BloggerProfile $record) => $record->verification_status === 'pending'),
-                Tables\Actions\Action::make('suspend')
-                    ->label('Приостановить')
-                    ->icon('heroicon-o-pause')
-                    ->color('warning')
-                    ->requiresConfirmation()
-                    ->action(function (BloggerProfile $record) {
-                        $record->update(['moderation_status' => 'suspended']);
-                    }),
-                Tables\Actions\Action::make('ban')
-                    ->label('Заблокировать')
-                    ->icon('heroicon-o-shield-exclamation')
-                    ->color('danger')
-                    ->requiresConfirmation()
-                    ->action(function (BloggerProfile $record) {
-                        $record->update(['moderation_status' => 'banned']);
-                    }),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => \App\Filament\Tenant\Resources\BloggerProfileResource\Pages\ListBloggerProfiles::route('/'),
-            'create' => \App\Filament\Tenant\Resources\BloggerProfileResource\Pages\CreateBloggerProfile::route('/create'),
-            'edit' => \App\Filament\Tenant\Resources\BloggerProfileResource\Pages\EditBloggerProfile::route('/{record}/edit'),
+            'index' => Pages\\ListBloggerProfile::route('/'),
+            'create' => Pages\\CreateBloggerProfile::route('/create'),
+            'edit' => Pages\\EditBloggerProfile::route('/{record}/edit'),
+            'view' => Pages\\ViewBloggerProfile::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListBloggerProfile::route('/'),
+            'create' => Pages\\CreateBloggerProfile::route('/create'),
+            'edit' => Pages\\EditBloggerProfile::route('/{record}/edit'),
+            'view' => Pages\\ViewBloggerProfile::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListBloggerProfile::route('/'),
+            'create' => Pages\\CreateBloggerProfile::route('/create'),
+            'edit' => Pages\\EditBloggerProfile::route('/{record}/edit'),
+            'view' => Pages\\ViewBloggerProfile::route('/{record}'),
         ];
     }
 }

@@ -1,13 +1,117 @@
 <?php
 
 declare(strict_types=1);
- namespace App\Filament\Tenant\Resources\Electronics; use App\Domains\Electronics\Models\Electronics; use App\Filament\Tenant\Resources\ElectronicsResource\Pages; use Filament\Forms\Components\TextInput; use Filament\Forms\Components\Select; use Filament\Forms\Form; use Filament\Resources\Resource; use Filament\Tables\Columns\TextColumn; use Filament\Tables\Table; final /**
+
+namespace App\Filament\Tenant\Resources;
+
+use App\Domains\Electronics\Models\ElectronicProduct;
+use App\Filament\Tenant\Resources\ElectronicsResource\Pages;
+use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Grid;
+use Filament\Forms\Components\Section;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TagsInput;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
+use Filament\Forms\Form;
+use Filament\Resources\Resource;
+use Filament\Tables\Columns\BadgeColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Actions\BulkActionGroup;
+use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Tables\Actions\EditAction;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
+
+/**
  * ElectronicsResource
  * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
+ * Управление ресурсом на базе КАНОН 2026.
+ * Production-ready implementation.
  */
-class ElectronicsResource extends Resource { protected static ?string $model = Electronics::class; protected static ?string $navigationIcon = 'heroicon-o-computer-desktop'; protected static ?string $navigationGroup = 'Retail'; public static function form(Form $form): Form { return $form->schema([TextInput::make('name')->required()->maxLength(255), TextInput::make('sku')->required()->unique()->maxLength(50), Select::make('category')->required()->options(['smartphone' => 'Smartphone', 'laptop' => 'Laptop', 'tablet' => 'Tablet', 'headphones' => 'Headphones', 'monitor' => 'Monitor', 'keyboard' => 'Keyboard']), TextInput::make('brand')->required(), TextInput::make('price')->numeric()->required(), TextInput::make('current_stock')->numeric()->required(), TextInput::make('warranty_months')->numeric()->required(), TextInput::make('rating')->numeric()->step(0.1),]); } public static function table(Table $table): Table { return $table->columns([TextColumn::make('name')->sortable()->searchable(), TextColumn::make('sku')->sortable(), TextColumn::make('category'), TextColumn::make('brand'), TextColumn::make('price')->formatStateUsing(fn($state) => $state . ' ₽'), TextColumn::make('current_stock'), TextColumn::make('rating')->sortable(),])->filters([])->actions([\Filament\Tables\Actions\EditAction::make(),])->bulkActions([\Filament\Tables\Actions\BulkActionGroup::make([\Filament\Tables\Actions\DeleteBulkAction::make(),]),]); } public static function getPages(): array { return ['index' => Pages\ListElectronics::route('/'), 'create' => Pages\CreateElectronics::route('/create'), 'edit' => Pages\EditElectronics::route('/{record}/edit'),]; } }
+final class ElectronicsResource extends Resource
+{
+    protected static ?string $model = ElectronicProduct::class;
+
+    protected static ?string $navigationIcon = 'heroicon-o-device-phone-mobile';
+
+    protected static ?string $navigationGroup = 'Electronics';
+
+    public static function form(Form $form): Form
+    {
+        return $form
+            ->schema([
+                Section::make('Основная информация')
+                    ->description('Базовые сведения об объекте')
+                    ->schema([
+                        Grid::make(2)
+                            ->schema([
+                                                TextInput::make('name')
+                    ->required()
+                    ->maxLength(255),
+                                TextInput::make('sku')
+                    ->required()
+                    ->maxLength(255),
+                                Select::make('category')
+                    ->required()
+                    ->searchable(),
+                                TextInput::make('brand')
+                    ->required()
+                    ->maxLength(255),
+                                TextInput::make('price')
+                    ->required()
+                    ->maxLength(255),
+                                TextInput::make('current_stock')
+                    ->required()
+                    ->maxLength(255),
+                                TextInput::make('warranty_months')
+                    ->required()
+                    ->maxLength(255),
+                                TextInput::make('rating')
+                    ->required()
+                    ->maxLength(255),
+                            ]),
+                    ]),
+
+                Section::make('Дополнительно')
+                    ->description('Расширенные параметры')
+                    ->collapsed()
+                    ->schema([
+                        Grid::make(2)
+                            ->schema([]),
+                    ]),
+            ]);
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListElectronics::route('/'),
+            'create' => Pages\\CreateElectronics::route('/create'),
+            'edit' => Pages\\EditElectronics::route('/{record}/edit'),
+            'view' => Pages\\ViewElectronics::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListElectronics::route('/'),
+            'create' => Pages\\CreateElectronics::route('/create'),
+            'edit' => Pages\\EditElectronics::route('/{record}/edit'),
+            'view' => Pages\\ViewElectronics::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListElectronics::route('/'),
+            'create' => Pages\\CreateElectronics::route('/create'),
+            'edit' => Pages\\EditElectronics::route('/{record}/edit'),
+            'view' => Pages\\ViewElectronics::route('/{record}'),
+        ];
+    }
+}

@@ -108,56 +108,23 @@ class FurnitureProductResource extends Resource
                             ->required(),
                     ]),
             ]);
-    }
 
-    public static function table(Table $table): Table
+    public static function getPages(): array
     {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('store.name')
-                    ->sortable()
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('name')
-                    ->sortable()
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('sku')
-                    ->copyable()
-                    ->badge(),
-                Tables\Columns\TextColumn::make('price_b2c')
-                    ->money('RUB', locale: 'ru') // Custom formatter for Kopecks to Rubles
-                    ->state(fn (FurnitureProduct $record) => $record->price_b2c / 100)
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('stock_quantity')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\ToggleColumn::make('is_published'),
-                Tables\Columns\BadgeColumn::make('tags')
-                    ->searchable()
-                    ->colors([
-                        'primary' => 'scandi',
-                        'success' => 'loft',
-                        'info' => 'modern',
-                    ]),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('store_id')
-                    ->relationship('store', 'name'),
-                Tables\Filters\TernaryFilter::make('is_oversized'),
-                Tables\Filters\TernaryFilter::make('is_published'),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\ViewAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
-            ]);
-    }
+        return [
+            'index' => Pages\\ListFurnitureProduct::route('/'),
+            'create' => Pages\\CreateFurnitureProduct::route('/create'),
+            'edit' => Pages\\EditFurnitureProduct::route('/{record}/edit'),
+            'view' => Pages\\ViewFurnitureProduct::route('/{record}'),
+        ];
 
-    public static function getEloquentQuery(): Builder
+    public static function getPages(): array
     {
-        return parent::getEloquentQuery()
-            ->with(['store', 'category'])
-            ->latest();
+        return [
+            'index' => Pages\\ListFurnitureProduct::route('/'),
+            'create' => Pages\\CreateFurnitureProduct::route('/create'),
+            'edit' => Pages\\EditFurnitureProduct::route('/{record}/edit'),
+            'view' => Pages\\ViewFurnitureProduct::route('/{record}'),
+        ];
     }
 }

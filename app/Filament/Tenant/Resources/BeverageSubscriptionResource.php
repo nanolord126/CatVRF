@@ -109,90 +109,32 @@ final class BeverageSubscriptionResource extends Resource
                             ->label('Audit Correlation Identifier'),
                     ]),
             ]);
-    }
-
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('user.name')
-                    ->label('Subscriber')
-                    ->sortable()
-                    ->searchable(),
-                Tables\Columns\BadgeColumn::make('plan_type')
-                    ->label('Vertical Plan')
-                    ->colors([
-                        'primary' => 'daily_coffee',
-                        'info' => 'office_water',
-                        'danger' => 'wine_club',
-                        'success' => 'detox_smoothie',
-                    ]),
-                Tables\Columns\TextColumn::make('cadence')
-                    ->label('Billing Frequency')
-                    ->formatStateUsing(fn (string $state): string => ucfirst($state)),
-                Tables\Columns\TextColumn::make('price_per_period')
-                    ->money('RUB', divideBy: 100)
-                    ->label('Recurring Revenue')
-                    ->sortable()
-                    ->weight('bold'),
-                Tables\Columns\BadgeColumn::make('status')
-                    ->colors([
-                        'success' => 'active',
-                        'warning' => 'paused',
-                        'danger' => ['expired', 'cancelled'],
-                    ])
-                    ->label('Life Cycle'),
-                Tables\Columns\TextColumn::make('remaining_credits')
-                    ->label('Credits Left')
-                    ->color(fn ($state) => (int)$state < 5 ? 'danger' : 'success')
-                    ->weight('bold'),
-                Tables\Columns\TextColumn::make('starts_at')
-                    ->date('d M Y')
-                    ->label('Effective From'),
-                Tables\Columns\TextColumn::make('ends_at')
-                    ->date('d M Y')
-                    ->label('Valid Until')
-                    ->placeholder('Open Contract'),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('status')
-                    ->options([
-                        'active' => 'Operational Only',
-                        'paused' => 'Paused Accounts',
-                    ]),
-                Tables\Filters\SelectFilter::make('plan_type')
-                    ->options([
-                        'daily_coffee' => 'Coffee Enthusiasts',
-                        'office_water' => 'Hydration Protocols',
-                    ]),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\Action::make('renew')
-                    ->label('Force Billing')
-                    ->icon('heroicon-o-arrow-path')
-                    ->color('info')
-                    ->requiresConfirmation()
-                    ->action(fn (BeverageSubscription $record) => $record->update(['last_billed_at' => now(), 'remaining_credits' => $record->remaining_credits + 30])),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
-    }
-
-    public static function getRelations(): array
-    {
-        return [];
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListBeverageSubscriptions::route('/'),
-            'create' => Pages\CreateBeverageSubscription::route('/create'),
-            'edit' => Pages\EditBeverageSubscription::route('/{record}/edit'),
+            'index' => Pages\\ListBeverageSubscription::route('/'),
+            'create' => Pages\\CreateBeverageSubscription::route('/create'),
+            'edit' => Pages\\EditBeverageSubscription::route('/{record}/edit'),
+            'view' => Pages\\ViewBeverageSubscription::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListBeverageSubscription::route('/'),
+            'create' => Pages\\CreateBeverageSubscription::route('/create'),
+            'edit' => Pages\\EditBeverageSubscription::route('/{record}/edit'),
+            'view' => Pages\\ViewBeverageSubscription::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListBeverageSubscription::route('/'),
+            'create' => Pages\\CreateBeverageSubscription::route('/create'),
+            'edit' => Pages\\EditBeverageSubscription::route('/{record}/edit'),
+            'view' => Pages\\ViewBeverageSubscription::route('/{record}'),
         ];
     }
 }

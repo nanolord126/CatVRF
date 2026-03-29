@@ -95,75 +95,32 @@ final class BeverageReviewResource extends Resource
                             ->label('Behavioral Analytical Tags'),
                     ]),
             ]);
-    }
-
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('user.name')
-                    ->label('Reviewer')
-                    ->sortable()
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('subject')
-                    ->label('Entity Target')
-                    ->state(fn ($record) => $record->item?->name ?? $record->shop?->name)
-                    ->color(fn ($record) => $record->item ? 'primary' : 'success'),
-                Tables\Columns\TextColumn::make('rating')
-                    ->label('Sentiment')
-                    ->formatStateUsing(fn ($state) => str_repeat('★', (int)$state) . str_repeat('☆', 5 - (int)$state))
-                    ->color('warning')
-                    ->weight('bold'),
-                Tables\Columns\TextColumn::make('comment')
-                    ->limit(50)
-                    ->label('Commentary')
-                    ->tooltip(fn ($record) => $record->comment),
-                Tables\Columns\IconColumn::make('is_verified')
-                    ->boolean()
-                    ->label('Verified'),
-                Tables\Columns\IconColumn::make('is_visible')
-                    ->boolean()
-                    ->label('Public'),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime('d.m.Y')
-                    ->label('Post Date')
-                    ->sortable(),
-            ])
-            ->filters([
-                Tables\Filters\TernaryFilter::make('is_verified')
-                    ->label('Verified Transactions Only'),
-                Tables\Filters\SelectFilter::make('rating')
-                    ->options([
-                        '5' => '5 Stars - Perfect',
-                        '1' => '1 Star - Critical Error',
-                    ]),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\Action::make('verify')
-                    ->label('Verify Content')
-                    ->icon('heroicon-o-check-badge')
-                    ->color('success')
-                    ->action(fn ($record) => $record->update(['is_verified' => true])),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
-    }
-
-    public static function getRelations(): array
-    {
-        return [];
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListBeverageReviews::route('/'),
-            'create' => Pages\CreateBeverageReview::route('/create'),
-            'edit' => Pages\EditBeverageReview::route('/{record}/edit'),
+            'index' => Pages\\ListBeverageReview::route('/'),
+            'create' => Pages\\CreateBeverageReview::route('/create'),
+            'edit' => Pages\\EditBeverageReview::route('/{record}/edit'),
+            'view' => Pages\\ViewBeverageReview::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListBeverageReview::route('/'),
+            'create' => Pages\\CreateBeverageReview::route('/create'),
+            'edit' => Pages\\EditBeverageReview::route('/{record}/edit'),
+            'view' => Pages\\ViewBeverageReview::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListBeverageReview::route('/'),
+            'create' => Pages\\CreateBeverageReview::route('/create'),
+            'edit' => Pages\\EditBeverageReview::route('/{record}/edit'),
+            'view' => Pages\\ViewBeverageReview::route('/{record}'),
         ];
     }
 }

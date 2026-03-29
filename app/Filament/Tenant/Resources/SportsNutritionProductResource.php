@@ -158,75 +158,23 @@ class SportsNutritionProductResource extends Resource
                             ->columnSpan(2),
                     ]),
             ]);
-    }
 
-    public static function table(Table $table): Table
+    public static function getPages(): array
     {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('store.name')
-                    ->sortable()
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('name')
-                    ->sortable()
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('sku')
-                    ->copyable()
-                    ->badge()
-                    ->label('SKU Identifier'),
-                Tables\Columns\TextColumn::make('price_b2c')
-                    ->money('RUB', locale: 'ru')
-                    ->state(fn (SportsNutritionProduct $record) => $record->price_b2c / 100)
-                    ->sortable()
-                    ->label('Retail Price'),
-                Tables\Columns\TextColumn::make('expiry_date')
-                    ->date()
-                    ->sortable()
-                    ->color(fn (SportsNutritionProduct $record) => 
-                        $record->expiry_date->isFuture() && $record->expiry_date->diffInDays(now()) < 90 ? 'danger' : 'success'
-                    ),
-                Tables\Columns\BadgeColumn::make('form_factor')
-                    ->colors([
-                        'primary' => 'powder',
-                        'warning' => 'capsules',
-                        'success' => 'liquid',
-                    ]),
-                Tables\Columns\TextColumn::make('stock_quantity')
-                    ->numeric()
-                    ->sortable()
-                    ->label('Inventory'),
-                Tables\Columns\IconColumn::make('is_vegan')
-                    ->boolean()
-                    ->label('Vegan'),
-                Tables\Columns\ToggleColumn::make('is_published')
-                    ->label('Catalog Status'),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('category_id')
-                    ->relationship('category', 'name'),
-                Tables\Filters\TernaryFilter::make('is_vegan'),
-                Tables\Filters\SelectFilter::make('form_factor')
-                    ->options([
-                        'powder' => 'Powder',
-                        'capsules' => 'Capsules',
-                    ]),
-                Tables\Filters\Filter::make('near_expiry')
-                    ->query(fn (Builder $query) => $query->where('expiry_date', '<', now()->addMonths(3)))
-                    ->label('Stock Expiring Soon'),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\ViewAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
-            ]);
-    }
+        return [
+            'index' => Pages\\ListSportsNutritionProduct::route('/'),
+            'create' => Pages\\CreateSportsNutritionProduct::route('/create'),
+            'edit' => Pages\\EditSportsNutritionProduct::route('/{record}/edit'),
+            'view' => Pages\\ViewSportsNutritionProduct::route('/{record}'),
+        ];
 
-    public static function getEloquentQuery(): Builder
+    public static function getPages(): array
     {
-        return parent::getEloquentQuery()
-            ->with(['store', 'category'])
-            ->latest();
+        return [
+            'index' => Pages\\ListSportsNutritionProduct::route('/'),
+            'create' => Pages\\CreateSportsNutritionProduct::route('/create'),
+            'edit' => Pages\\EditSportsNutritionProduct::route('/{record}/edit'),
+            'view' => Pages\\ViewSportsNutritionProduct::route('/{record}'),
+        ];
     }
 }

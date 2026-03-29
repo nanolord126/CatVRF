@@ -62,9 +62,10 @@
     58 => 'App\\Providers\\AppServiceProvider',
     59 => 'App\\Providers\\AppServiceProvider',
     60 => 'App\\Providers\\ProductionBootstrapServiceProvider',
-    61 => 'App\\Providers\\Filament\\AdminPanelProvider',
-    62 => 'App\\Providers\\Filament\\TenantPanelProvider',
-    63 => 'App\\Providers\\FortifyServiceProvider',
+    61 => 'App\\Providers\\CacheInvalidationEventServiceProvider',
+    62 => 'App\\Providers\\Filament\\AdminPanelProvider',
+    63 => 'App\\Providers\\Filament\\TenantPanelProvider',
+    64 => 'App\\Providers\\FortifyServiceProvider',
   ),
   'eager' => 
   array (
@@ -113,9 +114,10 @@
     42 => 'App\\Providers\\AppServiceProvider',
     43 => 'App\\Providers\\AppServiceProvider',
     44 => 'App\\Providers\\ProductionBootstrapServiceProvider',
-    45 => 'App\\Providers\\Filament\\AdminPanelProvider',
-    46 => 'App\\Providers\\Filament\\TenantPanelProvider',
-    47 => 'App\\Providers\\FortifyServiceProvider',
+    45 => 'App\\Providers\\CacheInvalidationEventServiceProvider',
+    46 => 'App\\Providers\\Filament\\AdminPanelProvider',
+    47 => 'App\\Providers\\Filament\\TenantPanelProvider',
+    48 => 'App\\Providers\\FortifyServiceProvider',
   ),
   'deferred' => 
   array (

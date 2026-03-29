@@ -66,63 +66,23 @@ final class HotelResource extends Resource
                         Forms\Components\TagsInput::make('tags'),
                     ]),
             ]);
-    }
-
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('name')
-                    ->searchable()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('address')
-                    ->wrap()
-                    ->limit(50),
-                Tables\Columns\IconColumn::make('is_active')
-                    ->boolean()
-                    ->label('Активен'),
-                Tables\Columns\IconColumn::make('is_verified')
-                    ->boolean()
-                    ->label('Вериф.'),
-                Tables\Columns\TextColumn::make('rating')
-                    ->sortable()
-                    ->badge(),
-                Tables\Columns\TextColumn::make('rooms_count')
-                    ->counts('rooms')
-                    ->label('Номеров'),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-            ])
-            ->filters([
-                Tables\Filters\TernaryFilter::make('is_active'),
-                Tables\Filters\TernaryFilter::make('is_verified'),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\ViewAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
-    }
-
-    public static function getRelations(): array
-    {
-        return [
-            // RelationManagers for Rooms, Bookings, B2BContracts will be added later
-        ];
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListHotels::route('/'),
-            'create' => Pages\CreateHotel::route('/create'),
-            'edit' => Pages\EditHotel::route('/{record}/edit'),
+            'index' => Pages\\ListHotel::route('/'),
+            'create' => Pages\\CreateHotel::route('/create'),
+            'edit' => Pages\\EditHotel::route('/{record}/edit'),
+            'view' => Pages\\ViewHotel::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListHotel::route('/'),
+            'create' => Pages\\CreateHotel::route('/create'),
+            'edit' => Pages\\EditHotel::route('/{record}/edit'),
+            'view' => Pages\\ViewHotel::route('/{record}'),
         ];
     }
 }

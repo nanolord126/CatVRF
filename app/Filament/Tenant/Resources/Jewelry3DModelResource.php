@@ -97,91 +97,23 @@ final class Jewelry3DModelResource extends Resource
                         Forms\Components\TagsInput::make('tags'),
                     ]),
             ]);
-    }
-
-    public static function table(Tables\Table $table): Tables\Table
-    {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('jewelry.name')
-                    ->sortable()
-                    ->searchable(),
-
-                Tables\Columns\TextColumn::make('material_type')
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'Золото' => 'warning',
-                        'Платина' => 'slate',
-                        'Серебро' => 'gray',
-                        'rose_gold' => 'pink',
-                        default => 'primary',
-                    }),
-
-                Tables\Columns\TextColumn::make('format')
-                    ->badge(),
-
-                Tables\Columns\IconColumn::make('ar_compatible')
-                    ->boolean()
-                    ->label('AR'),
-
-                Tables\Columns\IconColumn::make('vr_compatible')
-                    ->boolean()
-                    ->label('VR'),
-
-                Tables\Columns\TextColumn::make('status')
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'Активно' => 'success',
-                        'Обрабатывается' => 'info',
-                        'В архиве' => 'danger',
-                        default => 'secondary',
-                    }),
-
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable(),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('material_type')
-                    ->options([
-                        'Золото' => 'Золото',
-                        'Серебро' => 'Серебро',
-                        'Платина' => 'Платина',
-                        'rose_gold' => 'Розовое золото',
-                    ]),
-
-                Tables\Filters\SelectFilter::make('status')
-                    ->options([
-                        'Загружено' => 'Загружено',
-                        'Обрабатывается' => 'Обрабатывается',
-                        'Активно' => 'Активно',
-                        'В архиве' => 'В архиве',
-                    ]),
-
-                Tables\Filters\TernaryFilter::make('ar_compatible')
-                    ->label('Поддержка AR'),
-
-                Tables\Filters\TernaryFilter::make('vr_compatible')
-                    ->label('Поддержка VR'),
-            ])
-            ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => \App\Filament\Tenant\Resources\Jewelry3DModelResource\Pages\ListJewelry3DModels::class,
-            'create' => \App\Filament\Tenant\Resources\Jewelry3DModelResource\Pages\CreateJewelry3DModel::class,
-            'edit' => \App\Filament\Tenant\Resources\Jewelry3DModelResource\Pages\EditJewelry3DModel::class,
+            'index' => Pages\\ListJewelry3DModel::route('/'),
+            'create' => Pages\\CreateJewelry3DModel::route('/create'),
+            'edit' => Pages\\EditJewelry3DModel::route('/{record}/edit'),
+            'view' => Pages\\ViewJewelry3DModel::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListJewelry3DModel::route('/'),
+            'create' => Pages\\CreateJewelry3DModel::route('/create'),
+            'edit' => Pages\\EditJewelry3DModel::route('/{record}/edit'),
+            'view' => Pages\\ViewJewelry3DModel::route('/{record}'),
         ];
     }
 }

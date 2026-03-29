@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources;
 
-use App\Models\Stationery\StationeryProduct;
-use App\Models\Stationery\StationeryStore;
-use App\Models\Stationery\StationeryCategory;
+use App\Domains\Stationery\Models\StationeryProduct;
+use App\Domains\Stationery\Models\StationeryStore;
+use App\Domains\Stationery\Models\StationeryCategory;
 use App\Services\AI\AIStationeryConstructor;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -113,92 +113,23 @@ class StationeryProductResource extends Resource
                     ->offColor('danger'),
             ])->columns(3),
         ]);
-    }
 
-    /**
-     * Deep Table implementation (>50 lines per CANON 2026).
-     */
-    public static function table(Table $table): Table
+    public static function getPages(): array
     {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('name')
-                    ->searchable()
-                    ->sortable()
-                    ->limit(30),
+        return [
+            'index' => Pages\\ListStationeryProduct::route('/'),
+            'create' => Pages\\CreateStationeryProduct::route('/create'),
+            'edit' => Pages\\EditStationeryProduct::route('/{record}/edit'),
+            'view' => Pages\\ViewStationeryProduct::route('/{record}'),
+        ];
 
-                Tables\Columns\TextColumn::make('store.name')
-                    ->label('Store')
-                    ->searchable(),
-
-                Tables\Columns\TextColumn::make('sku')
-                    ->label('SKU')
-                    ->copyable()
-                    ->searchable(),
-
-                Tables\Columns\TextColumn::make('price_cents')
-                    ->label('Price')
-                    ->money('rub', divideBy: 100)
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('b2b_price_cents')
-                    ->label('B2B')
-                    ->money('rub', divideBy: 100)
-                    ->color('primary')
-                    ->sortable(),
-
-                Tables\Columns\BadgeColumn::make('stock_quantity')
-                    ->label('Stock')
-                    ->numeric()
-                    ->color(static function ($state, self $resource): string {
-                        if ($state <= 5) return 'danger';
-                        if ($state <= 20) return 'warning';
-                        return 'success';
-                    })
-                    ->sortable(),
-
-                Tables\Columns\IconColumn::make('is_active')
-                    ->boolean()
-                    ->sortable()
-                    ->label('Active'),
-
-                Tables\Columns\TextColumn::make('updated_at')
-                    ->dateTime()
-                    ->toggleable(isToggledHiddenByDefault: true),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('category_id')
-                    ->relationship('category', 'name'),
-
-                Tables\Filters\TernaryFilter::make('is_active'),
-
-                Tables\Filters\Filter::make('low_stock')
-                    ->query(fn (Builder $query) => $query->whereRaw('stock_quantity <= min_stock_threshold')),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Action::make('ai_predict')
-                    ->icon('heroicon-o-bolt')
-                    ->label('AI Predict')
-                    ->action(function (StationeryProduct $record, AIStationeryConstructor $ai) {
-                        $score = $ai->predictPopularity($record->id);
-                        Notification::make()
-                            ->title("AI Popularity Prediction: " . (int)($score * 100) . "%")
-                            ->success()
-                            ->send();
-                    }),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
-    }
-
-    public static function getEloquentQuery(): Builder
+    public static function getPages(): array
     {
-        return parent::getEloquentQuery()
-            ->with(['store', 'category'])
-            ->latest('updated_at');
+        return [
+            'index' => Pages\\ListStationeryProduct::route('/'),
+            'create' => Pages\\CreateStationeryProduct::route('/create'),
+            'edit' => Pages\\EditStationeryProduct::route('/{record}/edit'),
+            'view' => Pages\\ViewStationeryProduct::route('/{record}'),
+        ];
     }
 }

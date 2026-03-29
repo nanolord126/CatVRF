@@ -57,7 +57,7 @@ return new class extends Migration
                 $table->timestamps();
                 $table->softDeletes();
 
-                $table->comment('Цветы и товары (склад)");
+                $table->comment('Цветы и товары (склад)');
             });
         }
 

@@ -29,18 +29,38 @@ final class AppointmentResource extends Resource
     {
         return $form
             ->schema([
-                Forms\Components\Section::make('Детали записи')
+                Forms\Components\Section::make('Клиент')
+                    ->description('Информация о клиенте')
                     ->schema([
                         Forms\Components\TextInput::make('uuid')
                             ->default(fn () => (string) Str::uuid())
                             ->disabled()
                             ->dehydrated()
                             ->required(),
+                        Forms\Components\Select::make('client_id')
+                            ->label('Клиент')
+                            ->relationship('client', 'name', fn (Builder $query) => $query->where('tenant_id', tenant('id')))
+                            ->searchable()
+                            ->preload(),
+                        Forms\Components\TextInput::make('client_phone')
+                            ->label('Телефон клиента')
+                            ->tel()
+                            ->nullable(),
+                        Forms\Components\TextInput::make('client_email')
+                            ->label('Email клиента')
+                            ->email()
+                            ->nullable(),
+                    ])->columns(2),
+
+                Forms\Components\Section::make('Детали услуги')
+                    ->description('Выбор салона, мастера и услуги')
+                    ->schema([
                         Forms\Components\Select::make('salon_id')
                             ->label('Салон')
                             ->relationship('salon', 'name', fn (Builder $query) => $query->where('tenant_id', tenant('id')))
                             ->required()
                             ->reactive()
+                            ->preload()
                             ->afterStateUpdated(fn (callable $set) => $set('master_id', null)),
                         Forms\Components\Select::make('master_id')
                             ->label('Мастер')
@@ -52,27 +72,58 @@ final class AppointmentResource extends Resource
                                 }
                                 return $query;
                             })
-                            ->required(),
+                            ->required()
+                            ->reactive()
+                            ->preload(),
+                        Forms\Components\Select::make('service_id')
+                            ->label('Услуга')
+                            ->relationship('service', 'name', function (Builder $query, callable $get) {
+                                $masterId = $get('master_id');
+                                if ($masterId) {
+                                    $query->whereHas('master', fn ($q) => $q->where('master_id', $masterId));
+                                }
+                                return $query;
+                            })
+                            ->nullable(),
+                        Forms\Components\TextInput::make('service_name')
+                            ->label('Название услуги')
+                            ->nullable()
+                            ->maxLength(255),
+                    ])->columns(2),
+
+                Forms\Components\Section::make('График и время')
+                    ->description('Дата и время проведения')
+                    ->schema([
                         Forms\Components\DateTimePicker::make('datetime_start')
                             ->label('Дата и время начала')
                             ->required()
                             ->native(false)
                             ->displayFormat('d.m.Y H:i'),
+                        Forms\Components\TextInput::make('duration_minutes')
+                            ->label('Длительность (мин)')
+                            ->numeric()
+                            ->nullable()
+                            ->default(60),
+                    ])->columns(2),
+
+                Forms\Components\Section::make('Финансы')
+                    ->description('Цена и оплата')
+                    ->schema([
                         Forms\Components\TextInput::make('price')
-                            ->label('Цена (копейки)')
+                            ->label('Цена (рубли)')
                             ->numeric()
                             ->required()
+                            ->step(0.01)
                             ->prefix('₽'),
-                        Forms\Components\Select::make('status')
-                            ->label('Статус')
-                            ->options([
-                                'pending' => 'Ожидает',
-                                'confirmed' => 'Подтверждена',
-                                'completed' => 'Выполнена',
-                                'cancelled' => 'Отменена',
-                            ])
-                            ->default('pending')
-                            ->required(),
+                        Forms\Components\TextInput::make('discount_amount')
+                            ->label('Скидка (копейки)')
+                            ->numeric()
+                            ->default(0)
+                            ->nullable(),
+                        Forms\Components\TextInput::make('total_price')
+                            ->label('Итого (копейки)')
+                            ->numeric()
+                            ->disabled(),
                         Forms\Components\Select::make('payment_status')
                             ->label('Статус оплаты')
                             ->options([
@@ -83,6 +134,29 @@ final class AppointmentResource extends Resource
                             ])
                             ->default('pending')
                             ->required(),
+                    ])->columns(2),
+
+                Forms\Components\Section::make('Статус')
+                    ->description('Состояние записи')
+                    ->schema([
+                        Forms\Components\Select::make('status')
+                            ->label('Статус записи')
+                            ->options([
+                                'pending' => 'Ожидает подтверждения',
+                                'confirmed' => 'Подтверждена',
+                                'completed' => 'Выполнена',
+                                'cancelled' => 'Отменена',
+                                'no_show' => 'Не явился',
+                            ])
+                            ->default('pending')
+                            ->required(),
+                        Forms\Components\TextInput::make('cancellation_reason')
+                            ->label('Причина отмены')
+                            ->nullable()
+                            ->maxLength(500),
+                        Forms\Components\RichEditor::make('notes')
+                            ->label('Заметки')
+                            ->nullable(),
                     ])->columns(2),
 
                 Forms\Components\Hidden::make('tenant_id')
@@ -99,15 +173,25 @@ final class AppointmentResource extends Resource
                 Tables\Columns\TextColumn::make('datetime_start')
                     ->label('Время')
                     ->dateTime('d.m.Y H:i')
-                    ->sortable(),
+                    ->sortable()
+                    ->searchable(),
                 Tables\Columns\TextColumn::make('master.full_name')
                     ->label('Мастер')
-                    ->searchable(),
+                    ->searchable()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('salon.name')
-                    ->label('Салон'),
-                Tables\Columns\TextColumn::make('price')
+                    ->label('Салон')
+                    ->searchable(),
+                Tables\Columns\TextColumn::make('client_phone')
+                    ->label('Клиент')
+                    ->copyable()
+                    ->icon('heroicon-o-phone'),
+                Tables\Columns\TextColumn::make('service_name')
+                    ->label('Услуга'),
+                Tables\Columns\TextColumn::make('total_price')
                     ->label('Цена')
-                    ->money('RUB', locale: 'ru_RU', divideBy: 100),
+                    ->money('RUB', locale: 'ru_RU', divideBy: 100)
+                    ->sortable(),
                 Tables\Columns\SelectColumn::make('status')
                     ->label('Статус')
                     ->options([
@@ -115,19 +199,45 @@ final class AppointmentResource extends Resource
                         'confirmed' => 'Подтверждена',
                         'completed' => 'Выполнена',
                         'cancelled' => 'Отменена',
+                        'no_show' => 'Не явился',
                     ]),
-                Tables\Columns\TextColumn::make('payment_status')
-                    ->label('Оплата'),
+                Tables\Columns\BadgeColumn::make('payment_status')
+                    ->label('Оплата')
+                    ->colors([
+                        'success' => 'paid',
+                        'warning' => 'pending',
+                        'danger' => 'failed',
+                        'info' => 'refunded',
+                    ]),
+                Tables\Columns\TextColumn::make('created_at')
+                    ->label('Дата создания')
+                    ->date()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 Tables\Filters\SelectFilter::make('status')
+                    ->label('Статус')
                     ->options([
                         'pending' => 'Ожидает',
                         'confirmed' => 'Подтверждена',
                         'completed' => 'Выполнена',
                         'cancelled' => 'Отменена',
+                        'no_show' => 'Не явился',
                     ]),
+                Tables\Filters\SelectFilter::make('payment_status')
+                    ->label('Статус оплаты')
+                    ->options([
+                        'pending' => 'Ожидает',
+                        'paid' => 'Оплачена',
+                        'failed' => 'Ошибка',
+                        'refunded' => 'Возвращена',
+                    ]),
+                Tables\Filters\SelectFilter::make('master_id')
+                    ->label('Мастер')
+                    ->relationship('master', 'full_name', fn (Builder $query) => $query->where('tenant_id', tenant('id'))),
                 Tables\Filters\Filter::make('datetime_start')
+                    ->label('Дата записи')
                     ->form([
                         Forms\Components\DatePicker::make('from')->label('С'),
                         Forms\Components\DatePicker::make('until')->label('По'),
@@ -139,12 +249,21 @@ final class AppointmentResource extends Resource
                     }),
             ])
             ->actions([
+                Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\DeleteAction::make(),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
+                    Tables\Actions\BulkAction::make('confirm')
+                        ->label('Подтвердить')
+                        ->icon('heroicon-o-check')
+                        ->action(fn ($records) => $records->each->update(['status' => 'confirmed'])),
+                    Tables\Actions\BulkAction::make('cancel')
+                        ->label('Отменить')
+                        ->icon('heroicon-o-x-mark')
+                        ->action(fn ($records) => $records->each->update(['status' => 'cancelled'])),
                 ]),
             ]);
     }
@@ -160,6 +279,7 @@ final class AppointmentResource extends Resource
         return [
             'index' => Pages\ListAppointments::route('/'),
             'create' => Pages\CreateAppointment::route('/create'),
+            'view' => Pages\ViewAppointment::route('/{record}'),
             'edit' => Pages\EditAppointment::route('/{record}/edit'),
         ];
     }

@@ -1,23 +1,49 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\ConstructionMaterials\Pages;
 
-use App\Filament\Tenant\Resources\ConstructionMaterials\ConstructionMaterialResource;
+use App\Filament\Tenant\Resources\ConstructionMaterials\ConstructionMaterialsResource;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Support\Facades\{Log,DB};
+use Illuminate\Support\Str;
 
-final /**
- * CreateConstructionMaterial
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class CreateConstructionMaterial extends CreateRecord
+final class CreateConstructionMaterial extends CreateRecord
 {
-    protected static string $resource = ConstructionMaterialResource::class;
+    protected static string $resource = ConstructionMaterialsResource::class;
+
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        $correlationId = Str::uuid()->toString();
+        
+        DB::transaction(function () use (&$data, $correlationId) {
+            $data['correlation_id'] = $correlationId;
+            $data['tenant_id'] = filament()->getTenant()->id;
+            $data['uuid'] = Str::uuid()->toString();
+
+            Log::channel('audit')->info('ConstructionMaterials creation form submitted', [
+                'correlation_id' => $correlationId,
+                'tenant_id' => $data['tenant_id'],
+                'user_id' => auth()->id(),
+            ]);
+        });
+
+        return $data;
+    }
+
+    protected function afterCreate(): void
+    {
+        Log::channel('audit')->info('ConstructionMaterials record created successfully', [
+            'record_id' => $this->record->id,
+            'uuid' => $this->record->uuid,
+            'correlation_id' => $this->record->correlation_id,
+            'user_id' => auth()->id(),
+            'tenant_id' => filament()->getTenant()->id,
+            'timestamp' => now()->toIso8601String(),
+        ]);
+    }
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
 }

@@ -2,54 +2,60 @@
 
 declare(strict_types=1);
 
-
 namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
 
 /**
- * Correlation ID Middleware
+ * CorrelationIdMiddleware — Инжекция correlation_id в каждый запрос
+ *
  * Production 2026 CANON
  *
- * Injects correlation_id header into every request:
- * - Uses X-Correlation-ID header if provided
- * - Generates UUID if missing
- * - Passes to response headers
- * - Enables full request tracing through all layers
+ * Инжектирует correlation_id в каждый запрос:
+ * - Использует X-Correlation-ID header если предоставлен
+ * - Генерирует UUID если отсутствует
+ * - Возвращает в response headers
+ * - Включает полное трейсирование запроса через все слои
+ *
+ * ✓ Middleware execution order: 1st (correlation-id → auth:sanctum → tenant → b2c-b2b → rate-limit → fraud-check → age-verify)
  *
  * @author CatVRF Team
- * @version 2026.03.25
+ * @version 2026.03.28
  */
 final class CorrelationIdMiddleware
 {
     /**
      * Handle the request
-     *
-     * @param Request $request
-     * @param Closure $next
-     * @return mixed
      */
-    public function handle(Request $request, Closure $next)
+    public function handle(Request $request, Closure $next): mixed
     {
-        // Get correlation_id from header or generate new
-        $correlationId = $request->header('X-Correlation-ID') 
+        // Получить correlation_id из header или сгенерировать новый
+        $correlationId = $request->header('X-Correlation-ID')
             ?? $request->header('x-correlation-id')
             ?? (string)Str::uuid();
 
-        // Validate format (UUID)
+        // Валидировать формат (UUID)
         if (!Str::isUuid($correlationId)) {
             $correlationId = (string)Str::uuid();
         }
 
-        // Store in request for access throughout the stack
+        // Сохранить в request для доступа во всем стеке
         $request->attributes->set('correlation_id', $correlationId);
 
-        // Continue to next middleware/controller
+        // Логировать только для debug уровня
+        Log::channel('audit')->debug('Correlation ID injected', [
+            'correlation_id' => $correlationId,
+            'path' => $request->path(),
+            'method' => $request->method(),
+        ]);
+
+        // Продолжить к следующему middleware/контроллеру
         $response = $next($request);
 
-        // Add correlation_id to response headers
+        // Добавить correlation_id в response headers
         $response->header('X-Correlation-ID', $correlationId);
         $response->header('X-Request-ID', $correlationId);
 

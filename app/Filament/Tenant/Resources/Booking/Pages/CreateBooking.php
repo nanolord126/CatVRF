@@ -1,0 +1,8 @@
+<?php
+declare(strict_types=1);
+namespace App\Filament\Tenant\Resources\Booking\Pages;
+use App\Filament\Tenant\Resources\BookingResource;
+use Filament\Resources\Pages\CreateRecord;
+final class CreateRecordBooking extends CreateRecord {
+    protected static string $resource = BookingResource::class;
+}

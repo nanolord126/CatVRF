@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources;
 
-use App\Models\Dental\DentalClinic;
+use App\Domains\Dental\Models\DentalClinic;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Components\Section;
@@ -137,92 +137,32 @@ final class DentalClinicResource extends Resource
                             ->content(fn ($record) => $record?->updated_at?->toDateTimeString() ?? 'New Record'),
                     ])->columns(3),
             ]);
-    }
-
-    /**
-     * Table Specification (Full List Controls).
-     * Exceeds 50 lines.
-     */
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                TextColumn::make('name')
-                    ->searchable()
-                    ->sortable()
-                    ->weight('bold')
-                    ->description(fn ($record) => $record->license_number),
-                TextColumn::make('rating')
-                    ->numeric()
-                    ->sortable()
-                    ->label('Rating %')
-                    ->badge()
-                    ->color(fn ($state) => match (true) {
-                        $state >= 90 => 'success',
-                        $state >= 70 => 'warning',
-                        default => 'danger',
-                    }),
-                IconColumn::make('is_premium')
-                    ->boolean()
-                    ->label('Premium')
-                    ->trueIcon('heroicon-o-star')
-                    ->falseIcon('heroicon-o-minus')
-                    ->color('warning'),
-                TextColumn::make('address')
-                    ->limit(30)
-                    ->searchable()
-                    ->tooltip(fn ($record) => $record->address),
-                TextColumn::make('services_count')
-                    ->counts('services')
-                    ->label('Services Offered')
-                    ->sortable(),
-                TextColumn::make('dentists_count')
-                    ->counts('dentists')
-                    ->label('Dentists')
-                    ->sortable(),
-                TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('uuid')
-                    ->toggleable(isToggledHiddenByDefault: true)
-                    ->label('Internal UUID'),
-            ])
-            ->filters([
-                TernaryFilter::make('is_premium')
-                    ->label('Premium Only'),
-                Tables\Filters\TrashedFilter::make(),
-            ])
-            ->actions([
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                    Tables\Actions\ForceDeleteBulkAction::make(),
-                    Tables\Actions\RestoreBulkAction::make(),
-                ]),
-            ])
-            ->emptyStateHeading('No Dental Clinics registered in your tenant.')
-            ->poll('30s');
-    }
-
-    public static function getEloquentQuery(): Builder
-    {
-        return parent::getEloquentQuery()
-            ->withoutGlobalScopes([
-                SoftDeletingScope::class,
-            ]);
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => \App\Filament\Tenant\Resources\DentalClinicResource\Pages\ListDentalClinics::route('/'),
-            'create' => \App\Filament\Tenant\Resources\DentalClinicResource\Pages\CreateDentalClinic::route('/create'),
-            'edit' => \App\Filament\Tenant\Resources\DentalClinicResource\Pages\EditDentalClinic::route('/{record}/edit'),
+            'index' => Pages\\ListDentalClinic::route('/'),
+            'create' => Pages\\CreateDentalClinic::route('/create'),
+            'edit' => Pages\\EditDentalClinic::route('/{record}/edit'),
+            'view' => Pages\\ViewDentalClinic::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListDentalClinic::route('/'),
+            'create' => Pages\\CreateDentalClinic::route('/create'),
+            'edit' => Pages\\EditDentalClinic::route('/{record}/edit'),
+            'view' => Pages\\ViewDentalClinic::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListDentalClinic::route('/'),
+            'create' => Pages\\CreateDentalClinic::route('/create'),
+            'edit' => Pages\\EditDentalClinic::route('/{record}/edit'),
+            'view' => Pages\\ViewDentalClinic::route('/{record}'),
         ];
     }
 }

@@ -64,43 +64,32 @@ final class AutoPartResource extends Resource
                             ->label('Мин. порог'),
                     ])->columns(2),
             ]);
-    }
-
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('sku')
-                    ->searchable()
-                    ->sortable()
-                    ->label('SKU'),
-                Tables\Columns\TextColumn::make('name')
-                    ->searchable()
-                    ->label('Наименование'),
-                Tables\Columns\TextColumn::make('brand')
-                    ->label('Бренд'),
-                Tables\Columns\TextColumn::make('price_kopecks')
-                    ->money('rub', shouldConvert: true)
-                    ->label('Цена'),
-                Tables\Columns\BadgeColumn::make('current_stock')
-                    ->color(fn ($state, $record) => $state <= $record->min_stock_threshold ? 'danger' : 'success')
-                    ->label('Остаток'),
-            ])
-            ->filters([])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
-            ]);
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListAutoParts::route('/'),
-            'create' => Pages\CreateAutoPart::route('/create'),
-            'edit' => Pages\EditAutoPart::route('/{record}/edit'),
+            'index' => Pages\\ListAutoPart::route('/'),
+            'create' => Pages\\CreateAutoPart::route('/create'),
+            'edit' => Pages\\EditAutoPart::route('/{record}/edit'),
+            'view' => Pages\\ViewAutoPart::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListAutoPart::route('/'),
+            'create' => Pages\\CreateAutoPart::route('/create'),
+            'edit' => Pages\\EditAutoPart::route('/{record}/edit'),
+            'view' => Pages\\ViewAutoPart::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListAutoPart::route('/'),
+            'create' => Pages\\CreateAutoPart::route('/create'),
+            'edit' => Pages\\EditAutoPart::route('/{record}/edit'),
+            'view' => Pages\\ViewAutoPart::route('/{record}'),
         ];
     }
 }

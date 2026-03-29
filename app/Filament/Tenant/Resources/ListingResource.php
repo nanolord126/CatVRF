@@ -107,100 +107,23 @@ final class ListingResource extends Resource
                                             ->title('Ошибка AI анализа')
                                             ->danger()
                                             ->send();
-                                    }
-                                }),
-                        ]),
-                        Forms\Components\KeyValue::make('metadata')
-                           ->label('Метаданные (AI / Аналитика)')
-                           ->addActionLabel('Добавить поле'),
-                    ]),
-            ]);
-    }
-
-    public static function table(Table $table): Table
+                                
+    public static function getPages(): array
     {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('uuid')
-                    ->label('ID')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('property.name')
-                    ->label('Объект')
-                    ->sortable()
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('title')
-                    ->label('Заголовок')
-                    ->limit(40)
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('type')
-                    ->badge()
-                    ->label('Тип сделки')
-                    ->color(fn (string $state): string => match ($state) {
-                        'sale' => 'success',
-                        'rent' => 'info',
-                        'ready_business' => 'warning',
-                        default => 'gray',
-                    }),
-                Tables\Columns\TextColumn::make('price')
-                    ->label('Цена')
-                    ->money('RUB', divideBy: 100)
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('status')
-                    ->badge()
-                    ->label('Статус')
-                    ->color(fn (string $state): string => match ($state) {
-                        'active' => 'success',
-                        'moderation' => 'warning',
-                        'archived' => 'danger',
-                        default => 'gray',
-                    }),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->label('Дата создания'),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('type')
-                    ->options([
-                        'sale' => 'Продажа',
-                        'rent' => 'Аренда',
-                    ]),
-                Tables\Filters\SelectFilter::make('status')
-                    ->options([
-                        'active' => 'Активно',
-                        'archived' => 'В архиве',
-                    ]),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\ViewAction::make(),
-                Tables\Actions\Action::make('archive')
-                    ->label('В архив')
-                    ->icon('heroicon-o-archive-box')
-                    ->color('danger')
-                    ->requiresConfirmation()
-                    ->action(fn ($record) => $record->update(['status' => 'archived']))
-                    ->visible(fn ($record) => $record->status !== 'archived'),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
-    }
-
-    public static function getRelations(): array
-    {
-        return [];
-    }
+        return [
+            'index' => Pages\\ListListing::route('/'),
+            'create' => Pages\\CreateListing::route('/create'),
+            'edit' => Pages\\EditListing::route('/{record}/edit'),
+            'view' => Pages\\ViewListing::route('/{record}'),
+        ];
 
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListListings::route('/'),
-            'create' => Pages\CreateListing::route('/create'),
-            'edit' => Pages\EditListing::route('/{record}/edit'),
+            'index' => Pages\\ListListing::route('/'),
+            'create' => Pages\\CreateListing::route('/create'),
+            'edit' => Pages\\EditListing::route('/{record}/edit'),
+            'view' => Pages\\ViewListing::route('/{record}'),
         ];
     }
 }

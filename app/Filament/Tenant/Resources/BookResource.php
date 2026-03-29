@@ -132,70 +132,32 @@ class BookResource extends Resource
                             ->columnSpan(1),
                     ])->columns(2),
             ]);
-    }
 
-    public static function table(Table $table): Table
+    public static function getPages(): array
     {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('store.name')
-                    ->sortable()
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('title')
-                    ->sortable()
-                    ->searchable()
-                    ->wrap(),
-                Tables\Columns\TextColumn::make('author.name')
-                    ->sortable()
-                    ->searchable(),
-                Tables\Columns\BadgeColumn::make('format')
-                    ->colors([
-                        'primary' => 'hardcover',
-                        'warning' => 'audio',
-                        'success' => 'digital',
-                        'secondary' => 'paperback',
-                        'danger' => 'collectible',
-                    ]),
-                Tables\Columns\TextColumn::make('price_b2c')
-                    ->money('RUB', locale: 'ru')
-                    ->state(fn (Book $record) => $record->price_b2c / 100)
-                    ->sortable()
-                    ->label('B2C Price'),
-                Tables\Columns\TextColumn::make('price_b2b')
-                    ->money('RUB', locale: 'ru')
-                    ->state(fn (Book $record) => $record->price_b2b / 100)
-                    ->sortable()
-                    ->label('B2B Price'),
-                Tables\Columns\TextColumn::make('stock_quantity')
-                    ->numeric()
-                    ->sortable()
-                    ->color(fn (int $state): string => $state <= 5 ? 'danger' : 'success')
-                    ->label('Stock'),
-                Tables\Columns\IconColumn::make('is_active')
-                    ->boolean()
-                    ->label('Active'),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('author_id')
-                    ->relationship('author', 'name'),
-                Tables\Filters\SelectFilter::make('genre_id')
-                    ->relationship('genre', 'name'),
-                Tables\Filters\SelectFilter::make('format'),
-                Tables\Filters\TernaryFilter::make('is_active'),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\ViewAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
-            ]);
-    }
+        return [
+            'index' => Pages\\ListBook::route('/'),
+            'create' => Pages\\CreateBook::route('/create'),
+            'edit' => Pages\\EditBook::route('/{record}/edit'),
+            'view' => Pages\\ViewBook::route('/{record}'),
+        ];
 
-    public static function getEloquentQuery(): Builder
+    public static function getPages(): array
     {
-        return parent::getEloquentQuery()
-            ->with(['author', 'genre', 'store'])
-            ->latest();
+        return [
+            'index' => Pages\\ListBook::route('/'),
+            'create' => Pages\\CreateBook::route('/create'),
+            'edit' => Pages\\EditBook::route('/{record}/edit'),
+            'view' => Pages\\ViewBook::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListBook::route('/'),
+            'create' => Pages\\CreateBook::route('/create'),
+            'edit' => Pages\\EditBook::route('/{record}/edit'),
+            'view' => Pages\\ViewBook::route('/{record}'),
+        ];
     }
 }

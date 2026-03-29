@@ -146,77 +146,32 @@ final class FashionProductResource extends Resource
                             ]),
                     ]),
             ]);
-    }
-
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                Tables\Columns\ImageColumn::make('images')
-                    ->label('Фото')
-                    ->circular()
-                    ->stacked()
-                    ->limit(3),
-
-                Tables\Columns\TextColumn::make('name')
-                    ->label('Продукт')
-                    ->searchable()
-                    ->sortable()
-                    ->weight('bold'),
-
-                Tables\Columns\TextColumn::make('store.name')
-                    ->label('Продавец')
-                    ->searchable(),
-
-                Tables\Columns\TextColumn::make('price_b2c')
-                    ->label('B2C Цена')
-                    ->money('rub', divideBy: 100)
-                    ->color('primary')
-                    ->sortable(),
-
-                Tables\Columns\BadgeColumn::make('quantity')
-                    ->label('Остаток / Резерв')
-                    ->formatStateUsing(fn ($record) => "{$record->quantity} ({$record->reserve_quantity})")
-                    ->colors([
-                        'danger' => fn ($state, $record) => $record->quantity <= $record->min_stock_threshold,
-                        'success' => fn ($state, $record) => $record->quantity > $record->min_stock_threshold,
-                    ]),
-
-                Tables\Columns\IconColumn::make('is_active')
-                    ->label('Статус')
-                    ->boolean(),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('store_id')
-                    ->label('Магазин')
-                    ->relationship('store', 'name', modifyQueryUsing: fn (Builder $query) => $query->where('tenant_id', filament()->getTenant()->id)),
-                
-                Tables\Filters\Filter::make('low_stock')
-                    ->label('Заканчивается')
-                    ->query(fn (Builder $query) => $query->whereColumn('quantity', '<=', 'min_stock_threshold')),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
-            ]);
-    }
-
-    public static function getEloquentQuery(): Builder
-    {
-        return parent::getEloquentQuery()
-            ->where('tenant_id', filament()->getTenant()->id)
-            ->with(['store']);
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => \App\Filament\Tenant\Resources\FashionProductResource\Pages\ListFashionProducts::route('/'),
-            'create' => \App\Filament\Tenant\Resources\FashionProductResource\Pages\CreateFashionProduct::route('/create'),
-            'edit' => \App\Filament\Tenant\Resources\FashionProductResource\Pages\EditFashionProduct::route('/{record}/edit'),
+            'index' => Pages\\ListFashionProduct::route('/'),
+            'create' => Pages\\CreateFashionProduct::route('/create'),
+            'edit' => Pages\\EditFashionProduct::route('/{record}/edit'),
+            'view' => Pages\\ViewFashionProduct::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListFashionProduct::route('/'),
+            'create' => Pages\\CreateFashionProduct::route('/create'),
+            'edit' => Pages\\EditFashionProduct::route('/{record}/edit'),
+            'view' => Pages\\ViewFashionProduct::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListFashionProduct::route('/'),
+            'create' => Pages\\CreateFashionProduct::route('/create'),
+            'edit' => Pages\\EditFashionProduct::route('/{record}/edit'),
+            'view' => Pages\\ViewFashionProduct::route('/{record}'),
         ];
     }
 }

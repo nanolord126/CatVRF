@@ -63,67 +63,32 @@ final class FarmOrderResource extends Resource
                 Textarea::make('notes')
                     ->columnSpanFull(),
             ]);
-    }
 
-    public static function table(Table $table): Table
+    public static function getPages(): array
     {
-        return $table
-            ->columns([
-                TextColumn::make('id')
-                    ->sortable()
-                    ->searchable(),
+        return [
+            'index' => Pages\\ListFarmOrder::route('/'),
+            'create' => Pages\\CreateFarmOrder::route('/create'),
+            'edit' => Pages\\EditFarmOrder::route('/{record}/edit'),
+            'view' => Pages\\ViewFarmOrder::route('/{record}'),
+        ];
 
-                TextColumn::make('product.name')
-                    ->sortable()
-                    ->searchable(),
-
-                TextColumn::make('status')
-                    ->badge()
-                    ->colors([
-                        'pending' => 'warning',
-                        'delivered' => 'success',
-                        'cancelled' => 'danger',
-                    ]),
-
-                TextColumn::make('total_price')
-                    ->money('rub')
-                    ->sortable(),
-
-                TextColumn::make('delivery_date')
-                    ->dateTime()
-                    ->sortable(),
-
-                TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable(),
-            ])
-            ->filters([
-                SelectFilter::make('status')
-                    ->options([
-                        'pending' => 'Pending',
-                        'delivered' => 'Delivered',
-                        'cancelled' => 'Cancelled',
-                    ]),
-
-                Filter::make('created_at')
-                    ->form([DateTimePickerColumn::make('created_from')])
-                    ->query(fn ($query, $data) => $query->when($data['created_from'], fn ($q, $date) => $q->whereDate('created_at', '>=', $date))),
-            ])
-            ->actions([
-                EditAction::make(),
-                DeleteAction::make(),
-            ])
-            ->bulkActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
-            ]);
-    }
-
-    public static function getEloquentQuery()
+    public static function getPages(): array
     {
-        return parent::getEloquentQuery()
-            ->where('tenant_id', filament()->getTenant()->id)
-            ->with('product');
+        return [
+            'index' => Pages\\ListFarmOrder::route('/'),
+            'create' => Pages\\CreateFarmOrder::route('/create'),
+            'edit' => Pages\\EditFarmOrder::route('/{record}/edit'),
+            'view' => Pages\\ViewFarmOrder::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListFarmOrder::route('/'),
+            'create' => Pages\\CreateFarmOrder::route('/create'),
+            'edit' => Pages\\EditFarmOrder::route('/{record}/edit'),
+            'view' => Pages\\ViewFarmOrder::route('/{record}'),
+        ];
     }
 }

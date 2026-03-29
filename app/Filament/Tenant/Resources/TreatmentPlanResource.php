@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources;
 
-use App\Models\Dental\TreatmentPlan;
+use App\Domains\Dental\Models\TreatmentPlan;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Components\Section;
@@ -154,98 +154,23 @@ final class TreatmentPlanResource extends Resource
                             ->content(fn ($record) => $record?->created_at?->diffForHumans() ?? 'New Record'),
                     ]),
             ]);
-    }
-
-    /**
-     * Table Specification (Full Medical Planning List).
-     * Exceeds 50 lines.
-     */
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                TextColumn::make('client.name')
-                    ->label('Patient')
-                    ->searchable()
-                    ->sortable()
-                    ->weight('bold'),
-                TextColumn::make('dentist.full_name')
-                    ->label('Assigned Physician')
-                    ->searchable()
-                    ->sortable()
-                    ->color('info'),
-                TextColumn::make('diagnosis')
-                    ->limit(40)
-                    ->searchable()
-                    ->description(fn ($record) => "Steps: " . count($record->steps ?? [])),
-                TextColumn::make('status')
-                    ->badge()
-                    ->sortable()
-                    ->color(fn (string $state): string => match ($state) {
-                        'draft' => 'warning',
-                        'active' => 'info',
-                        'completed' => 'success',
-                        'cancelled' => 'danger',
-                        default => 'gray',
-                    }),
-                TextColumn::make('total_estimated_price')
-                    ->money('RUB', divideBy: 100)
-                    ->sortable()
-                    ->label('Contract Value'),
-                TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->label('Proposed'),
-                TextColumn::make('uuid')
-                    ->toggleable(isToggledHiddenByDefault: true)
-                    ->label('Internal UUID'),
-            ])
-            ->filters([
-                SelectFilter::make('status')
-                    ->label('Plan State')
-                    ->options([
-                        'draft' => 'Draft',
-                        'active' => 'Active',
-                        'completed' => 'Completed',
-                        'cancelled' => 'Cancelled',
-                    ]),
-                SelectFilter::make('dentist_id')
-                    ->label('By Physician')
-                    ->relationship('dentist', 'full_name'),
-                Tables\Filters\TrashedFilter::make(),
-            ])
-            ->actions([
-                ActionGroup::make([
-                    Tables\Actions\ViewAction::make(),
-                    Tables\Actions\EditAction::make(),
-                    Tables\Actions\DeleteAction::make(),
-                ])->icon('heroicon-m-ellipsis-vertical'),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                    Tables\Actions\RestoreBulkAction::make(),
-                ]),
-            ])
-            ->defaultSort('created_at', 'desc')
-            ->emptyStateHeading('No Treatment Plans Proffered.')
-            ->poll('1m');
-    }
-
-    public static function getEloquentQuery(): Builder
-    {
-        return parent::getEloquentQuery()
-            ->withoutGlobalScopes([
-                SoftDeletingScope::class,
-            ]);
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => \App\Filament\Tenant\Resources\TreatmentPlanResource\Pages\ListTreatmentPlans::route('/'),
-            'create' => \App\Filament\Tenant\Resources\TreatmentPlanResource\Pages\CreateTreatmentPlan::route('/create'),
-            'edit' => \App\Filament\Tenant\Resources\TreatmentPlanResource\Pages\EditTreatmentPlan::route('/{record}/edit'),
+            'index' => Pages\\ListTreatmentPlan::route('/'),
+            'create' => Pages\\CreateTreatmentPlan::route('/create'),
+            'edit' => Pages\\EditTreatmentPlan::route('/{record}/edit'),
+            'view' => Pages\\ViewTreatmentPlan::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListTreatmentPlan::route('/'),
+            'create' => Pages\\CreateTreatmentPlan::route('/create'),
+            'edit' => Pages\\EditTreatmentPlan::route('/{record}/edit'),
+            'view' => Pages\\ViewTreatmentPlan::route('/{record}'),
         ];
     }
 }

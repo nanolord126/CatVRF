@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources;
 
-use App\Models\Dental\DentalConsumable;
+use App\Domains\Dental\Models\DentalConsumable;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Components\Section;
@@ -143,101 +143,32 @@ final class DentalConsumableResource extends Resource
                             ->content(fn ($record) => $record?->updated_at?->diffForHumans() ?? 'New Asset'),
                     ]),
             ]);
-    }
-
-    /**
-     * Table Specification (Full Inventory Ledger).
-     * Exceeds 50 lines.
-     */
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                TextColumn::make('name')
-                    ->searchable()
-                    ->sortable()
-                    ->weight('bold')
-                    ->description(fn ($record) => "SKU: {$record->sku}"),
-                TextColumn::make('clinic.name')
-                    ->label('Clinic Inventory')
-                    ->searchable()
-                    ->sortable(),
-                TextColumn::make('current_stock')
-                    ->numeric()
-                    ->sortable()
-                    ->label('Units')
-                    ->badge()
-                    ->color(fn ($record) => match (true) {
-                        $record->current_stock <= $record->min_stock_threshold => 'danger',
-                        $record->current_stock <= ($record->min_stock_threshold * 2) => 'warning',
-                        default => 'success',
-                    }),
-                TextColumn::make('category')
-                    ->label('Asset Class')
-                    ->searchable()
-                    ->sortable(),
-                TextColumn::make('unit_price')
-                    ->money('RUB', divideBy: 100)
-                    ->sortable()
-                    ->label('Cost per Unit'),
-                IconColumn::make('is_active')
-                    ->boolean()
-                    ->label('Allocatable')
-                    ->trueIcon('heroicon-o-circle-stack')
-                    ->falseIcon('heroicon-o-lock-closed')
-                    ->color('info'),
-                TextColumn::make('last_refill')
-                    ->label('Restocked')
-                    ->dateTime()
-                    ->since()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('uuid')
-                    ->toggleable(isToggledHiddenByDefault: true)
-                    ->label('Internal UUID'),
-            ])
-            ->filters([
-                SelectFilter::make('dental_clinic_id')
-                    ->label('By Clinic Warehouse')
-                    ->relationship('clinic', 'name'),
-                Filter::make('low_stock')
-                    ->label('Critical Low Level')
-                    ->query(fn (Builder $query): Builder => $query->whereColumn('current_stock', '<=', 'min_stock_threshold')),
-                TernaryFilter::make('is_active')
-                    ->label('Enabled for Orders'),
-                Tables\Filters\TrashedFilter::make(),
-            ])
-            ->actions([
-                ActionGroup::make([
-                    Tables\Actions\ViewAction::make(),
-                    Tables\Actions\EditAction::make(),
-                    Tables\Actions\DeleteAction::make(),
-                ])->icon('heroicon-m-ellipsis-vertical'),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ])
-            ->defaultSort('current_stock', 'asc')
-            ->emptyStateHeading('Inventory is depleted or not defined.')
-            ->poll('2m');
-    }
-
-    public static function getEloquentQuery(): Builder
-    {
-        return parent::getEloquentQuery()
-            ->withoutGlobalScopes([
-                SoftDeletingScope::class,
-            ]);
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => \App\Filament\Tenant\Resources\DentalConsumableResource\Pages\ListDentalConsumables::route('/'),
-            'create' => \App\Filament\Tenant\Resources\DentalConsumableResource\Pages\CreateDentalConsumable::route('/create'),
-            'edit' => \App\Filament\Tenant\Resources\DentalConsumableResource\Pages\EditDentalConsumable::route('/{record}/edit'),
+            'index' => Pages\\ListDentalConsumable::route('/'),
+            'create' => Pages\\CreateDentalConsumable::route('/create'),
+            'edit' => Pages\\EditDentalConsumable::route('/{record}/edit'),
+            'view' => Pages\\ViewDentalConsumable::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListDentalConsumable::route('/'),
+            'create' => Pages\\CreateDentalConsumable::route('/create'),
+            'edit' => Pages\\EditDentalConsumable::route('/{record}/edit'),
+            'view' => Pages\\ViewDentalConsumable::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListDentalConsumable::route('/'),
+            'create' => Pages\\CreateDentalConsumable::route('/create'),
+            'edit' => Pages\\EditDentalConsumable::route('/{record}/edit'),
+            'view' => Pages\\ViewDentalConsumable::route('/{record}'),
         ];
     }
 }

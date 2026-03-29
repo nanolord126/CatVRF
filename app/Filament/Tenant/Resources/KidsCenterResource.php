@@ -134,86 +134,23 @@ final class KidsCenterResource extends Resource
                             ]),
                     ])->columnSpan(['lg' => 1]),
             ])->columns(3);
-    }
-
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('name')
-                    ->searchable()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('center_type')
-                    ->label('Type')
-                    ->badge()
-                    ->color('info')
-                    ->formatStateUsing(fn ($state) => ucfirst($state)),
-                Tables\Columns\TextColumn::make('capacity_limit')
-                    ->label('Capacity')
-                    ->numeric()
-                    ->sortable(),
-                Tables\Columns\TextColumn::make('hourly_rate')
-                    ->label('Rate')
-                    ->money('rub', 100)
-                    ->sortable(),
-                Tables\Columns\IconColumn::make('is_safety_verified')
-                    ->label('Verified')
-                    ->boolean()
-                    ->color(fn ($state) => $state ? 'success' : 'danger'),
-                Tables\Columns\TextColumn::make('address')
-                    ->searchable()
-                    ->limit(30),
-                Tables\Columns\TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-            ])
-            ->filters([
-                Tables\Filters\TrashedFilter::make(),
-                Tables\Filters\SelectFilter::make('center_type')
-                    ->options([
-                        'playground' => 'Playground',
-                        'education' => 'Education',
-                        'club' => 'Kids Club',
-                        'day_care' => 'Day Care',
-                    ]),
-                Tables\Filters\TernaryFilter::make('is_safety_verified')
-                    ->label('Safety Certified'),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\ViewAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                    Tables\Actions\ForceDeleteBulkAction::make(),
-                    Tables\Actions\RestoreBulkAction::make(),
-                ]),
-            ]);
-    }
-
-    public static function getRelations(): array
-    {
-        return [
-            // Events list relation
-        ];
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListKidsCenters::route('/'),
-            'create' => Pages\CreateKidsCenter::route('/create'),
-            'edit' => Pages\EditKidsCenter::route('/{record}/edit'),
+            'index' => Pages\\ListKidsCenter::route('/'),
+            'create' => Pages\\CreateKidsCenter::route('/create'),
+            'edit' => Pages\\EditKidsCenter::route('/{record}/edit'),
+            'view' => Pages\\ViewKidsCenter::route('/{record}'),
         ];
-    }
 
-    public static function getEloquentQuery(): Builder
+    public static function getPages(): array
     {
-        return parent::getEloquentQuery()
-            ->withoutGlobalScopes([
-                SoftDeletingScope::class,
-            ]);
+        return [
+            'index' => Pages\\ListKidsCenter::route('/'),
+            'create' => Pages\\CreateKidsCenter::route('/create'),
+            'edit' => Pages\\EditKidsCenter::route('/{record}/edit'),
+            'view' => Pages\\ViewKidsCenter::route('/{record}'),
+        ];
     }
 }

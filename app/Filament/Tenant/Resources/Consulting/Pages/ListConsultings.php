@@ -1,0 +1,62 @@
+<?php declare(strict_types=1);
+
+namespace App\Filament\Tenant\Resources\Consulting\Pages;
+
+use App\Filament\Tenant\Resources\Consulting\ConsultingResource;
+use Filament\Actions\{CreateAction,DeleteBulkAction};
+use Filament\Resources\Pages\ListRecords;
+use Illuminate\Support\Facades\{Log,DB};
+use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Builder;
+
+final class ListConsultings extends ListRecords
+{
+    protected static string $resource = ConsultingResource::class;
+
+    protected function getHeaderActions(): array
+    {
+        return [
+            CreateAction::make()
+                ->label('Новая услуга')
+                ->icon('heroicon-m-plus'),
+        ];
+    }
+
+    protected function getTableQuery(): Builder
+    {
+        $tenantId = filament()->getTenant()->id;
+        $userId = auth()->id();
+        $correlationId = Str::uuid()->toString();
+
+        Log::channel('audit')->info('Consulting ListRecords accessed', [
+            'tenant_id' => $tenantId,
+            'user_id' => $userId,
+            'correlation_id' => $correlationId,
+        ]);
+
+        return ConsultingResource::getEloquentQuery()
+            ->where('tenant_id', $tenantId)
+            ->whereNull('deleted_at')
+            ->with(['tenant', 'businessGroup', 'consultant'])
+            ->orderBy('created_at', 'desc');
+    }
+
+    protected function getTableBulkActions(): array
+    {
+        return [
+            DeleteBulkAction::make()
+                ->label('Удалить выбранные')
+                ->icon('heroicon-m-trash'),
+        ];
+    }
+
+    public function render()
+    {
+        Log::channel('audit')->info('ListConsultings page rendered', [
+            'user_id' => auth()->id(),
+            'tenant_id' => filament()->getTenant()->id,
+        ]);
+
+        return parent::render();
+    }
+}

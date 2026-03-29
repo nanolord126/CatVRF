@@ -86,55 +86,23 @@ final class PhotographerResource extends Resource
                             ->label('Системные теги'),
                     ])->columns(2),
             ]);
-    }
-
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('full_name')
-                    ->label('Фотограф')
-                    ->searchable()
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('studio.name')
-                    ->label('Место работы')
-                    ->default('Фриланс')
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('experience_years')
-                    ->label('Опыт (лет)')
-                    ->sortable(),
-
-                Tables\Columns\IconColumn::make('is_available')
-                    ->label('Доступен')
-                    ->boolean(),
-
-                Tables\Columns\TextColumn::make('rating')
-                    ->label('★')
-                    ->sortable(),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('studio_id')
-                    ->label('По студии')
-                    ->relationship('studio', 'name'),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ]);
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => \App\Filament\Tenant\Resources\PhotographerResource\Pages\ListPhotographers::route('/'),
-            'create' => \App\Filament\Tenant\Resources\PhotographerResource\Pages\CreatePhotographer::route('/create'),
-            'edit' => \App\Filament\Tenant\Resources\PhotographerResource\Pages\EditPhotographer::route('/{record}/edit'),
+            'index' => Pages\\ListPhotographer::route('/'),
+            'create' => Pages\\CreatePhotographer::route('/create'),
+            'edit' => Pages\\EditPhotographer::route('/{record}/edit'),
+            'view' => Pages\\ViewPhotographer::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListPhotographer::route('/'),
+            'create' => Pages\\CreatePhotographer::route('/create'),
+            'edit' => Pages\\EditPhotographer::route('/{record}/edit'),
+            'view' => Pages\\ViewPhotographer::route('/{record}'),
         ];
     }
 }

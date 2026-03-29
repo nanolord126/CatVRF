@@ -1,4 +1,6 @@
-<?php declare(strict_types=1);
+<?php
+
+declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
@@ -8,9 +10,9 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 /**
- * B2CB2BMiddleware - Определение режима B2C/B2B
+ * B2CB2BMiddleware — Определение режима B2C/B2B
  *
- * PRODUCTION-READY 2026 CANON
+ * Production 2026 CANON
  *
  * Определяет режим работы на основе наличия INN (ИНН) и business_card_id:
  * - B2C: физическое лицо, нет INN
@@ -21,14 +23,16 @@ use Illuminate\Support\Str;
  * - $request->b2b_mode: bool
  * - $request->mode_type: 'b2c' | 'b2b'
  *
+ * ✓ Middleware execution order: 4th (correlation-id → auth:sanctum → tenant → b2c-b2b → rate-limit → fraud-check → age-verify)
+ *
  * @author CatVRF Team
- * @version 2026.03.27
+ * @version 2026.03.28
  */
 final class B2CB2BMiddleware
 {
     public function handle(Request $request, Closure $next): mixed
     {
-        $correlationId = $request->header('X-Correlation-ID') ?? Str::uuid()->toString();
+        $correlationId = $request->attributes->get('correlation_id') ?? $request->header('X-Correlation-ID') ?? Str::uuid()->toString();
 
         try {
             // Определяем режим по наличию INN и business_card_id
@@ -85,6 +89,7 @@ final class B2CB2BMiddleware
                 'error' => $e->getMessage(),
                 'path' => $request->path(),
                 'correlation_id' => $correlationId,
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
@@ -94,3 +99,4 @@ final class B2CB2BMiddleware
         }
     }
 }
+

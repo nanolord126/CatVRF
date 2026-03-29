@@ -138,69 +138,23 @@ class GardenProductResource extends Resource
                             ->columnSpan(2),
                     ]),
             ]);
-    }
 
-    public static function table(Table $table): Table
+    public static function getPages(): array
     {
-        return $table
-            ->columns([
-                Tables\Columns\TextColumn::make('store.name')
-                    ->sortable()
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('name')
-                    ->sortable()
-                    ->searchable(),
-                Tables\Columns\TextColumn::make('sku')
-                    ->badge()
-                    ->label('SKU'),
-                Tables\Columns\TextColumn::make('price_b2c')
-                    ->money('RUB', locale: 'ru')
-                    ->state(fn (GardenProduct $record) => $record->price_b2c / 100)
-                    ->sortable()
-                    ->label('Retail Price'),
-                Tables\Columns\TextColumn::make('price_b2b')
-                    ->money('RUB', locale: 'ru')
-                    ->state(fn (GardenProduct $record) => $record->price_b2b / 100)
-                    ->sortable()
-                    ->label('Wholesale Price'),
-                Tables\Columns\BadgeColumn::make('plant.light_requirement')
-                    ->colors([
-                        'primary' => 'full_sun',
-                        'warning' => 'partial_shade',
-                        'success' => 'shade',
-                    ]),
-                Tables\Columns\TextColumn::make('stock_quantity')
-                    ->numeric()
-                    ->sortable()
-                    ->label('Inventory'),
-                Tables\Columns\IconColumn::make('is_published')
-                    ->boolean()
-                    ->label('Catalog Status'),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('category_id')
-                    ->relationship('category', 'name'),
-                Tables\Filters\SelectFilter::make('hardiness_zone')
-                    ->relationship('plant', 'hardiness_zone')
-                    ->options(array_combine(range(1, 11), range(1, 11))),
-                Tables\Filters\TernaryFilter::make('is_published'),
-                Tables\Filters\Filter::make('low_stock')
-                    ->query(fn (Builder $query) => $query->where('stock_quantity', '<=', 10))
-                    ->label('Inventory Low Stock'),
-            ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\ViewAction::make(),
-            ])
-            ->bulkActions([
-                Tables\Actions\DeleteBulkAction::make(),
-            ]);
-    }
+        return [
+            'index' => Pages\\ListGardenProduct::route('/'),
+            'create' => Pages\\CreateGardenProduct::route('/create'),
+            'edit' => Pages\\EditGardenProduct::route('/{record}/edit'),
+            'view' => Pages\\ViewGardenProduct::route('/{record}'),
+        ];
 
-    public static function getEloquentQuery(): Builder
+    public static function getPages(): array
     {
-        return parent::getEloquentQuery()
-            ->with(['store', 'category', 'plant'])
-            ->latest();
+        return [
+            'index' => Pages\\ListGardenProduct::route('/'),
+            'create' => Pages\\CreateGardenProduct::route('/create'),
+            'edit' => Pages\\EditGardenProduct::route('/{record}/edit'),
+            'view' => Pages\\ViewGardenProduct::route('/{record}'),
+        ];
     }
 }

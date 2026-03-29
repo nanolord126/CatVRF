@@ -1,27 +1,21 @@
-<?php
-namespace App\Http\Con
+<?php declare(strict_types=1);
+
+namespace App\Http\Controllers;
+
 /**
  * Controller
  * 
  * Производитель: CatVRF Platform
  * Версия: 1.0.0
  * 
- * Примеры использования:
- * 
- * ```php
- * // Базовое использование
- * $instance = new Controller();
- * ```
- * 
  * Требования:
- * - Laravel 10+
+ * - Laravel 11+
  * - PHP 8.2+
  * - Все методы должны быть явно типизированы
  * 
  * @author CatVRF
- * @package namespace App\Http\Controllers
- * @see https://github.com/iyegorovskyi_clemny/CatVRF
+ * @package App\Http\Controllers
  */
-trollers;
-abstract class Controller {
+abstract class Controller
+{
 }

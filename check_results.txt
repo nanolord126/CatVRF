@@ -1,0 +1,17 @@
+╨д╨░╨╣╨╗╨╛╨▓ < 100 ╤Б╤В╤А╨╛╨║: 61
+---
+GeoZoneResource.php (99 lines)
+MedicalRecordResource.php (98 lines)
+SessionResource.php (96 lines)
+PhotoSessionResource.php (94 lines)
+CollectibleAuctionResource.php (92 lines)
+ReviewResource.php (91 lines)
+SeatMapResource.php (91 lines)
+CollectibleItemResource.php (90 lines)
+FlowerOrderResource.php (89 lines)
+DietPlanResource.php (84 lines)
+CollectibleStoreResource.php (80 lines)
+CourseResource.php (79 lines)
+SportProductResource.php (70 lines)
+ConfectioneryProductResource.php (68 lines)
+GroceryStoreResource.php (68 lines)

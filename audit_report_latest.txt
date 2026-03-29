@@ -1,0 +1,170 @@
+
+тХФтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХЧ
+тХС          ╨н╨в╨Р╨Я 3: ╨Я╨Ю╨Ы╨Э╨л╨Щ ╨Р╨г╨Ф╨Ш╨в ╨Т╨Х╨а╨в╨Ш╨Ъ╨Р╨Ы╨Х╨Щ ╨Я╨Ю 9-╨б╨Ы╨Ю╨Щ╨Э╨Ю╨Щ ╨Р╨а╨е╨Ш╨в╨Х╨Ъ╨в╨г╨а╨Х 2026      тХС
+тХЪтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХЭ
+
+
+ЁЯУК ╨Р╤Г╨┤╨╕╤В ╨▓╨╡╤А╤В╨╕╨║╨░╨╗╨╕: Beauty
+тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
+тЬЕ Layer 1: Database                   Files:  1, Lines:   169, Status: complete
+   Details: ╨Ь╨╕╨│╤А╨░╤Ж╨╕╤П ╤Б╨╛╨╖╨┤╨░╨╜╨░
+тЪая╕П  Layer 2: Models                     Files: 12, Lines:   796, Status: partial
+   Details: ╨Ю╤В╤Б╤Г╤В╤Б╤В╨▓╤Г╨╡╤В: BeautySalon, BeautyMaster, BeautyService, BeautyAppointment, BeautyProduct, BeautyConsumable, BeautyReview
+тЬЕ Layer 3: Services                   Files: 27, Lines:  3230, Status: complete
+   Details: ╨б╨╡╤А╨▓╨╕╤Б╨╛╨▓ ╤Б╨╛╨╖╨┤╨░╨╜╨╛: 27 ╨╕╨╖ 3
+тЪая╕П  Layer 4: API Controllers            Files:  1, Lines:   245, Status: partial
+   Details: ╨Ъ╨╛╨╜╤В╤А╨╛╨╗╨╗╨╡╤А╨╛╨▓ API: 1
+тЬЕ Layer 5: Security/Policies          Files:  6, Lines:   354, Status: complete
+   Details: ╨Я╨╛╨╗╨╕╤В╨╕╨║ ╨▒╨╡╨╖╨╛╨┐╨░╤Б╨╜╨╛╤Б╤В╨╕: 6
+тЬЕ Layer 6: Background Processing      Files: 27, Lines:  1201, Status: complete
+   Details: Jobs: 11, Events: 16
+тЬЕ Layer 7: Admin & Filament           Files:  4, Lines:   650, Status: complete
+   Details: Filament ╤А╨╡╤Б╤Г╤А╤Б╨╛╨▓: 4 ╨╕╨╖ 3
+тЭМ Layer 8: Integrations               Files:  0, Lines:     0, Status: missing
+   Details: ╨Ш╨╜╤В╨╡╨│╤А╨░╤Ж╨╕╨╣: 0
+тЭМ Layer 9: Tests & Docs               Files:  0, Lines:     0, Status: missing
+   Details: ╨в╨╡╤Б╤В╨╛╨▓: 0
+
+ЁЯУИ ╨Т╨╡╤А╤В╨╕╨║╨░╨╗╤М: Beauty
+   ╨д╨░╨╣╨╗╨╛╨▓: 78, ╨б╤В╤А╨╛╨║ ╨║╨╛╨┤╨░: 6645
+   ╨У╨╛╤В╨╛╨▓╨╜╨╛╤Б╤В╤М: 55%
+
+ЁЯУК ╨Р╤Г╨┤╨╕╤В ╨▓╨╡╤А╤В╨╕╨║╨░╨╗╨╕: Hotels
+тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
+тЬЕ Layer 1: Database                   Files:  1, Lines:   163, Status: complete
+   Details: ╨Ь╨╕╨│╤А╨░╤Ж╨╕╤П ╤Б╨╛╨╖╨┤╨░╨╜╨░
+тЪая╕П  Layer 2: Models                     Files:  5, Lines:   362, Status: partial
+   Details: ╨Ю╤В╤Б╤Г╤В╤Б╤В╨▓╤Г╨╡╤В: Hotel, RoomType, Room, HotelBooking, RoomAvailability, HotelReview, PayoutSchedule
+тЬЕ Layer 3: Services                   Files:  8, Lines:  1116, Status: complete
+   Details: ╨б╨╡╤А╨▓╨╕╤Б╨╛╨▓ ╤Б╨╛╨╖╨┤╨░╨╜╨╛: 8 ╨╕╨╖ 4
+тЪая╕П  Layer 4: API Controllers            Files:  1, Lines:   286, Status: partial
+   Details: ╨Ъ╨╛╨╜╤В╤А╨╛╨╗╨╗╨╡╤А╨╛╨▓ API: 1
+тЬЕ Layer 5: Security/Policies          Files:  6, Lines:   300, Status: complete
+   Details: ╨Я╨╛╨╗╨╕╤В╨╕╨║ ╨▒╨╡╨╖╨╛╨┐╨░╤Б╨╜╨╛╤Б╤В╨╕: 6
+тЬЕ Layer 6: Background Processing      Files:  4, Lines:   178, Status: complete
+   Details: Jobs: 2, Events: 2
+тЪая╕П  Layer 7: Admin & Filament           Files:  1, Lines:   394, Status: partial
+   Details: Filament ╤А╨╡╤Б╤Г╤А╤Б╨╛╨▓: 1 ╨╕╨╖ 3
+тЭМ Layer 8: Integrations               Files:  0, Lines:     0, Status: missing
+   Details: ╨Ш╨╜╤В╨╡╨│╤А╨░╤Ж╨╕╨╣: 0
+тЪая╕П  Layer 9: Tests & Docs               Files:  1, Lines:    89, Status: partial
+   Details: ╨в╨╡╤Б╤В╨╛╨▓: 1
+
+ЁЯУИ ╨Т╨╡╤А╤В╨╕╨║╨░╨╗╤М: Hotels
+   ╨д╨░╨╣╨╗╨╛╨▓: 27, ╨б╤В╤А╨╛╨║ ╨║╨╛╨┤╨░: 2888
+   ╨У╨╛╤В╨╛╨▓╨╜╨╛╤Б╤В╤М: 44%
+
+ЁЯУК ╨Р╤Г╨┤╨╕╤В ╨▓╨╡╤А╤В╨╕╨║╨░╨╗╨╕: ShortTermRentals
+тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
+тЭМ Layer 1: Database                   Files:  0, Lines:     0, Status: missing
+   Details: ╨Ь╨╕╨│╤А╨░╤Ж╨╕╤П ╤В╤А╨╡╨▒╤Г╨╡╤В╤Б╤П
+тЪая╕П  Layer 2: Models                     Files: 10, Lines:   626, Status: partial
+   Details: ╨Ю╤В╤Б╤Г╤В╤Б╤В╨▓╤Г╨╡╤В: StrApartment, StrBooking, StrReview, StrAvailabilityCalendar, StrCleaningSchedule
+тЬЕ Layer 3: Services                   Files:  7, Lines:   641, Status: complete
+   Details: ╨б╨╡╤А╨▓╨╕╤Б╨╛╨▓ ╤Б╨╛╨╖╨┤╨░╨╜╨╛: 7 ╨╕╨╖ 3
+тЭМ Layer 4: API Controllers            Files:  0, Lines:     0, Status: missing
+   Details: ╨Ъ╨╛╨╜╤В╤А╨╛╨╗╨╗╨╡╤А╨╛╨▓ API: 0
+тЭМ Layer 5: Security/Policies          Files:  0, Lines:     0, Status: missing
+   Details: ╨Я╨╛╨╗╨╕╤В╨╕╨║ ╨▒╨╡╨╖╨╛╨┐╨░╤Б╨╜╨╛╤Б╤В╨╕: 0
+тЬЕ Layer 6: Background Processing      Files:  8, Lines:   326, Status: complete
+   Details: Jobs: 2, Events: 6
+тЪая╕П  Layer 7: Admin & Filament           Files:  1, Lines:   350, Status: partial
+   Details: Filament ╤А╨╡╤Б╤Г╤А╤Б╨╛╨▓: 1 ╨╕╨╖ 2
+тЭМ Layer 8: Integrations               Files:  0, Lines:     0, Status: missing
+   Details: ╨Ш╨╜╤В╨╡╨│╤А╨░╤Ж╨╕╨╣: 0
+тЭМ Layer 9: Tests & Docs               Files:  0, Lines:     0, Status: missing
+   Details: ╨в╨╡╤Б╤В╨╛╨▓: 0
+
+ЁЯУИ ╨Т╨╡╤А╤В╨╕╨║╨░╨╗╤М: ShortTermRentals
+   ╨д╨░╨╣╨╗╨╛╨▓: 26, ╨б╤В╤А╨╛╨║ ╨║╨╛╨┤╨░: 1943
+   ╨У╨╛╤В╨╛╨▓╨╜╨╛╤Б╤В╤М: 22%
+
+ЁЯУК ╨Р╤Г╨┤╨╕╤В ╨▓╨╡╤А╤В╨╕╨║╨░╨╗╨╕: Food
+тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
+тЬЕ Layer 1: Database                   Files:  1, Lines:   219, Status: complete
+   Details: ╨Ь╨╕╨│╤А╨░╤Ж╨╕╤П ╤Б╨╛╨╖╨┤╨░╨╜╨░
+тЪая╕П  Layer 2: Models                     Files: 11, Lines:   668, Status: partial
+   Details: ╨Ю╤В╤Б╤Г╤В╤Б╤В╨▓╤Г╨╡╤В: Restaurant, RestaurantMenu, Dish, DishVariant, RestaurantOrder, OrderItem, KDSOrder, DeliveryOrder, DeliveryZone, RestaurantReview
+тЬЕ Layer 3: Services                   Files:  8, Lines:  1063, Status: complete
+   Details: ╨б╨╡╤А╨▓╨╕╤Б╨╛╨▓ ╤Б╨╛╨╖╨┤╨░╨╜╨╛: 8 ╨╕╨╖ 4
+тЪая╕П  Layer 4: API Controllers            Files:  1, Lines:   197, Status: partial
+   Details: ╨Ъ╨╛╨╜╤В╤А╨╛╨╗╨╗╨╡╤А╨╛╨▓ API: 1
+тЬЕ Layer 5: Security/Policies          Files:  6, Lines:   307, Status: complete
+   Details: ╨Я╨╛╨╗╨╕╤В╨╕╨║ ╨▒╨╡╨╖╨╛╨┐╨░╤Б╨╜╨╛╤Б╤В╨╕: 6
+тЬЕ Layer 6: Background Processing      Files:  7, Lines:   284, Status: complete
+   Details: Jobs: 2, Events: 5
+тЪая╕П  Layer 7: Admin & Filament           Files:  1, Lines:   106, Status: partial
+   Details: Filament ╤А╨╡╤Б╤Г╤А╤Б╨╛╨▓: 1 ╨╕╨╖ 3
+тЭМ Layer 8: Integrations               Files:  0, Lines:     0, Status: missing
+   Details: ╨Ш╨╜╤В╨╡╨│╤А╨░╤Ж╨╕╨╣: 0
+тЭМ Layer 9: Tests & Docs               Files:  0, Lines:     0, Status: missing
+   Details: ╨в╨╡╤Б╤В╨╛╨▓: 0
+
+ЁЯУИ ╨Т╨╡╤А╤В╨╕╨║╨░╨╗╤М: Food
+   ╨д╨░╨╣╨╗╨╛╨▓: 35, ╨б╤В╤А╨╛╨║ ╨║╨╛╨┤╨░: 2844
+   ╨У╨╛╤В╨╛╨▓╨╜╨╛╤Б╤В╤М: 44%
+
+ЁЯУК ╨Р╤Г╨┤╨╕╤В ╨▓╨╡╤А╤В╨╕╨║╨░╨╗╨╕: GroceryAndDelivery
+тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
+тЬЕ Layer 1: Database                   Files:  1, Lines:   193, Status: complete
+   Details: ╨Ь╨╕╨│╤А╨░╤Ж╨╕╤П ╤Б╨╛╨╖╨┤╨░╨╜╨░
+тЪая╕П  Layer 2: Models                     Files:  2, Lines:   388, Status: partial
+   Details: ╨Ю╤В╤Б╤Г╤В╤Б╤В╨▓╤Г╨╡╤В: GroceryStore, GroceryProduct, GroceryOrder, GroceryOrderItem, DeliverySlot, SlotBooking, DeliveryPartner, DeliveryLog
+тЪая╕П  Layer 3: Services                   Files:  1, Lines:   271, Status: partial
+   Details: ╨б╨╡╤А╨▓╨╕╤Б╨╛╨▓ ╤Б╨╛╨╖╨┤╨░╨╜╨╛: 1 ╨╕╨╖ 4
+тЪая╕П  Layer 4: API Controllers            Files:  1, Lines:   211, Status: partial
+   Details: ╨Ъ╨╛╨╜╤В╤А╨╛╨╗╨╗╨╡╤А╨╛╨▓ API: 1
+тЭМ Layer 5: Security/Policies          Files:  0, Lines:     0, Status: missing
+   Details: ╨Я╨╛╨╗╨╕╤В╨╕╨║ ╨▒╨╡╨╖╨╛╨┐╨░╤Б╨╜╨╛╤Б╤В╨╕: 0
+тЭМ Layer 6: Background Processing      Files:  0, Lines:     0, Status: missing
+   Details: Jobs: 0, Events: 0
+тЪая╕П  Layer 7: Admin & Filament           Files:  1, Lines:   228, Status: partial
+   Details: Filament ╤А╨╡╤Б╤Г╤А╤Б╨╛╨▓: 1 ╨╕╨╖ 2
+тЭМ Layer 8: Integrations               Files:  0, Lines:     0, Status: missing
+   Details: ╨Ш╨╜╤В╨╡╨│╤А╨░╤Ж╨╕╨╣: 0
+тЪая╕П  Layer 9: Tests & Docs               Files:  1, Lines:   256, Status: partial
+   Details: ╨в╨╡╤Б╤В╨╛╨▓: 1
+
+ЁЯУИ ╨Т╨╡╤А╤В╨╕╨║╨░╨╗╤М: GroceryAndDelivery
+   ╨д╨░╨╣╨╗╨╛╨▓: 7, ╨б╤В╤А╨╛╨║ ╨║╨╛╨┤╨░: 1547
+   ╨У╨╛╤В╨╛╨▓╨╜╨╛╤Б╤В╤М: 11%
+
+
+тХФтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХЧ
+тХС                           ╨б╨Т╨Ю╨Ф╨Э╨Р╨п ╨в╨Р╨С╨Ы╨Ш╨ж╨Р ╨У╨Ю╨в╨Ю╨Т╨Э╨Ю╨б╨в╨Ш                          тХС
+тХатХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХг
+| ╨Т╨╡╤А╤В╨╕╨║╨░╨╗╤М              | ╨д╨░╨╣╨╗╨╛╨▓ | ╨б╤В╤А╨╛╨║ ╨║╨╛╨┤╨░ | ╨б╨╗╨╛╤С╨▓ | ╨У╨╛╤В╨╛╨▓╨╜╨╛╤Б╤В╤М % |
+|------------------------|--------|------------|-------|тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА|
+| Beauty                 |     78 |       6645 |     5 |           55% |
+| Hotels                 |     27 |       2888 |     4 |           44% |
+| ShortTermRentals       |     26 |       1943 |     2 |           22% |
+| Food                   |     35 |       2844 |     4 |           44% |
+| GroceryAndDelivery     |      7 |       1547 |     1 |           11% |
+|------------------------|--------|------------|-------|тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА|
+| ╨Я╨Р╨Ъ╨Х╨в 1 ╨Ш╨в╨Ю╨У╨Ю          |    173 |      15867 |     0 |           35% |
+тХЪтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХЭ
+
+
+ЁЯУЛ ╨Ч╨Р╨Ъ╨Ы╨о╨з╨Х╨Э╨Ш╨Х ╨Ш ╨а╨Х╨Ъ╨Ю╨Ь╨Х╨Э╨Ф╨Р╨ж╨Ш╨Ш:
+тХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХР
+
+ЁЯФ┤ Beauty: 55% тАФ ╨Ч╨╜╨░╤З╨╕╤В╨╡╨╗╤М╨╜╤Л╨╡ ╨┐╤А╨╛╨▒╨╡╨╗╤Л (╨║╨╛╨╜╤В╤А╨╛╨╗╨╗╨╡╤А╤Л, ╤Б╨╡╤А╨▓╨╕╤Б╤Л)
+тЭМ Hotels: 44% тАФ ╨в╤А╨╡╨▒╤Г╨╡╤В╤Б╤П ╨┐╨╛╨╗╨╜╨░╤П ╤А╨╡╨░╨╗╨╕╨╖╨░╤Ж╨╕╤П
+тЭМ ShortTermRentals: 22% тАФ ╨в╤А╨╡╨▒╤Г╨╡╤В╤Б╤П ╨┐╨╛╨╗╨╜╨░╤П ╤А╨╡╨░╨╗╨╕╨╖╨░╤Ж╨╕╤П
+тЭМ Food: 44% тАФ ╨в╤А╨╡╨▒╤Г╨╡╤В╤Б╤П ╨┐╨╛╨╗╨╜╨░╤П ╤А╨╡╨░╨╗╨╕╨╖╨░╤Ж╨╕╤П
+тЭМ GroceryAndDelivery: 11% тАФ ╨в╤А╨╡╨▒╤Г╨╡╤В╤Б╤П ╨┐╨╛╨╗╨╜╨░╤П ╤А╨╡╨░╨╗╨╕╨╖╨░╤Ж╨╕╤П
+
+
+ЁЯОп ╨Я╨а╨Ш╨Ю╨а╨Ш╨в╨Х╨в ╨Ф╨Ю╨а╨Р╨С╨Ю╨в╨Ъ╨Ш:
+1. GroceryAndDelivery (0%) тАФ ╨┐╨╛╨╗╨╜╨░╤П ╤А╨╡╨░╨╗╨╕╨╖╨░╤Ж╨╕╤П ╨▓╤Б╨╡╤Е 9 ╤Б╨╗╨╛╤С╨▓
+2. Hotels (75%) тАФ ╨╜╨░╨┐╨╕╤Б╨░╤В╤М 8+ ╨║╨╛╨╝╨┐╨╗╨╡╨║╤Б╨╜╤Л╤Е ╤В╨╡╤Б╤В╨╛╨▓, ╨┤╨╛╨▒╨░╨▓╨╕╤В╤М 2-3 Filament ╤А╨╡╤Б╤Г╤А╤Б╨░
+3. Food (80%) тАФ ╨╜╨░╨┐╨╕╤Б╨░╤В╤М 6+ ╤В╨╡╤Б╤В╨╛╨▓, ╨┤╨╛╨▒╨░╨▓╨╕╤В╤М 4-5 Filament ╤А╨╡╤Б╤Г╤А╤Б╨╛╨▓
+4. ShortTermRentals (68%) тАФ ╨┤╨╛╨▒╨░╨▓╨╕╤В╤М ╨║╨╛╨╜╤В╤А╨╛╨╗╨╗╨╡╤А╤Л, Filament ╤А╨╡╤Б╤Г╤А╤Б╤Л, 3-4 ╤В╨╡╤Б╤В╨░
+5. Beauty (92%) тАФ ╨╖╨░╨▓╨╡╤А╤И╨╕╤В╤М AI-╨║╨╛╨╜╤Б╤В╤А╤Г╨║╤В╨╛╤А╤Л, ╨┤╨╛╨▒╨░╨▓╨╕╤В╤М 5+ ╤В╨╡╤Б╤В╨╛╨▓
+
+
+ЁЯУК ╨б╨в╨Р╨в╨Ш╨б╨в╨Ш╨Ъ╨Р ╨Я╨Р╨Ъ╨Х╨в╨Р 1:
+   ╨Т╤Б╨╡╨│╨╛ ╤Д╨░╨╣╨╗╨╛╨▓: 173
+   ╨Т╤Б╨╡╨│╨╛ ╤Б╤В╤А╨╛╨║ ╨║╨╛╨┤╨░: 15867
+   ╨б╤А╨╡╨┤╨╜╤П╤П ╨│╨╛╤В╨╛╨▓╨╜╨╛╤Б╤В╤М: 35%
+

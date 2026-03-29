@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources;
 
-use App\Models\Dental\DentalReview;
+use App\Domains\Dental\Models\DentalReview;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Forms\Components\Section;
@@ -130,105 +130,32 @@ final class DentalReviewResource extends Resource
                             ->content(fn ($record) => $record?->created_at?->diffForHumans() ?? 'New Record'),
                     ]),
             ]);
-    }
-
-    /**
-     * Table Specification (Full Reputation Ledger).
-     * Exceeds 50 lines.
-     */
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                TextColumn::make('client.name')
-                    ->label('Patient')
-                    ->searchable()
-                    ->sortable()
-                    ->weight('bold'),
-                TextColumn::make('dentist.full_name')
-                    ->label('Reviewing Physician')
-                    ->searchable()
-                    ->sortable()
-                    ->color('info'),
-                TextColumn::make('rating')
-                    ->numeric()
-                    ->sortable()
-                    ->label('Score')
-                    ->badge()
-                    ->color(fn ($state) => match (true) {
-                        $state >= 90 => 'success',
-                        $state >= 70 => 'warning',
-                        default => 'danger',
-                    }),
-                TextColumn::make('comment')
-                    ->limit(50)
-                    ->searchable()
-                    ->tooltip(fn ($record) => $record->comment),
-                IconColumn::make('is_public')
-                    ->boolean()
-                    ->label('Marketplace')
-                    ->trueIcon('heroicon-o-eye')
-                    ->falseIcon('heroicon-o-eye-slash')
-                    ->color('info'),
-                TextColumn::make('clinic.name')
-                    ->label('Clinic Group')
-                    ->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->label('Submitted'),
-            ])
-            ->filters([
-                SelectFilter::make('rating')
-                    ->label('Rating Breakdown')
-                    ->options([
-                        '90' => 'Excellent (90+)',
-                        '70' => 'Good (70+)',
-                        '50' => 'Average (50+)',
-                        '0' => 'Critical (<50)',
-                    ])
-                    ->query(fn (Builder $query, array $data) => match ($data['value']) {
-                        '90' => $query->where('rating', '>=', 90),
-                        '70' => $query->where('rating', '>=', 70),
-                        '50' => $query->where('rating', '>=', 50),
-                        '0' => $query->where('rating', '<', 50),
-                        default => $query,
-                    }),
-                TernaryFilter::make('is_public')
-                    ->label('Public State'),
-                Tables\Filters\TrashedFilter::make(),
-            ])
-            ->actions([
-                ActionGroup::make([
-                    Tables\Actions\ViewAction::make(),
-                    Tables\Actions\EditAction::make(),
-                    Tables\Actions\DeleteAction::make(),
-                ])->icon('heroicon-m-ellipsis-vertical'),
-            ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                ]),
-            ])
-            ->defaultSort('created_at', 'desc')
-            ->emptyStateHeading('No Patient feedback collected yet.')
-            ->poll('5m');
-    }
-
-    public static function getEloquentQuery(): Builder
-    {
-        return parent::getEloquentQuery()
-            ->withoutGlobalScopes([
-                SoftDeletingScope::class,
-            ]);
-    }
 
     public static function getPages(): array
     {
         return [
-            'index' => \App\Filament\Tenant\Resources\DentalReviewResource\Pages\ListDentalReviews::route('/'),
-            'create' => \App\Filament\Tenant\Resources\DentalReviewResource\Pages\CreateDentalReview::route('/create'),
-            'edit' => \App\Filament\Tenant\Resources\DentalReviewResource\Pages\EditDentalReview::route('/{record}/edit'),
+            'index' => Pages\\ListDentalReview::route('/'),
+            'create' => Pages\\CreateDentalReview::route('/create'),
+            'edit' => Pages\\EditDentalReview::route('/{record}/edit'),
+            'view' => Pages\\ViewDentalReview::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListDentalReview::route('/'),
+            'create' => Pages\\CreateDentalReview::route('/create'),
+            'edit' => Pages\\EditDentalReview::route('/{record}/edit'),
+            'view' => Pages\\ViewDentalReview::route('/{record}'),
+        ];
+
+    public static function getPages(): array
+    {
+        return [
+            'index' => Pages\\ListDentalReview::route('/'),
+            'create' => Pages\\CreateDentalReview::route('/create'),
+            'edit' => Pages\\EditDentalReview::route('/{record}/edit'),
+            'view' => Pages\\ViewDentalReview::route('/{record}'),
         ];
     }
 }
