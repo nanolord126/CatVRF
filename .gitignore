@@ -16,19 +16,24 @@ yarn-error.log
 *.zip
 !Beauty_Module_*.zip
 
-# === SENSEY PRODUCTION MODE — NO SCRIPTS EVER AGAIN ===
+# === SENSEY PRODUCTION MODE — NO JUNK EVER AGAIN ===
 .archive/
 *.7z
 *.exe
 *.ps1
 *.bat
 fix_*.php
+cleanup_*.php
 FINAL_*.php
 ULTRA_*.php
 massive_fixer*
 mega_fixer*
 ETAP*
+ETAP_*
 AUDIT_*
+FINAL_AUDIT*
+AUTOFIX_*
+CI_CD_*
 CLEANUP_*
 PHASE*
 SENSEI_*
@@ -39,3 +44,9 @@ getpages*
 doppler.*
 scripts/fix_*
 scripts/cleanup_*
+# Временные файлы и артефакты
+*.tmp
+*.diff
+*.patch
+tmp_*
+wave*_output.txt
