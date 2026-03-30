@@ -1,1 +1,0 @@
-<?php require 'vendor/autoload.php'; $app = require_once 'bootstrap/app.php'; $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class); $kernel->bootstrap(); $u = App\Models\User::firstOrCreate(['email' => 'admin2@catvrf.local'], ['name' => 'Admin', 'password' => Hash::make('password')]); echo 'Created: ' . $u->email;
