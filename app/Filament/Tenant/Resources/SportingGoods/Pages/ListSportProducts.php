@@ -1,23 +1,14 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\SportingGoods\Pages;
 
-use App\Filament\Tenant\Resources\SportingGoods\SportProductResource;
-use Filament\Resources\Pages\ListRecords;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final /**
- * ListSportProducts
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class ListSportProducts extends ListRecords
+final class ListSportProducts extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = SportProductResource::class;
 }

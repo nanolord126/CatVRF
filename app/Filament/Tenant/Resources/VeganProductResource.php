@@ -1,150 +1,138 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources;
 
-use App\Domains\VeganProducts\Models\VeganProduct;
-use App\Domains\VeganProducts\Models\VeganStore;
-use App\Domains\VeganProducts\Models\VeganCategory;
-use Filament\Forms;
-use Filament\Forms\Form;
-use Filament\Resources\Resource;
-use Filament\Tables;
-use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * VeganProductResource - Layer 5/9: UI (Filament).
- * Full management of plant-based inventory for current tenant.
- * Requirement: 60+ lines, correlation_id, audit, multi-tenant.
- */
-class VeganProductResource extends Resource
+final class VeganProductResource extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static ?string $model = VeganProduct::class;
-    
-    protected static ?string $navigationIcon = 'heroicon-o-shopping-bag';
-    protected static ?string $navigationGroup = 'Vegan Products Marketplace';
-    protected static ?string $label = 'Plant-Based Product';
 
-    /**
-     * Define visual form for creating and editing vegan products.
-     */
-    public static function form(Form $form): Form
-    {
-        return $form
-            ->schema([
-                Forms\Components\Section::make('General Information')
-                    ->description('Primary details for the plant-based product.')
-                    ->schema([
-                        Forms\Components\TextInput::make('name')
-                            ->required()
-                            ->maxLength(255)
-                            ->live(onBlur: true)
-                            ->afterStateUpdated(fn (string $state, Forms\Set $set) => $set('slug', Str::slug($state))),
+        protected static ?string $navigationIcon = 'heroicon-o-shopping-bag';
+        protected static ?string $navigationGroup = 'Vegan Products Marketplace';
+        protected static ?string $label = 'Plant-Based Product';
 
-                        Forms\Components\TextInput::make('slug')
-                            ->required()
-                            ->unique(ignoreRecord: true)
-                            ->maxLength(255),
+        /**
+         * Define visual form for creating and editing vegan products.
+         */
+        public static function form(Form $form): Form
+        {
+            return $form
+                ->schema([
+                    Forms\Components\Section::make('General Information')
+                        ->description('Primary details for the plant-based product.')
+                        ->schema([
+                            Forms\Components\TextInput::make('name')
+                                ->required()
+                                ->maxLength(255)
+                                ->live(onBlur: true)
+                                ->afterStateUpdated(fn (string $state, Forms\Set $set) => $set('slug', Str::slug($state))),
 
-                        Forms\Components\Select::make('vegan_store_id')
-                            ->label('Store')
-                            ->relationship('store', 'name')
-                            ->required()
-                            ->searchable()
-                            ->preload(),
+                            Forms\Components\TextInput::make('slug')
+                                ->required()
+                                ->unique(ignoreRecord: true)
+                                ->maxLength(255),
 
-                        Forms\Components\Select::make('vegan_category_id')
-                            ->label('Category')
-                            ->relationship('category', 'name')
-                            ->required()
-                            ->searchable()
-                            ->preload(),
-                    ])->columns(2),
+                            Forms\Components\Select::make('vegan_store_id')
+                                ->label('Store')
+                                ->relationship('store', 'name')
+                                ->required()
+                                ->searchable()
+                                ->preload(),
 
-                Forms\Components\Section::make('Pricing & Inventory')
-                    ->description('Financial and stock control.')
-                    ->schema([
-                        Forms\Components\TextInput::make('price_b2c')
-                            ->label('B2C Price (Kopecks)')
-                            ->numeric()
-                            ->required()
-                            ->suffix('коп.'),
+                            Forms\Components\Select::make('vegan_category_id')
+                                ->label('Category')
+                                ->relationship('category', 'name')
+                                ->required()
+                                ->searchable()
+                                ->preload(),
+                        ])->columns(2),
 
-                        Forms\Components\TextInput::make('price_b2b')
-                            ->label('B2B Price (Kopecks)')
-                            ->numeric()
-                            ->required(),
+                    Forms\Components\Section::make('Pricing & Inventory')
+                        ->description('Financial and stock control.')
+                        ->schema([
+                            Forms\Components\TextInput::make('price_b2c')
+                                ->label('B2C Price (Kopecks)')
+                                ->numeric()
+                                ->required()
+                                ->suffix('коп.'),
 
-                        Forms\Components\TextInput::make('stock_quantity')
-                            ->label('Initial Stock')
-                            ->numeric()
-                            ->default(0)
-                            ->required(),
+                            Forms\Components\TextInput::make('price_b2b')
+                                ->label('B2B Price (Kopecks)')
+                                ->numeric()
+                                ->required(),
 
-                        Forms\Components\TextInput::make('sku')
-                            ->label('SKU')
-                            ->required()
-                            ->unique(ignoreRecord: true),
-                    ])->columns(2),
+                            Forms\Components\TextInput::make('stock_quantity')
+                                ->label('Initial Stock')
+                                ->numeric()
+                                ->default(0)
+                                ->required(),
 
-                Forms\Components\Section::make('Health & Nutrition (JSONB)')
-                    ->description('Detailed nutritional data and allergen information.')
-                    ->schema([
-                        Forms\Components\KeyValue::make('nutrition_info')
-                            ->label('Nutrition per 100g')
-                            ->addable()
-                            ->deletable()
-                            ->keyLabel('Metric (e.g., protein)')
-                            ->valueLabel('Value'),
+                            Forms\Components\TextInput::make('sku')
+                                ->label('SKU')
+                                ->required()
+                                ->unique(ignoreRecord: true),
+                        ])->columns(2),
 
-                        Forms\Components\CheckboxList::make('allergen_info')
-                            ->label('Contains Allergens')
-                            ->options([
-                                'nuts' => 'Nuts',
-                                'soy' => 'Soy',
-                                'gluten' => 'Gluten',
-                                'sesame' => 'Sesame',
-                                'mustard' => 'Mustard',
-                                'celery' => 'Celery',
-                            ])->columns(3),
-                    ]),
+                    Forms\Components\Section::make('Health & Nutrition (JSONB)')
+                        ->description('Detailed nutritional data and allergen information.')
+                        ->schema([
+                            Forms\Components\KeyValue::make('nutrition_info')
+                                ->label('Nutrition per 100g')
+                                ->addable()
+                                ->deletable()
+                                ->keyLabel('Metric (e.g., protein)')
+                                ->valueLabel('Value'),
 
-                Forms\Components\Section::make('Marketing')
-                    ->schema([
-                        Forms\Components\TagsInput::make('tags')
-                            ->placeholder('New Tag'),
-                        
-                        Forms\Components\Toggle::make('is_active')
-                            ->label('Visible on Marketplace')
-                            ->default(true),
+                            Forms\Components\CheckboxList::make('allergen_info')
+                                ->label('Contains Allergens')
+                                ->options([
+                                    'nuts' => 'Nuts',
+                                    'soy' => 'Soy',
+                                    'gluten' => 'Gluten',
+                                    'sesame' => 'Sesame',
+                                    'mustard' => 'Mustard',
+                                    'celery' => 'Celery',
+                                ])->columns(3),
+                        ]),
 
-                        Forms\Components\TextInput::make('correlation_id')
-                            ->label('Correlation ID (Read-only)')
-                            ->disabled()
-                            ->dehydrated(false)
-                            ->default(fn () => (string) Str::uuid()),
-                    ]),
-            ]);
+                    Forms\Components\Section::make('Marketing')
+                        ->schema([
+                            Forms\Components\TagsInput::make('tags')
+                                ->placeholder('New Tag'),
 
-    public static function getPages(): array
-    {
-        return [
-            'index' => Pages\\ListVeganProduct::route('/'),
-            'create' => Pages\\CreateVeganProduct::route('/create'),
-            'edit' => Pages\\EditVeganProduct::route('/{record}/edit'),
-            'view' => Pages\\ViewVeganProduct::route('/{record}'),
-        ];
+                            Forms\Components\Toggle::make('is_active')
+                                ->label('Visible on Marketplace')
+                                ->default(true),
 
-    public static function getPages(): array
-    {
-        return [
-            'index' => Pages\\ListVeganProduct::route('/'),
-            'create' => Pages\\CreateVeganProduct::route('/create'),
-            'edit' => Pages\\EditVeganProduct::route('/{record}/edit'),
-            'view' => Pages\\ViewVeganProduct::route('/{record}'),
-        ];
-    }
+                            Forms\Components\TextInput::make('correlation_id')
+                                ->label('Correlation ID (Read-only)')
+                                ->disabled()
+                                ->dehydrated(false)
+                                ->default(fn () => (string) Str::uuid()),
+                        ]),
+                ]);
+
+        public static function getPages(): array
+        {
+            return [
+                'index' => Pages\\ListVeganProduct::route('/'),
+                'create' => Pages\\CreateVeganProduct::route('/create'),
+                'edit' => Pages\\EditVeganProduct::route('/{record}/edit'),
+                'view' => Pages\\ViewVeganProduct::route('/{record}'),
+            ];
+
+        public static function getPages(): array
+        {
+            return [
+                'index' => Pages\\ListVeganProduct::route('/'),
+                'create' => Pages\\CreateVeganProduct::route('/create'),
+                'edit' => Pages\\EditVeganProduct::route('/{record}/edit'),
+                'view' => Pages\\ViewVeganProduct::route('/{record}'),
+            ];
+        }
 }

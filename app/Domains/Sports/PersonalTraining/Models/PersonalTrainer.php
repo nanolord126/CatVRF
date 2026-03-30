@@ -1,31 +1,14 @@
 <?php declare(strict_types=1);
-namespace App\
 
-/**
- * PersonalTrainer
- * 
- * Производитель: CatVRF Platform
- * Версия: 1.0.0
- * 
- * Примеры использования:
- * 
- * ```php
- * // Базовое использование
- * $instance = new PersonalTrainer();
- * ```
- * 
- * Требования:
- * - Laravel 10+
- * - PHP 8.2+
- * - Все методы должны быть явно типизированы
- * 
- * @author CatVRF
- * @package namespace App\Domains\Sports\PersonalTraining\Models
- * @see https://github.com/iyegorovskyi_clemny/CatVRF
- */
-Domains\PersonalTraining\Models;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
+namespace App\Domains\Sports\PersonalTraining\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Traits\TenantScoped;
-final class PersonalTrainer extends Model{use HasUuids,SoftDeletes,TenantScoped;protected $table='personal_trainers';protected $fillable=['uuid','tenant_id','user_id','correlation_id','name','specializations','price_kopecks_per_hour','rating','is_verified','tags'];protected $casts=['specializations'=>'json','price_kopecks_per_hour'=>'integer','rating'=>'float','is_verified'=>'boolean','tags'=>'json'];protected static function booted(){static::addGlobalScope('tenant',fn($q)=>$q->where('personal_trainers.tenant_id',tenant()->id));}}
+
+final class PersonalTrainer extends Model
+{
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    use HasUuids,SoftDeletes,TenantScoped;protected $table='personal_trainers';protected $fillable=['uuid','tenant_id','user_id','correlation_id','name','specializations','price_kopecks_per_hour','rating','is_verified','tags'];protected $casts=['specializations'=>'json','price_kopecks_per_hour'=>'integer','rating'=>'float','is_verified'=>'boolean','tags'=>'json'];protected static function booted(){static::addGlobalScope('tenant',fn($q)=>$q->where('personal_trainers.tenant_id',tenant()->id));}
+}

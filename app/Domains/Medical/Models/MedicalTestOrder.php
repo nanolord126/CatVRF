@@ -2,66 +2,68 @@
 
 namespace App\Domains\Medical\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 final class MedicalTestOrder extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use SoftDeletes;
 
-    protected $table = 'medical_test_orders';
+        protected $table = 'medical_test_orders';
 
-    protected $fillable = [
-        'tenant_id',
-        'appointment_id',
-        'patient_id',
-        'clinic_id',
-        'test_order_number',
-        'tests',
-        'total_amount',
-        'commission_amount',
-        'status',
-        'payment_status',
-        'ordered_at',
-        'completed_at',
-        'results',
-        'transaction_id',
-        'correlation_id',
-    ];
+        protected $fillable = [
+            'tenant_id',
+            'appointment_id',
+            'patient_id',
+            'clinic_id',
+            'test_order_number',
+            'tests',
+            'total_amount',
+            'commission_amount',
+            'status',
+            'payment_status',
+            'ordered_at',
+            'completed_at',
+            'results',
+            'transaction_id',
+            'correlation_id',
+        ];
 
-    protected $hidden = ['deleted_at'];
+        protected $hidden = ['deleted_at'];
 
-    protected $casts = [
-        'tests' => 'collection',
-        'results' => 'collection',
-        'total_amount' => 'float',
-        'commission_amount' => 'float',
-        'ordered_at' => 'datetime',
-        'completed_at' => 'datetime',
-    ];
+        protected $casts = [
+            'tests' => 'collection',
+            'results' => 'collection',
+            'total_amount' => 'float',
+            'commission_amount' => 'float',
+            'ordered_at' => 'datetime',
+            'completed_at' => 'datetime',
+        ];
 
-    protected static function booted(): void
-    {
-        static::addGlobalScope('tenant', function ($query) {
-            if ($tenantId = auth()?->user()?->tenant_id ?? filament()?->getTenant()?->id) {
-                $query->where('tenant_id', $tenantId);
-            }
-        });
-    }
+        protected static function booted(): void
+        {
+            static::addGlobalScope('tenant', function ($query) {
+                if ($tenantId = auth()?->user()?->tenant_id ?? filament()?->getTenant()?->id) {
+                    $query->where('tenant_id', $tenantId);
+                }
+            });
+        }
 
-    public function appointment(): BelongsTo
-    {
-        return $this->belongsTo(MedicalAppointment::class, 'appointment_id');
-    }
+        public function appointment(): BelongsTo
+        {
+            return $this->belongsTo(MedicalAppointment::class, 'appointment_id');
+        }
 
-    public function patient(): BelongsTo
-    {
-        return $this->belongsTo(\App\Models\User::class, 'patient_id');
-    }
+        public function patient(): BelongsTo
+        {
+            return $this->belongsTo(\App\Models\User::class, 'patient_id');
+        }
 
-    public function clinic(): BelongsTo
-    {
-        return $this->belongsTo(MedicalClinic::class, 'clinic_id');
-    }
+        public function clinic(): BelongsTo
+        {
+            return $this->belongsTo(MedicalClinic::class, 'clinic_id');
+        }
 }

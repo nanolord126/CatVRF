@@ -1,29 +1,19 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Domains\Sports\Fitness\Filament\Resources\GymResource\Pages;
 
-use App\Domains\Sports\Fitness\Filament\Resources\GymResource;
-use Filament\Actions;
-use Filament\Resources\Pages\ListRecords;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final /**
- * ListGyms
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class ListGyms extends ListRecords
+final class ListGyms extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = GymResource::class;
 
-    protected function getHeaderActions(): array
-    {
-        return [Actions\CreateAction::make()];
-    }
+        protected function getHeaderActions(): array
+        {
+            return [Actions\CreateAction::make()];
+        }
 }

@@ -1,70 +1,56 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Domains\Beauty\Cosmetics\Services;
 
-use Illuminate\Support\Facades\Log;
-use App\Services\FraudControlService;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-use App\Domains\Beauty\Cosmetics\Models\CosmeticProduct;
-use App\Domains\Beauty\Cosmetics\Models\CosmeticOrder;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\DB;
-
-final /**
- * CosmeticService
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class CosmeticService
+final class CosmeticService extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-        private readonly FraudControlService $fraudControlService,
-        private readonly string $correlationId = '',
-    ) {
-        $this->correlationId = $correlationId ?: Str::uuid()->toString();
-    }
+            private readonly FraudControlService $fraudControlService,
+            private readonly string $correlationId = '',
+        ) {
+            $this->correlationId = $correlationId ?: Str::uuid()->toString();
+        }
 
-    public function orderProduct(int $productId, int $quantity, int $userId, int $tenantId): CosmeticOrder
-    {
-        $this->fraudControlService->check(
-            auth()->id() ?? 0,
-            __CLASS__ . '::' . __FUNCTION__,
-            0,
-            request()->ip(),
-            null,
-            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-        );
-DB::transaction(function () use ($productId, $quantity, $userId, $tenantId) {
-            $product = CosmeticProduct::lockForUpdate()->find($productId);
-            
-            if (!$product || $product->stock < $quantity) {
-                throw new \Exception('Insufficient stock');
-            }
+        public function orderProduct(int $productId, int $quantity, int $userId, int $tenantId): CosmeticOrder
+        {
+            $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
+    DB::transaction(function () use ($productId, $quantity, $userId, $tenantId) {
+                $product = CosmeticProduct::lockForUpdate()->find($productId);
 
-            $order = CosmeticOrder::create([
-                'tenant_id' => $tenantId,
-                'uuid' => Str::uuid(),
-                'correlation_id' => $this->correlationId,
-                'product_id' => $productId,
-                'user_id' => $userId,
-                'quantity' => $quantity,
-                'total_price' => $product->price * $quantity,
-                'status' => 'pending',
-            ]);
+                if (!$product || $product->stock < $quantity) {
+                    throw new \Exception('Insufficient stock');
+                }
 
-            Log::channel('audit')->info('Cosmetic order created', [
-                'correlation_id' => $this->correlationId,
-                'product_id' => $productId,
-            ]);
+                $order = CosmeticOrder::create([
+                    'tenant_id' => $tenantId,
+                    'uuid' => Str::uuid(),
+                    'correlation_id' => $this->correlationId,
+                    'product_id' => $productId,
+                    'user_id' => $userId,
+                    'quantity' => $quantity,
+                    'total_price' => $product->price * $quantity,
+                    'status' => 'pending',
+                ]);
 
-            return $order;
-        });
-    }
+                Log::channel('audit')->info('Cosmetic order created', [
+                    'correlation_id' => $this->correlationId,
+                    'product_id' => $productId,
+                ]);
+
+                return $order;
+            });
+        }
 }

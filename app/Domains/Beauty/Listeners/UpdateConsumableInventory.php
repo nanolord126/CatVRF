@@ -1,45 +1,35 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Domains\Beauty\Listeners;
 
-use App\Domains\Beauty\Events\ConsumableDeducted;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final /**
- * UpdateConsumableInventory
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class UpdateConsumableInventory
+final class UpdateConsumableInventory extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function handle(ConsumableDeducted $event): void
-    {
-        try {
-            DB::transaction(function () use ($event) {
-                Log::channel('audit')->info('Consumable inventory updated', [
-                    'appointment_id' => $event->appointmentId,
-                    'consumables_count' => count($event->consumables),
+        {
+            try {
+                DB::transaction(function () use ($event) {
+                    Log::channel('audit')->info('Consumable inventory updated', [
+                        'appointment_id' => $event->appointmentId,
+                        'consumables_count' => count($event->consumables),
+                        'correlation_id' => $event->correlationId,
+                        'action' => 'consumable_inventory_deducted',
+                    ]);
+                    // foreach ($event->consumables as $consumable) {
+                    //     InventoryService::deduct($consumable['id'], $consumable['quantity']);
+                    // }
+                });
+            } catch (\Exception $e) {
+                Log::channel('audit')->error('Failed to update consumable inventory', [
                     'correlation_id' => $event->correlationId,
-                    'action' => 'consumable_inventory_deducted',
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
                 ]);
-                // foreach ($event->consumables as $consumable) {
-                //     InventoryService::deduct($consumable['id'], $consumable['quantity']);
-                // }
-            });
-        } catch (\Exception $e) {
-            Log::channel('audit')->error('Failed to update consumable inventory', [
-                'correlation_id' => $event->correlationId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+            }
         }
-    }
 }

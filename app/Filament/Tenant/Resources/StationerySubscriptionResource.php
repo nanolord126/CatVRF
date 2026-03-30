@@ -1,135 +1,120 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources;
 
-use App\Domains\Stationery\Models\StationerySubscription;
-use App\Domains\Stationery\Models\StationeryStore;
-use App\Services\Stationery\StationerySubscriptionService;
-use Filament\Forms;
-use Filament\Forms\Form;
-use Filament\Resources\Resource;
-use Filament\Tables;
-use Filament\Tables\Table;
-use Filament\Notifications\Notification;
-use Filament\Tables\Actions\Action;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\DB;
-use App\Models\User;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * StationerySubscriptionResource.
- * Managing of Recurring Stationery Supplies (Office Boxes, Premium Kit Boxes).
- * Includes Billing Period and Box Type Logic.
- */
-class StationerySubscriptionResource extends Resource
+final class StationerySubscriptionResource extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static ?string $model = StationerySubscription::class;
-    protected static ?string $navigationIcon = 'heroicon-o-arrow-path-rounded-square';
-    protected static ?string $navigationGroup = 'Stationery Hub';
-    protected static ?string $tenantOwnershipRelationshipName = 'store';
+        protected static ?string $navigationIcon = 'heroicon-o-arrow-path-rounded-square';
+        protected static ?string $navigationGroup = 'Stationery Hub';
+        protected static ?string $tenantOwnershipRelationshipName = 'store';
 
-    /**
-     * Subscription Form with Interval and Tier selection.
-     */
-    public static function form(Form $form): Form
-    {
-        return $form->schema([
-            Forms\Components\Split::make([
-                Forms\Components\Section::make('Subscription Core')->schema([
-                    Forms\Components\Select::make('user_id')
-                        ->relationship('user', 'name')
-                        ->required()
-                        ->searchable()
-                        ->label('Customer (B2B/B2C)'),
+        /**
+         * Subscription Form with Interval and Tier selection.
+         */
+        public static function form(Form $form): Form
+        {
+            return $form->schema([
+                Forms\Components\Split::make([
+                    Forms\Components\Section::make('Subscription Core')->schema([
+                        Forms\Components\Select::make('user_id')
+                            ->relationship('user', 'name')
+                            ->required()
+                            ->searchable()
+                            ->label('Customer (B2B/B2C)'),
 
-                    Forms\Components\Select::make('store_id')
-                        ->relationship('store', 'name')
-                        ->required()
-                        ->searchable()
-                        ->label('Source Store'),
+                        Forms\Components\Select::make('store_id')
+                            ->relationship('store', 'name')
+                            ->required()
+                            ->searchable()
+                            ->label('Source Store'),
 
-                    Forms\Components\Select::make('box_tier')
-                        ->options([
-                            'Basic' => 'Basic Office Supplies',
-                            'Standard' => 'Standard Corporate Kit',
-                            'Premium' => 'Premium Art & Design Box',
-                            'Executive' => 'Executive Office Set',
-                        ])
-                        ->required()
-                        ->label('Box Tier'),
+                        Forms\Components\Select::make('box_tier')
+                            ->options([
+                                'Basic' => 'Basic Office Supplies',
+                                'Standard' => 'Standard Corporate Kit',
+                                'Premium' => 'Premium Art & Design Box',
+                                'Executive' => 'Executive Office Set',
+                            ])
+                            ->required()
+                            ->label('Box Tier'),
 
-                    Forms\Components\Select::make('billing_period')
-                        ->options([
-                            'monthly' => 'Monthly Billing',
-                            'quarterly' => 'Quarterly Billing',
-                            'yearly' => 'Yearly Billing (15% Save)',
-                        ])
-                        ->default('monthly')
-                        ->required()
-                        ->label('Interval'),
+                        Forms\Components\Select::make('billing_period')
+                            ->options([
+                                'monthly' => 'Monthly Billing',
+                                'quarterly' => 'Quarterly Billing',
+                                'yearly' => 'Yearly Billing (15% Save)',
+                            ])
+                            ->default('monthly')
+                            ->required()
+                            ->label('Interval'),
 
-                    Forms\Components\DatePicker::make('next_billing_at')
-                        ->required()
-                        ->displayFormat('d.m.Y')
-                        ->native(false)
-                        ->label('Next Run'),
+                        Forms\Components\DatePicker::make('next_billing_at')
+                            ->required()
+                            ->displayFormat('d.m.Y')
+                            ->native(false)
+                            ->label('Next Run'),
+                    ])->columns(2),
+
+                    Forms\Components\Section::make('Service Parameters')->schema([
+                        Forms\Components\TextInput::make('price_cents')
+                            ->numeric()
+                            ->prefix('RUB')
+                            ->required()
+                            ->label('Monthly Cost (Cents)'),
+
+                        Forms\Components\KeyValue::make('preferences')
+                            ->required()
+                            ->label('Box Customization (Colors, Brands, Paper Type)'),
+
+                        Forms\Components\Toggle::make('is_active')
+                            ->default(true)
+                            ->onColor('success')
+                            ->offColor('danger'),
+                    ])->columns(1),
+                ])->columnSpanFull(),
+
+                Forms\Components\Section::make('Audit Details')->schema([
+                    Forms\Components\TextInput::make('uuid')
+                        ->label('Subscription UUID')
+                        ->disabled()
+                        ->dehydrated(false)
+                        ->placeholder('autogenerated'),
+
+                    Forms\Components\TextInput::make('correlation_id')
+                        ->label('Correlation ID (Last Billing Trace)')
+                        ->disabled()
+                        ->dehydrated(false)
+                        ->placeholder('trace log...'),
+
+                    Forms\Components\Placeholder::make('last_payout')
+                        ->label('Last Billing History')
+                        ->content(fn ($record) => $record?->correlation_id ?? 'No billing events yet.'),
                 ])->columns(2),
+            ]);
 
-                Forms\Components\Section::make('Service Parameters')->schema([
-                    Forms\Components\TextInput::make('price_cents')
-                        ->numeric()
-                        ->prefix('RUB')
-                        ->required()
-                        ->label('Monthly Cost (Cents)'),
+        public static function getPages(): array
+        {
+            return [
+                'index' => Pages\\ListStationerySubscription::route('/'),
+                'create' => Pages\\CreateStationerySubscription::route('/create'),
+                'edit' => Pages\\EditStationerySubscription::route('/{record}/edit'),
+                'view' => Pages\\ViewStationerySubscription::route('/{record}'),
+            ];
 
-                    Forms\Components\KeyValue::make('preferences')
-                        ->required()
-                        ->label('Box Customization (Colors, Brands, Paper Type)'),
-
-                    Forms\Components\Toggle::make('is_active')
-                        ->default(true)
-                        ->onColor('success')
-                        ->offColor('danger'),
-                ])->columns(1),
-            ])->columnSpanFull(),
-
-            Forms\Components\Section::make('Audit Details')->schema([
-                Forms\Components\TextInput::make('uuid')
-                    ->label('Subscription UUID')
-                    ->disabled()
-                    ->dehydrated(false)
-                    ->placeholder('autogenerated'),
-
-                Forms\Components\TextInput::make('correlation_id')
-                    ->label('Correlation ID (Last Billing Trace)')
-                    ->disabled()
-                    ->dehydrated(false)
-                    ->placeholder('trace log...'),
-
-                Forms\Components\Placeholder::make('last_payout')
-                    ->label('Last Billing History')
-                    ->content(fn ($record) => $record?->correlation_id ?? 'No billing events yet.'),
-            ])->columns(2),
-        ]);
-
-    public static function getPages(): array
-    {
-        return [
-            'index' => Pages\\ListStationerySubscription::route('/'),
-            'create' => Pages\\CreateStationerySubscription::route('/create'),
-            'edit' => Pages\\EditStationerySubscription::route('/{record}/edit'),
-            'view' => Pages\\ViewStationerySubscription::route('/{record}'),
-        ];
-
-    public static function getPages(): array
-    {
-        return [
-            'index' => Pages\\ListStationerySubscription::route('/'),
-            'create' => Pages\\CreateStationerySubscription::route('/create'),
-            'edit' => Pages\\EditStationerySubscription::route('/{record}/edit'),
-            'view' => Pages\\ViewStationerySubscription::route('/{record}'),
-        ];
-    }
+        public static function getPages(): array
+        {
+            return [
+                'index' => Pages\\ListStationerySubscription::route('/'),
+                'create' => Pages\\CreateStationerySubscription::route('/create'),
+                'edit' => Pages\\EditStationerySubscription::route('/{record}/edit'),
+                'view' => Pages\\ViewStationerySubscription::route('/{record}'),
+            ];
+        }
 }

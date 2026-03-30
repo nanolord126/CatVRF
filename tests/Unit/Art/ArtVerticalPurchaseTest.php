@@ -1,19 +1,17 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace Tests\Unit\Art;
 
 use App\Models\Art\ArtGallery;
+use App\Models\Art\ArtOrder;
 use App\Models\Art\Artist;
 use App\Models\Art\Artwork;
-use App\Models\Art\ArtOrder;
 use App\Services\Art\ArtService;
 use App\Services\FraudControlService;
 use App\Services\WalletService;
-use Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Mockery;
+use Tests\TestCase;
 
 /**
  * ArtVerticalPurchaseTest — Logic validation for artwork transaction flows.

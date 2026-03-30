@@ -1,12 +1,10 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace Tests\Unit\Domains\VeganProducts;
 
 use App\Domains\VeganProducts\DTOs\VeganProductCreateDto;
-use App\Domains\VeganProducts\Models\VeganProduct;
 use App\Domains\VeganProducts\Models\VeganCategory;
+use App\Domains\VeganProducts\Models\VeganProduct;
 use App\Domains\VeganProducts\Models\VeganStore;
 use App\Domains\VeganProducts\Services\VeganProductService;
 use App\Services\FraudControlService;

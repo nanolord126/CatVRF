@@ -1,14 +1,12 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace Tests\Feature\Hobby;
 
-use App\Domains\HobbyAndCraft\Hobby\Models\HobbyStore;
-use App\Domains\HobbyAndCraft\Hobby\Models\HobbyProduct;
-use App\Domains\HobbyAndCraft\Hobby\Models\HobbyCategory;
-use App\Domains\HobbyAndCraft\Hobby\Services\HobbyDomainService;
 use App\Domains\HobbyAndCraft\Hobby\DTOs\HobbyProductSaveDto;
+use App\Domains\HobbyAndCraft\Hobby\Models\HobbyCategory;
+use App\Domains\HobbyAndCraft\Hobby\Models\HobbyProduct;
+use App\Domains\HobbyAndCraft\Hobby\Models\HobbyStore;
+use App\Domains\HobbyAndCraft\Hobby\Services\HobbyDomainService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;

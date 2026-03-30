@@ -1,115 +1,100 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources;
 
-use App\Domains\Stationery\Models\StationeryStore;
-use App\Domains\Stationery\Models\StationerySubscription;
-use App\Domains\Stationery\Models\StationeryGiftSet;
-use Filament\Forms;
-use Filament\Forms\Form;
-use Filament\Resources\Resource;
-use Filament\Tables;
-use Filament\Tables\Table;
-use Filament\Notifications\Notification;
-use Filament\Tables\Actions\Action;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\DB;
-use App\Services\Stationery\StationeryService;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * StationeryStoreResource.
- * Management of Stationery Stores with tenant scoping.
- * Each Store can handle B2B/B2C catalogs.
- */
-class StationeryStoreResource extends Resource
+final class StationeryStoreResource extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static ?string $model = StationeryStore::class;
-    protected static ?string $navigationIcon = 'heroicon-o-building-storefront';
-    protected static ?string $navigationGroup = 'Stationery Hub';
-    protected static ?string $tenantOwnershipRelationshipName = 'tenant';
+        protected static ?string $navigationIcon = 'heroicon-o-building-storefront';
+        protected static ?string $navigationGroup = 'Stationery Hub';
+        protected static ?string $tenantOwnershipRelationshipName = 'tenant';
 
-    /**
-     * Store Form with correlation_id and full audit capability.
-     */
-    public static function form(Form $form): Form
-    {
-        return $form->schema([
-            Forms\Components\Split::make([
-                Forms\Components\Section::make('Store Metadata')->schema([
-                    Forms\Components\TextInput::make('name')
-                        ->required()
-                        ->maxLength(255)
-                        ->autofocus()
-                        ->placeholder('The Pen Shop'),
+        /**
+         * Store Form with correlation_id and full audit capability.
+         */
+        public static function form(Form $form): Form
+        {
+            return $form->schema([
+                Forms\Components\Split::make([
+                    Forms\Components\Section::make('Store Metadata')->schema([
+                        Forms\Components\TextInput::make('name')
+                            ->required()
+                            ->maxLength(255)
+                            ->autofocus()
+                            ->placeholder('The Pen Shop'),
 
-                    Forms\Components\TextInput::make('address')
-                        ->required()
-                        ->maxLength(500)
-                        ->placeholder('Nevsky Prospekt, 28, St. Petersburg'),
+                        Forms\Components\TextInput::make('address')
+                            ->required()
+                            ->maxLength(500)
+                            ->placeholder('Nevsky Prospekt, 28, St. Petersburg'),
 
-                    Forms\Components\Select::make('tenant_id')
-                        ->relationship('tenant', 'name')
-                        ->required()
-                        ->searchable(),
+                        Forms\Components\Select::make('tenant_id')
+                            ->relationship('tenant', 'name')
+                            ->required()
+                            ->searchable(),
 
-                    Forms\Components\RichEditor::make('description')
-                        ->columnSpanFull()
-                        ->placeholder('Official Stationery supply point for B2B/B2C...'),
+                        Forms\Components\RichEditor::make('description')
+                            ->columnSpanFull()
+                            ->placeholder('Official Stationery supply point for B2B/B2C...'),
+                    ])->columns(2),
+
+                    Forms\Components\Section::make('Configuration & Social')->schema([
+                        Forms\Components\KeyValue::make('contact_info')
+                            ->label('Social Media & Contacts (IG, TG, Phone)')
+                            ->required(),
+
+                        Forms\Components\KeyValue::make('metadata')
+                            ->label('Store Config (Delivery price, Logo URL)')
+                            ->required(),
+
+                        Forms\Components\Toggle::make('is_active')
+                            ->default(true)
+                            ->onColor('success')
+                            ->offColor('danger'),
+                    ])->columns(1),
+                ])->columnSpanFull(),
+
+                Forms\Components\Section::make('System & Safety')->schema([
+                    Forms\Components\TextInput::make('uuid')
+                        ->label('Store UUID')
+                        ->disabled()
+                        ->dehydrated(false)
+                        ->placeholder('autogenerated'),
+
+                    Forms\Components\TextInput::make('correlation_id')
+                        ->label('Correlation ID (Last Change)')
+                        ->disabled()
+                        ->dehydrated(false)
+                        ->placeholder('audit trace...'),
+
+                    Forms\Components\ViewField::make('stats_preview')
+                        ->view('filament.components.store-stats-preview')
+                        ->columnSpanFull(),
                 ])->columns(2),
+            ]);
 
-                Forms\Components\Section::make('Configuration & Social')->schema([
-                    Forms\Components\KeyValue::make('contact_info')
-                        ->label('Social Media & Contacts (IG, TG, Phone)')
-                        ->required(),
+        public static function getPages(): array
+        {
+            return [
+                'index' => Pages\\ListStationeryStore::route('/'),
+                'create' => Pages\\CreateStationeryStore::route('/create'),
+                'edit' => Pages\\EditStationeryStore::route('/{record}/edit'),
+                'view' => Pages\\ViewStationeryStore::route('/{record}'),
+            ];
 
-                    Forms\Components\KeyValue::make('metadata')
-                        ->label('Store Config (Delivery price, Logo URL)')
-                        ->required(),
-
-                    Forms\Components\Toggle::make('is_active')
-                        ->default(true)
-                        ->onColor('success')
-                        ->offColor('danger'),
-                ])->columns(1),
-            ])->columnSpanFull(),
-
-            Forms\Components\Section::make('System & Safety')->schema([
-                Forms\Components\TextInput::make('uuid')
-                    ->label('Store UUID')
-                    ->disabled()
-                    ->dehydrated(false)
-                    ->placeholder('autogenerated'),
-
-                Forms\Components\TextInput::make('correlation_id')
-                    ->label('Correlation ID (Last Change)')
-                    ->disabled()
-                    ->dehydrated(false)
-                    ->placeholder('audit trace...'),
-
-                Forms\Components\ViewField::make('stats_preview')
-                    ->view('filament.components.store-stats-preview')
-                    ->columnSpanFull(),
-            ])->columns(2),
-        ]);
-
-    public static function getPages(): array
-    {
-        return [
-            'index' => Pages\\ListStationeryStore::route('/'),
-            'create' => Pages\\CreateStationeryStore::route('/create'),
-            'edit' => Pages\\EditStationeryStore::route('/{record}/edit'),
-            'view' => Pages\\ViewStationeryStore::route('/{record}'),
-        ];
-
-    public static function getPages(): array
-    {
-        return [
-            'index' => Pages\\ListStationeryStore::route('/'),
-            'create' => Pages\\CreateStationeryStore::route('/create'),
-            'edit' => Pages\\EditStationeryStore::route('/{record}/edit'),
-            'view' => Pages\\ViewStationeryStore::route('/{record}'),
-        ];
-    }
+        public static function getPages(): array
+        {
+            return [
+                'index' => Pages\\ListStationeryStore::route('/'),
+                'create' => Pages\\CreateStationeryStore::route('/create'),
+                'edit' => Pages\\EditStationeryStore::route('/{record}/edit'),
+                'view' => Pages\\ViewStationeryStore::route('/{record}'),
+            ];
+        }
 }

@@ -1,13 +1,11 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace Tests\Unit\Events;
 
-use App\Events\UserTasteProfileChanged;
-use App\Events\ProductInventoryChanged;
-use App\Events\MasterAvailabilityChanged;
 use App\Events\AIConstructorDesignSaved;
+use App\Events\MasterAvailabilityChanged;
+use App\Events\ProductInventoryChanged;
+use App\Events\UserTasteProfileChanged;
 use App\Events\VerticalStatsRecalculated;
 use PHPUnit\Framework\TestCase;
 

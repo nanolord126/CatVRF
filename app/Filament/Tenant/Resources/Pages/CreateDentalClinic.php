@@ -1,18 +1,19 @@
-<?php
+<?php declare(strict_types=1);
 
-declare(strict_types=1);
+namespace App\Filament\Tenant\Resources\Pages;
 
-namespace App\Filament\Tenant\Resources\DentalClinic\Pages;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-use use App\Filament\Tenant\Resources\DentalClinicResource;;
-use Filament\Resources\Pages\CreateRecord;
-
-final class CreateDentalClinic extends CreateRecord
+final class CreateDentalClinic extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = DentalClinicResource::class;
 
-    public function getTitle(): string
-    {
-        return 'Create DentalClinic';
-    }
+        public function getTitle(): string
+        {
+            return 'Create DentalClinic';
+        }
 }

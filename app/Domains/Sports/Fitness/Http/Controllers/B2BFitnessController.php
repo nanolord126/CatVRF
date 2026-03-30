@@ -2,279 +2,276 @@
 
 namespace App\Domains\Sports\Fitness\Http\Controllers;
 
-use App\Domains\Sports\Fitness\Models\B2BFitnessStorefront;
-use App\Domains\Sports\Fitness\Models\B2BFitnessOrder;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final class B2BFitnessController
+final class B2BFitnessController extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function storefronts(): JsonResponse
-    {
-        try {
-            $storefronts = B2BFitnessStorefront::where('is_active', true)
-                ->where('is_verified', true)
-                ->paginate(20);
+        {
+            try {
+                $storefronts = B2BFitnessStorefront::where('is_active', true)
+                    ->where('is_verified', true)
+                    ->paginate(20);
 
-            return response()->json([
-                'success' => true,
-                'data' => $storefronts,
-                'correlation_id' => Str::uuid(),
-            ], 200);
-        } catch (\Exception $e) {
-            Log::channel('audit')->error('Fitness B2B: Failed to fetch storefronts', [
-                'error' => $e->getMessage(),
-                'correlation_id' => Str::uuid(),
-            ]);
+                return response()->json([
+                    'success' => true,
+                    'data' => $storefronts,
+                    'correlation_id' => Str::uuid(),
+                ], 200);
+            } catch (\Exception $e) {
+                Log::channel('audit')->error('Fitness B2B: Failed to fetch storefronts', [
+                    'error' => $e->getMessage(),
+                    'correlation_id' => Str::uuid(),
+                ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Ошибка при загрузке витрин',
-                'correlation_id' => Str::uuid(),
-            ], 500);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ошибка при загрузке витрин',
+                    'correlation_id' => Str::uuid(),
+                ], 500);
+            }
         }
-    }
 
-    public function createStorefront(Request $request): JsonResponse
-    {
-        try {
-            $this->authorize('createStorefront', B2BFitnessStorefront::class);
+        public function createStorefront(Request $request): JsonResponse
+        {
+            try {
+                $this->authorize('createStorefront', B2BFitnessStorefront::class);
 
-            $validated = $request->validate([
-                'company_name' => 'required|string|max:255',
-                'inn' => 'required|string|unique:b2b_fitness_storefronts,inn',
-                'description' => 'nullable|string',
-                'service_categories' => 'nullable|json',
-                'wholesale_discount' => 'nullable|numeric|between:0,100',
-                'min_order_amount' => 'integer|min:1000',
-            ]);
-
-            $correlationId = Str::uuid()->toString();
-
-            DB::transaction(function () use ($validated, $correlationId) {
-                B2BFitnessStorefront::create([
-                    'uuid' => Str::uuid(),
-                    'tenant_id' => auth()->user()->tenant_id,
-                    ...$validated,
-                    'correlation_id' => $correlationId,
+                $validated = $request->validate([
+                    'company_name' => 'required|string|max:255',
+                    'inn' => 'required|string|unique:b2b_fitness_storefronts,inn',
+                    'description' => 'nullable|string',
+                    'service_categories' => 'nullable|json',
+                    'wholesale_discount' => 'nullable|numeric|between:0,100',
+                    'min_order_amount' => 'integer|min:1000',
                 ]);
 
-                Log::channel('audit')->info('Fitness B2B: Storefront created', [
-                    'inn' => $validated['inn'],
+                $correlationId = Str::uuid()->toString();
+
+                DB::transaction(function () use ($validated, $correlationId) {
+                    B2BFitnessStorefront::create([
+                        'uuid' => Str::uuid(),
+                        'tenant_id' => auth()->user()->tenant_id,
+                        ...$validated,
+                        'correlation_id' => $correlationId,
+                    ]);
+
+                    Log::channel('audit')->info('Fitness B2B: Storefront created', [
+                        'inn' => $validated['inn'],
+                        'correlation_id' => $correlationId,
+                    ]);
+                });
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Витрина создана',
                     'correlation_id' => $correlationId,
+                ], 201);
+            } catch (\Exception $e) {
+                Log::channel('audit')->error('Fitness B2B: Storefront creation failed', [
+                    'error' => $e->getMessage(),
+                    'correlation_id' => Str::uuid(),
                 ]);
-            });
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Витрина создана',
-                'correlation_id' => $correlationId,
-            ], 201);
-        } catch (\Exception $e) {
-            Log::channel('audit')->error('Fitness B2B: Storefront creation failed', [
-                'error' => $e->getMessage(),
-                'correlation_id' => Str::uuid(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Ошибка при создании витрины',
-                'correlation_id' => Str::uuid(),
-            ], 500);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ошибка при создании витрины',
+                    'correlation_id' => Str::uuid(),
+                ], 500);
+            }
         }
-    }
 
-    public function createOrder(Request $request): JsonResponse
-    {
-        try {
-            $validated = $request->validate([
-                'b2b_fitness_storefront_id' => 'required|exists:b2b_fitness_storefronts,id',
-                'company_contact_person' => 'required|string',
-                'company_phone' => 'required|string',
-                'items_json' => 'required|json',
-                'total_amount' => 'required|numeric|min:1',
-            ]);
+        public function createOrder(Request $request): JsonResponse
+        {
+            try {
+                $validated = $request->validate([
+                    'b2b_fitness_storefront_id' => 'required|exists:b2b_fitness_storefronts,id',
+                    'company_contact_person' => 'required|string',
+                    'company_phone' => 'required|string',
+                    'items_json' => 'required|json',
+                    'total_amount' => 'required|numeric|min:1',
+                ]);
 
-            $correlationId = Str::uuid()->toString();
-            $commission = (int) ($validated['total_amount'] * 0.14);
+                $correlationId = Str::uuid()->toString();
+                $commission = (int) ($validated['total_amount'] * 0.14);
 
-            DB::transaction(function () use ($validated, $correlationId, $commission) {
-                B2BFitnessOrder::create([
-                    'uuid' => Str::uuid(),
-                    'tenant_id' => auth()->user()->tenant_id,
-                    'order_number' => 'B2B-' . Str::random(8),
-                    'commission_amount' => $commission,
-                    'status' => 'pending',
-                    ...$validated,
+                DB::transaction(function () use ($validated, $correlationId, $commission) {
+                    B2BFitnessOrder::create([
+                        'uuid' => Str::uuid(),
+                        'tenant_id' => auth()->user()->tenant_id,
+                        'order_number' => 'B2B-' . Str::random(8),
+                        'commission_amount' => $commission,
+                        'status' => 'pending',
+                        ...$validated,
+                        'correlation_id' => $correlationId,
+                    ]);
+
+                    Log::channel('audit')->info('Fitness B2B: Order created', [
+                        'amount' => $validated['total_amount'],
+                        'correlation_id' => $correlationId,
+                    ]);
+                });
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Заказ создан',
                     'correlation_id' => $correlationId,
+                ], 201);
+            } catch (\Exception $e) {
+                Log::channel('audit')->error('Fitness B2B: Order creation failed', [
+                    'error' => $e->getMessage(),
+                    'correlation_id' => Str::uuid(),
                 ]);
 
-                Log::channel('audit')->info('Fitness B2B: Order created', [
-                    'amount' => $validated['total_amount'],
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ошибка при создании заказа',
+                    'correlation_id' => Str::uuid(),
+                ], 500);
+            }
+        }
+
+        public function myB2BOrders(): JsonResponse
+        {
+            try {
+                $orders = B2BFitnessOrder::where('tenant_id', auth()->user()->tenant_id)
+                    ->latest()
+                    ->paginate(20);
+
+                return response()->json([
+                    'success' => true,
+                    'data' => $orders,
+                    'correlation_id' => Str::uuid(),
+                ], 200);
+            } catch (\Exception $e) {
+                Log::channel('audit')->error('Fitness B2B: Failed to fetch orders', [
+                    'error' => $e->getMessage(),
+                    'correlation_id' => Str::uuid(),
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ошибка при загрузке заказов',
+                    'correlation_id' => Str::uuid(),
+                ], 500);
+            }
+        }
+
+        public function approveOrder(int $id): JsonResponse
+        {
+            try {
+                $order = B2BFitnessOrder::findOrFail($id);
+                $this->authorize('approveOrder', $order);
+
+                $correlationId = Str::uuid()->toString();
+
+                DB::transaction(function () use ($order, $correlationId) {
+                    $order->update(['status' => 'approved']);
+
+                    Log::channel('audit')->info('Fitness B2B: Order approved', [
+                        'order_id' => $order->id,
+                        'correlation_id' => $correlationId,
+                    ]);
+                });
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Заказ одобрен',
                     'correlation_id' => $correlationId,
+                ], 200);
+            } catch (\Exception $e) {
+                Log::channel('audit')->error('Fitness B2B: Order approval failed', [
+                    'error' => $e->getMessage(),
+                    'correlation_id' => Str::uuid(),
                 ]);
-            });
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Заказ создан',
-                'correlation_id' => $correlationId,
-            ], 201);
-        } catch (\Exception $e) {
-            Log::channel('audit')->error('Fitness B2B: Order creation failed', [
-                'error' => $e->getMessage(),
-                'correlation_id' => Str::uuid(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Ошибка при создании заказа',
-                'correlation_id' => Str::uuid(),
-            ], 500);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ошибка при одобрении заказа',
+                    'correlation_id' => Str::uuid(),
+                ], 500);
+            }
         }
-    }
 
-    public function myB2BOrders(): JsonResponse
-    {
-        try {
-            $orders = B2BFitnessOrder::where('tenant_id', auth()->user()->tenant_id)
-                ->latest()
-                ->paginate(20);
+        public function rejectOrder(int $id, Request $request): JsonResponse
+        {
+            try {
+                $order = B2BFitnessOrder::findOrFail($id);
+                $this->authorize('rejectOrder', $order);
 
-            return response()->json([
-                'success' => true,
-                'data' => $orders,
-                'correlation_id' => Str::uuid(),
-            ], 200);
-        } catch (\Exception $e) {
-            Log::channel('audit')->error('Fitness B2B: Failed to fetch orders', [
-                'error' => $e->getMessage(),
-                'correlation_id' => Str::uuid(),
-            ]);
+                $correlationId = Str::uuid()->toString();
+                $reason = $request->get('reason', '');
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Ошибка при загрузке заказов',
-                'correlation_id' => Str::uuid(),
-            ], 500);
-        }
-    }
+                DB::transaction(function () use ($order, $correlationId, $reason) {
+                    $order->update([
+                        'status' => 'rejected',
+                        'notes' => $reason,
+                    ]);
 
-    public function approveOrder(int $id): JsonResponse
-    {
-        try {
-            $order = B2BFitnessOrder::findOrFail($id);
-            $this->authorize('approveOrder', $order);
+                    Log::channel('audit')->info('Fitness B2B: Order rejected', [
+                        'order_id' => $order->id,
+                        'reason' => $reason,
+                        'correlation_id' => $correlationId,
+                    ]);
+                });
 
-            $correlationId = Str::uuid()->toString();
-
-            DB::transaction(function () use ($order, $correlationId) {
-                $order->update(['status' => 'approved']);
-
-                Log::channel('audit')->info('Fitness B2B: Order approved', [
-                    'order_id' => $order->id,
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Заказ отклонен',
                     'correlation_id' => $correlationId,
+                ], 200);
+            } catch (\Exception $e) {
+                Log::channel('audit')->error('Fitness B2B: Order rejection failed', [
+                    'error' => $e->getMessage(),
+                    'correlation_id' => Str::uuid(),
                 ]);
-            });
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Заказ одобрен',
-                'correlation_id' => $correlationId,
-            ], 200);
-        } catch (\Exception $e) {
-            Log::channel('audit')->error('Fitness B2B: Order approval failed', [
-                'error' => $e->getMessage(),
-                'correlation_id' => Str::uuid(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Ошибка при одобрении заказа',
-                'correlation_id' => Str::uuid(),
-            ], 500);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ошибка при отклонении заказа',
+                    'correlation_id' => Str::uuid(),
+                ], 500);
+            }
         }
-    }
 
-    public function rejectOrder(int $id, Request $request): JsonResponse
-    {
-        try {
-            $order = B2BFitnessOrder::findOrFail($id);
-            $this->authorize('rejectOrder', $order);
+        public function verifyInn(int $id): JsonResponse
+        {
+            try {
+                $this->authorize('verifyInn', B2BFitnessStorefront::class);
 
-            $correlationId = Str::uuid()->toString();
-            $reason = $request->get('reason', '');
+                $storefront = B2BFitnessStorefront::findOrFail($id);
+                $correlationId = Str::uuid()->toString();
 
-            DB::transaction(function () use ($order, $correlationId, $reason) {
-                $order->update([
-                    'status' => 'rejected',
-                    'notes' => $reason,
-                ]);
+                DB::transaction(function () use ($storefront, $correlationId) {
+                    $storefront->update(['is_verified' => true]);
 
-                Log::channel('audit')->info('Fitness B2B: Order rejected', [
-                    'order_id' => $order->id,
-                    'reason' => $reason,
+                    Log::channel('audit')->info('Fitness B2B: Storefront verified', [
+                        'storefront_id' => $storefront->id,
+                        'inn' => $storefront->inn,
+                        'correlation_id' => $correlationId,
+                    ]);
+                });
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Витрина верифицирована',
                     'correlation_id' => $correlationId,
+                ], 200);
+            } catch (\Exception $e) {
+                Log::channel('audit')->error('Fitness B2B: Verification failed', [
+                    'error' => $e->getMessage(),
+                    'correlation_id' => Str::uuid(),
                 ]);
-            });
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Заказ отклонен',
-                'correlation_id' => $correlationId,
-            ], 200);
-        } catch (\Exception $e) {
-            Log::channel('audit')->error('Fitness B2B: Order rejection failed', [
-                'error' => $e->getMessage(),
-                'correlation_id' => Str::uuid(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Ошибка при отклонении заказа',
-                'correlation_id' => Str::uuid(),
-            ], 500);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ошибка при верификации',
+                    'correlation_id' => Str::uuid(),
+                ], 500);
+            }
         }
-    }
-
-    public function verifyInn(int $id): JsonResponse
-    {
-        try {
-            $this->authorize('verifyInn', B2BFitnessStorefront::class);
-
-            $storefront = B2BFitnessStorefront::findOrFail($id);
-            $correlationId = Str::uuid()->toString();
-
-            DB::transaction(function () use ($storefront, $correlationId) {
-                $storefront->update(['is_verified' => true]);
-
-                Log::channel('audit')->info('Fitness B2B: Storefront verified', [
-                    'storefront_id' => $storefront->id,
-                    'inn' => $storefront->inn,
-                    'correlation_id' => $correlationId,
-                ]);
-            });
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Витрина верифицирована',
-                'correlation_id' => $correlationId,
-            ], 200);
-        } catch (\Exception $e) {
-            Log::channel('audit')->error('Fitness B2B: Verification failed', [
-                'error' => $e->getMessage(),
-                'correlation_id' => Str::uuid(),
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Ошибка при верификации',
-                'correlation_id' => Str::uuid(),
-            ], 500);
-        }
-    }
 }
-

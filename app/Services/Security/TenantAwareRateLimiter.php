@@ -1,50 +1,41 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Services\Security;
 
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Redis;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final /**
- * TenantAwareRateLimiter
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class TenantAwareRateLimiter
+final class TenantAwareRateLimiter extends Model
 {
-    // Dependencies injected via constructor
-    // Add private readonly properties here
-    public function check(int $tenantId, string $key, int $limit, int $window = 60): bool
-    {
-        $cacheKey = "rate_limit:{$tenantId}:{$key}";
-        $count = (int)Cache::get($cacheKey, 0);
+    use HasFactory;
 
-        if ($count >= $limit) {
-            return false;
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    // Dependencies injected via constructor
+        // Add private readonly properties here
+        public function check(int $tenantId, string $key, int $limit, int $window = 60): bool
+        {
+            $cacheKey = "rate_limit:{$tenantId}:{$key}";
+            $count = (int)Cache::get($cacheKey, 0);
+
+            if ($count >= $limit) {
+                return false;
+            }
+
+            Cache::increment($cacheKey);
+            Cache::put($cacheKey, $count + 1, $window);
+
+            return true;
         }
 
-        Cache::increment($cacheKey);
-        Cache::put($cacheKey, $count + 1, $window);
+        public function remaining(int $tenantId, string $key, int $limit): int
+        {
+            $cacheKey = "rate_limit:{$tenantId}:{$key}";
+            $count = (int)Cache::get($cacheKey, 0);
+            return max(0, $limit - $count);
+        }
 
-        return true;
-    }
-
-    public function remaining(int $tenantId, string $key, int $limit): int
-    {
-        $cacheKey = "rate_limit:{$tenantId}:{$key}";
-        $count = (int)Cache::get($cacheKey, 0);
-        return max(0, $limit - $count);
-    }
-
-    public function reset(int $tenantId, string $key): void
-    {
-        Cache::forget("rate_limit:{$tenantId}:{$key}");
-    }
+        public function reset(int $tenantId, string $key): void
+        {
+            Cache::forget("rate_limit:{$tenantId}:{$key}");
+        }
 }

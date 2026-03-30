@@ -2,8 +2,8 @@
 
 namespace App\Listeners\Octane;
 
-use Laravel\Octane\Events\TickReceived;
 use Illuminate\Support\Facades\Log;
+use Laravel\Octane\Events\TickReceived;
 
 final class OctaneTickListener
 {

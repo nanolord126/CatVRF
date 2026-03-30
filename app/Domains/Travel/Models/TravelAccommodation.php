@@ -4,63 +4,62 @@ namespace App\Domains\Travel\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 final class TravelAccommodation extends Model
 {
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use HasFactory;
-    use SoftDeletes;
+        use SoftDeletes;
 
-    protected $table = 'travel_accommodations';
+        protected $table = 'travel_accommodations';
 
-    protected $fillable = [
-        'tenant_id',
-        'agency_id',
-        'name',
-        'description',
-        'location',
-        'geo_point',
-        'type',
-        'star_rating',
-        'rooms_count',
-        'price_per_night',
-        'amenities',
-        'photos',
-        'rating',
-        'review_count',
-        'is_available',
-        'correlation_id',
-        'uuid',
-    ];
+        protected $fillable = [
+            'tenant_id',
+            'agency_id',
+            'name',
+            'description',
+            'location',
+            'geo_point',
+            'type',
+            'star_rating',
+            'rooms_count',
+            'price_per_night',
+            'amenities',
+            'photos',
+            'rating',
+            'review_count',
+            'is_available',
+            'correlation_id',
+            'uuid',
+        ];
 
-    protected $casts = [
-        'amenities' => 'collection',
-        'photos' => 'collection',
-        'price_per_night' => 'float',
-        'rating' => 'float',
-        'star_rating' => 'integer',
-        'rooms_count' => 'integer',
-        'review_count' => 'integer',
-        'is_available' => 'boolean',
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
-        'deleted_at' => 'datetime',
-    ];
+        protected $casts = [
+            'amenities' => 'collection',
+            'photos' => 'collection',
+            'price_per_night' => 'float',
+            'rating' => 'float',
+            'star_rating' => 'integer',
+            'rooms_count' => 'integer',
+            'review_count' => 'integer',
+            'is_available' => 'boolean',
+            'created_at' => 'datetime',
+            'updated_at' => 'datetime',
+            'deleted_at' => 'datetime',
+        ];
 
-    protected $hidden = ['correlation_id'];
+        protected $hidden = ['correlation_id'];
 
-    public function booted(): void
-    {
-        static::addGlobalScope('tenant', function ($query) {
-            if (auth()->check()) {
-                $query->where('tenant_id', tenant()->id);
-            }
-        });
-    }
+        public function booted(): void
+        {
+            static::addGlobalScope('tenant', function ($query) {
+                if (auth()->check()) {
+                    $query->where('tenant_id', tenant()->id);
+                }
+            });
+        }
 
-    public function agency(): BelongsTo
-    {
-        return $this->belongsTo(TravelAgency::class);
-    }
+        public function agency(): BelongsTo
+        {
+            return $this->belongsTo(TravelAgency::class);
+        }
 }

@@ -1,45 +1,34 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Domains\Flowers\Services;
 
-use App\Domains\Flowers\Models\FlowerReview;
-use App\Services\FraudControlService;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final /**
- * FlowerReviewService
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class FlowerReviewService
+final class FlowerReviewService extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-        private readonly FraudControlService $fraudControl
-    ) {}
+            private readonly FraudControlService $fraudControl
+        ) {}
 
-    public function createReview(array $data, string $correlationId): FlowerReview
-    {
-        return DB::transaction(function () use ($data, $correlationId) {
-            $this->fraudControl->check($data, 'review_create');
+        public function createReview(array $data, string $correlationId): FlowerReview
+        {
+            return DB::transaction(function () use ($data, $correlationId) {
+                $this->fraudControl->check($data, 'review_create');
 
-            $review = FlowerReview::create(array_merge($data, [
-                'correlation_id' => $correlationId,
-            ]));
+                $review = FlowerReview::create(array_merge($data, [
+                    'correlation_id' => $correlationId,
+                ]));
 
-            Log::channel('audit')->info('Flower review created', [
-                'review_id' => $review->id,
-                'correlation_id' => $correlationId,
-            ]);
+                Log::channel('audit')->info('Flower review created', [
+                    'review_id' => $review->id,
+                    'correlation_id' => $correlationId,
+                ]);
 
-            return $review;
-        });
-    }
+                return $review;
+            });
+        }
 }

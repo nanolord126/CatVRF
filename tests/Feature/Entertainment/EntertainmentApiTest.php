@@ -1,6 +1,4 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace Tests\Feature\Entertainment;
 
@@ -8,8 +6,8 @@ use App\Domains\EventPlanning\Entertainment\Models\Event;
 use App\Domains\EventPlanning\Entertainment\Models\Venue;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\TestCase;
 use Illuminate\Support\Str;
+use Tests\TestCase;
 
 /**
  * КАНОН 2026 — ENTERTAINMENT API TEST

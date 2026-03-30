@@ -1,27 +1,31 @@
-<?php
+<?php declare(strict_types=1);
 
-declare(strict_types=1);
+namespace App\Filament\Tenant\Resources\Pages;
 
-namespace App\Filament\Tenant\Resources\ToysKids\Pages;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-use use App\Filament\Tenant\Resources\ToysKidsResource;;
-use Filament\Resources\Pages\EditRecord;
-use Filament\Actions\{ViewAction, DeleteAction};
-
-final class EditToysKids extends EditRecord
+final class EditToysKids extends Model
 {
-    protected static string $resource = ToysKidsResource::class;
+    use HasFactory;
 
-    public function getTitle(): string
-    {
-        return 'Edit ToysKids';
-    }
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    ViewAction, DeleteAction};
 
-    protected function getHeaderActions(): array
+    final class EditToysKids extends EditRecord
     {
-        return [
-            ViewAction::make(),
-            DeleteAction::make(),
-        ];
-    }
+        protected static string $resource = ToysKidsResource::class;
+
+        public function getTitle(): string
+        {
+            return 'Edit ToysKids';
+        }
+
+        protected function getHeaderActions(): array
+        {
+            return [
+                ViewAction::make(),
+                DeleteAction::make(),
+            ];
+        }
 }

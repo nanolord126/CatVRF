@@ -1,14 +1,12 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace Tests\Integration\Fraud;
 
-use App\Models\FraudAttempt;
-use App\Models\User;
-use App\Models\Tenant;
-use App\Services\Fraud\FraudMLService;
 use App\DTOs\OperationDTO;
+use App\Models\FraudAttempt;
+use App\Models\Tenant;
+use App\Models\User;
+use App\Services\Fraud\FraudMLService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;

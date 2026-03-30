@@ -1,8 +1,14 @@
-<?php
-declare(strict_types=1);
+<?php declare(strict_types=1);
+
 namespace App\Filament\Tenant\Resources\Gifts\Pages;
-use App\Filament\Tenant\Resources\GiftsResource;
-use Filament\Resources\Pages\ViewRecord;
-final class ViewRecordGifts extends ViewRecord {
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+final class ViewRecordGifts extends Model
+{
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = GiftsResource::class;
 }

@@ -1,101 +1,95 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Services\AI;
 
-use App\Models\User;
-use App\Services\LogManager;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * RecommendationEngine — AI-движок персонализированных рекомендаций.
- * CANON 2026 — Production Ready
- */
-class RecommendationEngine
+final class RecommendationEngine extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-        private readonly LogManager $logManager,
-    ) {}
+            private readonly LogManager $logManager,
+        ) {}
 
-    /**
-     * Возвращает персонализированные рекомендации для пользователя.
-     */
-    public function getPersonalizedSuggestions(User $user, string $type): Collection
-    {
-        $cacheKey = "engine:recommend:{$user->id}:{$type}:v1";
+        /**
+         * Возвращает персонализированные рекомендации для пользователя.
+         */
+        public function getPersonalizedSuggestions(User $user, string $type): Collection
+        {
+            $cacheKey = "engine:recommend:{$user->id}:{$type}:v1";
 
-        $cached = Cache::get($cacheKey);
-        if ($cached !== null) {
-            return collect($cached);
+            $cached = Cache::get($cacheKey);
+            if ($cached !== null) {
+                return collect($cached);
+            }
+
+            $this->logManager->info("Generating recommendations for user {$user->id}, type={$type}");
+
+            $recommendations = collect([]);
+
+            Cache::put($cacheKey, $recommendations->toArray(), 300);
+
+            return $recommendations;
         }
 
-        $this->logManager->info("Generating recommendations for user {$user->id}, type={$type}");
+        /**
+         * Cosine similarity между двумя векторами.
+         */
+        private function cosineSimilarity(array $vec1, array $vec2): float
+        {
+            if (count($vec1) !== count($vec2) || count($vec1) === 0) {
+                return 0.0;
+            }
 
-        $recommendations = collect([]);
+            $dot  = 0.0;
+            $magA = 0.0;
+            $magB = 0.0;
 
-        Cache::put($cacheKey, $recommendations->toArray(), 300);
+            foreach ($vec1 as $i => $v) {
+                $dot  += $v * $vec2[$i];
+                $magA += $v * $v;
+                $magB += $vec2[$i] * $vec2[$i];
+            }
 
-        return $recommendations;
-    }
+            $denom = sqrt($magA) * sqrt($magB);
 
-    /**
-     * Cosine similarity между двумя векторами.
-     */
-    private function cosineSimilarity(array $vec1, array $vec2): float
-    {
-        if (count($vec1) !== count($vec2) || count($vec1) === 0) {
-            return 0.0;
+            return $denom > 0 ? $dot / $denom : 0.0;
         }
 
-        $dot  = 0.0;
-        $magA = 0.0;
-        $magB = 0.0;
+        /**
+         * Находит похожих пользователей по preference.
+         *
+         * @return array<int>
+         */
+        private function findSimilarUsers(User $user, int $limit = 5): array
+        {
+            $preference = $user->category_preference ?? null;
 
-        foreach ($vec1 as $i => $v) {
-            $dot  += $v * $vec2[$i];
-            $magA += $v * $v;
-            $magB += $vec2[$i] * $vec2[$i];
+            if (!$preference) {
+                return [];
+            }
+
+            return DB::table('users')
+                ->where('id', '!=', $user->id)
+                ->where('category_preference', $preference)
+                ->limit($limit)
+                ->pluck('id')
+                ->toArray();
         }
 
-        $denom = sqrt($magA) * sqrt($magB);
-
-        return $denom > 0 ? $dot / $denom : 0.0;
-    }
-
-    /**
-     * Находит похожих пользователей по preference.
-     *
-     * @return array<int>
-     */
-    private function findSimilarUsers(User $user, int $limit = 5): array
-    {
-        $preference = $user->category_preference ?? null;
-
-        if (!$preference) {
-            return [];
+        /**
+         * Возвращает курсы, на которые записан пользователь.
+         *
+         * @return array<int>
+         */
+        private function getUserEnrolledCourses(User $user): array
+        {
+            return DB::table('enrollments')
+                ->where('user_id', $user->id)
+                ->pluck('course_id')
+                ->toArray();
         }
-
-        return DB::table('users')
-            ->where('id', '!=', $user->id)
-            ->where('category_preference', $preference)
-            ->limit($limit)
-            ->pluck('id')
-            ->toArray();
-    }
-
-    /**
-     * Возвращает курсы, на которые записан пользователь.
-     *
-     * @return array<int>
-     */
-    private function getUserEnrolledCourses(User $user): array
-    {
-        return DB::table('enrollments')
-            ->where('user_id', $user->id)
-            ->pluck('course_id')
-            ->toArray();
-    }
 }

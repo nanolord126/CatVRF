@@ -1,125 +1,111 @@
-<?php
+<?php declare(strict_types=1);
 
-declare(strict_types=1);
+namespace App\Domains\SportsNutrition\Services;
 
-namespace App\Domains\Vapes\Services;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-use App\Domains\SportsNutrition\Models\VapeAgeVerification;
-use App\Services\FraudControlService;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
-use Carbon\Carbon;
-
-/**
- * VapeAgeVerificationService — Production Ready 2026
- * 
- * Сервис строгой верификации возраста (18+) через:
- * - ГосУслуги (ЕСИА)
- * - Биометрия (ЕБС)
- * - Банковские ID (Сбер, Тинькофф)
- * 
- * Соблюдение ФЗ «О защите детей от информации...» и правил продажи табака/ЭСДН.
- * Канон 2026: DB::transaction, correlation_id, audit-log.
- */
-final readonly class VapeAgeVerificationService
+final class VapeAgeVerificationService extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
-     * Конструктор с DP зависимостями.
-     */
-    public function __construct(
-        private FraudControlService $fraud,
-    ) {}
+         * Конструктор с DP зависимостями.
+         */
+        public function __construct(
+            private FraudControlService $fraud,
+        ) {}
 
-    /**
-     * Инициировать проверку возраста через выбранный метод.
-     * 
-     * @param string $method esia, ebs, sber_id, t_id
-     */
-    public function initiateVerification(int $userId, string $method, string $correlationId = null): string
-    {
-        $correlationId ??= (string) Str::uuid();
+        /**
+         * Инициировать проверку возраста через выбранный метод.
+         *
+         * @param string $method esia, ebs, sber_id, t_id
+         */
+        public function initiateVerification(int $userId, string $method, string $correlationId = null): string
+        {
+            $correlationId ??= (string) Str::uuid();
 
-        Log::channel('audit')->info('Age verification started for vapes', [
-            'user_id' => $userId,
-            'method' => $method,
-            'correlation_id' => $correlationId,
-        ]);
-
-        return DB::transaction(function () use ($userId, $method, $correlationId) {
-            
-            // 1. Создаем запись верификации со статусом 'pending'
-            $verification = VapeAgeVerification::create([
-                'user_id' => $userId,
-                'method' => $method,
-                'status' => 'pending',
-                'correlation_id' => $correlationId,
-            ]);
-
-            // 2. Fraud Check инициации проверки
-            $this->fraud->check([
-                'operation' => 'vape_age_verify_init',
+            Log::channel('audit')->info('Age verification started for vapes', [
                 'user_id' => $userId,
                 'method' => $method,
                 'correlation_id' => $correlationId,
             ]);
 
-            return $verification->uuid;
-        });
-    }
+            return DB::transaction(function () use ($userId, $method, $correlationId) {
 
-    /**
-     * Завершение верификации (Callback от внешнего провайдера).
-     * Обрабатывает ответ от Госуслуг/Банков и устанавливает финальный статус.
-     */
-    public function completeVerification(string $uuid, array $providerData, string $correlationId = null): bool
-    {
-        $correlationId ??= (string) Str::uuid();
+                // 1. Создаем запись верификации со статусом 'pending'
+                $verification = VapeAgeVerification::create([
+                    'user_id' => $userId,
+                    'method' => $method,
+                    'status' => 'pending',
+                    'correlation_id' => $correlationId,
+                ]);
 
-        return DB::transaction(function () use ($uuid, $providerData, $correlationId) {
-            
-            $verification = VapeAgeVerification::where('uuid', $uuid)->lockForUpdate()->firstOrFail();
+                // 2. Fraud Check инициации проверки
+                $this->fraud->check([
+                    'operation' => 'vape_age_verify_init',
+                    'user_id' => $userId,
+                    'method' => $method,
+                    'correlation_id' => $correlationId,
+                ]);
 
-            // 3. Анализ данных от провайдера (имитация парсинга BirthDate)
-            $birthDateStr = $providerData['birth_date'] ?? null;
-            $isAdult = false;
+                return $verification->uuid;
+            });
+        }
 
-            if ($birthDateStr) {
-                $birthDate = Carbon::parse($birthDateStr);
-                $isAdult = $birthDate->diffInYears(now()) >= 18;
-            }
+        /**
+         * Завершение верификации (Callback от внешнего провайдера).
+         * Обрабатывает ответ от Госуслуг/Банков и устанавливает финальный статус.
+         */
+        public function completeVerification(string $uuid, array $providerData, string $correlationId = null): bool
+        {
+            $correlationId ??= (string) Str::uuid();
 
-            // 4. Обновление статуса
-            $status = $isAdult ? 'verified' : 'rejected';
-            
-            $verification->update([
-                'status' => $status,
-                'birth_date' => $birthDate ?? null,
-                'verified_at' => $isAdult ? now() : null,
-                'provider_response' => $providerData,
-                'external_id' => $providerData['external_id'] ?? null,
-            ]);
+            return DB::transaction(function () use ($uuid, $providerData, $correlationId) {
 
-            Log::channel('audit')->info('Age verification completed for vapes', [
-                'user_id' => $verification->user_id,
-                'status' => $status,
-                'is_adult' => $isAdult,
-                'correlation_id' => $correlationId,
-                'verification_uuid' => $uuid,
-            ]);
+                $verification = VapeAgeVerification::where('uuid', $uuid)->lockForUpdate()->firstOrFail();
 
-            return $isAdult;
-        });
-    }
+                // 3. Анализ данных от провайдера (имитация парсинга BirthDate)
+                $birthDateStr = $providerData['birth_date'] ?? null;
+                $isAdult = false;
 
-    /**
-     * Проверка: имеет ли пользователь актуальную подтвержденную верификацию.
-     */
-    public function hasAValidVerification(int $userId): bool
-    {
-        return VapeAgeVerification::where('user_id', $userId)
-            ->where('status', 'verified')
-            ->whereNotNull('verified_at')
-            ->exists();
-    }
+                if ($birthDateStr) {
+                    $birthDate = Carbon::parse($birthDateStr);
+                    $isAdult = $birthDate->diffInYears(now()) >= 18;
+                }
+
+                // 4. Обновление статуса
+                $status = $isAdult ? 'verified' : 'rejected';
+
+                $verification->update([
+                    'status' => $status,
+                    'birth_date' => $birthDate ?? null,
+                    'verified_at' => $isAdult ? now() : null,
+                    'provider_response' => $providerData,
+                    'external_id' => $providerData['external_id'] ?? null,
+                ]);
+
+                Log::channel('audit')->info('Age verification completed for vapes', [
+                    'user_id' => $verification->user_id,
+                    'status' => $status,
+                    'is_adult' => $isAdult,
+                    'correlation_id' => $correlationId,
+                    'verification_uuid' => $uuid,
+                ]);
+
+                return $isAdult;
+            });
+        }
+
+        /**
+         * Проверка: имеет ли пользователь актуальную подтвержденную верификацию.
+         */
+        public function hasAValidVerification(int $userId): bool
+        {
+            return VapeAgeVerification::where('user_id', $userId)
+                ->where('status', 'verified')
+                ->whereNotNull('verified_at')
+                ->exists();
+        }
 }

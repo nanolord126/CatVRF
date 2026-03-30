@@ -2,10 +2,10 @@
 
 namespace Tests\Feature\Fashion;
 
+use App\Domains\Fashion\Jobs\ReleaseStockReservationJob;
 use App\Domains\Fashion\Models\FashionProduct;
 use App\Domains\Fashion\Models\FashionStore;
 use App\Domains\Fashion\Services\FashionService;
-use App\Domains\Fashion\Jobs\ReleaseStockReservationJob;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;

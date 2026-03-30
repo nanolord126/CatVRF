@@ -1,246 +1,235 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Services\Analytics;
 
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * ReportingService — генерация и управление отчётами
- * 
- * Методы:
- * - scheduleReport(tenantId, reportType, frequency, recipients)
- * - generateReport(tenantId, reportType, dateRange)
- * - getScheduledReports(tenantId)
- * - updateReportSchedule(reportId, schedule)
- * - deleteReportSchedule(reportId)
- * - sendReport(reportId, recipients)
- */
-final class ReportingService
+final class ReportingService extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     private const CACHE_TTL_SCHEDULES = 86400;  // 24 hours
-    private const CACHE_TTL_REPORTS = 3600;    // 1 hour
+        private const CACHE_TTL_REPORTS = 3600;    // 1 hour
 
-    /**
-     * Запланировать отчёт на повторную генерацию
-     */
-    public function scheduleReport(
-        int $tenantId,
-        string $reportType,
-        string $frequency,
-        array $recipients,
-        array $context = []
-    ): array {
-        $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
+        /**
+         * Запланировать отчёт на повторную генерацию
+         */
+        public function scheduleReport(
+            int $tenantId,
+            string $reportType,
+            string $frequency,
+            array $recipients,
+            array $context = []
+        ): array {
+            $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
 
-        $schedule = [
-            'id' => Str::uuid()->toString(),
-            'tenant_id' => $tenantId,
-            'report_type' => $reportType,
-            'frequency' => $frequency,  // daily, weekly, monthly
-            'recipients' => $recipients,  // emails
-            'created_at' => now()->toIso8601String(),
-            'next_send_at' => $this->calculateNextSendTime($frequency),
-            'correlation_id' => $correlationId,
-        ];
+            $schedule = [
+                'id' => Str::uuid()->toString(),
+                'tenant_id' => $tenantId,
+                'report_type' => $reportType,
+                'frequency' => $frequency,  // daily, weekly, monthly
+                'recipients' => $recipients,  // emails
+                'created_at' => now()->toIso8601String(),
+                'next_send_at' => $this->calculateNextSendTime($frequency),
+                'correlation_id' => $correlationId,
+            ];
 
-        $cacheKey = "reporting:schedule:{$tenantId}:{$reportType}:{$frequency}";
-        Cache::put($cacheKey, $schedule, self::CACHE_TTL_SCHEDULES);
+            $cacheKey = "reporting:schedule:{$tenantId}:{$reportType}:{$frequency}";
+            Cache::put($cacheKey, $schedule, self::CACHE_TTL_SCHEDULES);
 
-        Log::channel('audit')->info('Report schedule created', [
-            'correlation_id' => $correlationId,
-            'tenant_id' => $tenantId,
-            'report_type' => $reportType,
-            'frequency' => $frequency,
-            'recipients_count' => count($recipients),
-        ]);
+            Log::channel('audit')->info('Report schedule created', [
+                'correlation_id' => $correlationId,
+                'tenant_id' => $tenantId,
+                'report_type' => $reportType,
+                'frequency' => $frequency,
+                'recipients_count' => count($recipients),
+            ]);
 
-        return $schedule;
-    }
-
-    /**
-     * Сгенерировать отчёт
-     */
-    public function generateReport(
-        int $tenantId,
-        string $reportType,
-        string $dateRange = '30_days',
-        array $context = []
-    ): array {
-        $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
-
-        $cacheKey = "reporting:report:{$tenantId}:{$reportType}:{$dateRange}";
-        $cached = Cache::get($cacheKey);
-        if ($cached !== null) {
-            return $cached;
+            return $schedule;
         }
 
-        $report = [
-            'id' => Str::uuid()->toString(),
-            'tenant_id' => $tenantId,
-            'report_type' => $reportType,
-            'date_range' => $dateRange,
-            'generated_at' => now()->toIso8601String(),
-            'correlation_id' => $correlationId,
-            'sections' => $this->generateReportSections($tenantId, $reportType),
-        ];
+        /**
+         * Сгенерировать отчёт
+         */
+        public function generateReport(
+            int $tenantId,
+            string $reportType,
+            string $dateRange = '30_days',
+            array $context = []
+        ): array {
+            $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
 
-        Cache::put($cacheKey, $report, self::CACHE_TTL_REPORTS);
+            $cacheKey = "reporting:report:{$tenantId}:{$reportType}:{$dateRange}";
+            $cached = Cache::get($cacheKey);
+            if ($cached !== null) {
+                return $cached;
+            }
 
-        Log::channel('audit')->info('Report generated', [
-            'correlation_id' => $correlationId,
-            'tenant_id' => $tenantId,
-            'report_type' => $reportType,
-            'date_range' => $dateRange,
-        ]);
+            $report = [
+                'id' => Str::uuid()->toString(),
+                'tenant_id' => $tenantId,
+                'report_type' => $reportType,
+                'date_range' => $dateRange,
+                'generated_at' => now()->toIso8601String(),
+                'correlation_id' => $correlationId,
+                'sections' => $this->generateReportSections($tenantId, $reportType),
+            ];
 
-        return $report;
-    }
+            Cache::put($cacheKey, $report, self::CACHE_TTL_REPORTS);
 
-    /**
-     * Получить запланированные отчёты
-     */
-    public function getScheduledReports(int $tenantId, array $context = []): array {
-        $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
-        $cacheKey = "reporting:schedules:{$tenantId}";
+            Log::channel('audit')->info('Report generated', [
+                'correlation_id' => $correlationId,
+                'tenant_id' => $tenantId,
+                'report_type' => $reportType,
+                'date_range' => $dateRange,
+            ]);
 
-        $cached = Cache::get($cacheKey);
-        if ($cached !== null) {
-            return $cached;
+            return $report;
         }
 
-        $schedules = [
-            [
-                'id' => Str::uuid()->toString(),
-                'report_type' => 'weekly_summary',
-                'frequency' => 'weekly',
-                'recipients' => ['manager@example.com'],
-                'next_send_at' => now()->addWeek()->toIso8601String(),
-            ],
-            [
-                'id' => Str::uuid()->toString(),
-                'report_type' => 'monthly_detailed',
-                'frequency' => 'monthly',
-                'recipients' => ['cfo@example.com'],
-                'next_send_at' => now()->addMonth()->toIso8601String(),
-            ],
-        ];
+        /**
+         * Получить запланированные отчёты
+         */
+        public function getScheduledReports(int $tenantId, array $context = []): array {
+            $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
+            $cacheKey = "reporting:schedules:{$tenantId}";
 
-        Cache::put($cacheKey, $schedules, self::CACHE_TTL_SCHEDULES);
+            $cached = Cache::get($cacheKey);
+            if ($cached !== null) {
+                return $cached;
+            }
 
-        return $schedules;
-    }
+            $schedules = [
+                [
+                    'id' => Str::uuid()->toString(),
+                    'report_type' => 'weekly_summary',
+                    'frequency' => 'weekly',
+                    'recipients' => ['manager@example.com'],
+                    'next_send_at' => now()->addWeek()->toIso8601String(),
+                ],
+                [
+                    'id' => Str::uuid()->toString(),
+                    'report_type' => 'monthly_detailed',
+                    'frequency' => 'monthly',
+                    'recipients' => ['cfo@example.com'],
+                    'next_send_at' => now()->addMonth()->toIso8601String(),
+                ],
+            ];
 
-    /**
-     * Обновить расписание отчёта
-     */
-    public function updateReportSchedule(
-        string $reportId,
-        int $tenantId,
-        array $updates,
-        array $context = []
-    ): array {
-        $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
+            Cache::put($cacheKey, $schedules, self::CACHE_TTL_SCHEDULES);
 
-        $schedule = [
-            'id' => $reportId,
-            'tenant_id' => $tenantId,
-            'frequency' => $updates['frequency'] ?? 'weekly',
-            'recipients' => $updates['recipients'] ?? [],
-            'updated_at' => now()->toIso8601String(),
-            'next_send_at' => $this->calculateNextSendTime($updates['frequency'] ?? 'weekly'),
-            'correlation_id' => $correlationId,
-        ];
+            return $schedules;
+        }
 
-        $cacheKey = "reporting:schedule:{$reportId}";
-        Cache::put($cacheKey, $schedule, self::CACHE_TTL_SCHEDULES);
+        /**
+         * Обновить расписание отчёта
+         */
+        public function updateReportSchedule(
+            string $reportId,
+            int $tenantId,
+            array $updates,
+            array $context = []
+        ): array {
+            $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
 
-        Log::channel('audit')->info('Report schedule updated', [
-            'correlation_id' => $correlationId,
-            'report_id' => $reportId,
-            'tenant_id' => $tenantId,
-        ]);
+            $schedule = [
+                'id' => $reportId,
+                'tenant_id' => $tenantId,
+                'frequency' => $updates['frequency'] ?? 'weekly',
+                'recipients' => $updates['recipients'] ?? [],
+                'updated_at' => now()->toIso8601String(),
+                'next_send_at' => $this->calculateNextSendTime($updates['frequency'] ?? 'weekly'),
+                'correlation_id' => $correlationId,
+            ];
 
-        return $schedule;
-    }
+            $cacheKey = "reporting:schedule:{$reportId}";
+            Cache::put($cacheKey, $schedule, self::CACHE_TTL_SCHEDULES);
 
-    /**
-     * Удалить расписание отчёта
-     */
-    public function deleteReportSchedule(string $reportId, int $tenantId, array $context = []): bool {
-        $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
+            Log::channel('audit')->info('Report schedule updated', [
+                'correlation_id' => $correlationId,
+                'report_id' => $reportId,
+                'tenant_id' => $tenantId,
+            ]);
 
-        Cache::forget("reporting:schedule:{$reportId}");
+            return $schedule;
+        }
 
-        Log::channel('audit')->info('Report schedule deleted', [
-            'correlation_id' => $correlationId,
-            'report_id' => $reportId,
-            'tenant_id' => $tenantId,
-        ]);
+        /**
+         * Удалить расписание отчёта
+         */
+        public function deleteReportSchedule(string $reportId, int $tenantId, array $context = []): bool {
+            $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
 
-        return true;
-    }
+            Cache::forget("reporting:schedule:{$reportId}");
 
-    /**
-     * Отправить отчёт по email
-     */
-    public function sendReport(
-        string $reportId,
-        int $tenantId,
-        array $recipients,
-        array $context = []
-    ): array {
-        $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
+            Log::channel('audit')->info('Report schedule deleted', [
+                'correlation_id' => $correlationId,
+                'report_id' => $reportId,
+                'tenant_id' => $tenantId,
+            ]);
 
-        $result = [
-            'report_id' => $reportId,
-            'sent_at' => now()->toIso8601String(),
-            'recipients_count' => count($recipients),
-            'status' => 'queued',
-            'correlation_id' => $correlationId,
-        ];
+            return true;
+        }
 
-        Log::channel('audit')->info('Report queued for sending', [
-            'correlation_id' => $correlationId,
-            'report_id' => $reportId,
-            'tenant_id' => $tenantId,
-            'recipients_count' => count($recipients),
-        ]);
+        /**
+         * Отправить отчёт по email
+         */
+        public function sendReport(
+            string $reportId,
+            int $tenantId,
+            array $recipients,
+            array $context = []
+        ): array {
+            $correlationId = $context['correlation_id'] ?? Str::uuid()->toString();
 
-        return $result;
-    }
+            $result = [
+                'report_id' => $reportId,
+                'sent_at' => now()->toIso8601String(),
+                'recipients_count' => count($recipients),
+                'status' => 'queued',
+                'correlation_id' => $correlationId,
+            ];
 
-    // ========== PRIVATE HELPERS ==========
+            Log::channel('audit')->info('Report queued for sending', [
+                'correlation_id' => $correlationId,
+                'report_id' => $reportId,
+                'tenant_id' => $tenantId,
+                'recipients_count' => count($recipients),
+            ]);
 
-    private function calculateNextSendTime(string $frequency): string {
-        return match ($frequency) {
-            'daily' => now()->addDay()->format('Y-m-d H:i:s'),
-            'weekly' => now()->addWeek()->format('Y-m-d H:i:s'),
-            'monthly' => now()->addMonth()->format('Y-m-d H:i:s'),
-            default => now()->addDay()->format('Y-m-d H:i:s'),
-        };
-    }
+            return $result;
+        }
 
-    private function generateReportSections(int $tenantId, string $reportType): array {
-        return match ($reportType) {
-            'revenue_report' => [
-                'summary' => ['total_revenue' => 250000, 'currency' => 'RUB'],
-                'breakdown' => ['by_category' => [], 'by_source' => []],
-                'trends' => ['daily_trend' => [], 'growth_rate' => 12.5],
-            ],
-            'performance_report' => [
-                'kpis' => ['conversion_rate' => 0.045, 'aov' => 3500, 'ltv' => 45000],
-                'comparisons' => ['vs_last_period' => [], 'vs_target' => []],
-            ],
-            'customer_report' => [
-                'metrics' => ['total_customers' => 1250, 'new_customers' => 85],
-                'segments' => ['by_value' => [], 'by_frequency' => []],
-                'retention' => ['churn_rate' => 0.08],
-            ],
-            default => [],
-        };
-    }
+        // ========== PRIVATE HELPERS ==========
+
+        private function calculateNextSendTime(string $frequency): string {
+            return match ($frequency) {
+                'daily' => now()->addDay()->format('Y-m-d H:i:s'),
+                'weekly' => now()->addWeek()->format('Y-m-d H:i:s'),
+                'monthly' => now()->addMonth()->format('Y-m-d H:i:s'),
+                default => now()->addDay()->format('Y-m-d H:i:s'),
+            };
+        }
+
+        private function generateReportSections(int $tenantId, string $reportType): array {
+            return match ($reportType) {
+                'revenue_report' => [
+                    'summary' => ['total_revenue' => 250000, 'currency' => 'RUB'],
+                    'breakdown' => ['by_category' => [], 'by_source' => []],
+                    'trends' => ['daily_trend' => [], 'growth_rate' => 12.5],
+                ],
+                'performance_report' => [
+                    'kpis' => ['conversion_rate' => 0.045, 'aov' => 3500, 'ltv' => 45000],
+                    'comparisons' => ['vs_last_period' => [], 'vs_target' => []],
+                ],
+                'customer_report' => [
+                    'metrics' => ['total_customers' => 1250, 'new_customers' => 85],
+                    'segments' => ['by_value' => [], 'by_frequency' => []],
+                    'retention' => ['churn_rate' => 0.08],
+                ],
+                default => [],
+            };
+        }
 }

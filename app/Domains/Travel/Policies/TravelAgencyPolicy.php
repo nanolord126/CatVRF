@@ -2,78 +2,80 @@
 
 namespace App\Domains\Travel\Policies;
 
-use App\Models\User;
-use App\Domains\Travel\Models\TravelAgency;
-use Illuminate\Auth\Access\Response;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final class TravelAgencyPolicy
+final class TravelAgencyPolicy extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function viewAny(User $user): Response
-    {
-        return $this->response->allow();
-    }
-
-    public function view(User $user, TravelAgency $agency): Response
-    {
-        if ($agency->tenant_id !== tenant()->id) {
-            return $this->response->deny('Unauthorized');
+        {
+            return $this->response->allow();
         }
 
-        return $this->response->allow();
-    }
+        public function view(User $user, TravelAgency $agency): Response
+        {
+            if ($agency->tenant_id !== tenant()->id) {
+                return $this->response->deny('Unauthorized');
+            }
 
-    public function create(User $user): Response
-    {
-        return $user->can('create_travel_agency')
-            ? $this->response->allow()
-            : $this->response->deny('Unauthorized');
-    }
-
-    public function update(User $user, TravelAgency $agency): Response
-    {
-        if ($agency->tenant_id !== tenant()->id) {
-            return $this->response->deny('Unauthorized');
+            return $this->response->allow();
         }
 
-        if ($agency->owner_id !== $user->id && !$user->can('update_travel_agency')) {
-            return $this->response->deny('Unauthorized');
+        public function create(User $user): Response
+        {
+            return $user->can('create_travel_agency')
+                ? $this->response->allow()
+                : $this->response->deny('Unauthorized');
         }
 
-        return $this->response->allow();
-    }
+        public function update(User $user, TravelAgency $agency): Response
+        {
+            if ($agency->tenant_id !== tenant()->id) {
+                return $this->response->deny('Unauthorized');
+            }
 
-    public function delete(User $user, TravelAgency $agency): Response
-    {
-        if ($agency->tenant_id !== tenant()->id) {
-            return $this->response->deny('Unauthorized');
+            if ($agency->owner_id !== $user->id && !$user->can('update_travel_agency')) {
+                return $this->response->deny('Unauthorized');
+            }
+
+            return $this->response->allow();
         }
 
-        if ($agency->owner_id !== $user->id && !$user->can('delete_travel_agency')) {
-            return $this->response->deny('Unauthorized');
+        public function delete(User $user, TravelAgency $agency): Response
+        {
+            if ($agency->tenant_id !== tenant()->id) {
+                return $this->response->deny('Unauthorized');
+            }
+
+            if ($agency->owner_id !== $user->id && !$user->can('delete_travel_agency')) {
+                return $this->response->deny('Unauthorized');
+            }
+
+            return $this->response->allow();
         }
 
-        return $this->response->allow();
-    }
+        public function restore(User $user, TravelAgency $agency): Response
+        {
+            if ($agency->tenant_id !== tenant()->id) {
+                return $this->response->deny('Unauthorized');
+            }
 
-    public function restore(User $user, TravelAgency $agency): Response
-    {
-        if ($agency->tenant_id !== tenant()->id) {
-            return $this->response->deny('Unauthorized');
+            return $user->can('restore_travel_agency')
+                ? $this->response->allow()
+                : $this->response->deny('Unauthorized');
         }
 
-        return $user->can('restore_travel_agency')
-            ? $this->response->allow()
-            : $this->response->deny('Unauthorized');
-    }
+        public function forceDelete(User $user, TravelAgency $agency): Response
+        {
+            if ($agency->tenant_id !== tenant()->id) {
+                return $this->response->deny('Unauthorized');
+            }
 
-    public function forceDelete(User $user, TravelAgency $agency): Response
-    {
-        if ($agency->tenant_id !== tenant()->id) {
-            return $this->response->deny('Unauthorized');
+            return $user->can('force_delete_travel_agency')
+                ? $this->response->allow()
+                : $this->response->deny('Unauthorized');
         }
-
-        return $user->can('force_delete_travel_agency')
-            ? $this->response->allow()
-            : $this->response->deny('Unauthorized');
-    }
 }

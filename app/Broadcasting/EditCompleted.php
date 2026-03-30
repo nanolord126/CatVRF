@@ -1,6 +1,4 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Broadcasting;
 
@@ -24,7 +22,7 @@ final class EditCompleted implements ShouldBroadcast
         public readonly int $documentId,
         public readonly string $userName,
         public readonly array $editData,
-        public readonly string $correlationId
+        public readonly string $correlationId,
     ) {
         Log::channel('audit')->info('EditCompleted event broadcasted', [
             'user_id' => $this->userId,
@@ -35,27 +33,17 @@ final class EditCompleted implements ShouldBroadcast
         ]);
     }
 
-    /**
-     * Get the channels the event should broadcast on.
-     *
-     * @return \Illuminate\Broadcasting\Channel
-     */
     public function broadcastOn(): PrivateChannel
     {
         return new PrivateChannel("collab.{$this->tenantId}.{$this->documentType}.{$this->documentId}");
     }
 
-    /**
-     * The event's broadcast name.
-     */
     public function broadcastAs(): string
     {
         return 'edit.completed';
     }
 
     /**
-     * Get the data to broadcast.
-     *
      * @return array<string, mixed>
      */
     public function broadcastWith(): array
@@ -64,16 +52,15 @@ final class EditCompleted implements ShouldBroadcast
             'event' => 'edit_completed',
             'user_id' => $this->userId,
             'user_name' => $this->userName,
+            'document_type' => $this->documentType,
+            'document_id' => $this->documentId,
             'edit_data' => $this->editData,
             'timestamp' => now()->toIso8601String(),
             'correlation_id' => $this->correlationId,
         ];
     }
 
-    /**
-     * Determine if this event should be broadcast.
-     */
-    public function shouldBroadcast(): bool
+    public function broadcastWhen(): bool
     {
         return config('broadcasting.connections.pusher.enabled', true);
     }

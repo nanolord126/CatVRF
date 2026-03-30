@@ -1,57 +1,50 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Domains\Electronics\Events;
 
-use App\Domains\Electronics\Models\ElectronicsProduct;
-use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * ElectronicsProductCreated - Event triggered when a new gadget enters the system.
- * Layer: Events & Listeners (7/9)
- * Requirement: Dispatchable, correlation_id in constructor, audit log.
- */
-final class ElectronicsProductCreated
+final class ElectronicsProductCreated extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
+        /**
+         * Create a new event instance.
+         */
+        public function __construct(
+            public readonly ElectronicsProduct $product,
+            public readonly string $correlationId,
+        ) {
+            Log::channel('audit')->info('LAYER-7: ElectronicsProductCreated EVENT', [
+                'sku' => $product->sku,
+                'name' => $product->name,
+                'correlation_id' => $correlationId,
+            ]);
+        }
+    }
+
     /**
-     * Create a new event instance.
+     * ElectronicsOrderProcessed - Event triggered after a successful gadget sale and stock lock.
      */
-    public function __construct(
-        public readonly ElectronicsProduct $product,
-        public readonly string $correlationId,
-    ) {
-        Log::channel('audit')->info('LAYER-7: ElectronicsProductCreated EVENT', [
-            'sku' => $product->sku,
-            'name' => $product->name,
-            'correlation_id' => $correlationId,
-        ]);
-    }
-}
+    final class ElectronicsOrderProcessed
+    {
+        use Dispatchable;
 
-/**
- * ElectronicsOrderProcessed - Event triggered after a successful gadget sale and stock lock.
- */
-final class ElectronicsOrderProcessed
-{
-    use Dispatchable;
-
-    public function __construct(
-        public readonly int $orderId,
-        public readonly int $productId,
-        public readonly int $quantity,
-        public readonly string $correlationId,
-    ) {
-        Log::channel('audit')->info('LAYER-7: ElectronicsOrderProcessed EVENT', [
-            'order_id' => $orderId,
-            'product_id' => $productId,
-            'qty' => $quantity,
-            'correlation_id' => $correlationId,
-        ]);
-    }
+        public function __construct(
+            public readonly int $orderId,
+            public readonly int $productId,
+            public readonly int $quantity,
+            public readonly string $correlationId,
+        ) {
+            Log::channel('audit')->info('LAYER-7: ElectronicsOrderProcessed EVENT', [
+                'order_id' => $orderId,
+                'product_id' => $productId,
+                'qty' => $quantity,
+                'correlation_id' => $correlationId,
+            ]);
+        }
 }

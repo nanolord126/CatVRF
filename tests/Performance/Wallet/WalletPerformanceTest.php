@@ -1,13 +1,11 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace Tests\Performance\Wallet;
 
-use App\Models\Wallet;
-use App\Models\WalletTransaction;
-use App\Models\User;
 use App\Models\Tenant;
+use App\Models\User;
+use App\Models\WalletTransaction;
+use App\Models\Wallet;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;

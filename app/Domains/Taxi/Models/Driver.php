@@ -1,122 +1,112 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Domains\Taxi\Models;
 
-use App\Models\User;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
-use Spatie\Activitylog\Traits\LogsActivity;
-use Spatie\Activitylog\LogOptions;
-use Illuminate\Support\Str;
 
-/**
- * КАНОН 2026: Модель Driver (Водитель).
- * Слой 2: Доменные модели.
- */
 final class Driver extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use SoftDeletes, LogsActivity;
 
-    protected $table = 'taxi_drivers';
+        protected $table = 'taxi_drivers';
 
-    protected $fillable = [
-        'uuid',
-        'tenant_id',
-        'user_id',
-        'fleet_id',
-        'license_number',
-        'is_active',
-        'is_available',
-        'rating',
-        'current_location_point',
-        'balance_meta',
-        'correlation_id',
-        'tags'
-    ];
+        protected $fillable = [
+            'uuid',
+            'tenant_id',
+            'user_id',
+            'fleet_id',
+            'license_number',
+            'is_active',
+            'is_available',
+            'rating',
+            'current_location_point',
+            'balance_meta',
+            'correlation_id',
+            'tags'
+        ];
 
-    protected $casts = [
-        'balance_meta' => 'json',
-        'tags' => 'json',
-        'is_active' => 'boolean',
-        'is_available' => 'boolean',
-        'rating' => 'float',
-        'tenant_id' => 'integer',
-        'user_id' => 'integer'
-    ];
+        protected $casts = [
+            'balance_meta' => 'json',
+            'tags' => 'json',
+            'is_active' => 'boolean',
+            'is_available' => 'boolean',
+            'rating' => 'float',
+            'tenant_id' => 'integer',
+            'user_id' => 'integer'
+        ];
 
-    protected $hidden = ['balance_meta'];
+        protected $hidden = ['balance_meta'];
 
-    /**
-     * Глобальный скоупинг тенанта.
-     */
-    protected static function booted(): void
-    {
-        static::creating(function (Driver $driver) {
-            $driver->uuid = $driver->uuid ?? (string) Str::uuid();
-            $driver->tenant_id = $driver->tenant_id ?? (tenant()->id ?? 1);
-            $driver->correlation_id = $driver->correlation_id ?? request()->header('X-Correlation-ID');
-        });
+        /**
+         * Глобальный скоупинг тенанта.
+         */
+        protected static function booted(): void
+        {
+            static::creating(function (Driver $driver) {
+                $driver->uuid = $driver->uuid ?? (string) Str::uuid();
+                $driver->tenant_id = $driver->tenant_id ?? (tenant()->id ?? 1);
+                $driver->correlation_id = $driver->correlation_id ?? request()->header('X-Correlation-ID');
+            });
 
-        static::addGlobalScope('tenant', function ($query) {
-            if (tenant()) {
-                $query->where('tenant_id', tenant()->id);
-            }
-        });
-    }
+            static::addGlobalScope('tenant', function ($query) {
+                if (tenant()) {
+                    $query->where('tenant_id', tenant()->id);
+                }
+            });
+        }
 
-    /**
-     * Настройка логов активности.
-     */
-    public function getActivitylogOptions(): LogOptions
-    {
-        return LogOptions::defaults()
-            ->logOnly(['is_active', 'is_available', 'rating', 'fleet_id'])
-            ->logOnlyDirty()
-            ->dontSubmitEmptyLogs()
-            ->setLogName('driver_tracking');
-    }
+        /**
+         * Настройка логов активности.
+         */
+        public function getActivitylogOptions(): LogOptions
+        {
+            return LogOptions::defaults()
+                ->logOnly(['is_active', 'is_available', 'rating', 'fleet_id'])
+                ->logOnlyDirty()
+                ->dontSubmitEmptyLogs()
+                ->setLogName('driver_tracking');
+        }
 
-    /**
-     * Отношения.
-     */
-    public function user(): BelongsTo
-    {
-        return $this->belongsTo(User::class);
-    }
+        /**
+         * Отношения.
+         */
+        public function user(): BelongsTo
+        {
+            return $this->belongsTo(User::class);
+        }
 
-    public function fleet(): BelongsTo
-    {
-        return $this->belongsTo(Fleet::class);
-    }
+        public function fleet(): BelongsTo
+        {
+            return $this->belongsTo(Fleet::class);
+        }
 
-    public function vehicle(): HasOne
-    {
-        return $this->hasOne(Vehicle::class, 'driver_id')->where('status', 'active');
-    }
+        public function vehicle(): HasOne
+        {
+            return $this->hasOne(Vehicle::class, 'driver_id')->where('status', 'active');
+        }
 
-    public function rides(): HasMany
-    {
-        return $this->hasMany(TaxiRide::class, 'driver_id');
-    }
+        public function rides(): HasMany
+        {
+            return $this->hasMany(TaxiRide::class, 'driver_id');
+        }
 
-    public function deliveryOrders(): HasMany
-    {
-        return $this->hasMany(DeliveryOrder::class, 'courier_id');
-    }
+        public function deliveryOrders(): HasMany
+        {
+            return $this->hasMany(DeliveryOrder::class, 'courier_id');
+        }
 
-    /**
-     * Обновить координаты.
-     */
-    public function updateLocation(float $lat, float $lon): void
-    {
-        $this->update([
-            'current_location_point' => "{$lat},{$lon}",
-            'updated_at' => now()
-        ]);
-    }
+        /**
+         * Обновить координаты.
+         */
+        public function updateLocation(float $lat, float $lon): void
+        {
+            $this->update([
+                'current_location_point' => "{$lat},{$lon}",
+                'updated_at' => now()
+            ]);
+        }
 }

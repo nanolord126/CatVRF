@@ -4,57 +4,58 @@ namespace App\Domains\Flowers\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 final class B2BFlowerOrder extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use HasFactory, SoftDeletes;
 
-    protected $table = 'b2b_flower_orders';
+        protected $table = 'b2b_flower_orders';
 
-    protected $fillable = [
-        'tenant_id',
-        'storefront_id',
-        'shop_id',
-        'order_number',
-        'subtotal',
-        'bulk_discount',
-        'commission_amount',
-        'total_amount',
-        'delivery_address',
-        'delivery_location',
-        'delivery_date',
-        'status',
-        'payment_status',
-        'correlation_id',
-    ];
+        protected $fillable = [
+            'tenant_id',
+            'storefront_id',
+            'shop_id',
+            'order_number',
+            'subtotal',
+            'bulk_discount',
+            'commission_amount',
+            'total_amount',
+            'delivery_address',
+            'delivery_location',
+            'delivery_date',
+            'status',
+            'payment_status',
+            'correlation_id',
+        ];
 
-    protected $casts = [
-        'delivery_location' => 'json',
-        'delivery_date' => 'date',
-        'subtotal' => 'decimal:2',
-        'bulk_discount' => 'decimal:2',
-        'commission_amount' => 'decimal:2',
-        'total_amount' => 'decimal:2',
-    ];
+        protected $casts = [
+            'delivery_location' => 'json',
+            'delivery_date' => 'date',
+            'subtotal' => 'decimal:2',
+            'bulk_discount' => 'decimal:2',
+            'commission_amount' => 'decimal:2',
+            'total_amount' => 'decimal:2',
+        ];
 
-    protected static function booted(): void
-    {
-        static::addGlobalScope('tenant', function ($query) {
-            if (filament()->getTenant()) {
-                $query->where('tenant_id', filament()->getTenant()->id);
-            }
-        });
-    }
+        protected static function booted(): void
+        {
+            static::addGlobalScope('tenant', function ($query) {
+                if (filament()->getTenant()) {
+                    $query->where('tenant_id', filament()->getTenant()->id);
+                }
+            });
+        }
 
-    public function storefront(): BelongsTo
-    {
-        return $this->belongsTo(B2BFlowerStorefront::class);
-    }
+        public function storefront(): BelongsTo
+        {
+            return $this->belongsTo(B2BFlowerStorefront::class);
+        }
 
-    public function shop(): BelongsTo
-    {
-        return $this->belongsTo(FlowerShop::class);
-    }
+        public function shop(): BelongsTo
+        {
+            return $this->belongsTo(FlowerShop::class);
+        }
 }

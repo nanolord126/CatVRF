@@ -353,7 +353,7 @@ final class SBPGateway implements PaymentGatewayInterface
         try {
             // 1. Проверка подписи HMAC-SHA256 (КАНОН SECURITY 2026)
             $signature = $payload['_signature'] ?? request()->header('X-Signature') ?? '';
-            
+
             // Удалить подпись из payload перед вычислением хеша
             $payloadForHash = $payload;
             unset($payloadForHash['_signature']);

@@ -1,25 +1,17 @@
-<?php
+<?php declare(strict_types=1);
 
-declare(strict_types=1);
 namespace App\Http\Middleware;
 
-use Closure;
-use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\Response;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final /**
- * BusinessGroupGuard
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class BusinessGroupGuard
+final class BusinessGroupGuard extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function handle(Request $request, Closure $next): Response
-    {
-        return $next($request);
-    }
+        {
+            return $next($request);
+        }
 }

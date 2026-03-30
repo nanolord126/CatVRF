@@ -1,12 +1,10 @@
-<?php
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace Tests\Chaos;
 
-use Illuminate\Support\Facades\Redis;
-use Illuminate\Support\Facades\DB;
 use App\Services\Fraud\FraudMLService;
-use Tests\BaseTestCase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Redis;
 
 /**
  * Chaos Engineering Tests

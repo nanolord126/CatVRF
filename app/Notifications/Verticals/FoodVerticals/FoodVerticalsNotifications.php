@@ -3,8 +3,8 @@
 namespace App\Notifications\Verticals\FoodVerticals;
 
 use App\Notifications\BaseMailableNotification;
-use App\Notifications\BaseSmsNotification;
 use App\Notifications\BasePushNotification;
+use App\Notifications\BaseSmsNotification;
 
 // ========== LOGISTICS ==========
 final class ShipmentDispatchedNotification extends BasePushNotification
@@ -14,7 +14,7 @@ final class ShipmentDispatchedNotification extends BasePushNotification
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['sms', 'push', 'database']);
-        
+
         $this->title('Your order is on the way!')
              ->body('Tracking: ' . ($data['tracking_number'] ?? ''))
              ->type('info')
@@ -29,7 +29,7 @@ final class DeliveryConfirmedNotification extends BasePushNotification
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
-        
+
         $this->title('Delivered!')
              ->body('Your order has been delivered')
              ->type('success')
@@ -55,7 +55,7 @@ final class FreshProduceDeliveryArrivingNotification extends BasePushNotificatio
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
-        
+
         $this->title('Your fresh box is arriving!')
              ->message('Estimated: ' . ($data['estimated_time'] ?? ''))
              ->type('info')
@@ -81,7 +81,7 @@ final class GroceryDeliveryArrivingNotification extends BasePushNotification
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
-        
+
         $this->title('Your groceries are arriving!')
              ->body('Delivery window: ' . ($data['delivery_window'] ?? ''))
              ->type('info')
@@ -133,7 +133,7 @@ final class DeliveryScheduledNotification extends BasePushNotification
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
-        
+
         $this->title('Healthy meals scheduled!')
              ->body('First delivery: ' . ($data['delivery_date'] ?? ''))
              ->type('info');
@@ -148,7 +148,7 @@ final class ConfectioneryOrderConfirmedNotification extends BasePushNotification
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
-        
+
         $this->title('Your order is being prepared!')
              ->body(($data['items_count'] ?? '0') . ' items in your order')
              ->type('info')
@@ -163,7 +163,7 @@ final class ConfectioneryReadyForPickupNotification extends BasePushNotification
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['sms', 'push', 'database']);
-        
+
         $this->title('Your order is ready!')
              ->message('Pick up at ' . ($data['pickup_location'] ?? ''))
              ->type('success')
@@ -180,7 +180,7 @@ final class MeatOrderConfirmedNotification extends BasePushNotification
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
-        
+
         $this->title('Meat box confirmed!')
              ->body('Processing your order...')
              ->type('info');
@@ -217,7 +217,7 @@ final class CateringDeliveryConfirmedNotification extends BasePushNotification
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
-        
+
         $this->title('Lunch is arriving!')
              ->body('Delivery: ' . ($data['delivery_time'] ?? ''))
              ->type('info')
@@ -268,7 +268,7 @@ final class BookDeliveryArrivedNotification extends BasePushNotification
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
-        
+
         $this->title('Your books have arrived!')
              ->body(($data['book_count'] ?? '0') . ' books ready for pickup')
              ->type('success')

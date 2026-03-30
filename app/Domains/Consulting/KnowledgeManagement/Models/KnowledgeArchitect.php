@@ -1,31 +1,42 @@
 <?php declare(strict_types=1);
-namespace App\Dom
 
-/**
- * KnowledgeArchitect
- * 
- * Производитель: CatVRF Platform
- * Версия: 1.0.0
- * 
- * Примеры использования:
- * 
- * ```php
- * // Базовое использование
- * $instance = new KnowledgeArchitect();
- * ```
- * 
- * Требования:
- * - Laravel 10+
- * - PHP 8.2+
- * - Все методы должны быть явно типизированы
- * 
- * @author CatVRF
- * @package namespace App\Domains\Consulting\KnowledgeManagement\Models
- * @see https://github.com/iyegorovskyi_clemny/CatVRF
- */
-ains\KnowledgeManagement\Models;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
+namespace App\Domains\Consulting\KnowledgeManagement\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Traits\TenantScoped;
-final class KnowledgeArchitect extends Model{use HasUuids,SoftDeletes,TenantScoped;protected $table='knowledge_architects';protected $fillable=['uuid','tenant_id','user_id','correlation_id','name','specialties','price_kopecks_per_hour','rating','is_verified','tags'];protected $casts=['specialties'=>'json','price_kopecks_per_hour'=>'integer','rating'=>'float','is_verified'=>'boolean','tags'=>'json'];protected static function booted(){static::addGlobalScope('tenant',fn($q)=>$q->where('knowledge_architects.tenant_id',tenant()->id));}}
+
+final class KnowledgeArchitect extends Model
+{
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    use HasUuids, SoftDeletes, TenantScoped;
+
+        protected $table = 'knowledge_architects';
+
+        protected $fillable = [
+            'uuid',
+            'tenant_id',
+            'user_id',
+            'correlation_id',
+            'name',
+            'specialties',
+            'price_kopecks_per_hour',
+            'rating',
+            'is_verified',
+            'tags',
+        ];
+
+        protected $casts = [
+            'specialties' => 'json',
+            'price_kopecks_per_hour' => 'integer',
+            'rating' => 'float',
+            'is_verified' => 'boolean',
+            'tags' => 'json',
+        ];
+
+        protected static function booted(): void
+        {
+            static::addGlobalScope('tenant', fn($q) => $q->where('knowledge_architects.tenant_id', tenant()->id));
+        }
+}

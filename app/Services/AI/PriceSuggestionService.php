@@ -2,14 +2,14 @@
 
 namespace App\Services\AI;
 
-use Illuminate\Database\Connection;
 use Illuminate\Contracts\Cache\Repository;
+use Illuminate\Database\Connection;
 use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
 
 /**
  * Dynamic Price Suggestion Service (CANON 2026)
- * 
+ *
  * Provides intelligent price recommendations based on:
  * - Demand elasticity (conversion rates, velocity)
  * - Competitor pricing (market position)
@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
  * - Seasonality and trends
  * - Tenant-specific pricing rules
  * - User segment strategies
- * 
+ *
  * All prices in kopeks (₽ × 100)
  */
 final readonly class PriceSuggestionService
@@ -39,7 +39,7 @@ final readonly class PriceSuggestionService
     /**
      * Get price suggestion for a product/service
      * Combines demand, competition, inventory, and seasonality
-     * 
+     *
      * @param int $itemId Product/service ID
      * @param int $currentPrice Current price in kopeks
      * @param int $costPrice Cost price in kopeks
@@ -376,8 +376,8 @@ final readonly class PriceSuggestionService
         $competitionConfidence = 1.0 - (abs($competition - 1.0) * 0.25);
         $inventoryConfidence = 1.0 - (abs($inventory - 1.0) * 0.2);
 
-        $blended = ($demandConfidence * 0.5) + 
-                   ($competitionConfidence * 0.35) + 
+        $blended = ($demandConfidence * 0.5) +
+                   ($competitionConfidence * 0.35) +
                    ($inventoryConfidence * 0.15);
 
         return round(max(0.2, min(0.99, $blended)), 2);

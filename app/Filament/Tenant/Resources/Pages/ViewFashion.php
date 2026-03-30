@@ -1,18 +1,19 @@
-<?php
+<?php declare(strict_types=1);
 
-declare(strict_types=1);
+namespace App\Filament\Tenant\Resources\Pages;
 
-namespace App\Filament\Tenant\Resources\Fashion\Pages;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-use use App\Filament\Tenant\Resources\FashionResource;;
-use Filament\Resources\Pages\ViewRecord;
-
-final class ViewFashion extends ViewRecord
+final class ViewFashion extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = FashionResource::class;
 
-    public function getTitle(): string
-    {
-        return 'View Fashion';
-    }
+        public function getTitle(): string
+        {
+            return 'View Fashion';
+        }
 }

@@ -2,18 +2,18 @@
 
 namespace App\Jobs;
 
+use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
-use Modules\Finances\Services\BonusService;
-use Modules\Finances\Models\Bonus;
-use Modules\Marketplace\Models\Order;
-use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Modules\Finances\Models\Bonus;
+use Modules\Finances\Services\BonusService;
+use Modules\Marketplace\Models\Order;
 
 /**
  * Bonus Accrual Job

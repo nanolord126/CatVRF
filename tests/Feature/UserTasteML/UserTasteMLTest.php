@@ -1,6 +1,4 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace Tests\Feature\UserTasteML;
 
@@ -8,8 +6,8 @@ use App\Domains\Common\Events\UserInteractionEvent;
 use App\Domains\Common\Services\TasteMLService;
 use App\Domains\Common\Services\UserTasteProfileService;
 use App\Models\ProductEmbedding;
-use App\Models\User;
 use App\Models\UserTasteProfile;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 

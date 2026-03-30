@@ -5,7 +5,6 @@ namespace App\Services\Payout;
 use App\Models\Wallet;
 use App\Services\FraudControlService;
 use App\Services\Wallet\WalletService;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
@@ -39,10 +38,10 @@ final readonly class MassPayoutService
 
         // Rate limiting
         $rateLimitKey = self::RATE_LIMIT_KEY . ":{$tenantId}";
-        
+
         if (RateLimiter::tooManyAttempts($rateLimitKey, self::RATE_LIMIT_MAX)) {
             $seconds = RateLimiter::availableIn($rateLimitKey);
-            
+
             Log::channel('fraud_alert')->warning('Mass payout rate limit exceeded', [
                 'correlation_id' => $correlationId,
                 'tenant_id' => $tenantId,

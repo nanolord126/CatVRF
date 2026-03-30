@@ -1,18 +1,19 @@
-<?php
+<?php declare(strict_types=1);
 
-declare(strict_types=1);
+namespace App\Filament\Tenant\Resources\Pages;
 
-namespace App\Filament\Tenant\Resources\KidsVoucher\Pages;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-use use App\Filament\Tenant\Resources\KidsVoucherResource;;
-use Filament\Resources\Pages\ViewRecord;
-
-final class ViewKidsVoucher extends ViewRecord
+final class ViewKidsVoucher extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = KidsVoucherResource::class;
 
-    public function getTitle(): string
-    {
-        return 'View KidsVoucher';
-    }
+        public function getTitle(): string
+        {
+            return 'View KidsVoucher';
+        }
 }

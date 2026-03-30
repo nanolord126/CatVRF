@@ -1,0 +1,330 @@
+*** Begin Patch
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\Art\ArtisticServices\Models\Artist.php
+- * @package namespace App\Domains\Art\ArtisticServices\Models
++ * @package App\Domains\Art\ArtisticServices\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\Art\ArtisticServices\Models\ArtisticProject.php
+- * @package namespace App\Domains\Art\ArtisticServices\Models
++ * @package App\Domains\Art\ArtisticServices\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\Art\ContentProduction\Models\ContentCreator.php
+- * @package namespace App\Domains\Art\ContentProduction\Models
++ * @package App\Domains\Art\ContentProduction\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\Art\ContentProduction\Models\ContentProject.php
+- * @package namespace App\Domains\Art\ContentProduction\Models
++ * @package App\Domains\Art\ContentProduction\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\Art\CreativeAgency\Models\CreativeDirector.php
+- * @package namespace App\Domains\Art\CreativeAgency\Models
++ * @package App\Domains\Art\CreativeAgency\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\Art\CreativeAgency\Models\CreativeProject.php
+- * @package namespace App\Domains\Art\CreativeAgency\Models
++ * @package App\Domains\Art\CreativeAgency\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\Art\GraphicsDesign\Models\GraphicDesigner.php
+- * @package namespace App\Domains\Art\GraphicsDesign\Models
++ * @package App\Domains\Art\GraphicsDesign\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\Art\GraphicsDesign\Models\GraphicDesignOrder.php
+- * @package namespace App\Domains\Art\GraphicsDesign\Models
++ * @package App\Domains\Art\GraphicsDesign\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\Art\IllustrationDesign\Models\IllustrationOrder.php
+- * @package namespace App\Domains\Art\IllustrationDesign\Models
++ * @package App\Domains\Art\IllustrationDesign\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\Art\IllustrationDesign\Models\Illustrator.php
+- * @package namespace App\Domains\Art\IllustrationDesign\Models
++ * @package App\Domains\Art\IllustrationDesign\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\Art\PodcastProduction\Models\PodcastProducer.php
+- * @package namespace App\Domains\Art\PodcastProduction\Models
++ * @package App\Domains\Art\PodcastProduction\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\Art\PodcastProduction\Models\PodcastProject.php
+- * @package namespace App\Domains\Art\PodcastProduction\Models
++ * @package App\Domains\Art\PodcastProduction\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\Art\UXDesign\Models\UXDesigner.php
+- * @package namespace App\Domains\Art\UXDesign\Models
++ * @package App\Domains\Art\UXDesign\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\Art\UXDesign\Models\UXDesignProject.php
+- * @package namespace App\Domains\Art\UXDesign\Models
++ * @package App\Domains\Art\UXDesign\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\Art\VideoEditing\Models\VideoEditor.php
+- * @package namespace App\Domains\Art\VideoEditing\Models
++ * @package App\Domains\Art\VideoEditing\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\Art\VideoEditing\Models\VideoProject.php
+- * @package namespace App\Domains\Art\VideoEditing\Models
++ * @package App\Domains\Art\VideoEditing\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\Art\WebDesign\Models\WebDesigner.php
+- * @package namespace App\Domains\Art\WebDesign\Models
++ * @package App\Domains\Art\WebDesign\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\Art\WebDesign\Models\WebsiteProject.php
+- * @package namespace App\Domains\Art\WebDesign\Models
++ * @package App\Domains\Art\WebDesign\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\BooksAndLiterature\Books\Models\Book.php
+- * @package namespace App\Domains\BooksAndLiterature\BooksAndLiterature\Books\Models
++ * @package App\Domains\BooksAndLiterature\BooksAndLiterature\Books\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\BooksAndLiterature\Books\Models\BookOrder.php
+- * @package namespace App\Domains\BooksAndLiterature\BooksAndLiterature\Books\Models
++ * @package App\Domains\BooksAndLiterature\BooksAndLiterature\Books\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\CarRental\Models\RentalBooking.php
+- * @package namespace App\Domains\CarRental\Models
++ * @package App\Domains\CarRental\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\CarRental\Models\RentalCar.php
+- * @package namespace App\Domains\CarRental\Models
++ * @package App\Domains\CarRental\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\Confectionery\Models\BakeryOrder.php
+- * @package namespace App\Domains\Confectionery\Models
++ * @package App\Domains\Confectionery\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\Confectionery\Models\Cake.php
+- * @package namespace App\Domains\Confectionery\Models
++ * @package App\Domains\Confectionery\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\Confectionery\Models\ConfectioneryShop.php
+- * @package namespace App\Domains\Confectionery\Models
++ * @package App\Domains\Confectionery\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\Electronics\Models\ElectronicOrder.php
+- * @package namespace App\Domains\Electronics\Models
++ * @package App\Domains\Electronics\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\Electronics\Models\ElectronicProduct.php
+- * @package namespace App\Domains\Electronics\Models
++ * @package App\Domains\Electronics\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\Electronics\Models\WarrantyClaim.php
+- * @package namespace App\Domains\Electronics\Models
++ * @package App\Domains\Electronics\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\Furniture\InteriorDesign\Models\DesignProject.php
+- * @package namespace App\Domains\Furniture\InteriorDesign\Models
++ * @package App\Domains\Furniture\InteriorDesign\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\Furniture\InteriorDesign\Models\InteriorDesigner.php
+- * @package namespace App\Domains\Furniture\InteriorDesign\Models
++ * @package App\Domains\Furniture\InteriorDesign\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\Furniture\Models\FurnitureItem.php
+- * @package namespace App\Domains\Furniture\Models
++ * @package App\Domains\Furniture\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\Furniture\Models\FurnitureOrder.php
+- * @package namespace App\Domains\Furniture\Models
++ * @package App\Domains\Furniture\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\Gardening\GardenServices\Models\GardenJob.php
+- * @package namespace App\Domains\Gardening\GardenServices\Models
++ * @package App\Domains\Gardening\GardenServices\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\Gardening\GardenServices\Models\GardenProfessional.php
+- * @package namespace App\Domains\Gardening\GardenServices\Models
++ * @package App\Domains\Gardening\GardenServices\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\HomeServices\Babysitting\Models\Babysitter.php
+- * @package namespace App\Domains\HomeServices\Babysitting\Models
++ * @package App\Domains\HomeServices\Babysitting\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\HomeServices\Babysitting\Models\BabysittingSession.php
+- * @package namespace App\Domains\HomeServices\Babysitting\Models
++ * @package App\Domains\HomeServices\Babysitting\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\HomeServices\Models\HomeServiceJob.php
+- * @package namespace App\Domains\HomeServices\Models
++ * @package App\Domains\HomeServices\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\HomeServices\Models\ServiceBooking.php
+- * @package namespace App\Domains\HomeServices\Models
++ * @package App\Domains\HomeServices\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\HomeServices\Models\ServiceProvider.php
+- * @package namespace App\Domains\HomeServices\Models
++ * @package App\Domains\HomeServices\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\HomeServices\TechSupport\Models\SupportTicket.php
+- * @package namespace App\Domains\HomeServices\TechSupport\Models
++ * @package App\Domains\HomeServices\TechSupport\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\HomeServices\TechSupport\Models\TechSupportSpecialist.php
+- * @package namespace App\Domains\HomeServices\TechSupport\Models
++ * @package App\Domains\HomeServices\TechSupport\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\MeatShops\Models\MeatOrder.php
+- * @package namespace App\Domains\MeatShops\Models
++ * @package App\Domains\MeatShops\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\MeatShops\Models\MeatProduct.php
+- * @package namespace App\Domains\MeatShops\Models
++ * @package App\Domains\MeatShops\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\MusicAndInstruments\MusicalInstruments\Models\InstrumentLesson.php
+- * @package namespace App\Domains\MusicAndInstruments\MusicAndInstruments\MusicalInstruments\Models
++ * @package App\Domains\MusicAndInstruments\MusicAndInstruments\MusicalInstruments\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\MusicAndInstruments\MusicalInstruments\Models\InstrumentTeacher.php
+- * @package namespace App\Domains\MusicAndInstruments\MusicAndInstruments\MusicalInstruments\Models
++ * @package App\Domains\MusicAndInstruments\MusicAndInstruments\MusicalInstruments\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\MusicAndInstruments\MusicProduction\Models\MusicProducer.php
+- * @package namespace App\Domains\MusicAndInstruments\MusicAndInstruments\MusicProduction\Models
++ * @package App\Domains\MusicAndInstruments\MusicAndInstruments\MusicProduction\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\MusicAndInstruments\MusicProduction\Models\MusicProject.php
+- * @package namespace App\Domains\MusicAndInstruments\MusicAndInstruments\MusicProduction\Models
++ * @package App\Domains\MusicAndInstruments\MusicAndInstruments\MusicProduction\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\OfficeCatering\Models\CateringCompany.php
+- * @package namespace App\Domains\OfficeCatering\Models
++ * @package App\Domains\OfficeCatering\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\OfficeCatering\Models\CateringMenu.php
+- * @package namespace App\Domains\OfficeCatering\Models
++ * @package App\Domains\OfficeCatering\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\OfficeCatering\Models\CateringOrder.php
+- * @package namespace App\Domains\OfficeCatering\Models
++ * @package App\Domains\OfficeCatering\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\OfficeCatering\Models\CorporateClient.php
+- * @package namespace App\Domains\OfficeCatering\Models
++ * @package App\Domains\OfficeCatering\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\OfficeCatering\Models\CorporateOrder.php
+- * @package namespace App\Domains\OfficeCatering\Models
++ * @package App\Domains\OfficeCatering\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\OfficeCatering\Models\OfficeMenu.php
+- * @package namespace App\Domains\OfficeCatering\Models
++ * @package App\Domains\OfficeCatering\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\PartySupplies\Gifts\Models\GiftOrder.php
+- * @package namespace App\Domains\PartySupplies\Gifts\Models
++ * @package App\Domains\PartySupplies\Gifts\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\PartySupplies\Models\PartyOrder.php
+- * @package namespace App\Domains\PartySupplies\Models
++ * @package App\Domains\PartySupplies\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\PartySupplies\Models\PartyVendor.php
+- * @package namespace App\Domains\PartySupplies\Models
++ * @package App\Domains\PartySupplies\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\PersonalDevelopment\AstrologicalServices\Models\Astrologer.php
+- * @package namespace App\Domains\PersonalDevelopment\AstrologicalServices\Models
++ * @package App\Domains\PersonalDevelopment\AstrologicalServices\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\PersonalDevelopment\AstrologicalServices\Models\AstrologyReading.php
+- * @package namespace App\Domains\PersonalDevelopment\AstrologicalServices\Models
++ * @package App\Domains\PersonalDevelopment\AstrologicalServices\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\PersonalDevelopment\CareerCounseling\Models\CareerCounselor.php
+- * @package namespace App\Domains\PersonalDevelopment\CareerCounseling\Models
++ * @package App\Domains\PersonalDevelopment\CareerCounseling\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\PersonalDevelopment\CareerCounseling\Models\CounselingSession.php
+- * @package namespace App\Domains\PersonalDevelopment\CareerCounseling\Models
++ * @package App\Domains\PersonalDevelopment\CareerCounseling\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\PersonalDevelopment\CoachingServices\Models\Coach.php
+- * @package namespace App\Domains\PersonalDevelopment\CoachingServices\Models
++ * @package App\Domains\PersonalDevelopment\CoachingServices\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\PersonalDevelopment\CoachingServices\Models\CoachingProgram.php
+- * @package namespace App\Domains\PersonalDevelopment\CoachingServices\Models
++ * @package App\Domains\PersonalDevelopment\CoachingServices\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\PersonalDevelopment\ExecutiveCoaching\Models\CoachingSession.php
+- * @package namespace App\Domains\PersonalDevelopment\ExecutiveCoaching\Models
++ * @package App\Domains\PersonalDevelopment\ExecutiveCoaching\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\PersonalDevelopment\ExecutiveCoaching\Models\ExecutiveCoach.php
+- * @package namespace App\Domains\PersonalDevelopment\ExecutiveCoaching\Models
++ * @package App\Domains\PersonalDevelopment\ExecutiveCoaching\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\PersonalDevelopment\ExecutiveCoaching\Models\ExecutiveSession.php
+- * @package namespace App\Domains\PersonalDevelopment\ExecutiveCoaching\Models
++ * @package App\Domains\PersonalDevelopment\ExecutiveCoaching\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\PersonalDevelopment\LeadershipDevelopment\Models\LeadershipMentor.php
+- * @package namespace App\Domains\PersonalDevelopment\LeadershipDevelopment\Models
++ * @package App\Domains\PersonalDevelopment\LeadershipDevelopment\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\PersonalDevelopment\LeadershipDevelopment\Models\MentorshipProgram.php
+- * @package namespace App\Domains\PersonalDevelopment\LeadershipDevelopment\Models
++ * @package App\Domains\PersonalDevelopment\LeadershipDevelopment\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\PersonalDevelopment\LifeCoaching\Models\CoachingSession.php
+- * @package namespace App\Domains\PersonalDevelopment\LifeCoaching\Models
++ * @package App\Domains\PersonalDevelopment\LifeCoaching\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\PersonalDevelopment\LifeCoaching\Models\LifeCoach.php
+- * @package namespace App\Domains\PersonalDevelopment\LifeCoaching\Models
++ * @package App\Domains\PersonalDevelopment\LifeCoaching\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\Pharmacy\MedicalSupplies\Models\Medicine.php
+- * @package namespace App\Domains\Pharmacy\MedicalSupplies\Models
++ * @package App\Domains\Pharmacy\MedicalSupplies\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\Pharmacy\MedicalSupplies\Models\MedicineOrder.php
+- * @package namespace App\Domains\Pharmacy\MedicalSupplies\Models
++ * @package App\Domains\Pharmacy\MedicalSupplies\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\Photography\PhotographyServices\Models\Photographer.php
+- * @package namespace App\Domains\Photography\PhotographyServices\Models
++ * @package App\Domains\Photography\PhotographyServices\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\Photography\PhotographyServices\Models\PhotoSession.php
+- * @package namespace App\Domains\Photography\PhotographyServices\Models
++ * @package App\Domains\Photography\PhotographyServices\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\Photography\VideoProduction\Models\VideoProducer.php
+- * @package namespace App\Domains\Photography\VideoProduction\Models
++ * @package App\Domains\Photography\VideoProduction\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\Photography\VideoProduction\Models\VideoProject.php
+- * @package namespace App\Domains\Photography\VideoProduction\Models
++ * @package App\Domains\Photography\VideoProduction\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\ShortTermRentals\Models\ApartmentRental.php
+- * @package namespace App\Domains\ShortTermRentals\Models
++ * @package App\Domains\ShortTermRentals\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\ToysAndGames\Toys\Models\Toy.php
+- * @package namespace App\Domains\ToysAndGames\ToysAndGames\Toys\Models
++ * @package App\Domains\ToysAndGames\ToysAndGames\Toys\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\ToysAndGames\Toys\Models\ToyOrder.php
+- * @package namespace App\Domains\ToysAndGames\ToysAndGames\Toys\Models
++ * @package App\Domains\ToysAndGames\ToysAndGames\Toys\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\ToysAndGames\ToysKids\Models\ToyOrder.php
+- * @package namespace App\Domains\ToysAndGames\ToysAndGames\ToysKids\Models
++ * @package App\Domains\ToysAndGames\ToysAndGames\ToysKids\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\ToysAndGames\ToysKids\Models\ToyProduct.php
+- * @package namespace App\Domains\ToysAndGames\ToysAndGames\ToysKids\Models
++ * @package App\Domains\ToysAndGames\ToysAndGames\ToysKids\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\WeddingPlanning\Models\WeddingPlanner.php
+- * @package namespace App\Domains\WeddingPlanning\Models
++ * @package App\Domains\WeddingPlanning\Models
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Archived\WeddingPlanning\Models\WeddingProject.php
+- * @package namespace App\Domains\WeddingPlanning\Models
++ * @package App\Domains\WeddingPlanning\Models
+
+*** End Patch

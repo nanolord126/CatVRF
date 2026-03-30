@@ -1,60 +1,50 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Domains\Fashion\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
-final /**
- * FashionWishlist
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class FashionWishlist extends Model
+final class FashionWishlist extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use SoftDeletes;
 
-    protected $table = 'fashion_wishlists';
+        protected $table = 'fashion_wishlists';
 
-    protected $fillable = [
-        'uuid',
-        'tenant_id',
-        'user_id',
-        'product_id',
-        'color',
-        'size',
-        'tags',
-        'correlation_id',
-    ];
+        protected $fillable = [
+            'uuid',
+            'tenant_id',
+            'user_id',
+            'product_id',
+            'color',
+            'size',
+            'tags',
+            'correlation_id',
+        ];
 
-    protected $casts = [
-        'tags' => 'collection',
-    ];
+        protected $casts = [
+            'tags' => 'collection',
+        ];
 
-    protected static function booted(): void
-    {
-        static::addGlobalScope('tenant_id', function ($query) {
-            if (tenant('id')) {
-                $query->where('tenant_id', tenant('id'));
-            }
-        });
-    }
+        protected static function booted(): void
+        {
+            static::addGlobalScope('tenant_id', function ($query) {
+                if (tenant('id')) {
+                    $query->where('tenant_id', tenant('id'));
+                }
+            });
+        }
 
-    public function user(): BelongsTo
-    {
-        return $this->belongsTo(\App\Models\User::class, 'user_id');
-    }
+        public function user(): BelongsTo
+        {
+            return $this->belongsTo(\App\Models\User::class, 'user_id');
+        }
 
-    public function product(): BelongsTo
-    {
-        return $this->belongsTo(FashionProduct::class, 'product_id');
-    }
+        public function product(): BelongsTo
+        {
+            return $this->belongsTo(FashionProduct::class, 'product_id');
+        }
 }

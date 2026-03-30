@@ -1,45 +1,34 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Domains\Education\Courses\Services;
 
-use App\Domains\Education\Courses\Models\CourseReview;
-use App\Services\FraudControlService;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final /**
- * CourseReviewService
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class CourseReviewService
+final class CourseReviewService extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-        private readonly FraudControlService $fraudControl
-    ) {}
+            private readonly FraudControlService $fraudControl
+        ) {}
 
-    public function createReview(array $data, string $correlationId): CourseReview
-    {
-        return DB::transaction(function () use ($data, $correlationId) {
-            $this->fraudControl->check($data, 'course_review_create');
+        public function createReview(array $data, string $correlationId): CourseReview
+        {
+            return DB::transaction(function () use ($data, $correlationId) {
+                $this->fraudControl->check($data, 'course_review_create');
 
-            $review = CourseReview::create(array_merge($data, [
-                'correlation_id' => $correlationId,
-            ]));
+                $review = CourseReview::create(array_merge($data, [
+                    'correlation_id' => $correlationId,
+                ]));
 
-            Log::channel('audit')->info('Course review created', [
-                'review_id' => $review->id,
-                'correlation_id' => $correlationId,
-            ]);
+                Log::channel('audit')->info('Course review created', [
+                    'review_id' => $review->id,
+                    'correlation_id' => $correlationId,
+                ]);
 
-            return $review;
-        });
-    }
+                return $review;
+            });
+        }
 }

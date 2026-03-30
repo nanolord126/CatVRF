@@ -2,13 +2,13 @@
 
 namespace App\Notifications\Channels;
 
+use App\Services\SmsService;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Log;
-use App\Services\SmsService;
 
 /**
  * SMS Notification Channel - отправляет уведомления через SMS
- * 
+ *
  * Поддерживает:
  * - Twilio
  * - Vonage (Nexmo)

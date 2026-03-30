@@ -3,10 +3,10 @@
 namespace App\Services\Payment;
 
 use App\Models\PaymentTransaction;
+use App\Services\Fraud\FraudControlService;
+use App\Services\Payment\Gateways\SberGateway;
 use App\Services\Payment\Gateways\TinkoffGateway;
 use App\Services\Payment\Gateways\TochkaGateway;
-use App\Services\Payment\Gateways\SberGateway;
-use App\Services\Fraud\FraudControlService;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;

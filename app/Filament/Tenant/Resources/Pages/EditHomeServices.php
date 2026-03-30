@@ -1,27 +1,31 @@
-<?php
+<?php declare(strict_types=1);
 
-declare(strict_types=1);
+namespace App\Filament\Tenant\Resources\Pages;
 
-namespace App\Filament\Tenant\Resources\HomeServices\Pages;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-use use App\Filament\Tenant\Resources\HomeServicesResource;;
-use Filament\Resources\Pages\EditRecord;
-use Filament\Actions\{ViewAction, DeleteAction};
-
-final class EditHomeServices extends EditRecord
+final class EditHomeServices extends Model
 {
-    protected static string $resource = HomeServicesResource::class;
+    use HasFactory;
 
-    public function getTitle(): string
-    {
-        return 'Edit HomeServices';
-    }
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    ViewAction, DeleteAction};
 
-    protected function getHeaderActions(): array
+    final class EditHomeServices extends EditRecord
     {
-        return [
-            ViewAction::make(),
-            DeleteAction::make(),
-        ];
-    }
+        protected static string $resource = HomeServicesResource::class;
+
+        public function getTitle(): string
+        {
+            return 'Edit HomeServices';
+        }
+
+        protected function getHeaderActions(): array
+        {
+            return [
+                ViewAction::make(),
+                DeleteAction::make(),
+            ];
+        }
 }

@@ -1,12 +1,10 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace Tests\Performance\Fraud;
 
 use App\Models\FraudAttempt;
-use App\Models\User;
 use App\Models\Tenant;
+use App\Models\User;
 use App\Services\FraudMLService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;

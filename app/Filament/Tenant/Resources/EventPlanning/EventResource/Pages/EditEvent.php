@@ -1,105 +1,99 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\EventPlanning\EventResource\Pages;
 
-use App\Filament\Tenant\Resources\EventPlanning\EventResource;
-use Filament\Resources\Pages\EditRecord;
-use Filament\Actions;
-use Filament\Notifications\Notification;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * Filament Resource EditEvent.
- * Канон 2026: Correlation Tracking + Audit Trail + Header Actions (Cancel/Complete).
- */
-final class EditEvent extends EditRecord
+final class EditEvent extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = EventResource::class;
 
-    /**
-     * Header Actions — Кнопки действий над событием.
-     */
-    protected function getHeaderActions(): array
-    {
-        return [
-            Actions\DeleteAction::make()
-                ->label('Удалить План')
-                ->icon('heroicon-o-trash'),
+        /**
+         * Header Actions — Кнопки действий над событием.
+         */
+        protected function getHeaderActions(): array
+        {
+            return [
+                Actions\DeleteAction::make()
+                    ->label('Удалить План')
+                    ->icon('heroicon-o-trash'),
 
-            Actions\Action::make('Отменить')
-                ->label('Отменить Событие')
-                ->icon('heroicon-o-x-circle')
-                ->color('danger')
-                ->requiresConfirmation()
-                ->action(function () {
-                    $this->record->update(['status' => 'cancelled']);
-                    
-                    Log::channel('audit')->warning('Filament: Event cancelled manual', [
-                        'event_uuid' => $this->record->uuid,
-                        'user_id' => auth()->id()
-                    ]);
+                Actions\Action::make('Отменить')
+                    ->label('Отменить Событие')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->action(function () {
+                        $this->record->update(['status' => 'cancelled']);
 
-                    Notification::make()
-                        ->danger()
-                        ->title('Событие отменено')
-                        ->body('Статус события обновлен до: cancelled.')
-                        ->send();
-                }),
+                        Log::channel('audit')->warning('Filament: Event cancelled manual', [
+                            'event_uuid' => $this->record->uuid,
+                            'user_id' => auth()->id()
+                        ]);
 
-            Actions\Action::make('Подтвердить')
-                ->label('Подтвердить План')
-                ->icon('heroicon-o-check-circle')
-                ->color('success')
-                ->action(function () {
-                    $this->record->update(['status' => 'confirmed']);
+                        Notification::make()
+                            ->danger()
+                            ->title('Событие отменено')
+                            ->body('Статус события обновлен до: cancelled.')
+                            ->send();
+                    }),
 
-                    Log::channel('audit')->info('Filament: Event confirmed manual', [
-                        'event_uuid' => $this->record->uuid,
-                        'user_id' => auth()->id()
-                    ]);
+                Actions\Action::make('Подтвердить')
+                    ->label('Подтвердить План')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->action(function () {
+                        $this->record->update(['status' => 'confirmed']);
 
-                    Notification::make()
-                        ->success()
-                        ->title('Событие подтверждено')
-                        ->body('Праздник теперь в активной фазе планирования.')
-                        ->send();
-                }),
-        ];
-    }
+                        Log::channel('audit')->info('Filament: Event confirmed manual', [
+                            'event_uuid' => $this->record->uuid,
+                            'user_id' => auth()->id()
+                        ]);
 
-    /**
-     * Мутация данных перед сохранением.
-     */
-    protected function mutateFormDataBeforeSave(array $data): array
-    {
-        Log::channel('audit')->info('Filament: Plan modified', [
-            'event_uuid' => $this->record->uuid,
-            'tenant_id' => tenant()->id,
-            'modified_by' => auth()->id(),
-        ]);
+                        Notification::make()
+                            ->success()
+                            ->title('Событие подтверждено')
+                            ->body('Праздник теперь в активной фазе планирования.')
+                            ->send();
+                    }),
+            ];
+        }
 
-        return $data;
-    }
+        /**
+         * Мутация данных перед сохранением.
+         */
+        protected function mutateFormDataBeforeSave(array $data): array
+        {
+            Log::channel('audit')->info('Filament: Plan modified', [
+                'event_uuid' => $this->record->uuid,
+                'tenant_id' => tenant()->id,
+                'modified_by' => auth()->id(),
+            ]);
 
-    /**
-     * Редирект после редактирования — к списку.
-     */
-    protected function getRedirectUrl(): string
-    {
-        return $this->getResource()::getUrl('index');
-    }
+            return $data;
+        }
 
-    /**
-     * Нотификация об успехе.
-     */
-    protected function getSavedNotification(): ?Notification
-    {
-        return Notification::make()
-            ->success()
-            ->title('Изменения сохранены')
-            ->body('План обновлен в реестре для всех вендоров.')
-            ->icon('heroicon-o-pencil-square');
-    }
+        /**
+         * Редирект после редактирования — к списку.
+         */
+        protected function getRedirectUrl(): string
+        {
+            return $this->getResource()::getUrl('index');
+        }
+
+        /**
+         * Нотификация об успехе.
+         */
+        protected function getSavedNotification(): ?Notification
+        {
+            return Notification::make()
+                ->success()
+                ->title('Изменения сохранены')
+                ->body('План обновлен в реестре для всех вендоров.')
+                ->icon('heroicon-o-pencil-square');
+        }
 }

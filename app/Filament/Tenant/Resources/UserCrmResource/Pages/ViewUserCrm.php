@@ -4,8 +4,8 @@ namespace App\Filament\Tenant\Resources\UserCrmResource\Pages;
 
 use App\Filament\Tenant\Resources\UserCrmResource;
 use Filament\Actions;
-use Filament\Infolists;
 use Filament\Infolists\Infolist;
+use Filament\Infolists;
 use Filament\Resources\Pages\ViewRecord;
 
 final class ViewUserCrm extends ViewRecord

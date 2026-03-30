@@ -1,7 +1,7 @@
 <?php declare(strict_types=1);
+
 namespace App\Http\Controllers\Api;
 
-use App\Services\FraudControlService;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Foundation\Bus\DispatchesJobs;
 use Illuminate\Foundation\Validation\ValidatesRequests;
@@ -11,17 +11,17 @@ use Illuminate\Support\Str;
 
 /**
  * BaseApiController — Базовый контроллер для всех API-контроллеров
- * 
+ *
  * Включает общие методы:
  * - $this->isB2C() / $this->isB2B()
  * - $this->auditLog()
  * - $this->successResponse() / $this->errorResponse()
  * - $this->getCorrelationId()
- * 
+ *
  * Middleware применяются в Routes.
- * 
+ *
  * PRODUCTION-READY 2026 CANON
- * 
+ *
  * @author CatVRF Team
  * @version 2026.03.27
  */
@@ -40,8 +40,8 @@ abstract class BaseApiController extends Controller
      */
     protected function getCorrelationId(): string
     {
-        return request()->get('correlation_id') 
-            ?? request()->header('X-Correlation-ID') 
+        return request()->get('correlation_id')
+            ?? request()->header('X-Correlation-ID')
             ?? \Illuminate\Support\Str::uuid()->toString();
     }
 

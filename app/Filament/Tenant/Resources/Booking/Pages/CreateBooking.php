@@ -1,8 +1,14 @@
-<?php
-declare(strict_types=1);
+<?php declare(strict_types=1);
+
 namespace App\Filament\Tenant\Resources\Booking\Pages;
-use App\Filament\Tenant\Resources\BookingResource;
-use Filament\Resources\Pages\CreateRecord;
-final class CreateRecordBooking extends CreateRecord {
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+final class CreateRecordBooking extends Model
+{
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = BookingResource::class;
 }

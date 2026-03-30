@@ -1,18 +1,19 @@
-<?php
+<?php declare(strict_types=1);
 
-declare(strict_types=1);
+namespace App\Filament\Tenant\Resources\Pages;
 
-namespace App\Filament\Tenant\Resources\PhotoStudio\Pages;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-use use App\Filament\Tenant\Resources\PhotoStudioResource;;
-use Filament\Resources\Pages\ViewRecord;
-
-final class ViewPhotoStudio extends ViewRecord
+final class ViewPhotoStudio extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = PhotoStudioResource::class;
 
-    public function getTitle(): string
-    {
-        return 'View PhotoStudio';
-    }
+        public function getTitle(): string
+        {
+            return 'View PhotoStudio';
+        }
 }

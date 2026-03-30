@@ -1,18 +1,19 @@
-<?php
+<?php declare(strict_types=1);
 
-declare(strict_types=1);
+namespace App\Filament\Tenant\Resources\Pages;
 
-namespace App\Filament\Tenant\Resources\ConstructionMaterials\Pages;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-use use App\Filament\Tenant\Resources\ConstructionMaterialsResource;;
-use Filament\Resources\Pages\ViewRecord;
-
-final class ViewConstructionMaterials extends ViewRecord
+final class ViewConstructionMaterials extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = ConstructionMaterialsResource::class;
 
-    public function getTitle(): string
-    {
-        return 'View ConstructionMaterials';
-    }
+        public function getTitle(): string
+        {
+            return 'View ConstructionMaterials';
+        }
 }

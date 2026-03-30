@@ -3,13 +3,12 @@
 namespace App\Services\Referral;
 
 use App\Models\Referral;
-use App\Models\User;
 use App\Services\Bonus\BonusService;
 use App\Services\FraudControlService;
+use DomainException;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
-use DomainException;
 use Throwable;
 
 /**

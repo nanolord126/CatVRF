@@ -25,7 +25,7 @@ final class CosmeticsArrivedNotification extends BasePushNotification
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
-        
+
         $this->title('Your cosmetics have arrived!')
              ->body('Try out your new beauty products')
              ->type('success')
@@ -53,7 +53,7 @@ final class JewelryDeliveryConfirmedNotification extends BasePushNotification
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
-        
+
         $this->title('Your jewelry has arrived!')
              ->body('Certificate: ' . ($data['certificate_number'] ?? ''))
              ->type('success')
@@ -82,7 +82,7 @@ final class GiftDeliveryArrivedNotification extends BasePushNotification
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
-        
+
         $this->title('Gift delivered!')
              ->body('The gift for ' . ($data['recipient_name'] ?? '') . ' has arrived')
              ->type('success')
@@ -110,7 +110,7 @@ final class FurnitureDeliveryScheduledNotification extends BasePushNotification
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
-        
+
         $this->title('Delivery scheduled')
              ->body('Your furniture will arrive ' . ($data['delivery_date'] ?? ''))
              ->type('info')
@@ -138,7 +138,7 @@ final class ElectronicsDeliveryConfirmedNotification extends BasePushNotificatio
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
-        
+
         $this->title('Device delivered!')
              ->body('Serial: ' . ($data['serial_number'] ?? ''))
              ->type('success')
@@ -148,10 +148,8 @@ final class ElectronicsDeliveryConfirmedNotification extends BasePushNotificatio
 }
 
 // ========== BONUS NOTIFICATIONS ==========
-namespace App\Notifications\Verticals\SpecialNotifications;
+namespace App\Notifications\Verticals\ProductVerticals;
 
-use App\Notifications\BaseMailableNotification;
-use App\Notifications\BasePushNotification;
 
 final class BonusEarnedNotification extends BasePushNotification
 {
@@ -160,7 +158,7 @@ final class BonusEarnedNotification extends BasePushNotification
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
-        
+
         $this->title('Bonus earned!')
              ->body('₽' . number_format($data['bonus_amount'] ?? 0) . ' added to your balance')
              ->type('success')
@@ -175,7 +173,7 @@ final class BonusExpiredNotification extends BasePushNotification
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
-        
+
         $this->title('Bonus expired')
              ->body('₽' . number_format($data['expired_amount'] ?? 0) . ' bonus has expired')
              ->type('warning')
@@ -191,7 +189,7 @@ final class BonusAboutToExpireNotification extends BasePushNotification
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
-        
+
         $this->title('Bonus expires soon!')
              ->body('₽' . number_format($data['bonus_amount'] ?? 0) . ' expires in ' . ($data['days_until_expiry'] ?? '0') . ' days')
              ->type('warning')
@@ -232,7 +230,7 @@ final class WalletLowBalanceNotification extends BasePushNotification
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
-        
+
         $this->title('Low balance')
              ->body('Your balance is ₽' . number_format($data['current_balance'] ?? 0))
              ->type('warning')
@@ -248,7 +246,7 @@ final class WalletLimitReachedNotification extends BasePushNotification
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
-        
+
         $this->title('Spending limit reached')
              ->body('Monthly limit of ₽' . number_format($data['limit_amount'] ?? 0) . ' reached')
              ->type('warning')
@@ -264,7 +262,7 @@ final class ReferralInviteSentNotification extends BasePushNotification
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
-        
+
         $this->title('Invite sent!')
              ->body('Share your referral code with friends')
              ->type('info')
@@ -279,7 +277,7 @@ final class ReferralFriendJoinedNotification extends BasePushNotification
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
-        
+
         $this->title('Friend joined!')
              ->body(($data['friend_name'] ?? 'A friend') . ' used your code')
              ->type('success')
@@ -306,7 +304,7 @@ final class ReferralMilestoneReachedNotification extends BasePushNotification
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
-        
+
         $this->title('Milestone reached!')
              ->body('You invited ' . ($data['referral_count'] ?? '0') . ' friends!')
              ->type('success')

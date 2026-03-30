@@ -4,7 +4,7 @@ namespace App\Notifications;
 
 /**
  * Base class for SMS notifications (Twilio/Vonage)
- * 
+ *
  * Отправляет SMS на номер телефона пользователя
  */
 abstract class BaseSmsNotification extends BaseNotification

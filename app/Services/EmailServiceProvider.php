@@ -2,12 +2,12 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 
 /**
  * Email Service - отправляет письма через Mailgun/SendGrid/SES
- * 
+ *
  * Интегрируется с Laravel Mail facade
  */
 class EmailService
@@ -28,7 +28,7 @@ class EmailService
             // Можно расширить для разных провайдеров
             Mail::send($template, $data, function ($message) use ($to, $subject, $attachments) {
                 $message->to($to)->subject($subject);
-                
+
                 // Добавить attachments
                 foreach ($attachments as $attachment) {
                     if (is_array($attachment)) {

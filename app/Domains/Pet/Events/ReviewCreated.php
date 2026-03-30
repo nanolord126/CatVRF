@@ -1,30 +1,20 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Domains\Pet\Events;
 
-use App\Domains\Pet\Models\PetReview;
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final /**
- * ReviewCreated
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class ReviewCreated
+final class ReviewCreated extends Model
 {
-    use Dispatchable;
-    use SerializesModels;
+    use HasFactory;
 
-    public function __construct(
-        public readonly PetReview $review,
-        public readonly string $correlationId,
-    ) {}
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    use Dispatchable;
+        use SerializesModels;
+
+        public function __construct(
+            public readonly PetReview $review,
+            public readonly string $correlationId,
+        ) {}
 }

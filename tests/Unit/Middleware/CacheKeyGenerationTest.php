@@ -1,11 +1,8 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace Tests\Unit\Middleware;
 
 use PHPUnit\Framework\TestCase;
-use Illuminate\Support\Facades\Cache;
 
 final class CacheKeyGenerationTest extends TestCase
 {

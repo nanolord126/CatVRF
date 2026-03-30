@@ -8,7 +8,6 @@ use App\Services\FraudControlService;
 use App\Services\Wallet\WalletService;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Log\LogManager;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use RuntimeException;
 use Throwable;
@@ -317,7 +316,7 @@ final readonly class BonusService
 
     /**
      * Истечение бонусов (по дате expires_at)
-     * 
+     *
      * Выполняется автоматически Job'ом ежедневно
      *
      * @return int (количество истёкших)

@@ -1,25 +1,22 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Party\Pages;
 
-use App\Filament\Tenant\Resources\Party\PartyThemeResource;
-use Filament\Actions\DeleteAction;
-use Filament\Resources\Pages\EditRecord;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * EditPartyTheme.
- */
-final class EditPartyTheme extends EditRecord
+final class EditPartyTheme extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = PartyThemeResource::class;
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            DeleteAction::make()
-                ->icon('heroicon-o-trash'),
-        ];
-    }
+        protected function getHeaderActions(): array
+        {
+            return [
+                DeleteAction::make()
+                    ->icon('heroicon-o-trash'),
+            ];
+        }
 }

@@ -1,18 +1,19 @@
-<?php
+<?php declare(strict_types=1);
 
-declare(strict_types=1);
+namespace App\Filament\Tenant\Resources\Pages;
 
-namespace App\Filament\Tenant\Resources\Freelance\Pages;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-use use App\Filament\Tenant\Resources\FreelanceResource;;
-use Filament\Resources\Pages\ViewRecord;
-
-final class ViewFreelance extends ViewRecord
+final class ViewFreelance extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = FreelanceResource::class;
 
-    public function getTitle(): string
-    {
-        return 'View Freelance';
-    }
+        public function getTitle(): string
+        {
+            return 'View Freelance';
+        }
 }

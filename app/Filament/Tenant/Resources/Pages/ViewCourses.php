@@ -1,18 +1,19 @@
-<?php
+<?php declare(strict_types=1);
 
-declare(strict_types=1);
+namespace App\Filament\Tenant\Resources\Pages;
 
-namespace App\Filament\Tenant\Resources\Courses\Pages;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-use use App\Filament\Tenant\Resources\CoursesResource;;
-use Filament\Resources\Pages\ViewRecord;
-
-final class ViewCourses extends ViewRecord
+final class ViewCourses extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = CoursesResource::class;
 
-    public function getTitle(): string
-    {
-        return 'View Courses';
-    }
+        public function getTitle(): string
+        {
+            return 'View Courses';
+        }
 }

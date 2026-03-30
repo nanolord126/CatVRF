@@ -2,192 +2,191 @@
 
 namespace App\Domains\EventPlanning\Entertainment\Http\Controllers;
 
-use App\Domains\EventPlanning\Entertainment\Models\Entertainer;
-use App\Domains\EventPlanning\Entertainment\Models\PerformerSchedule;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final class EntertainerController
+final class EntertainerController extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function index(): JsonResponse
-    {
-        try {
-            $entertainers = Entertainer::query()
-                ->where('is_verified', true)
-                ->where('is_active', true)
-                ->with('venue', 'entertainmentEvents')
-                ->paginate(20);
+        {
+            try {
+                $entertainers = Entertainer::query()
+                    ->where('is_verified', true)
+                    ->where('is_active', true)
+                    ->with('venue', 'entertainmentEvents')
+                    ->paginate(20);
 
-            return response()->json(['success' => true, 'data' => $entertainers, 'correlation_id' => Str::uuid()]);
-        } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                return response()->json(['success' => true, 'data' => $entertainers, 'correlation_id' => Str::uuid()]);
+            } catch (\Throwable $e) {
+                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+            }
         }
-    }
 
-    public function show(int $id): JsonResponse
-    {
-        try {
-            $entertainer = Entertainer::with('venue', 'entertainmentEvents', 'schedules')->findOrFail($id);
-            return response()->json(['success' => true, 'data' => $entertainer, 'correlation_id' => Str::uuid()]);
-        } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'message' => 'Entertainer not found', 'correlation_id' => Str::uuid()], 404);
+        public function show(int $id): JsonResponse
+        {
+            try {
+                $entertainer = Entertainer::with('venue', 'entertainmentEvents', 'schedules')->findOrFail($id);
+                return response()->json(['success' => true, 'data' => $entertainer, 'correlation_id' => Str::uuid()]);
+            } catch (\Throwable $e) {
+                return response()->json(['success' => false, 'message' => 'Entertainer not found', 'correlation_id' => Str::uuid()], 404);
+            }
         }
-    }
 
-    public function getEvents(int $id): JsonResponse
-    {
-        try {
-            $events = \App\Domains\EventPlanning\Entertainment\Models\EntertainmentEvent::where('entertainer_id', $id)
-                ->where('status', '!=', 'cancelled')
-                ->paginate(20);
+        public function getEvents(int $id): JsonResponse
+        {
+            try {
+                $events = \App\Domains\EventPlanning\Entertainment\Models\EntertainmentEvent::where('entertainer_id', $id)
+                    ->where('status', '!=', 'cancelled')
+                    ->paginate(20);
 
-            return response()->json(['success' => true, 'data' => $events, 'correlation_id' => Str::uuid()]);
-        } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                return response()->json(['success' => true, 'data' => $events, 'correlation_id' => Str::uuid()]);
+            } catch (\Throwable $e) {
+                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+            }
         }
-    }
 
-    public function register(): JsonResponse
-    {
-        try {
-            $correlationId = Str::uuid()->toString();
+        public function register(): JsonResponse
+        {
+            try {
+                $correlationId = Str::uuid()->toString();
 
-            DB::transaction(function () use ($correlationId) {
-                $entertainer = Entertainer::create([
-                    'tenant_id' => tenant('id'),
-                    'user_id' => auth()->id(),
-                    'venue_id' => request('venue_id'),
-                    'full_name' => request('full_name'),
-                    'bio' => request('bio'),
-                    'specializations' => request('specializations'),
-                    'experience' => request('experience'),
-                    'hourly_rate' => request('hourly_rate'),
-                    'is_active' => true,
-                    'correlation_id' => $correlationId,
-                ]);
-
-                Log::channel('audit')->info('Entertainer registered', [
-                    'entertainer_id' => $entertainer->id,
-                    'user_id' => auth()->id(),
-                    'correlation_id' => $correlationId,
-                ]);
-            });
-
-            return response()->json(['success' => true, 'data' => null, 'correlation_id' => $correlationId], 201);
-        } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 400);
-        }
-    }
-
-    public function myProfile(): JsonResponse
-    {
-        try {
-            $entertainer = Entertainer::where('user_id', auth()->id())->first();
-            return response()->json([
-                'success' => true,
-                'data' => $entertainer,
-                'correlation_id' => Str::uuid(),
-            ]);
-        } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
-        }
-    }
-
-    public function updateProfile(): JsonResponse
-    {
-        try {
-            $entertainer = Entertainer::where('user_id', auth()->id())->firstOrFail();
-            $correlationId = Str::uuid()->toString();
-
-            DB::transaction(function () use ($entertainer, $correlationId) {
-                $entertainer->update([
-                    'full_name' => request('full_name', $entertainer->full_name),
-                    'bio' => request('bio', $entertainer->bio),
-                    'correlation_id' => $correlationId,
-                ]);
-
-                Log::channel('audit')->info('Entertainer profile updated', [
-                    'entertainer_id' => $entertainer->id,
-                    'correlation_id' => $correlationId,
-                ]);
-            });
-
-            return response()->json(['success' => true, 'data' => $entertainer, 'correlation_id' => $correlationId]);
-        } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
-        }
-    }
-
-    public function getSchedule(): JsonResponse
-    {
-        try {
-            $entertainer = Entertainer::where('user_id', auth()->id())->firstOrFail();
-            $schedules = $entertainer->schedules()->get();
-
-            return response()->json(['success' => true, 'data' => $schedules, 'correlation_id' => Str::uuid()]);
-        } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
-        }
-    }
-
-    public function updateSchedule(): JsonResponse
-    {
-        try {
-            $entertainer = Entertainer::where('user_id', auth()->id())->firstOrFail();
-            $correlationId = Str::uuid()->toString();
-
-            DB::transaction(function () use ($entertainer, $correlationId) {
-                $entertainer->schedules()->delete();
-
-                foreach (request('schedules', []) as $schedule) {
-                    PerformerSchedule::create([
+                DB::transaction(function () use ($correlationId) {
+                    $entertainer = Entertainer::create([
                         'tenant_id' => tenant('id'),
-                        'entertainer_id' => $entertainer->id,
-                        'day_of_week' => $schedule['day_of_week'],
-                        'start_time' => $schedule['start_time'],
-                        'end_time' => $schedule['end_time'],
-                        'is_available' => $schedule['is_available'] ?? true,
+                        'user_id' => auth()->id(),
+                        'venue_id' => request('venue_id'),
+                        'full_name' => request('full_name'),
+                        'bio' => request('bio'),
+                        'specializations' => request('specializations'),
+                        'experience' => request('experience'),
+                        'hourly_rate' => request('hourly_rate'),
+                        'is_active' => true,
                         'correlation_id' => $correlationId,
                     ]);
-                }
 
-                Log::channel('audit')->info('Entertainer schedule updated', [
-                    'entertainer_id' => $entertainer->id,
-                    'correlation_id' => $correlationId,
+                    Log::channel('audit')->info('Entertainer registered', [
+                        'entertainer_id' => $entertainer->id,
+                        'user_id' => auth()->id(),
+                        'correlation_id' => $correlationId,
+                    ]);
+                });
+
+                return response()->json(['success' => true, 'data' => null, 'correlation_id' => $correlationId], 201);
+            } catch (\Throwable $e) {
+                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 400);
+            }
+        }
+
+        public function myProfile(): JsonResponse
+        {
+            try {
+                $entertainer = Entertainer::where('user_id', auth()->id())->first();
+                return response()->json([
+                    'success' => true,
+                    'data' => $entertainer,
+                    'correlation_id' => Str::uuid(),
                 ]);
-            });
-
-            return response()->json(['success' => true, 'data' => null, 'correlation_id' => $correlationId]);
-        } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+            } catch (\Throwable $e) {
+                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+            }
         }
-    }
 
-    public function myEarnings(): JsonResponse
-    {
-        try {
-            return response()->json(['success' => true, 'data' => [], 'correlation_id' => Str::uuid()]);
-        } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+        public function updateProfile(): JsonResponse
+        {
+            try {
+                $entertainer = Entertainer::where('user_id', auth()->id())->firstOrFail();
+                $correlationId = Str::uuid()->toString();
+
+                DB::transaction(function () use ($entertainer, $correlationId) {
+                    $entertainer->update([
+                        'full_name' => request('full_name', $entertainer->full_name),
+                        'bio' => request('bio', $entertainer->bio),
+                        'correlation_id' => $correlationId,
+                    ]);
+
+                    Log::channel('audit')->info('Entertainer profile updated', [
+                        'entertainer_id' => $entertainer->id,
+                        'correlation_id' => $correlationId,
+                    ]);
+                });
+
+                return response()->json(['success' => true, 'data' => $entertainer, 'correlation_id' => $correlationId]);
+            } catch (\Throwable $e) {
+                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+            }
         }
-    }
 
-    public function analytics(int $entertainerId): JsonResponse
-    {
-        try {
-            $entertainer = Entertainer::findOrFail($entertainerId);
-            $eventCount = $entertainer->entertainmentEvents()->count();
-            $totalEarnings = 0; 
+        public function getSchedule(): JsonResponse
+        {
+            try {
+                $entertainer = Entertainer::where('user_id', auth()->id())->firstOrFail();
+                $schedules = $entertainer->schedules()->get();
 
-            return response()->json([
-                'success' => true,
-                'data' => ['events' => $eventCount, 'earnings' => $totalEarnings, 'rating' => $entertainer->rating],
-                'correlation_id' => Str::uuid(),
-            ]);
-        } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                return response()->json(['success' => true, 'data' => $schedules, 'correlation_id' => Str::uuid()]);
+            } catch (\Throwable $e) {
+                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+            }
         }
-    }
+
+        public function updateSchedule(): JsonResponse
+        {
+            try {
+                $entertainer = Entertainer::where('user_id', auth()->id())->firstOrFail();
+                $correlationId = Str::uuid()->toString();
+
+                DB::transaction(function () use ($entertainer, $correlationId) {
+                    $entertainer->schedules()->delete();
+
+                    foreach (request('schedules', []) as $schedule) {
+                        PerformerSchedule::create([
+                            'tenant_id' => tenant('id'),
+                            'entertainer_id' => $entertainer->id,
+                            'day_of_week' => $schedule['day_of_week'],
+                            'start_time' => $schedule['start_time'],
+                            'end_time' => $schedule['end_time'],
+                            'is_available' => $schedule['is_available'] ?? true,
+                            'correlation_id' => $correlationId,
+                        ]);
+                    }
+
+                    Log::channel('audit')->info('Entertainer schedule updated', [
+                        'entertainer_id' => $entertainer->id,
+                        'correlation_id' => $correlationId,
+                    ]);
+                });
+
+                return response()->json(['success' => true, 'data' => null, 'correlation_id' => $correlationId]);
+            } catch (\Throwable $e) {
+                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+            }
+        }
+
+        public function myEarnings(): JsonResponse
+        {
+            try {
+                return response()->json(['success' => true, 'data' => [], 'correlation_id' => Str::uuid()]);
+            } catch (\Throwable $e) {
+                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+            }
+        }
+
+        public function analytics(int $entertainerId): JsonResponse
+        {
+            try {
+                $entertainer = Entertainer::findOrFail($entertainerId);
+                $eventCount = $entertainer->entertainmentEvents()->count();
+                $totalEarnings = 0;
+
+                return response()->json([
+                    'success' => true,
+                    'data' => ['events' => $eventCount, 'earnings' => $totalEarnings, 'rating' => $entertainer->rating],
+                    'correlation_id' => Str::uuid(),
+                ]);
+            } catch (\Throwable $e) {
+                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+            }
+        }
 }

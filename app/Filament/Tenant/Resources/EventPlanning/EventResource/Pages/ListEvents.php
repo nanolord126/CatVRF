@@ -1,30 +1,26 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\EventPlanning\EventResource\Pages;
 
-use App\Filament\Tenant\Resources\EventPlanning\EventResource;
-use Filament\Resources\Pages\ListRecords;
-use Filament\Actions;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * Filament Resource ListEvents.
- * Канон 2026: Tenant Scoping + Audit Logging + Header Actions.
- */
-final class ListEvents extends ListRecords
+final class ListEvents extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = EventResource::class;
 
-    /**
-     * Header Actions — Кнопки действий над списком.
-     */
-    protected function getHeaderActions(): array
-    {
-        return [
-            Actions\CreateAction::make()
-                ->label('Создать Праздник')
-                ->icon('heroicon-o-plus-circle'),
-        ];
-    }
+        /**
+         * Header Actions — Кнопки действий над списком.
+         */
+        protected function getHeaderActions(): array
+        {
+            return [
+                Actions\CreateAction::make()
+                    ->label('Создать Праздник')
+                    ->icon('heroicon-o-plus-circle'),
+            ];
+        }
 }

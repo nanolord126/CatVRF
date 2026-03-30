@@ -6,13 +6,13 @@ use App\Domains\Hotels\Models\Hotel;
 use App\Domains\Hotels\Models\Room;
 use App\Domains\Hotels\Services\HotelBookingService;
 use App\Services\FraudControlService;
-use App\Services\WalletService;
 use App\Services\PaymentService;
+use App\Services\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use Tests\TestCase;
 use Mockery;
+use Tests\TestCase;
 
 /**
  * КАНОН 2026: Hotel Booking Flow Test (Layer 9)

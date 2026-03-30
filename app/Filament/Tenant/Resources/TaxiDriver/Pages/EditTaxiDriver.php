@@ -1,8 +1,14 @@
-<?php
-declare(strict_types=1);
+<?php declare(strict_types=1);
+
 namespace App\Filament\Tenant\Resources\TaxiDriver\Pages;
-use App\Filament\Tenant\Resources\TaxiDriverResource;
-use Filament\Resources\Pages\EditRecord;
-final class EditRecordTaxiDriver extends EditRecord {
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+final class EditRecordTaxiDriver extends Model
+{
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = TaxiDriverResource::class;
 }

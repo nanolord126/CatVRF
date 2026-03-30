@@ -2,19 +2,19 @@
 
 namespace App\Notifications\Channels;
 
+use App\Services\EmailService;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Log;
-use App\Services\EmailService;
 
 /**
  * Email Notification Channel - отправляет уведомления через Email
- * 
+ *
  * Поддерживает:
  * - Mailgun
  * - SendGrid
  * - AWS SES
  * - Собственный SMTP
- * 
+ *
  * С помощью Laravel Mail facade
  */
 class EmailChannel

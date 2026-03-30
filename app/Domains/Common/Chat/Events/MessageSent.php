@@ -1,46 +1,39 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Domains\Common\Chat\Events;
 
-use App\Domains\Common\Chat\Models\Message;
-use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * Событие отправки сообщения через Reverb.
- */
-class MessageSent implements ShouldBroadcastNow
+final class MessageSent extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public function __construct(
-        public readonly Message $message,
-        public readonly string $correlation_id
-    ) {}
+        public function __construct(
+            public readonly Message $message,
+            public readonly string $correlation_id
+        ) {}
 
-    public function broadcastOn(): array
-    {
-        // Иерархия: tenant-диалог
-        return [
-            new PrivateChannel('chat.' . $this->message->conversation->uuid),
-        ];
-    }
+        public function broadcastOn(): array
+        {
+            // Иерархия: tenant-диалог
+            return [
+                new PrivateChannel('chat.' . $this->message->conversation->uuid),
+            ];
+        }
 
-    public function broadcastWith(): array
-    {
-        return [
-            'uuid' => $this->message->uuid,
-            'content' => $this->message->content,
-            'sender_id' => $this->message->sender_id,
-            'sender_name' => $this->message->sender->name ?? 'User',
-            'created_at' => $this->message->created_at->toISOString(),
-            'correlation_id' => $this->correlation_id,
-        ];
-    }
+        public function broadcastWith(): array
+        {
+            return [
+                'uuid' => $this->message->uuid,
+                'content' => $this->message->content,
+                'sender_id' => $this->message->sender_id,
+                'sender_name' => $this->message->sender->name ?? 'User',
+                'created_at' => $this->message->created_at->toISOString(),
+                'correlation_id' => $this->correlation_id,
+            ];
+        }
 }

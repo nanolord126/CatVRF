@@ -1,365 +1,360 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Domains\Photography\Http\Controllers;
 
-use App\Domains\Photography\Models\B2BPhotoStorefront;
-use App\Domains\Photography\Models\B2BPhotoOrder;
-use App\Domains\Photography\Services\B2BService;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final class B2BPhotoController
+final class B2BPhotoController extends Model
 {
-	public function __construct(
-		private readonly B2BService $b2bService
-	) {}
+    use HasFactory;
 
-	public function storefronts(): JsonResponse
-	{
-		try {
-			$storefronts = B2BPhotoStorefront::where('is_active', true)
-				->where('is_verified', true)
-				->paginate(20);
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    public function __construct(
+    		private readonly B2BService $b2bService
+    	) {}
 
-			return response()->json([
-				'success' => true,
-				'data' => $storefronts,
-				'correlation_id' => Str::uuid(),
-			]);
-		} catch (\Exception $e) {
-			return response()->json([
-				'success' => false,
-				'message' => 'Ошибка',
-				'correlation_id' => Str::uuid(),
-			], 500);
-		}
-	}
+    	public function storefronts(): JsonResponse
+    	{
+    		try {
+    			$storefronts = B2BPhotoStorefront::where('is_active', true)
+    				->where('is_verified', true)
+    				->paginate(20);
 
-	public function createStorefront(Request $request): JsonResponse
-	{
-		try {
-			$this->authorize('create', B2BPhotoStorefront::class);
+    			return response()->json([
+    				'success' => true,
+    				'data' => $storefronts,
+    				'correlation_id' => Str::uuid(),
+    			]);
+    		} catch (\Exception $e) {
+    			return response()->json([
+    				'success' => false,
+    				'message' => 'Ошибка',
+    				'correlation_id' => Str::uuid(),
+    			], 500);
+    		}
+    	}
 
-			$validated = $request->validate([
-				'company_name' => 'required|string',
-				'inn' => 'required|string|unique:b2b_photo_storefronts,inn',
-				'description' => 'nullable|string',
-				'corporate_packages' => 'nullable|json',
-				'corporate_rate' => 'nullable|numeric',
-				'min_booking_hours' => 'integer|min:1',
-			]);
+    	public function createStorefront(Request $request): JsonResponse
+    	{
+    		try {
+    			$this->authorize('create', B2BPhotoStorefront::class);
 
-			$correlationId = Str::uuid()->toString();
+    			$validated = $request->validate([
+    				'company_name' => 'required|string',
+    				'inn' => 'required|string|unique:b2b_photo_storefronts,inn',
+    				'description' => 'nullable|string',
+    				'corporate_packages' => 'nullable|json',
+    				'corporate_rate' => 'nullable|numeric',
+    				'min_booking_hours' => 'integer|min:1',
+    			]);
 
-			$storefront = $this->b2bService->createStorefront(
-				array_merge($validated, [
-					'tenant_id' => auth()->user()->tenant_id,
-					'correlation_id' => $correlationId,
-				])
-			);
+    			$correlationId = Str::uuid()->toString();
 
-			return response()->json([
-				'success' => true,
-				'data' => $storefront,
-				'correlation_id' => $correlationId,
-			], 201);
-		} catch (\Exception $e) {
-			Log::channel('audit')->error('Photography B2B: Storefront creation failed', [
-				'error' => $e->getMessage(),
-				'correlation_id' => Str::uuid(),
-			]);
-			return response()->json([
-				'success' => false,
-				'message' => 'Ошибка при создании витрины',
-				'correlation_id' => Str::uuid(),
-			], 500);
-		}
-	}
+    			$storefront = $this->b2bService->createStorefront(
+    				array_merge($validated, [
+    					'tenant_id' => auth()->user()->tenant_id,
+    					'correlation_id' => $correlationId,
+    				])
+    			);
 
-	public function showStorefront(int $id): JsonResponse
-	{
-		try {
-			$storefront = B2BPhotoStorefront::with('b2bOrders')->findOrFail($id);
-			$this->authorize('view', $storefront);
+    			return response()->json([
+    				'success' => true,
+    				'data' => $storefront,
+    				'correlation_id' => $correlationId,
+    			], 201);
+    		} catch (\Exception $e) {
+    			Log::channel('audit')->error('Photography B2B: Storefront creation failed', [
+    				'error' => $e->getMessage(),
+    				'correlation_id' => Str::uuid(),
+    			]);
+    			return response()->json([
+    				'success' => false,
+    				'message' => 'Ошибка при создании витрины',
+    				'correlation_id' => Str::uuid(),
+    			], 500);
+    		}
+    	}
 
-			return response()->json([
-				'success' => true,
-				'data' => $storefront,
-				'correlation_id' => Str::uuid(),
-			]);
-		} catch (\Exception $e) {
-			return response()->json([
-				'success' => false,
-				'message' => 'Витрина не найдена',
-				'correlation_id' => Str::uuid(),
-			], 404);
-		}
-	}
+    	public function showStorefront(int $id): JsonResponse
+    	{
+    		try {
+    			$storefront = B2BPhotoStorefront::with('b2bOrders')->findOrFail($id);
+    			$this->authorize('view', $storefront);
 
-	public function updateStorefront(int $id, Request $request): JsonResponse
-	{
-		try {
-			$storefront = B2BPhotoStorefront::findOrFail($id);
-			$this->authorize('update', $storefront);
+    			return response()->json([
+    				'success' => true,
+    				'data' => $storefront,
+    				'correlation_id' => Str::uuid(),
+    			]);
+    		} catch (\Exception $e) {
+    			return response()->json([
+    				'success' => false,
+    				'message' => 'Витрина не найдена',
+    				'correlation_id' => Str::uuid(),
+    			], 404);
+    		}
+    	}
 
-			$validated = $request->validate([
-				'company_name' => 'sometimes|string',
-				'description' => 'sometimes|nullable|string',
-				'corporate_rate' => 'sometimes|nullable|numeric',
-				'min_booking_hours' => 'sometimes|integer|min:1',
-			]);
+    	public function updateStorefront(int $id, Request $request): JsonResponse
+    	{
+    		try {
+    			$storefront = B2BPhotoStorefront::findOrFail($id);
+    			$this->authorize('update', $storefront);
 
-			$storefront->update($validated);
+    			$validated = $request->validate([
+    				'company_name' => 'sometimes|string',
+    				'description' => 'sometimes|nullable|string',
+    				'corporate_rate' => 'sometimes|nullable|numeric',
+    				'min_booking_hours' => 'sometimes|integer|min:1',
+    			]);
 
-			Log::channel('audit')->info('Photography B2B: Storefront updated', [
-				'storefront_id' => $id,
-				'correlation_id' => Str::uuid(),
-			]);
+    			$storefront->update($validated);
 
-			return response()->json([
-				'success' => true,
-				'message' => 'Витрина обновлена',
-				'correlation_id' => Str::uuid(),
-			]);
-		} catch (\Exception $e) {
-			return response()->json([
-				'success' => false,
-				'message' => 'Ошибка',
-				'correlation_id' => Str::uuid(),
-			], 500);
-		}
-	}
+    			Log::channel('audit')->info('Photography B2B: Storefront updated', [
+    				'storefront_id' => $id,
+    				'correlation_id' => Str::uuid(),
+    			]);
 
-	public function createOrder(Request $request): JsonResponse
-	{
-		try {
-			$this->authorize('create', B2BPhotoOrder::class);
+    			return response()->json([
+    				'success' => true,
+    				'message' => 'Витрина обновлена',
+    				'correlation_id' => Str::uuid(),
+    			]);
+    		} catch (\Exception $e) {
+    			return response()->json([
+    				'success' => false,
+    				'message' => 'Ошибка',
+    				'correlation_id' => Str::uuid(),
+    			], 500);
+    		}
+    	}
 
-			$validated = $request->validate([
-				'b2b_photo_storefront_id' => 'required|exists:b2b_photo_storefronts,id',
-				'photographer_id' => 'required|exists:photographers,id',
-				'company_contact_person' => 'required|string',
-				'company_phone' => 'required|string',
-				'datetime_start' => 'required|date',
-				'duration_hours' => 'required|integer|min:1',
-				'total_amount' => 'required|numeric|min:1',
-			]);
+    	public function createOrder(Request $request): JsonResponse
+    	{
+    		try {
+    			$this->authorize('create', B2BPhotoOrder::class);
 
-			$correlationId = Str::uuid()->toString();
+    			$validated = $request->validate([
+    				'b2b_photo_storefront_id' => 'required|exists:b2b_photo_storefronts,id',
+    				'photographer_id' => 'required|exists:photographers,id',
+    				'company_contact_person' => 'required|string',
+    				'company_phone' => 'required|string',
+    				'datetime_start' => 'required|date',
+    				'duration_hours' => 'required|integer|min:1',
+    				'total_amount' => 'required|numeric|min:1',
+    			]);
 
-			$order = $this->b2bService->createB2BOrder(
-				array_merge($validated, [
-					'tenant_id' => auth()->user()->tenant_id,
-					'correlation_id' => $correlationId,
-				])
-			);
+    			$correlationId = Str::uuid()->toString();
 
-			return response()->json([
-				'success' => true,
-				'data' => $order,
-				'correlation_id' => $correlationId,
-			], 201);
-		} catch (\Exception $e) {
-			return response()->json([
-				'success' => false,
-				'message' => 'Ошибка при создании заказа',
-				'correlation_id' => Str::uuid(),
-			], 500);
-		}
-	}
+    			$order = $this->b2bService->createB2BOrder(
+    				array_merge($validated, [
+    					'tenant_id' => auth()->user()->tenant_id,
+    					'correlation_id' => $correlationId,
+    				])
+    			);
 
-	public function orders(): JsonResponse
-	{
-		try {
-			$orders = B2BPhotoOrder::paginate(20);
+    			return response()->json([
+    				'success' => true,
+    				'data' => $order,
+    				'correlation_id' => $correlationId,
+    			], 201);
+    		} catch (\Exception $e) {
+    			return response()->json([
+    				'success' => false,
+    				'message' => 'Ошибка при создании заказа',
+    				'correlation_id' => Str::uuid(),
+    			], 500);
+    		}
+    	}
 
-			return response()->json([
-				'success' => true,
-				'data' => $orders,
-				'correlation_id' => Str::uuid(),
-			]);
-		} catch (\Exception $e) {
-			return response()->json([
-				'success' => false,
-				'message' => 'Ошибка',
-				'correlation_id' => Str::uuid(),
-			], 500);
-		}
-	}
+    	public function orders(): JsonResponse
+    	{
+    		try {
+    			$orders = B2BPhotoOrder::paginate(20);
 
-	public function myB2BOrders(): JsonResponse
-	{
-		try {
-			$orders = B2BPhotoOrder::where('tenant_id', auth()->user()->tenant_id)
-				->latest()
-				->paginate(20);
+    			return response()->json([
+    				'success' => true,
+    				'data' => $orders,
+    				'correlation_id' => Str::uuid(),
+    			]);
+    		} catch (\Exception $e) {
+    			return response()->json([
+    				'success' => false,
+    				'message' => 'Ошибка',
+    				'correlation_id' => Str::uuid(),
+    			], 500);
+    		}
+    	}
 
-			return response()->json([
-				'success' => true,
-				'data' => $orders,
-				'correlation_id' => Str::uuid(),
-			]);
-		} catch (\Exception $e) {
-			return response()->json([
-				'success' => false,
-				'message' => 'Ошибка',
-				'correlation_id' => Str::uuid(),
-			], 500);
-		}
-	}
+    	public function myB2BOrders(): JsonResponse
+    	{
+    		try {
+    			$orders = B2BPhotoOrder::where('tenant_id', auth()->user()->tenant_id)
+    				->latest()
+    				->paginate(20);
 
-	public function showOrder(int $id): JsonResponse
-	{
-		try {
-			$order = B2BPhotoOrder::findOrFail($id);
-			$this->authorize('view', $order);
+    			return response()->json([
+    				'success' => true,
+    				'data' => $orders,
+    				'correlation_id' => Str::uuid(),
+    			]);
+    		} catch (\Exception $e) {
+    			return response()->json([
+    				'success' => false,
+    				'message' => 'Ошибка',
+    				'correlation_id' => Str::uuid(),
+    			], 500);
+    		}
+    	}
 
-			return response()->json([
-				'success' => true,
-				'data' => $order,
-				'correlation_id' => Str::uuid(),
-			]);
-		} catch (\Exception $e) {
-			return response()->json([
-				'success' => false,
-				'message' => 'Заказ не найден',
-				'correlation_id' => Str::uuid(),
-			], 404);
-		}
-	}
+    	public function showOrder(int $id): JsonResponse
+    	{
+    		try {
+    			$order = B2BPhotoOrder::findOrFail($id);
+    			$this->authorize('view', $order);
 
-	public function updateOrderStatus(int $id, Request $request): JsonResponse
-	{
-		try {
-			$order = B2BPhotoOrder::findOrFail($id);
-			$this->authorize('update', $order);
+    			return response()->json([
+    				'success' => true,
+    				'data' => $order,
+    				'correlation_id' => Str::uuid(),
+    			]);
+    		} catch (\Exception $e) {
+    			return response()->json([
+    				'success' => false,
+    				'message' => 'Заказ не найден',
+    				'correlation_id' => Str::uuid(),
+    			], 404);
+    		}
+    	}
 
-			$status = $request->validate(['status' => 'required|in:pending,approved,rejected,in_progress,completed,cancelled'])['status'];
+    	public function updateOrderStatus(int $id, Request $request): JsonResponse
+    	{
+    		try {
+    			$order = B2BPhotoOrder::findOrFail($id);
+    			$this->authorize('update', $order);
 
-			$order->update(['status' => $status]);
+    			$status = $request->validate(['status' => 'required|in:pending,approved,rejected,in_progress,completed,cancelled'])['status'];
 
-			Log::channel('audit')->info('Photography B2B: Order status updated', [
-				'order_id' => $id,
-				'status' => $status,
-				'correlation_id' => Str::uuid(),
-			]);
+    			$order->update(['status' => $status]);
 
-			return response()->json([
-				'success' => true,
-				'message' => 'Статус обновлен',
-				'correlation_id' => Str::uuid(),
-			]);
-		} catch (\Exception $e) {
-			return response()->json([
-				'success' => false,
-				'message' => 'Ошибка',
-				'correlation_id' => Str::uuid(),
-			], 500);
-		}
-	}
+    			Log::channel('audit')->info('Photography B2B: Order status updated', [
+    				'order_id' => $id,
+    				'status' => $status,
+    				'correlation_id' => Str::uuid(),
+    			]);
 
-	public function approveOrder(int $id): JsonResponse
-	{
-		try {
-			$order = B2BPhotoOrder::findOrFail($id);
-			$this->authorize('approve', $order);
+    			return response()->json([
+    				'success' => true,
+    				'message' => 'Статус обновлен',
+    				'correlation_id' => Str::uuid(),
+    			]);
+    		} catch (\Exception $e) {
+    			return response()->json([
+    				'success' => false,
+    				'message' => 'Ошибка',
+    				'correlation_id' => Str::uuid(),
+    			], 500);
+    		}
+    	}
 
-			$this->b2bService->approveB2BOrder($order);
+    	public function approveOrder(int $id): JsonResponse
+    	{
+    		try {
+    			$order = B2BPhotoOrder::findOrFail($id);
+    			$this->authorize('approve', $order);
 
-			return response()->json([
-				'success' => true,
-				'message' => 'Заказ одобрен',
-				'correlation_id' => Str::uuid(),
-			]);
-		} catch (\Exception $e) {
-			return response()->json([
-				'success' => false,
-				'message' => 'Ошибка',
-				'correlation_id' => Str::uuid(),
-			], 500);
-		}
-	}
+    			$this->b2bService->approveB2BOrder($order);
 
-	public function rejectOrder(int $id, Request $request): JsonResponse
-	{
-		try {
-			$order = B2BPhotoOrder::findOrFail($id);
-			$this->authorize('reject', $order);
+    			return response()->json([
+    				'success' => true,
+    				'message' => 'Заказ одобрен',
+    				'correlation_id' => Str::uuid(),
+    			]);
+    		} catch (\Exception $e) {
+    			return response()->json([
+    				'success' => false,
+    				'message' => 'Ошибка',
+    				'correlation_id' => Str::uuid(),
+    			], 500);
+    		}
+    	}
 
-			$reason = $request->get('reason', 'Причина не указана');
-			$order->update(['status' => 'rejected', 'notes' => $reason]);
+    	public function rejectOrder(int $id, Request $request): JsonResponse
+    	{
+    		try {
+    			$order = B2BPhotoOrder::findOrFail($id);
+    			$this->authorize('reject', $order);
 
-			Log::channel('audit')->info('Photography B2B: Order rejected', [
-				'order_id' => $id,
-				'reason' => $reason,
-				'correlation_id' => Str::uuid(),
-			]);
+    			$reason = $request->get('reason', 'Причина не указана');
+    			$order->update(['status' => 'rejected', 'notes' => $reason]);
 
-			return response()->json([
-				'success' => true,
-				'message' => 'Заказ отклонен',
-				'correlation_id' => Str::uuid(),
-			]);
-		} catch (\Exception $e) {
-			return response()->json([
-				'success' => false,
-				'message' => 'Ошибка',
-				'correlation_id' => Str::uuid(),
-			], 500);
-		}
-	}
+    			Log::channel('audit')->info('Photography B2B: Order rejected', [
+    				'order_id' => $id,
+    				'reason' => $reason,
+    				'correlation_id' => Str::uuid(),
+    			]);
 
-	public function pendingB2BOrders(): JsonResponse
-	{
-		try {
-			$orders = B2BPhotoOrder::where('status', 'pending')->paginate(20);
+    			return response()->json([
+    				'success' => true,
+    				'message' => 'Заказ отклонен',
+    				'correlation_id' => Str::uuid(),
+    			]);
+    		} catch (\Exception $e) {
+    			return response()->json([
+    				'success' => false,
+    				'message' => 'Ошибка',
+    				'correlation_id' => Str::uuid(),
+    			], 500);
+    		}
+    	}
 
-			return response()->json([
-				'success' => true,
-				'data' => $orders,
-				'correlation_id' => Str::uuid(),
-			]);
-		} catch (\Exception $e) {
-			return response()->json([
-				'success' => false,
-				'message' => 'Ошибка',
-				'correlation_id' => Str::uuid(),
-			], 500);
-		}
-	}
+    	public function pendingB2BOrders(): JsonResponse
+    	{
+    		try {
+    			$orders = B2BPhotoOrder::where('status', 'pending')->paginate(20);
 
-	public function verifyInn(int $id): JsonResponse
-	{
-		try {
-			$this->authorize('verify', B2BPhotoStorefront::class);
+    			return response()->json([
+    				'success' => true,
+    				'data' => $orders,
+    				'correlation_id' => Str::uuid(),
+    			]);
+    		} catch (\Exception $e) {
+    			return response()->json([
+    				'success' => false,
+    				'message' => 'Ошибка',
+    				'correlation_id' => Str::uuid(),
+    			], 500);
+    		}
+    	}
 
-			DB::transaction(function () use ($id) {
-				$storefront = B2BPhotoStorefront::findOrFail($id);
-				$storefront->update(['is_verified' => true]);
+    	public function verifyInn(int $id): JsonResponse
+    	{
+    		try {
+    			$this->authorize('verify', B2BPhotoStorefront::class);
 
-				Log::channel('audit')->info('Photography B2B: INN verified', [
-					'storefront_id' => $id,
-					'inn' => $storefront->inn,
-					'correlation_id' => Str::uuid(),
-				]);
-			});
+    			DB::transaction(function () use ($id) {
+    				$storefront = B2BPhotoStorefront::findOrFail($id);
+    				$storefront->update(['is_verified' => true]);
 
-			return response()->json([
-				'success' => true,
-				'message' => 'ИНН верифицирован',
-				'correlation_id' => Str::uuid(),
-			]);
-		} catch (\Exception $e) {
-			return response()->json([
-				'success' => false,
-				'message' => 'Ошибка',
-				'correlation_id' => Str::uuid(),
-			], 500);
-		}
-	}
+    				Log::channel('audit')->info('Photography B2B: INN verified', [
+    					'storefront_id' => $id,
+    					'inn' => $storefront->inn,
+    					'correlation_id' => Str::uuid(),
+    				]);
+    			});
+
+    			return response()->json([
+    				'success' => true,
+    				'message' => 'ИНН верифицирован',
+    				'correlation_id' => Str::uuid(),
+    			]);
+    		} catch (\Exception $e) {
+    			return response()->json([
+    				'success' => false,
+    				'message' => 'Ошибка',
+    				'correlation_id' => Str::uuid(),
+    			], 500);
+    		}
+    	}
 }

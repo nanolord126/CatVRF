@@ -8,11 +8,10 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\DB;
-use Modules\Inventory\Models\InventoryItem;
-use Modules\Core\Models\Tenant;
-use Modules\Notifications\Jobs\SendNotificationJob;
 use Illuminate\Support\Str;
+use Modules\Core\Models\Tenant;
+use Modules\Inventory\Models\InventoryItem;
+use Modules\Notifications\Jobs\SendNotificationJob;
 
 /**
  * Low Stock Notification Job

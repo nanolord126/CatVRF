@@ -1,6 +1,4 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Broadcasting;
 
@@ -22,9 +20,9 @@ final class TeamPresenceChanged implements ShouldBroadcast
         public readonly string $documentType,
         public readonly int $documentId,
         public readonly array $presentUsers,
-        public readonly string $event, // joined, left, status_changed
+        public readonly string $event,
         public readonly int $affectedUserId,
-        public readonly string $correlationId
+        public readonly string $correlationId,
     ) {
         Log::channel('audit')->info('TeamPresenceChanged event broadcasted', [
             'tenant_id' => $this->tenantId,
@@ -37,28 +35,17 @@ final class TeamPresenceChanged implements ShouldBroadcast
         ]);
     }
 
-    /**
-     * Get the channels the event should broadcast on.
-     * Uses PresenceChannel for real-time user presence tracking.
-     *
-     * @return \Illuminate\Broadcasting\Channel
-     */
     public function broadcastOn(): PresenceChannel
     {
         return new PresenceChannel("collab.{$this->tenantId}.{$this->documentType}.{$this->documentId}");
     }
 
-    /**
-     * The event's broadcast name.
-     */
     public function broadcastAs(): string
     {
         return 'presence.changed';
     }
 
     /**
-     * Get the data to broadcast.
-     *
      * @return array<string, mixed>
      */
     public function broadcastWith(): array
@@ -74,10 +61,7 @@ final class TeamPresenceChanged implements ShouldBroadcast
         ];
     }
 
-    /**
-     * Determine if this event should be broadcast.
-     */
-    public function shouldBroadcast(): bool
+    public function broadcastWhen(): bool
     {
         return config('broadcasting.connections.pusher.enabled', true);
     }

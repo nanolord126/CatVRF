@@ -1,44 +1,37 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Domains\Medical\Psychology\Jobs;
 
-use App\Domains\Medical\Psychology\Models\PsychologicalBooking;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * Джоба для напоминания о сессиях.
- */
-final class PsychologicalReminderJob implements ShouldQueue
+final class PsychologicalReminderJob extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function __construct(
-        public int $bookingId,
-        public string $correlationId
-    ) {}
+        public function __construct(
+            public int $bookingId,
+            public string $correlationId
+        ) {}
 
-    public function handle(): void
-    {
-        $booking = PsychologicalBooking::with(['client', 'psychologist'])->find($this->bookingId);
+        public function handle(): void
+        {
+            $booking = PsychologicalBooking::with(['client', 'psychologist'])->find($this->bookingId);
 
-        if (!$booking) {
-            return;
+            if (!$booking) {
+                return;
+            }
+
+            Log::channel('audit')->info('Sending therapy session reminder', [
+                'booking_id' => $this->bookingId,
+                'client_email' => $booking->client->email,
+                'correlation_id' => $this->correlationId,
+            ]);
+
+            // В 2026 тут идет интеграция с Telegram/WhatsApp API
+            // \App\Services\NotificationService::send(...)
         }
-
-        Log::channel('audit')->info('Sending therapy session reminder', [
-            'booking_id' => $this->bookingId,
-            'client_email' => $booking->client->email,
-            'correlation_id' => $this->correlationId,
-        ]);
-
-        // В 2026 тут идет интеграция с Telegram/WhatsApp API
-        // \App\Services\NotificationService::send(...)
-    }
 }

@@ -4,7 +4,7 @@ namespace App\Notifications;
 
 /**
  * Base class for push notifications (Firebase, OneSignal)
- * 
+ *
  * Отправляет push-уведомления на мобильные устройства
  */
 abstract class BasePushNotification extends BaseNotification

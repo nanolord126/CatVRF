@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-namespace App\Notifications\Verticals\Travel;
+namespace App\Notifications\Verticals\TravelSportsFreelancePhotography;
 
 use App\Notifications\BaseMailableNotification;
 use App\Notifications\BasePushNotification;
@@ -24,7 +24,7 @@ final class TravelReminderNotification extends BasePushNotification
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
-        
+
         $this->title('Your trip starts soon!')
              ->body('Depart in ' . ($data['days_until_departure'] ?? '0') . ' days')
              ->type('warning')
@@ -40,7 +40,7 @@ final class ReviewRequestNotification extends BasePushNotification
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['database', 'push']);
-        
+
         $this->title('Share your experience')
              ->message('Rate your trip to ' . ($data['destination'] ?? ''))
              ->type('action')
@@ -49,7 +49,7 @@ final class ReviewRequestNotification extends BasePushNotification
     }
 }
 
-namespace App\Notifications\Verticals\Sports;
+namespace App\Notifications\Verticals\TravelSportsFreelancePhotography;
 
 final class MembershipRenewedNotification extends BaseMailableNotification
 {
@@ -70,7 +70,7 @@ final class ClassBookedNotification extends BasePushNotification
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
-        
+
         $this->title('Class booked!')
              ->body(($data['class_name'] ?? '') . ' at ' . ($data['class_time'] ?? ''))
              ->type('success')
@@ -85,7 +85,7 @@ final class ClassReminderNotification extends BasePushNotification
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
-        
+
         $this->title('Class in 1 hour!')
              ->body(($data['class_name'] ?? '') . ' is starting soon')
              ->type('info')
@@ -94,7 +94,7 @@ final class ClassReminderNotification extends BasePushNotification
     }
 }
 
-namespace App\Notifications\Verticals\Freelance;
+namespace App\Notifications\Verticals\TravelSportsFreelancePhotography;
 
 final class ProjectInviteNotification extends BaseMailableNotification
 {
@@ -115,7 +115,7 @@ final class MilestoneApprovedNotification extends BasePushNotification
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
-        
+
         $this->title('Milestone approved!')
              ->body('₽' . number_format($data['milestone_amount'] ?? 0) . ' released')
              ->type('success')
@@ -135,7 +135,7 @@ final class PaymentProcessedNotification extends BaseMailableNotification
     }
 }
 
-namespace App\Notifications\Verticals\Photography;
+namespace App\Notifications\Verticals\TravelSportsFreelancePhotography;
 
 final class SessionBookedNotification extends BaseMailableNotification
 {
@@ -156,7 +156,7 @@ final class PhotosReadyNotification extends BasePushNotification
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['mail', 'push', 'database']);
-        
+
         $this->title('Your photos are ready!')
              ->body('View ' . ($data['photo_count'] ?? '0') . ' photos from your session')
              ->type('success')
@@ -171,7 +171,7 @@ final class ReviewRequestNotification extends BasePushNotification
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['database', 'push']);
-        
+
         $this->title('Rate your photographer')
              ->message('Help us improve by sharing your experience')
              ->type('action')

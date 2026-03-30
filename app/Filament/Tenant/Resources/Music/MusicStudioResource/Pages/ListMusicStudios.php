@@ -1,26 +1,23 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Music\MusicStudioResource\Pages;
 
-use App\Filament\Tenant\Resources\Music\MusicStudioResource;
-use Filament\Actions;
-use Filament\Resources\Pages\ListRecords;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * ListMusicStudios page component.
- */
-final class ListMusicStudios extends ListRecords
+final class ListMusicStudios extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = MusicStudioResource::class;
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            Actions\CreateAction::make()
-                ->label('New Studio')
-                ->icon('heroicon-o-plus'),
-        ];
-    }
+        protected function getHeaderActions(): array
+        {
+            return [
+                Actions\CreateAction::make()
+                    ->label('New Studio')
+                    ->icon('heroicon-o-plus'),
+            ];
+        }
 }

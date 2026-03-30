@@ -1,13 +1,13 @@
 <?php declare(strict_types=1);
 
-namespace App\Modules\Wallet\Services;
+namespace Modules\Wallet\Services;
 
 use App\Modules\Wallet\Models\WalletTransaction;
 use App\Services\FraudControlService;
+use DomainException;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
-use DomainException;
 use Throwable;
 
 /**

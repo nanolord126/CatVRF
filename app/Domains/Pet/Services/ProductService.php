@@ -2,150 +2,148 @@
 
 namespace App\Domains\Pet\Services;
 
-use Illuminate\Support\Facades\Log;
-use App\Services\FraudControlService;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-use App\Domains\Pet\Models\PetClinic;
-use App\Domains\Pet\Models\PetProduct;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
-
-final class ProductService
+final class ProductService extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-        private readonly FraudControlService $fraudControlService,
-    ) {}
+            private readonly FraudControlService $fraudControlService,
+        ) {}
 
-    public function createProduct(PetClinic $clinic, array $data, string $correlationId = null): PetProduct
-    {
+        public function createProduct(PetClinic $clinic, array $data, string $correlationId = null): PetProduct
+        {
 
 
-        $correlationId ??= Str::uuid()->toString();
+            $correlationId ??= Str::uuid()->toString();
 
-        try {
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-DB::transaction(function () use ($clinic, $data, $correlationId) {
-                $product = PetProduct::create([
-                    ...$data,
-                    'tenant_id' => tenant()->id,
+            try {
+                $this->fraudControlService->check(
+                    auth()->id() ?? 0,
+                    __CLASS__ . '::' . __FUNCTION__,
+                    0,
+                    request()->ip(),
+                    null,
+                    $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+                );
+    DB::transaction(function () use ($clinic, $data, $correlationId) {
+                    $product = PetProduct::create([
+                        ...$data,
+                        'tenant_id' => tenant()->id,
+                        'clinic_id' => $clinic->id,
+                        'correlation_id' => $correlationId,
+                        'uuid' => Str::uuid(),
+                    ]);
+
+                    Log::channel('audit')->info('Pet product created', [
+                        'product_id' => $product->id,
+                        'clinic_id' => $clinic->id,
+                        'name' => $product->name,
+                        'correlation_id' => $correlationId,
+                    ]);
+
+                    return $product;
+                });
+            } catch (\Throwable $e) {
+                Log::error('Failed to create pet product', [
                     'clinic_id' => $clinic->id,
+                    'data' => $data,
                     'correlation_id' => $correlationId,
-                    'uuid' => Str::uuid(),
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
                 ]);
-
-                Log::channel('audit')->info('Pet product created', [
-                    'product_id' => $product->id,
-                    'clinic_id' => $clinic->id,
-                    'name' => $product->name,
-                    'correlation_id' => $correlationId,
-                ]);
-
-                return $product;
-            });
-        } catch (\Throwable $e) {
-            Log::error('Failed to create pet product', [
-                'clinic_id' => $clinic->id,
-                'data' => $data,
-                'correlation_id' => $correlationId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-            throw $e;
+                throw $e;
+            }
         }
-    }
 
-    public function updateProduct(PetProduct $product, array $data, string $correlationId = null): PetProduct
-    {
+        public function updateProduct(PetProduct $product, array $data, string $correlationId = null): PetProduct
+        {
 
 
-        $correlationId ??= Str::uuid()->toString();
+            $correlationId ??= Str::uuid()->toString();
 
-        try {
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-DB::transaction(function () use ($product, $data, $correlationId) {
-                $product->update([
-                    ...$data,
-                    'correlation_id' => $correlationId,
-                ]);
+            try {
+                $this->fraudControlService->check(
+                    auth()->id() ?? 0,
+                    __CLASS__ . '::' . __FUNCTION__,
+                    0,
+                    request()->ip(),
+                    null,
+                    $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+                );
+    DB::transaction(function () use ($product, $data, $correlationId) {
+                    $product->update([
+                        ...$data,
+                        'correlation_id' => $correlationId,
+                    ]);
 
-                Log::channel('audit')->info('Pet product updated', [
+                    Log::channel('audit')->info('Pet product updated', [
+                        'product_id' => $product->id,
+                        'clinic_id' => $product->clinic_id,
+                        'correlation_id' => $correlationId,
+                    ]);
+
+                    return $product;
+                });
+            } catch (\Throwable $e) {
+                Log::error('Failed to update pet product', [
                     'product_id' => $product->id,
-                    'clinic_id' => $product->clinic_id,
                     'correlation_id' => $correlationId,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
                 ]);
-
-                return $product;
-            });
-        } catch (\Throwable $e) {
-            Log::error('Failed to update pet product', [
-                'product_id' => $product->id,
-                'correlation_id' => $correlationId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-            throw $e;
+                throw $e;
+            }
         }
-    }
 
-    public function updateStock(PetProduct $product, int $quantity, string $correlationId = null): PetProduct
-    {
+        public function updateStock(PetProduct $product, int $quantity, string $correlationId = null): PetProduct
+        {
 
 
-        $correlationId ??= Str::uuid()->toString();
+            $correlationId ??= Str::uuid()->toString();
 
-        try {
-            $this->fraudControlService->check(
-                auth()->id() ?? 0,
-                __CLASS__ . '::' . __FUNCTION__,
-                0,
-                request()->ip(),
-                null,
-                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-            );
-DB::transaction(function () use ($product, $quantity, $correlationId) {
-                $newStock = $product->current_stock + $quantity;
-                if ($newStock < 0) {
-                    throw new \RuntimeException('Insufficient stock');
-                }
+            try {
+                $this->fraudControlService->check(
+                    auth()->id() ?? 0,
+                    __CLASS__ . '::' . __FUNCTION__,
+                    0,
+                    request()->ip(),
+                    null,
+                    $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+                );
+    DB::transaction(function () use ($product, $quantity, $correlationId) {
+                    $newStock = $product->current_stock + $quantity;
+                    if ($newStock < 0) {
+                        throw new \RuntimeException('Insufficient stock');
+                    }
 
-                $product->update([
-                    'current_stock' => $newStock,
-                    'correlation_id' => $correlationId,
-                ]);
+                    $product->update([
+                        'current_stock' => $newStock,
+                        'correlation_id' => $correlationId,
+                    ]);
 
-                Log::channel('audit')->info('Pet product stock updated', [
+                    Log::channel('audit')->info('Pet product stock updated', [
+                        'product_id' => $product->id,
+                        'previous_stock' => $product->current_stock - $quantity,
+                        'new_stock' => $newStock,
+                        'quantity_change' => $quantity,
+                        'correlation_id' => $correlationId,
+                    ]);
+
+                    return $product;
+                });
+            } catch (\Throwable $e) {
+                Log::error('Failed to update product stock', [
                     'product_id' => $product->id,
-                    'previous_stock' => $product->current_stock - $quantity,
-                    'new_stock' => $newStock,
-                    'quantity_change' => $quantity,
+                    'quantity' => $quantity,
                     'correlation_id' => $correlationId,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
                 ]);
-
-                return $product;
-            });
-        } catch (\Throwable $e) {
-            Log::error('Failed to update product stock', [
-                'product_id' => $product->id,
-                'quantity' => $quantity,
-                'correlation_id' => $correlationId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-            throw $e;
+                throw $e;
+            }
         }
-    }
 }

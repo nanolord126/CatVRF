@@ -1,50 +1,40 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Channels\Pages;
 
-use App\Filament\Tenant\Resources\Channels\PostResource;
-use Filament\Resources\Pages\CreateRecord;
-use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final /**
- * CreatePost
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class CreatePost extends CreateRecord
+final class CreatePost extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = PostResource::class;
 
-    protected function mutateFormDataBeforeCreate(array $data): array
-    {
-        $data['uuid']        = Str::uuid()->toString();
-        $data['correlation_id'] = Str::uuid()->toString();
-        $data['tenant_id']   = filament()->getTenant()?->id ?? '0';
+        protected function mutateFormDataBeforeCreate(array $data): array
+        {
+            $data['uuid']        = Str::uuid()->toString();
+            $data['correlation_id'] = Str::uuid()->toString();
+            $data['tenant_id']   = filament()->getTenant()?->id ?? '0';
 
-        // channel_id — найти канал тенанта
-        $channel = \App\Domains\Content\Channels\Models\BusinessChannel::withoutGlobalScopes()
-            ->where('tenant_id', $data['tenant_id'])
-            ->first();
+            // channel_id — найти канал тенанта
+            $channel = \App\Domains\Content\Channels\Models\BusinessChannel::withoutGlobalScopes()
+                ->where('tenant_id', $data['tenant_id'])
+                ->first();
 
-        if ($channel === null) {
-            throw new \RuntimeException('Сначала создайте канал бизнеса.');
+            if ($channel === null) {
+                throw new \RuntimeException('Сначала создайте канал бизнеса.');
+            }
+
+            $data['channel_id'] = $channel->id;
+            $data['reactions']  = [];
+
+            return $data;
         }
 
-        $data['channel_id'] = $channel->id;
-        $data['reactions']  = [];
-
-        return $data;
-    }
-
-    protected function getRedirectUrl(): string
-    {
-        return $this->getResource()::getUrl('index');
-    }
+        protected function getRedirectUrl(): string
+        {
+            return $this->getResource()::getUrl('index');
+        }
 }

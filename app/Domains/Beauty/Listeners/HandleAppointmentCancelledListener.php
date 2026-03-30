@@ -1,54 +1,43 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Domains\Beauty\Listeners;
 
-use App\Domains\Beauty\Events\AppointmentCancelled;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Notification;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final /**
- * HandleAppointmentCancelledListener
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class HandleAppointmentCancelledListener implements ShouldQueue
+final class HandleAppointmentCancelledListener extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function handle(AppointmentCancelled $event): void
-    {
-        $appointment = $event->appointment;
-        
-        // Release held consumables (inventory)
-        if ($appointment->status === 'cancelled' && $appointment->held_consumables) {
-            app(\App\Services\InventoryManagementService::class)->releaseStock(
-                $appointment->id,
-                'appointment',
-                $event->correlationId
-            );
-        }
+        {
+            $appointment = $event->appointment;
 
-        // Notify client about cancellation
-        if ($appointment->client) {
-            $this->notification->send(
-                $appointment->client,
-                new \App\Notifications\AppointmentCancelledNotification(
-                    $appointment,
-                    $event->reason
-                )
-            );
-        }
+            // Release held consumables (inventory)
+            if ($appointment->status === 'cancelled' && $appointment->held_consumables) {
+                app(\App\Services\InventoryManagementService::class)->releaseStock(
+                    $appointment->id,
+                    'appointment',
+                    $event->correlationId
+                );
+            }
 
-        Log::channel('audit')->info('AppointmentCancelled event handled', [
-            'appointment_id' => $appointment->id,
-            'reason' => $event->reason,
-            'correlation_id' => $event->correlationId,
-        ]);
-    }
+            // Notify client about cancellation
+            if ($appointment->client) {
+                $this->notification->send(
+                    $appointment->client,
+                    new \App\Notifications\AppointmentCancelledNotification(
+                        $appointment,
+                        $event->reason
+                    )
+                );
+            }
+
+            Log::channel('audit')->info('AppointmentCancelled event handled', [
+                'appointment_id' => $appointment->id,
+                'reason' => $event->reason,
+                'correlation_id' => $event->correlationId,
+            ]);
+        }
 }

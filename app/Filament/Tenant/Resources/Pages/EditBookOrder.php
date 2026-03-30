@@ -1,27 +1,31 @@
-<?php
+<?php declare(strict_types=1);
 
-declare(strict_types=1);
+namespace App\Filament\Tenant\Resources\Pages;
 
-namespace App\Filament\Tenant\Resources\BookOrder\Pages;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-use use App\Filament\Tenant\Resources\BookOrderResource;;
-use Filament\Resources\Pages\EditRecord;
-use Filament\Actions\{ViewAction, DeleteAction};
-
-final class EditBookOrder extends EditRecord
+final class EditBookOrder extends Model
 {
-    protected static string $resource = BookOrderResource::class;
+    use HasFactory;
 
-    public function getTitle(): string
-    {
-        return 'Edit BookOrder';
-    }
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    ViewAction, DeleteAction};
 
-    protected function getHeaderActions(): array
+    final class EditBookOrder extends EditRecord
     {
-        return [
-            ViewAction::make(),
-            DeleteAction::make(),
-        ];
-    }
+        protected static string $resource = BookOrderResource::class;
+
+        public function getTitle(): string
+        {
+            return 'Edit BookOrder';
+        }
+
+        protected function getHeaderActions(): array
+        {
+            return [
+                ViewAction::make(),
+                DeleteAction::make(),
+            ];
+        }
 }

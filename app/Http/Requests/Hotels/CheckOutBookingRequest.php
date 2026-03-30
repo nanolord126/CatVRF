@@ -1,38 +1,34 @@
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Http\Requests\Hotels;
 
-use App\Http\Requests\BaseApiRequest;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * Check-Out Booking Request.
- * Валидация данных для check-out из отеля.
- *
- * Rules:
- * - booking_id: required, exists
- * - early_checkout: optional, boolean
- */
-final class CheckOutBookingRequest extends BaseApiRequest
+final class CheckOutBookingRequest extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function authorize(): bool
-    {
-        return auth()->check();
-    }
+        {
+            return auth()->check();
+        }
 
-    public function rules(): array
-    {
-        return [
-            'booking_id' => ['required', 'integer', 'exists:bookings,id'],
-            'early_checkout' => ['sometimes', 'boolean'],
-        ];
-    }
+        public function rules(): array
+        {
+            return [
+                'booking_id' => ['required', 'integer', 'exists:bookings,id'],
+                'early_checkout' => ['sometimes', 'boolean'],
+            ];
+        }
 
-    public function messages(): array
-    {
-        return [
-            'booking_id.required' => 'Booking ID required',
-            'booking_id.exists' => 'Booking not found',
-            'early_checkout.boolean' => 'Early checkout must be boolean',
-        ];
-    }
+        public function messages(): array
+        {
+            return [
+                'booking_id.required' => 'Booking ID required',
+                'booking_id.exists' => 'Booking not found',
+                'early_checkout.boolean' => 'Early checkout must be boolean',
+            ];
+        }
 }

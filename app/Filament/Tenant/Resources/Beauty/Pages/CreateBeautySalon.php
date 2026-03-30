@@ -6,7 +6,6 @@ use App\Filament\Tenant\Resources\Beauty\BeautySalonResource;
 use App\Services\FraudControlService;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -51,7 +50,7 @@ final class CreateBeautySalon extends CreateRecord
         $data['tenant_id'] = tenant('id');
         $data['correlation_id'] = $data['correlation_id'] ?? (string) Str::uuid();
         $data['uuid'] = (string) Str::uuid();
-        
+
         return $data;
     }
 

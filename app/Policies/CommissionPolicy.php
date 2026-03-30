@@ -1,224 +1,216 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Policies;
 
-use Illuminate\Auth\Access\HandlesAuthorization;
-use Modules\Core\Models\User;
-use Modules\Finances\Models\CommissionTransaction;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * Commission Authorization Policy
- * CANON 2026 - Production Ready
- *
- * Управление доступом к информации о комиссиях.
- * Все комиссии связаны с вертикалями и платежами.
- */
-final class CommissionPolicy
+final class CommissionPolicy extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use HandlesAuthorization;
 
-    /**
-     * Может ли пользователь видеть свои комиссии?
-     * Только соответствующий бизнес (tenant).
-     */
-    public function view(User $user, CommissionTransaction $commission): bool
-    {
-        // CANON 2026: Strict tenant scoping check
-        if (isset($commission->tenant_id) && $user->tenant_id !== $commission->tenant_id && !$user->hasRole('admin')) {
-            \Illuminate\Support\Facades\Log::warning('Tenant mismatch in ' . __CLASS__ . '::' . __FUNCTION__, [
-                'user_id' => $user->id,
-                'user_tenant_id' => $user->tenant_id,
-                'model_tenant_id' => $commission->tenant_id,
-            ]);
+        /**
+         * Может ли пользователь видеть свои комиссии?
+         * Только соответствующий бизнес (tenant).
+         */
+        public function view(User $user, CommissionTransaction $commission): bool
+        {
+            // CANON 2026: Strict tenant scoping check
+            if (isset($commission->tenant_id) && $user->tenant_id !== $commission->tenant_id && !$user->hasRole('admin')) {
+                \Illuminate\Support\Facades\Log::warning('Tenant mismatch in ' . __CLASS__ . '::' . __FUNCTION__, [
+                    'user_id' => $user->id,
+                    'user_tenant_id' => $user->tenant_id,
+                    'model_tenant_id' => $commission->tenant_id,
+                ]);
+                return false;
+            }
+
+            $allowed = (
+                $user->tenant_id === $commission->tenant_id ||
+                $user->hasRole('admin')
+            );
+
+            if (!$allowed) {
+                Log::warning('Unauthorized commission view attempt', [
+                    'user_id' => $user->id,
+                    'tenant_id' => $user->tenant_id,
+                    'commission_tenant_id' => $commission->tenant_id,
+                ]);
+            }
+
+            return $allowed;
+        }
+
+        /**
+         * Может ли пользователь видеть все комиссии своего tenant?
+         * Только администратор или финансовый менеджер.
+         */
+        public function viewAny(User $user): bool
+        {
+            return $user->hasAnyRole(['admin', 'finance_manager']);
+        }
+
+        /**
+         * Может ли пользователь просмотреть разбивку комиссий по вертикалям?
+         */
+        public function viewByVertical(User $user): bool
+        {
+            return $user->hasRole(['business', 'finance_manager', 'admin']) && $user->tenant_id !== null;
+        }
+
+        /**
+         * Может ли пользователь просмотреть расчёт комиссии конкретного платежа?
+         */
+        public function viewCalculation(User $user, CommissionTransaction $commission): bool
+        {
+            return (
+                $user->tenant_id === $commission->tenant_id &&
+                $user->hasRole(['business', 'admin'])
+            );
+        }
+
+        /**
+         * Может ли пользователь просмотреть историю изменения ставок комиссий?
+         */
+        public function viewRateHistory(User $user): bool
+        {
+            return $user->hasRole(['business', 'finance_manager', 'admin']) && $user->tenant_id !== null;
+        }
+
+        /**
+         * Может ли пользователь просмотреть экономию за счёт реферальных бонусов?
+         */
+        public function viewReferralDiscount(User $user): bool
+        {
+            return $user->hasRole(['business', 'admin']) && $user->tenant_id !== null;
+        }
+
+        /**
+         * Может ли пользователь просмотреть полный аудит начисления комиссий?
+         */
+        public function viewAudit(User $user, CommissionTransaction $commission): bool
+        {
+            $allowed = (
+                $user->tenant_id === $commission->tenant_id &&
+                $user->hasRole(['business', 'admin'])
+            ) || $user->hasRole('admin');
+
+            if (!$allowed) {
+                Log::warning('Unauthorized commission audit view attempt', [
+                    'user_id' => $user->id,
+                ]);
+            }
+
+            return $allowed;
+        }
+
+        /**
+         * Может ли пользователь скачать отчёт по комиссиям?
+         */
+        public function exportReport(User $user): bool
+        {
+            return $user->hasRole(['business', 'finance_manager', 'admin']) && $user->tenant_id !== null;
+        }
+
+        /**
+         * Может ли пользователь просмотреть прогноз комиссий на следующий месяц?
+         * На основе DemandForecastService.
+         */
+        public function viewForecast(User $user): bool
+        {
+            return $user->hasRole(['business', 'finance_manager', 'admin']) && $user->tenant_id !== null;
+        }
+
+        /**
+         * Может ли администратор обновить комиссию?
+         * ТОЛЬКО если она ещё не захвачена платёжной системой.
+         */
+        public function update(User $user, CommissionTransaction $commission): bool
+        {
+            // CANON 2026 FRAUD: Predict/check operation before mutating
+            $fraudScore = 0; // fraud check at service layer
+            if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
+                \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+                    'user_id' => $user->id,
+                    'score' => $fraudScore
+                ]);
+                return false;
+            }
+
+            $allowed = (
+                $user->hasRole('admin') &&
+                !$commission->captured_at // нельзя менять уже захваченные
+            );
+
+            if (!$allowed) {
+                Log::warning('Unauthorized commission update attempt', [
+                    'user_id' => $user->id,
+                    'commission_id' => $commission->id,
+                ]);
+            }
+
+            return $allowed;
+        }
+
+        /**
+         * Может ли администратор удалить комиссию?
+         * Soft delete - только до захвата.
+         */
+        public function delete(User $user, CommissionTransaction $commission): bool
+        {
+            // CANON 2026 FRAUD: Predict/check operation before mutating
+            $fraudScore = 0; // fraud check at service layer
+            if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
+                \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+                    'user_id' => $user->id,
+                    'score' => $fraudScore
+                ]);
+                return false;
+            }
+
+            return (
+                $user->hasRole('admin') &&
+                !$commission->captured_at
+            );
+        }
+
+        /**
+         * Может ли администратор восстановить комиссию?
+         */
+        public function restore(User $user, CommissionTransaction $commission): bool
+        {
+            // CANON 2026 FRAUD: Predict/check operation before mutating
+            $fraudScore = 0; // fraud check at service layer
+            if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
+                \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+                    'user_id' => $user->id,
+                    'score' => $fraudScore
+                ]);
+                return false;
+            }
+
+            return $user->hasRole('admin');
+        }
+
+        /**
+         * Может ли администратор hard-удалить комиссию?
+         * ЗАПРЕЩЕНО - комиссии хранятся для аудита.
+         */
+        public function forceDelete(User $user, CommissionTransaction $commission): bool
+        {
+            // CANON 2026 FRAUD: Predict/check operation before mutating
+            $fraudScore = 0; // fraud check at service layer
+            if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
+                \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
+                    'user_id' => $user->id,
+                    'score' => $fraudScore
+                ]);
+                return false;
+            }
+
             return false;
         }
-
-        $allowed = (
-            $user->tenant_id === $commission->tenant_id ||
-            $user->hasRole('admin')
-        );
-
-        if (!$allowed) {
-            Log::warning('Unauthorized commission view attempt', [
-                'user_id' => $user->id,
-                'tenant_id' => $user->tenant_id,
-                'commission_tenant_id' => $commission->tenant_id,
-            ]);
-        }
-
-        return $allowed;
-    }
-
-    /**
-     * Может ли пользователь видеть все комиссии своего tenant?
-     * Только администратор или финансовый менеджер.
-     */
-    public function viewAny(User $user): bool
-    {
-        return $user->hasAnyRole(['admin', 'finance_manager']);
-    }
-
-    /**
-     * Может ли пользователь просмотреть разбивку комиссий по вертикалям?
-     */
-    public function viewByVertical(User $user): bool
-    {
-        return $user->hasRole(['business', 'finance_manager', 'admin']) && $user->tenant_id !== null;
-    }
-
-    /**
-     * Может ли пользователь просмотреть расчёт комиссии конкретного платежа?
-     */
-    public function viewCalculation(User $user, CommissionTransaction $commission): bool
-    {
-        return (
-            $user->tenant_id === $commission->tenant_id &&
-            $user->hasRole(['business', 'admin'])
-        );
-    }
-
-    /**
-     * Может ли пользователь просмотреть историю изменения ставок комиссий?
-     */
-    public function viewRateHistory(User $user): bool
-    {
-        return $user->hasRole(['business', 'finance_manager', 'admin']) && $user->tenant_id !== null;
-    }
-
-    /**
-     * Может ли пользователь просмотреть экономию за счёт реферальных бонусов?
-     */
-    public function viewReferralDiscount(User $user): bool
-    {
-        return $user->hasRole(['business', 'admin']) && $user->tenant_id !== null;
-    }
-
-    /**
-     * Может ли пользователь просмотреть полный аудит начисления комиссий?
-     */
-    public function viewAudit(User $user, CommissionTransaction $commission): bool
-    {
-        $allowed = (
-            $user->tenant_id === $commission->tenant_id &&
-            $user->hasRole(['business', 'admin'])
-        ) || $user->hasRole('admin');
-
-        if (!$allowed) {
-            Log::warning('Unauthorized commission audit view attempt', [
-                'user_id' => $user->id,
-            ]);
-        }
-
-        return $allowed;
-    }
-
-    /**
-     * Может ли пользователь скачать отчёт по комиссиям?
-     */
-    public function exportReport(User $user): bool
-    {
-        return $user->hasRole(['business', 'finance_manager', 'admin']) && $user->tenant_id !== null;
-    }
-
-    /**
-     * Может ли пользователь просмотреть прогноз комиссий на следующий месяц?
-     * На основе DemandForecastService.
-     */
-    public function viewForecast(User $user): bool
-    {
-        return $user->hasRole(['business', 'finance_manager', 'admin']) && $user->tenant_id !== null;
-    }
-
-    /**
-     * Может ли администратор обновить комиссию?
-     * ТОЛЬКО если она ещё не захвачена платёжной системой.
-     */
-    public function update(User $user, CommissionTransaction $commission): bool
-    {
-        // CANON 2026 FRAUD: Predict/check operation before mutating
-        $fraudScore = 0; // fraud check at service layer
-        if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-            \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
-                'user_id' => $user->id,
-                'score' => $fraudScore
-            ]);
-            return false;
-        }
-
-        $allowed = (
-            $user->hasRole('admin') &&
-            !$commission->captured_at // нельзя менять уже захваченные
-        );
-
-        if (!$allowed) {
-            Log::warning('Unauthorized commission update attempt', [
-                'user_id' => $user->id,
-                'commission_id' => $commission->id,
-            ]);
-        }
-
-        return $allowed;
-    }
-
-    /**
-     * Может ли администратор удалить комиссию?
-     * Soft delete - только до захвата.
-     */
-    public function delete(User $user, CommissionTransaction $commission): bool
-    {
-        // CANON 2026 FRAUD: Predict/check operation before mutating
-        $fraudScore = 0; // fraud check at service layer
-        if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-            \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
-                'user_id' => $user->id,
-                'score' => $fraudScore
-            ]);
-            return false;
-        }
-
-        return (
-            $user->hasRole('admin') &&
-            !$commission->captured_at
-        );
-    }
-
-    /**
-     * Может ли администратор восстановить комиссию?
-     */
-    public function restore(User $user, CommissionTransaction $commission): bool
-    {
-        // CANON 2026 FRAUD: Predict/check operation before mutating
-        $fraudScore = 0; // fraud check at service layer
-        if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-            \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
-                'user_id' => $user->id,
-                'score' => $fraudScore
-            ]);
-            return false;
-        }
-
-        return $user->hasRole('admin');
-    }
-
-    /**
-     * Может ли администратор hard-удалить комиссию?
-     * ЗАПРЕЩЕНО - комиссии хранятся для аудита.
-     */
-    public function forceDelete(User $user, CommissionTransaction $commission): bool
-    {
-        // CANON 2026 FRAUD: Predict/check operation before mutating
-        $fraudScore = 0; // fraud check at service layer
-        if ($fraudScore > 0.7 && !$user->hasRole('admin')) {
-            \Illuminate\Support\Facades\Log::warning('Fraud check blocked action in ' . __CLASS__ . '::' . __FUNCTION__, [
-                'user_id' => $user->id,
-                'score' => $fraudScore
-            ]);
-            return false;
-        }
-
-        return false;
-    }
 }

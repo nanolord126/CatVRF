@@ -1,18 +1,19 @@
-<?php
+<?php declare(strict_types=1);
 
-declare(strict_types=1);
+namespace App\Filament\Tenant\Resources\Pages;
 
-namespace App\Filament\Tenant\Resources\OfficeCatering\Pages;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-use use App\Filament\Tenant\Resources\OfficeCateringResource;;
-use Filament\Resources\Pages\ViewRecord;
-
-final class ViewOfficeCatering extends ViewRecord
+final class ViewOfficeCatering extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = OfficeCateringResource::class;
 
-    public function getTitle(): string
-    {
-        return 'View OfficeCatering';
-    }
+        public function getTitle(): string
+        {
+            return 'View OfficeCatering';
+        }
 }

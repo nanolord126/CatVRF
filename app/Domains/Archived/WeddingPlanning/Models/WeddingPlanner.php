@@ -1,0 +1,14 @@
+<?php declare(strict_types=1);
+
+namespace App\Domains\Archived\WeddingPlanning\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+final class WeddingPlanner extends Model
+{
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    use HasUuids,SoftDeletes,TenantScoped;protected $table='wedding_planners';protected $fillable=['uuid','tenant_id','user_id','correlation_id','name','services','base_price_kopecks','price_per_guest','rating','is_verified','tags'];protected $casts=['services'=>'json','base_price_kopecks'=>'integer','price_per_guest'=>'integer','rating'=>'float','is_verified'=>'boolean','tags'=>'json'];protected static function booted(){static::addGlobalScope('tenant',fn($q)=>$q->where('wedding_planners.tenant_id',tenant()->id));}
+}

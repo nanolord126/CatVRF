@@ -1,236 +1,217 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Freelance;
 
-use App\Domains\Freelance\Models\FreelanceOrder;
-use App\Domains\Freelance\Services\FreelanceService;
-use App\Domains\Freelance\Services\ContractService;
-use App\Filament\Tenant\Resources\Freelance\FreelanceOrderResource\Pages;
-use Filament\Forms;
-use Filament\Forms\Form;
-use Filament\Resources\Resource;
-use Filament\Tables;
-use Filament\Tables\Table;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\RichEditor;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\BadgeColumn;
-use Filament\Tables\Actions\Action;
-use Filament\Notifications\Notification;
-use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * КАНОН 2026 — FREELANCE ORDER RESOURCE
- * Управление заказами, эскроу, арбитражем и платежами.
- */
-final class FreelanceOrderResource extends Resource
+final class FreelanceOrderResource extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static ?string $model = FreelanceOrder::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-document-currency-rupee';
+        protected static ?string $navigationIcon = 'heroicon-o-document-currency-rupee';
 
-    protected static ?string $navigationGroup = 'Фриланс Биржа';
+        protected static ?string $navigationGroup = 'Фриланс Биржа';
 
-    protected static ?string $label = 'Заказ';
+        protected static ?string $label = 'Заказ';
 
-    protected static ?string $pluralLabel = 'Заказы';
+        protected static ?string $pluralLabel = 'Заказы';
 
-    /**
-     * Форма управления заказом (>60 строк)
-     */
-    public static function form(Form $form): Form
-    {
-        return $form
-            ->schema([
-                Section::make('Параметры сделки')
-                    ->columns(2)
-                    ->schema([
-                        TextInput::make('title')
-                            ->label('Заголовок заказа')
-                            ->required()
-                            ->columnSpanFull(),
+        /**
+         * Форма управления заказом (>60 строк)
+         */
+        public static function form(Form $form): Form
+        {
+            return $form
+                ->schema([
+                    Section::make('Параметры сделки')
+                        ->columns(2)
+                        ->schema([
+                            TextInput::make('title')
+                                ->label('Заголовок заказа')
+                                ->required()
+                                ->columnSpanFull(),
 
-                        Select::make('client_id')
-                            ->label('Клиент (Заказчик)')
-                            ->relationship('client', 'name')
-                            ->searchable()
-                            ->required()
-                            ->disabledOn('edit'),
+                            Select::make('client_id')
+                                ->label('Клиент (Заказчик)')
+                                ->relationship('client', 'name')
+                                ->searchable()
+                                ->required()
+                                ->disabledOn('edit'),
 
-                        Select::make('freelancer_id')
-                            ->label('Исполнитель (Фрилансер)')
-                            ->relationship('freelancer', 'full_name')
-                            ->searchable()
-                            ->required()
-                            ->disabledOn('edit'),
+                            Select::make('freelancer_id')
+                                ->label('Исполнитель (Фрилансер)')
+                                ->relationship('freelancer', 'full_name')
+                                ->searchable()
+                                ->required()
+                                ->disabledOn('edit'),
 
-                        TextInput::make('budget_kopecks')
-                            ->label('Бюджет заказа (коп.)')
-                            ->numeric()
-                            ->required()
-                            ->prefix('₽')
-                            ->helperText('Сумма в копейках. Комиссия 14% рассчитывается при сохранении.'),
+                            TextInput::make('budget_kopecks')
+                                ->label('Бюджет заказа (коп.)')
+                                ->numeric()
+                                ->required()
+                                ->prefix('₽')
+                                ->helperText('Сумма в копейках. Комиссия 14% рассчитывается при сохранении.'),
 
-                        TextInput::make('deadline_at')
-                            ->label('Крайний срок (Deadline)')
-                            ->type('datetime-local')
-                            ->required(),
+                            TextInput::make('deadline_at')
+                                ->label('Крайний срок (Deadline)')
+                                ->type('datetime-local')
+                                ->required(),
 
-                        Select::make('status')
-                            ->label('Текущий статус')
-                            ->options([
-                                'pending' => 'Ожидание (Черновик)',
-                                'escrow_hold' => 'Средства на Эскроу',
-                                'in_progress' => 'В работе',
-                                'completed' => 'Завершен (Выплачено)',
-                                'disputed' => 'Спор / Арбитраж',
-                                'cancelled' => 'Отменен',
-                            ])
-                            ->required()
-                            ->disabled() // Статусы меняются только через экшены (Канон)
-                            ->columnSpanFull(),
-                    ]),
+                            Select::make('status')
+                                ->label('Текущий статус')
+                                ->options([
+                                    'pending' => 'Ожидание (Черновик)',
+                                    'escrow_hold' => 'Средства на Эскроу',
+                                    'in_progress' => 'В работе',
+                                    'completed' => 'Завершен (Выплачено)',
+                                    'disputed' => 'Спор / Арбитраж',
+                                    'cancelled' => 'Отменен',
+                                ])
+                                ->required()
+                                ->disabled() // Статусы меняются только через экшены (Канон)
+                                ->columnSpanFull(),
+                        ]),
 
-                Section::make('Техническое задание')
-                    ->schema([
-                        RichEditor::make('requirements')
-                            ->label('ТЗ / Требования к результату')
-                            ->required()
-                            ->columnSpanFull(),
-                    ]),
+                    Section::make('Техническое задание')
+                        ->schema([
+                            RichEditor::make('requirements')
+                                ->label('ТЗ / Требования к результату')
+                                ->required()
+                                ->columnSpanFull(),
+                        ]),
 
-                Section::make('Эскроу-контракт')
-                    ->relationship('contract')
-                    ->collapsed() // Показываем данные контракта
-                    ->schema([
-                        TextInput::make('contract_number')
-                            ->label('Номер счета Безопасной сделки')
-                            ->disabled(),
-                        
-                        TextInput::make('escrow_status')
-                            ->label('Статус холда')
-                            ->badge()
-                            ->disabled(),
+                    Section::make('Эскроу-контракт')
+                        ->relationship('contract')
+                        ->collapsed() // Показываем данные контракта
+                        ->schema([
+                            TextInput::make('contract_number')
+                                ->label('Номер счета Безопасной сделки')
+                                ->disabled(),
 
-                        TextInput::make('escrow_amount_kopecks')
-                            ->label('Сумма в холде')
-                            ->disabled(),
+                            TextInput::make('escrow_status')
+                                ->label('Статус холда')
+                                ->badge()
+                                ->disabled(),
 
-                        RichEditor::make('arbitration_comment')
-                            ->label('Решение арбитража')
-                            ->disabled()
-                            ->columnSpanFull(),
-                    ]),
-            ]);
-    }
+                            TextInput::make('escrow_amount_kopecks')
+                                ->label('Сумма в холде')
+                                ->disabled(),
 
-    /**
-     * Таблица заказов с кастомными экшенами для Эскроу (Канон 2026)
-     */
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                TextColumn::make('title')
-                    ->label('Заказ')
-                    ->searchable()
-                    ->sortable()
-                    ->limit(40),
+                            RichEditor::make('arbitration_comment')
+                                ->label('Решение арбитража')
+                                ->disabled()
+                                ->columnSpanFull(),
+                        ]),
+                ]);
+        }
 
-                TextColumn::make('client.name')
-                    ->label('Заказчик')
-                    ->searchable(),
+        /**
+         * Таблица заказов с кастомными экшенами для Эскроу (Канон 2026)
+         */
+        public static function table(Table $table): Table
+        {
+            return $table
+                ->columns([
+                    TextColumn::make('title')
+                        ->label('Заказ')
+                        ->searchable()
+                        ->sortable()
+                        ->limit(40),
 
-                TextColumn::make('freelancer.full_name')
-                    ->label('Исполнитель'),
+                    TextColumn::make('client.name')
+                        ->label('Заказчик')
+                        ->searchable(),
 
-                TextColumn::make('budget_kopecks')
-                    ->label('Бюджет')
-                    ->money('RUB', divisor: 100)
-                    ->sortable(),
+                    TextColumn::make('freelancer.full_name')
+                        ->label('Исполнитель'),
 
-                TextColumn::make('status')
-                    ->label('Статус')
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'pending' => 'gray',
-                        'escrow_hold' => 'info',
-                        'in_progress' => 'warning',
-                        'completed' => 'success',
-                        'disputed' => 'danger',
-                        default => 'gray',
-                    }),
+                    TextColumn::make('budget_kopecks')
+                        ->label('Бюджет')
+                        ->money('RUB', divisor: 100)
+                        ->sortable(),
 
-                TextColumn::make('deadline_at')
-                    ->label('Дедлайн')
-                    ->dateTime()
-                    ->sortable(),
-            ])
-            ->filters([
-                Tables\Filters\SelectFilter::make('status')
-                    ->options([
-                        'in_progress' => 'В работе',
-                        'escrow_hold' => 'Оплачено (Escrow)',
-                        'completed' => 'Завершено',
-                    ]),
-            ])
-            ->actions([
-                // Кнопка 1: Холдирование средств (для клиента)
-                Action::make('hold_funds')
-                    ->label('Оплатить (Hold)')
-                    ->icon('heroicon-o-lock-closed')
-                    ->visible(fn (FreelanceOrder $record) => $record->status === 'pending')
-                    ->color('success')
-                    ->requiresConfirmation()
-                    ->action(function (FreelanceOrder $record, ContractService $service) {
-                         $service->holdFunds($record->contract->id);
-                         Notification::make()->title('Средства успешно заморожены на Эскроу')->success()->send();
-                    }),
+                    TextColumn::make('status')
+                        ->label('Статус')
+                        ->badge()
+                        ->color(fn (string $state): string => match ($state) {
+                            'pending' => 'gray',
+                            'escrow_hold' => 'info',
+                            'in_progress' => 'warning',
+                            'completed' => 'success',
+                            'disputed' => 'danger',
+                            default => 'gray',
+                        }),
 
-                // Кнопка 2: Принять работу и выплатить (для клиента)
-                Action::make('complete_payout')
-                    ->label('Принять работу')
-                    ->icon('heroicon-o-check-circle')
-                    ->visible(fn (FreelanceOrder $record) => $record->status === 'in_progress')
-                    ->color('success')
-                    ->requiresConfirmation()
-                    ->action(function (FreelanceOrder $record, FreelanceService $service) {
-                         $service->completeOrder($record->id);
-                         Notification::make()->title('Работа принята, гонорар выплачен')->success()->send();
-                    }),
+                    TextColumn::make('deadline_at')
+                        ->label('Дедлайн')
+                        ->dateTime()
+                        ->sortable(),
+                ])
+                ->filters([
+                    Tables\Filters\SelectFilter::make('status')
+                        ->options([
+                            'in_progress' => 'В работе',
+                            'escrow_hold' => 'Оплачено (Escrow)',
+                            'completed' => 'Завершено',
+                        ]),
+                ])
+                ->actions([
+                    // Кнопка 1: Холдирование средств (для клиента)
+                    Action::make('hold_funds')
+                        ->label('Оплатить (Hold)')
+                        ->icon('heroicon-o-lock-closed')
+                        ->visible(fn (FreelanceOrder $record) => $record->status === 'pending')
+                        ->color('success')
+                        ->requiresConfirmation()
+                        ->action(function (FreelanceOrder $record, ContractService $service) {
+                             $service->holdFunds($record->contract->id);
+                             Notification::make()->title('Средства успешно заморожены на Эскроу')->success()->send();
+                        }),
 
-                // Кнопка 3: Открыть спор (для обеих сторон)
-                Action::make('open_dispute')
-                    ->label('Спор / Арбитраж')
-                    ->icon('heroicon-o-scale')
-                    ->visible(fn (FreelanceOrder $record) => in_array($record->status, ['in_progress', 'escrow_hold']))
-                    ->color('danger')
-                    ->form([
-                        Forms\Components\Textarea::make('reason')
-                            ->label('Суть претензии')
-                            ->required(),
-                    ])
-                    ->action(function (FreelanceOrder $record, array $data) {
-                        $record->update(['status' => 'disputed']);
-                        Notification::make()->title('Арбитраж CAT-VRF уведомлен о споре')->warning()->send();
-                    }),
+                    // Кнопка 2: Принять работу и выплатить (для клиента)
+                    Action::make('complete_payout')
+                        ->label('Принять работу')
+                        ->icon('heroicon-o-check-circle')
+                        ->visible(fn (FreelanceOrder $record) => $record->status === 'in_progress')
+                        ->color('success')
+                        ->requiresConfirmation()
+                        ->action(function (FreelanceOrder $record, FreelanceService $service) {
+                             $service->completeOrder($record->id);
+                             Notification::make()->title('Работа принята, гонорар выплачен')->success()->send();
+                        }),
 
-                Tables\Actions\EditAction::make(),
-                Tables\Actions\DeleteAction::make(),
-            ]);
-    }
+                    // Кнопка 3: Открыть спор (для обеих сторон)
+                    Action::make('open_dispute')
+                        ->label('Спор / Арбитраж')
+                        ->icon('heroicon-o-scale')
+                        ->visible(fn (FreelanceOrder $record) => in_array($record->status, ['in_progress', 'escrow_hold']))
+                        ->color('danger')
+                        ->form([
+                            Forms\Components\Textarea::make('reason')
+                                ->label('Суть претензии')
+                                ->required(),
+                        ])
+                        ->action(function (FreelanceOrder $record, array $data) {
+                            $record->update(['status' => 'disputed']);
+                            Notification::make()->title('Арбитраж CAT-VRF уведомлен о споре')->warning()->send();
+                        }),
 
-    public static function getPages(): array
-    {
-        return [
-            'index' => Pages\ListFreelanceOrders::route('/'),
-            'create' => Pages\CreateFreelanceOrder::route('/create'),
-            'view' => Pages\ViewFreelanceOrder::route('/{record}'),
-            'edit' => Pages\EditFreelanceOrder::route('/{record}/edit'),
-        ];
-    }
+                    Tables\Actions\EditAction::make(),
+                    Tables\Actions\DeleteAction::make(),
+                ]);
+        }
+
+        public static function getPages(): array
+        {
+            return [
+                'index' => Pages\ListFreelanceOrders::route('/'),
+                'create' => Pages\CreateFreelanceOrder::route('/create'),
+                'view' => Pages\ViewFreelanceOrder::route('/{record}'),
+                'edit' => Pages\EditFreelanceOrder::route('/{record}/edit'),
+            ];
+        }
 }

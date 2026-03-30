@@ -1,3 +1,7 @@
+<?php declare(strict_types=1);
+
+namespace Modules\Marketplace\Bloggers\Views;
+
 <!-- Live Stream Player with Overlay -->
 <div class="live-stream-container" 
      x-data="streamPlayer({{ $stream->toJson() }})"

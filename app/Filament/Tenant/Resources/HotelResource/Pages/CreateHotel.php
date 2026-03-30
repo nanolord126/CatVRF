@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * КАНОН 2026: Create Hotel Page
- * 
+ *
  * Обязательно: Аудит + Fraud check.
  */
 final class CreateHotel extends CreateRecord
@@ -20,7 +20,7 @@ final class CreateHotel extends CreateRecord
         Log::channel('audit')->info('Hotel Creation Started', [
             'raw_data' => $this->data,
         ]);
-        
+
         // Fraud check placeholder
         // \App\Services\FraudControlService::check('hotel_creation');
     }

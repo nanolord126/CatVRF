@@ -1,34 +1,26 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Models;
 
-use Laravel\Sanctum\PersonalAccessToken as SanctumToken;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final /**
- * PersonalAccessToken
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class PersonalAccessToken extends SanctumToken
+final class PersonalAccessToken extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected $table = 'personal_access_tokens';
 
-    protected $fillable = [
-        'name',
-        'token',
-        'abilities',
-        'expires_at',
-    ];
+        protected $fillable = [
+            'name',
+            'token',
+            'abilities',
+            'expires_at',
+        ];
 
-    protected $casts = [
-        'abilities' => 'json',
-        'expires_at' => 'datetime',
-    ];
+        protected $casts = [
+            'abilities' => 'json',
+            'expires_at' => 'datetime',
+        ];
 }

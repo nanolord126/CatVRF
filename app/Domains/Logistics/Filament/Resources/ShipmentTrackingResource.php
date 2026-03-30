@@ -1,59 +1,43 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Domains\Logistics\Filament\Resources;
 
-use App\Domains\Logistics\Models\ShipmentTracking;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Form;
-use Filament\Resources\Resource;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\BadgeColumn;
-use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final /**
- * ShipmentTrackingResource
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class ShipmentTrackingResource extends Resource
+final class ShipmentTrackingResource extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static ?string $model = ShipmentTracking::class;
 
-    protected static ?string $navigationGroup = 'Logistics';
+        protected static ?string $navigationGroup = 'Logistics';
 
-    public static function form(Form $form): Form
-    {
-        return $form->schema([
-            Select::make('shipment_id')->relationship('shipment', 'tracking_number')->required(),
-            Select::make('event_type')->options([
-                'picked_up' => 'Picked Up',
-                'in_transit' => 'In Transit',
-                'out_for_delivery' => 'Out for Delivery',
-                'delivered' => 'Delivered',
-                'failed' => 'Failed',
-                'returned' => 'Returned',
-            ])->required(),
-            TextInput::make('location'),
-            Textarea::make('notes'),
-        ]);
-    }
+        public static function form(Form $form): Form
+        {
+            return $form->schema([
+                Select::make('shipment_id')->relationship('shipment', 'tracking_number')->required(),
+                Select::make('event_type')->options([
+                    'picked_up' => 'Picked Up',
+                    'in_transit' => 'In Transit',
+                    'out_for_delivery' => 'Out for Delivery',
+                    'delivered' => 'Delivered',
+                    'failed' => 'Failed',
+                    'returned' => 'Returned',
+                ])->required(),
+                TextInput::make('location'),
+                Textarea::make('notes'),
+            ]);
+        }
 
-    public static function table(Table $table): Table
-    {
-        return $table->columns([
-            TextColumn::make('shipment.tracking_number'),
-            BadgeColumn::make('event_type'),
-            TextColumn::make('location'),
-            TextColumn::make('event_time')->sortable(),
-        ])->filters([])->actions([])->bulkActions([]);
-    }
+        public static function table(Table $table): Table
+        {
+            return $table->columns([
+                TextColumn::make('shipment.tracking_number'),
+                BadgeColumn::make('event_type'),
+                TextColumn::make('location'),
+                TextColumn::make('event_time')->sortable(),
+            ])->filters([])->actions([])->bulkActions([]);
+        }
 }

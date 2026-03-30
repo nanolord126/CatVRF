@@ -1,16 +1,13 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace Tests\Feature\Logistics;
 
 use App\Domains\Logistics\Models\Courier;
-use App\Domains\Logistics\Models\DeliveryOrder;
-use App\Domains\Logistics\Services\SurgePricingService;
 use App\Domains\Logistics\Services\DeliveryOrderService;
-use Tests\TestCase;
+use App\Domains\Logistics\Services\SurgePricingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Tests\TestCase;
 
 /**
  * КАНОН 2026 — ИНТЕГРАЦИОННЫЕ ТЕСТЫ ЛОГИСТИКИ

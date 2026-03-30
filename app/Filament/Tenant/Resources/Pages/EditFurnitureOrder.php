@@ -1,27 +1,31 @@
-<?php
+<?php declare(strict_types=1);
 
-declare(strict_types=1);
+namespace App\Filament\Tenant\Resources\Pages;
 
-namespace App\Filament\Tenant\Resources\FurnitureOrder\Pages;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-use use App\Filament\Tenant\Resources\FurnitureOrderResource;;
-use Filament\Resources\Pages\EditRecord;
-use Filament\Actions\{ViewAction, DeleteAction};
-
-final class EditFurnitureOrder extends EditRecord
+final class EditFurnitureOrder extends Model
 {
-    protected static string $resource = FurnitureOrderResource::class;
+    use HasFactory;
 
-    public function getTitle(): string
-    {
-        return 'Edit FurnitureOrder';
-    }
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    ViewAction, DeleteAction};
 
-    protected function getHeaderActions(): array
+    final class EditFurnitureOrder extends EditRecord
     {
-        return [
-            ViewAction::make(),
-            DeleteAction::make(),
-        ];
-    }
+        protected static string $resource = FurnitureOrderResource::class;
+
+        public function getTitle(): string
+        {
+            return 'Edit FurnitureOrder';
+        }
+
+        protected function getHeaderActions(): array
+        {
+            return [
+                ViewAction::make(),
+                DeleteAction::make(),
+            ];
+        }
 }

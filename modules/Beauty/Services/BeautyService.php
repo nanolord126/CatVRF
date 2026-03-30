@@ -1,12 +1,11 @@
 <?php declare(strict_types=1);
 
-namespace App\Modules\Beauty\Services;
+namespace Modules\Beauty\Services;
 
 use App\Modules\Beauty\Models\BeautySalon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use DomainException;
 use Throwable;
 
 /**

@@ -1,8 +1,14 @@
-<?php
-declare(strict_types=1);
+<?php declare(strict_types=1);
+
 namespace App\Filament\Tenant\Resources\Vehicle\Pages;
-use App\Filament\Tenant\Resources\VehicleResource;
-use Filament\Resources\Pages\EditRecord;
-final class EditRecordVehicle extends EditRecord {
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+final class EditRecordVehicle extends Model
+{
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = VehicleResource::class;
 }

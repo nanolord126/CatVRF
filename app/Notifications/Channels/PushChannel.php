@@ -2,13 +2,13 @@
 
 namespace App\Notifications\Channels;
 
+use App\Services\PushNotificationService;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Log;
-use App\Services\PushNotificationService;
 
 /**
  * Push Notification Channel - отправляет push-уведомления на мобильные устройства
- * 
+ *
  * Поддерживает:
  * - Firebase Cloud Messaging (FCM)
  * - OneSignal

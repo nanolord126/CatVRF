@@ -2,11 +2,11 @@
 
 namespace App\Filament\Public;
 
-use Filament\Panel;
-use Filament\PanelProvider;
-use Filament\Support\Colors\Color;
 use Filament\Navigation\NavigationGroup;
 use Filament\Navigation\NavigationItem;
+use Filament\PanelProvider;
+use Filament\Panel;
+use Filament\Support\Colors\Color;
 
 final class PublicPanelProvider extends PanelProvider
 {

@@ -1,24 +1,19 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Domains\Beauty\Wellness\Events;
 
-use App\Domains\Beauty\Wellness\Models\WellnessAppointment;
-use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * AppointmentCompleted - Triggered when a wellness appointment is successfully finished.
- */
-final class AppointmentCompleted
+final class AppointmentCompleted extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public function __construct(
-        public readonly WellnessAppointment $appointment,
-        public readonly string $correlation_id,
-    ) {}
+        public function __construct(
+            public readonly WellnessAppointment $appointment,
+            public readonly string $correlation_id,
+        ) {}
 }

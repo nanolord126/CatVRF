@@ -3,8 +3,8 @@
 namespace App\Filament\Tenant\Resources\Beauty\Pages;
 
 use App\Filament\Tenant\Resources\Beauty\AppointmentResource;
-use Filament\Resources\Pages\ListRecords;
 use Filament\Actions;
+use Filament\Resources\Pages\ListRecords;
 
 final class ListAppointments extends ListRecords
 {

@@ -1,11 +1,11 @@
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace Tests\Feature\Api\Food;
 
-use App\Domains\Food\Models\Restaurant;
 use App\Domains\Food\Models\Dish;
-use App\Domains\Food\Models\RestaurantOrder;
 use App\Domains\Food\Models\OrderItem;
+use App\Domains\Food\Models\RestaurantOrder;
+use App\Domains\Food\Models\Restaurant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;

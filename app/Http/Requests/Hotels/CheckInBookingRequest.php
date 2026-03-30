@@ -1,35 +1,32 @@
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Http\Requests\Hotels;
 
-use App\Http\Requests\BaseApiRequest;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * Check-In Booking Request.
- * Валидация данных для check-in в отель.
- *
- * Rules:
- * - booking_id: required, exists
- */
-final class CheckInBookingRequest extends BaseApiRequest
+final class CheckInBookingRequest extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function authorize(): bool
-    {
-        return auth()->check();
-    }
+        {
+            return auth()->check();
+        }
 
-    public function rules(): array
-    {
-        return [
-            'booking_id' => ['required', 'integer', 'exists:bookings,id'],
-        ];
-    }
+        public function rules(): array
+        {
+            return [
+                'booking_id' => ['required', 'integer', 'exists:bookings,id'],
+            ];
+        }
 
-    public function messages(): array
-    {
-        return [
-            'booking_id.required' => 'Booking ID required',
-            'booking_id.exists' => 'Booking not found',
-        ];
-    }
+        public function messages(): array
+        {
+            return [
+                'booking_id.required' => 'Booking ID required',
+                'booking_id.exists' => 'Booking not found',
+            ];
+        }
 }

@@ -1,8 +1,14 @@
-<?php
-declare(strict_types=1);
+<?php declare(strict_types=1);
+
 namespace App\Filament\Tenant\Resources\Appointment\Pages;
-use App\Filament\Tenant\Resources\AppointmentResource;
-use Filament\Resources\Pages\CreateRecord;
-final class CreateRecordAppointment extends CreateRecord {
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+final class CreateRecordAppointment extends Model
+{
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = AppointmentResource::class;
 }

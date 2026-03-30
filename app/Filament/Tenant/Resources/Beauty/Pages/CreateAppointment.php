@@ -48,7 +48,7 @@ final class CreateAppointment extends CreateRecord
         $data['tenant_id'] = tenant('id');
         $data['correlation_id'] = $data['correlation_id'] ?? (string) Str::uuid();
         $data['uuid'] = (string) Str::uuid();
-        
+
         return $data;
     }
 }

@@ -9,13 +9,13 @@ use Illuminate\Support\Str;
 
 /**
  * Base class for all notifications in CatVRF platform
- * 
+ *
  * Обязательные поля в каждом notification:
  * - correlation_id: UUID для трейсинга
  * - tenant_id: изоляция по тенанту
  * - user_id: кто получает уведомление
  * - channels: array of delivery channels (mail, sms, push, etc)
- * 
+ *
  * @OpenApi\Schema(
  *     schema="Notification",
  *     type="object",
@@ -102,7 +102,7 @@ abstract class BaseNotification extends Notification implements ShouldQueue
         $this->tenantId = $tenantId;
         $this->data = $data;
         $this->correlationId = $correlationId ?? Str::uuid()->toString();
-        
+
         if (!empty($channels)) {
             $this->channels = $channels;
         }

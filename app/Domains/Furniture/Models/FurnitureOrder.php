@@ -1,106 +1,81 @@
 <?php declare(strict_types=1);
 
-names
+namespace App\Domains\Furniture\Models;
 
-/**
- * FurnitureOrder
- * 
- * Производитель: CatVRF Platform
- * Версия: 1.0.0
- * 
- * Примеры использования:
- * 
- * ```php
- * // Базовое использование
- * $instance = new FurnitureOrder();
- * ```
- * 
- * Требования:
- * - Laravel 10+
- * - PHP 8.2+
- * - Все методы должны быть явно типизированы
- * 
- * @author CatVRF
- * @package namespace App\Domains\Furniture\Models
- * @see https://github.com/iyegorovskyi_clemny/CatVRF
- */
-pace App\Domains\Furniture\Models;
-
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Traits\TenantScoped;
 
 final class FurnitureOrder extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use HasFactory, HasUuids, SoftDeletes, TenantScoped;
 
-    protected $table = 'furniture_orders';
-    protected $fillable = [
-        'tenant_id', 'business_group_id', 'uuid', 'correlation_id',
-        'item_id', 'client_id', 'client_address', 'delivery_date',
-        'assembly_date', 'total_price', 'status', 'idempotency_key', 'tags',
-    ];
-    protected $casts = [
-        'total_price'   => 'int',
-        'delivery_date' => 'datetime',
-        'assembly_date' => 'datetime',
-        'tags'          => 'json',
-    ];
+        protected $table = 'furniture_orders';
+        protected $fillable = [
+            'tenant_id', 'business_group_id', 'uuid', 'correlation_id',
+            'item_id', 'client_id', 'client_address', 'delivery_date',
+            'assembly_date', 'total_price', 'status', 'idempotency_key', 'tags',
+        ];
+        protected $casts = [
+            'total_price'   => 'int',
+            'delivery_date' => 'datetime',
+            'assembly_date' => 'datetime',
+            'tags'          => 'json',
+        ];
 
-    /**
-     * Выполнить операцию
-     * 
-     * @return mixed
-     * @throws \Exception
-     */
-    public function item(): BelongsTo
-    {
-        return $this->belongsTo(FurnitureItem::class, 'item_id');
-    }
+        /**
+         * Выполнить операцию
+         *
+         * @return mixed
+         * @throws \Exception
+         */
+        public function item(): BelongsTo
+        {
+            return $this->belongsTo(FurnitureItem::class, 'item_id');
+        }
 
-    /**
-     * Выполнить операцию
-     * 
-     * @return mixed
-     * @throws \Exception
-     */
-    public function isPending(): bool
-    {
-        return $this->status === 'pending';
-    }
+        /**
+         * Выполнить операцию
+         *
+         * @return mixed
+         * @throws \Exception
+         */
+        public function isPending(): bool
+        {
+            return $this->status === 'pending';
+        }
 
-    /**
-     * Выполнить операцию
-     * 
-     * @return mixed
-     * @throws \Exception
-     */
-    public function isDelivered(): bool
-    {
-        return $this->status === 'delivered';
-    }
+        /**
+         * Выполнить операцию
+         *
+         * @return mixed
+         * @throws \Exception
+         */
+        public function isDelivered(): bool
+        {
+            return $this->status === 'delivered';
+        }
 
-    /**
-     * Выполнить операцию
-     * 
-     * @return mixed
-     * @throws \Exception
-     */
-    public function isAssembled(): bool
-    {
-        return $this->status === 'assembled';
-    }
+        /**
+         * Выполнить операцию
+         *
+         * @return mixed
+         * @throws \Exception
+         */
+        public function isAssembled(): bool
+        {
+            return $this->status === 'assembled';
+        }
 
-    protected static function booted(): void
-    {
-        parent::booted();
-        static::addGlobalScope('tenant_id', function ($query) {
-            if (function_exists('tenant') && tenant('id')) {
-                $query->where('tenant_id', tenant('id'));
-            }
-        });
-    }
+        protected static function booted(): void
+        {
+            parent::booted();
+            static::addGlobalScope('tenant_id', function ($query) {
+                if (function_exists('tenant') && tenant('id')) {
+                    $query->where('tenant_id', tenant('id'));
+                }
+            });
+        }
 }

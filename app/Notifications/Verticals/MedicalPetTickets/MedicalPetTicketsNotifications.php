@@ -1,10 +1,10 @@
 <?php declare(strict_types=1);
 
-namespace App\Notifications\Verticals\Medical;
+namespace App\Notifications\Verticals\MedicalPetTickets;
 
 use App\Notifications\BaseMailableNotification;
-use App\Notifications\BaseSmsNotification;
 use App\Notifications\BasePushNotification;
+use App\Notifications\BaseSmsNotification;
 
 final class AppointmentScheduledNotification extends BaseMailableNotification
 {
@@ -25,7 +25,7 @@ final class DoctorChangedNotification extends BasePushNotification
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
-        
+
         $this->title('Doctor changed')
              ->body('Your appointment doctor is now ' . ($data['new_doctor_name'] ?? ''))
              ->type('warning')
@@ -55,7 +55,7 @@ final class LabResultReadyNotification extends BaseMailableNotification
     }
 }
 
-namespace App\Notifications\Verticals\Pet;
+namespace App\Notifications\Verticals\MedicalPetTickets;
 
 final class ServiceBookedNotification extends BaseMailableNotification
 {
@@ -86,7 +86,7 @@ final class ServiceCompletedNotification extends BasePushNotification
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
-        
+
         $this->title('Service completed!')
              ->body('Your pet is ready. Photos: ' . ($data['photo_count'] ?? '0'))
              ->type('success')
@@ -95,7 +95,7 @@ final class ServiceCompletedNotification extends BasePushNotification
     }
 }
 
-namespace App\Notifications\Verticals\Tickets;
+namespace App\Notifications\Verticals\MedicalPetTickets;
 
 final class TicketPurchasedNotification extends BaseMailableNotification
 {
@@ -116,7 +116,7 @@ final class EventReminderNotification extends BasePushNotification
     public function __construct(int $userId, int $tenantId, array $data = [])
     {
         parent::__construct($userId, $tenantId, $data, channels: ['push', 'database']);
-        
+
         $this->title('Event coming up!')
              ->body(($data['event_name'] ?? '') . ' starts ' . ($data['starts_in'] ?? ''))
              ->type('warning')

@@ -1,50 +1,40 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Domains\EventPlanning\Events\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Model;
 
-final /**
- * Event
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class Event extends Model
+final class Event extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use HasFactory, HasUuids;
 
-    protected $table = "events_b2b";
+        protected $table = "events_b2b";
 
-    protected $fillable = [
-        "uuid", "tenant_id", "business_group_id", "correlation_id", "tags",
-        "title", "start_date"
-    ];
+        protected $fillable = [
+            "uuid", "tenant_id", "business_group_id", "correlation_id", "tags",
+            "title", "start_date"
+        ];
 
-    protected $casts = [
-        "tags" => "json",
-    ];
+        protected $casts = [
+            "tags" => "json",
+        ];
 
-    protected static function newFactory()
-    {
-        return \Database\Factories\EventFactory::new();
-    }
+        protected static function newFactory()
+        {
+            return \Database\Factories\EventFactory::new();
+        }
 
-    protected static function booted(): void
-    {
-        parent::booted();
-        static::addGlobalScope("tenant_id", function ($query) {
-            if (function_exists("tenant") && tenant("id")) {
-                $query->where("tenant_id", tenant("id"));
-            }
-        });
-    }
+        protected static function booted(): void
+        {
+            parent::booted();
+            static::addGlobalScope("tenant_id", function ($query) {
+                if (function_exists("tenant") && tenant("id")) {
+                    $query->where("tenant_id", tenant("id"));
+                }
+            });
+        }
 }

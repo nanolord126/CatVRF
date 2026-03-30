@@ -1,114 +1,106 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Jobs\Analytics;
 
-use App\Domains\Consulting\Analytics\Services\ClickHouseService;
-use App\Domains\Click\Models\ClickEvent;
-use App\Events\Analytics\ClickEventsSyncedToClickHouse;
-use Exception;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
-use Str;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final class SyncClickEventsToClickHouseJob implements ShouldQueue
+final class SyncClickEventsToClickHouseJob extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    private string $correlationId;
-    public int $timeout = 300;
-    public int $tries = 3;
-    public array $backoff = [10, 60, 300];
+        private string $correlationId;
+        public int $timeout = 300;
+        public int $tries = 3;
+        public array $backoff = [10, 60, 300];
 
-    public function __construct()
-    {
-        $this->correlationId = Str::uuid()->toString();
-    }
+        public function __construct()
+        {
+            $this->correlationId = Str::uuid()->toString();
+        }
 
-    public function handle(ClickHouseService $clickHouseService): void
-    {
-        $clickHouseService->setCorrelationId($this->correlationId);
-        $startTime = microtime(true);
+        public function handle(ClickHouseService $clickHouseService): void
+        {
+            $clickHouseService->setCorrelationId($this->correlationId);
+            $startTime = microtime(true);
 
-        try {
-            $totalEvents = 0;
+            try {
+                $totalEvents = 0;
 
-            // Get unsynchronized events from last 6 minutes
-            ClickEvent::where('synced_to_ch', false)
-                ->where('created_at', '>', now()->subMinutes(6))
-                ->orderBy('created_at', 'asc')
-                ->chunk(10000, function ($chunk) use ($clickHouseService, &$totalEvents) {
-                    $this->insertChunk($chunk, $clickHouseService);
-                    $totalEvents += count($chunk);
-                });
+                // Get unsynchronized events from last 6 minutes
+                ClickEvent::where('synced_to_ch', false)
+                    ->where('created_at', '>', now()->subMinutes(6))
+                    ->orderBy('created_at', 'asc')
+                    ->chunk(10000, function ($chunk) use ($clickHouseService, &$totalEvents) {
+                        $this->insertChunk($chunk, $clickHouseService);
+                        $totalEvents += count($chunk);
+                    });
 
-            $duration = microtime(true) - $startTime;
+                $duration = microtime(true) - $startTime;
 
-            Log::channel('audit')->info('[SyncClickEventsToClickHouse] Sync completed', [
-                'correlation_id' => $this->correlationId,
-                'events_synced' => $totalEvents,
-                'duration_seconds' => round($duration, 2),
-            ]);
+                Log::channel('audit')->info('[SyncClickEventsToClickHouse] Sync completed', [
+                    'correlation_id' => $this->correlationId,
+                    'events_synced' => $totalEvents,
+                    'duration_seconds' => round($duration, 2),
+                ]);
 
-            // Broadcast event to WebSocket subscribers
-            if ($totalEvents > 0) {
-                ClickEventsSyncedToClickHouse::dispatch(
-                    tenantId: filament()?->getTenant()?->id ?? 1,
-                    correlationId: $this->correlationId,
-                    metadata: [
-                        'events_synced' => $totalEvents,
-                        'duration' => round($duration, 2),
-                        'tables_affected' => ['click_events', 'click_metrics'],
-                    ]
-                );
+                // Broadcast event to WebSocket subscribers
+                if ($totalEvents > 0) {
+                    ClickEventsSyncedToClickHouse::dispatch(
+                        tenantId: filament()?->getTenant()?->id ?? 1,
+                        correlationId: $this->correlationId,
+                        metadata: [
+                            'events_synced' => $totalEvents,
+                            'duration' => round($duration, 2),
+                            'tables_affected' => ['click_events', 'click_metrics'],
+                        ]
+                    );
+                }
+            } catch (Exception $e) {
+                Log::channel('error')->error('[SyncClickEventsToClickHouse] Sync failed', [
+                    'error' => $e->getMessage(),
+                    'correlation_id' => $this->correlationId,
+                    'stacktrace' => $e->getTraceAsString(),
+                ]);
+
+                throw $e;
             }
-        } catch (Exception $e) {
-            Log::channel('error')->error('[SyncClickEventsToClickHouse] Sync failed', [
-                'error' => $e->getMessage(),
-                'correlation_id' => $this->correlationId,
-                'stacktrace' => $e->getTraceAsString(),
-            ]);
-
-            throw $e;
         }
-    }
 
-    private function insertChunk($chunk, ClickHouseService $clickHouseService): void
-    {
-        try {
-            $clickHouseService->insertClickEvents($chunk);
+        private function insertChunk($chunk, ClickHouseService $clickHouseService): void
+        {
+            try {
+                $clickHouseService->insertClickEvents($chunk);
 
-            // Mark as synced
-            $ids = $chunk->pluck('id')->toArray();
-            ClickEvent::whereIn('id', $ids)->update(['synced_to_ch' => true]);
+                // Mark as synced
+                $ids = $chunk->pluck('id')->toArray();
+                ClickEvent::whereIn('id', $ids)->update(['synced_to_ch' => true]);
 
-            Log::channel('analytics')->debug('[SyncClickEventsToClickHouse] Chunk synced', [
-                'count' => count($ids),
-                'correlation_id' => $this->correlationId,
-            ]);
-        } catch (Exception $e) {
-            Log::channel('error')->error('[SyncClickEventsToClickHouse] Chunk sync failed', [
-                'error' => $e->getMessage(),
-                'count' => count($chunk),
-                'correlation_id' => $this->correlationId,
-                'stacktrace' => $e->getTraceAsString(),
-            ]);
+                Log::channel('analytics')->debug('[SyncClickEventsToClickHouse] Chunk synced', [
+                    'count' => count($ids),
+                    'correlation_id' => $this->correlationId,
+                ]);
+            } catch (Exception $e) {
+                Log::channel('error')->error('[SyncClickEventsToClickHouse] Chunk sync failed', [
+                    'error' => $e->getMessage(),
+                    'count' => count($chunk),
+                    'correlation_id' => $this->correlationId,
+                    'stacktrace' => $e->getTraceAsString(),
+                ]);
 
-            throw $e;
+                throw $e;
+            }
         }
-    }
 
-    public function failed(Exception $exception): void
-    {
-        Log::channel('error')->error('[SyncClickEventsToClickHouse] Job failed permanently', [
-            'error' => $exception->getMessage(),
-            'correlation_id' => $this->correlationId,
-            'attempts' => $this->attempts(),
-        ]);
-    }
+        public function failed(Exception $exception): void
+        {
+            Log::channel('error')->error('[SyncClickEventsToClickHouse] Job failed permanently', [
+                'error' => $exception->getMessage(),
+                'correlation_id' => $this->correlationId,
+                'attempts' => $this->attempts(),
+            ]);
+        }
 }

@@ -1,12 +1,12 @@
 <?php declare(strict_types=1);
 
-namespace App\Modules\Payments\Services;
+namespace Modules\Payments\Services;
 
 use App\Modules\Payments\Models\PaymentTransaction;
+use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use DomainException;
 use Throwable;
 
 /**

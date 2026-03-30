@@ -1,44 +1,36 @@
-<?php
+<?php declare(strict_types=1);
 
-declare(strict_types=1);
+namespace App\Domains\Education\Bloggers\Http\Requests;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-namespace App\Domains\Content\Bloggers\Http\Requests;
-
-use Illuminate\Foundation\Http\FormRequest;
-
-final /**
- * AddProductRequest
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class AddProductRequest extends FormRequest
+final class AddProductRequest extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function authorize(): bool
-    {
-        return auth()->check();
-    }
+        {
+            return auth()->check();
+        }
 
-    public function rules(): array
-    {
-        return [
-            'product_id' => 'required|integer|exists:products,id',
-            'price_override' => 'nullable|integer|min:1|max:9999999',
-            'quantity' => 'required|integer|min:1|max:1000',
-        ];
-    }
+        public function rules(): array
+        {
+            return [
+                'product_id' => 'required|integer|exists:products,id',
+                'price_override' => 'nullable|integer|min:1|max:9999999',
+                'quantity' => 'required|integer|min:1|max:1000',
+            ];
+        }
 
-    public function messages(): array
-    {
-        return [
-            'product_id.required' => 'Укажите товар',
-            'product_id.exists' => 'Товар не найден',
-            'price_override.integer' => 'Цена должна быть числом',
-            'quantity.min' => 'Количество должно быть минимум 1',
-        ];
-    }
+        public function messages(): array
+        {
+            return [
+                'product_id.required' => 'Укажите товар',
+                'product_id.exists' => 'Товар не найден',
+                'price_override.integer' => 'Цена должна быть числом',
+                'quantity.min' => 'Количество должно быть минимум 1',
+            ];
+        }
 }

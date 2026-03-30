@@ -1,27 +1,31 @@
-<?php
+<?php declare(strict_types=1);
 
-declare(strict_types=1);
+namespace App\Filament\Tenant\Resources\Pages;
 
-namespace App\Filament\Tenant\Resources\BeverageSubscription\Pages;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-use use App\Filament\Tenant\Resources\BeverageSubscriptionResource;;
-use Filament\Resources\Pages\EditRecord;
-use Filament\Actions\{ViewAction, DeleteAction};
-
-final class EditBeverageSubscription extends EditRecord
+final class EditBeverageSubscription extends Model
 {
-    protected static string $resource = BeverageSubscriptionResource::class;
+    use HasFactory;
 
-    public function getTitle(): string
-    {
-        return 'Edit BeverageSubscription';
-    }
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    ViewAction, DeleteAction};
 
-    protected function getHeaderActions(): array
+    final class EditBeverageSubscription extends EditRecord
     {
-        return [
-            ViewAction::make(),
-            DeleteAction::make(),
-        ];
-    }
+        protected static string $resource = BeverageSubscriptionResource::class;
+
+        public function getTitle(): string
+        {
+            return 'Edit BeverageSubscription';
+        }
+
+        protected function getHeaderActions(): array
+        {
+            return [
+                ViewAction::make(),
+                DeleteAction::make(),
+            ];
+        }
 }

@@ -1,8 +1,14 @@
-<?php
-declare(strict_types=1);
+<?php declare(strict_types=1);
+
 namespace App\Filament\Tenant\Resources\AutoPartOrder\Pages;
-use App\Filament\Tenant\Resources\AutoPartOrderResource;
-use Filament\Resources\Pages\ViewRecord;
-final class ViewRecordAutoPartOrder extends ViewRecord {
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+final class ViewRecordAutoPartOrder extends Model
+{
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = AutoPartOrderResource::class;
 }

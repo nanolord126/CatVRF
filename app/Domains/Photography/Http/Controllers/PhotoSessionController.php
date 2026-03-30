@@ -1,171 +1,166 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Domains\Photography\Http\Controllers;
 
-use App\Domains\Photography\Models\PhotoSession;
-use App\Domains\Photography\Services\SessionService;
-use App\Services\FraudControlService;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final class PhotoSessionController
+final class PhotoSessionController extends Model
 {
-	public function __construct(
-		private readonly SessionService $sessionService,
-		private readonly FraudControlService $fraudControlService,
-	) {}
+    use HasFactory;
 
-	public function store(Request $request): JsonResponse
-	{
-        $correlationId = Str::uuid()->toString();
-        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    public function __construct(
+    		private readonly SessionService $sessionService,
+    		private readonly FraudControlService $fraudControlService,
+    	) {}
 
-		try {
-			$this->authorize('create', PhotoSession::class);
+    	public function store(Request $request): JsonResponse
+    	{
+            $correlationId = Str::uuid()->toString();
+            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
-			$validated = $request->validate([
-				'photo_studio_id' => 'required|exists:photo_studios,id',
-				'photographer_id' => 'required|exists:photographers,id',
-				'photo_package_id' => 'required|exists:photo_packages,id',
-				'datetime_start' => 'required|date',
-				'datetime_end' => 'required|date|after:datetime_start',
-				'total_amount' => 'required|numeric|min:1',
-			]);
+    		try {
+    			$this->authorize('create', PhotoSession::class);
 
-			$session = $this->sessionService->createSession(
-				array_merge($validated, [
-					'user_id' => auth()->id(),
-					'tenant_id' => auth()->user()->tenant_id,
-					'correlation_id' => $correlationId,
-				])
-			);
+    			$validated = $request->validate([
+    				'photo_studio_id' => 'required|exists:photo_studios,id',
+    				'photographer_id' => 'required|exists:photographers,id',
+    				'photo_package_id' => 'required|exists:photo_packages,id',
+    				'datetime_start' => 'required|date',
+    				'datetime_end' => 'required|date|after:datetime_start',
+    				'total_amount' => 'required|numeric|min:1',
+    			]);
 
-			return response()->json([
-				'success' => true,
-				'data' => $session,
-				'correlation_id' => $correlationId,
-			], 201);
-		} catch (\Exception $e) {
-			Log::channel('audit')->error('Photography: Session creation failed', [
-				'error' => $e->getMessage(),
-				'correlation_id' => Str::uuid(),
-			]);
-			return response()->json([
-				'success' => false,
-				'message' => 'Ошибка при создании сессии',
-				'correlation_id' => Str::uuid(),
-			], 500);
-		}
-	}
+    			$session = $this->sessionService->createSession(
+    				array_merge($validated, [
+    					'user_id' => auth()->id(),
+    					'tenant_id' => auth()->user()->tenant_id,
+    					'correlation_id' => $correlationId,
+    				])
+    			);
 
-	public function show(int $id): JsonResponse
-	{
-		try {
-			$session = PhotoSession->findOrFail($id);
-			$this->authorize('view', $session);
+    			return response()->json([
+    				'success' => true,
+    				'data' => $session,
+    				'correlation_id' => $correlationId,
+    			], 201);
+    		} catch (\Exception $e) {
+    			Log::channel('audit')->error('Photography: Session creation failed', [
+    				'error' => $e->getMessage(),
+    				'correlation_id' => Str::uuid(),
+    			]);
+    			return response()->json([
+    				'success' => false,
+    				'message' => 'Ошибка при создании сессии',
+    				'correlation_id' => Str::uuid(),
+    			], 500);
+    		}
+    	}
 
-			return response()->json([
-				'success' => true,
-				'data' => $session,
-				'correlation_id' => Str::uuid(),
-			]);
-		} catch (\Exception $e) {
-			return response()->json([
-				'success' => false,
-				'message' => 'Сессия не найдена',
-				'correlation_id' => Str::uuid(),
-			], 404);
-		}
-	}
+    	public function show(int $id): JsonResponse
+    	{
+    		try {
+    			$session = PhotoSession->findOrFail($id);
+    			$this->authorize('view', $session);
 
-	public function mySessions(): JsonResponse
-	{
-		try {
-			$sessions = PhotoSession->where('user_id', auth()->id())
-				->latest()
-				->paginate(20);
+    			return response()->json([
+    				'success' => true,
+    				'data' => $session,
+    				'correlation_id' => Str::uuid(),
+    			]);
+    		} catch (\Exception $e) {
+    			return response()->json([
+    				'success' => false,
+    				'message' => 'Сессия не найдена',
+    				'correlation_id' => Str::uuid(),
+    			], 404);
+    		}
+    	}
 
-			return response()->json([
-				'success' => true,
-				'data' => $sessions,
-				'correlation_id' => Str::uuid(),
-			]);
-		} catch (\Exception $e) {
-			return response()->json([
-				'success' => false,
-				'message' => 'Ошибка',
-				'correlation_id' => Str::uuid(),
-			], 500);
-		}
-	}
+    	public function mySessions(): JsonResponse
+    	{
+    		try {
+    			$sessions = PhotoSession->where('user_id', auth()->id())
+    				->latest()
+    				->paginate(20);
 
-	public function updateStatus(int $id): JsonResponse
-	{
-		try {
-			$session = PhotoSession->findOrFail($id);
-			$this->authorize('update', $session);
+    			return response()->json([
+    				'success' => true,
+    				'data' => $sessions,
+    				'correlation_id' => Str::uuid(),
+    			]);
+    		} catch (\Exception $e) {
+    			return response()->json([
+    				'success' => false,
+    				'message' => 'Ошибка',
+    				'correlation_id' => Str::uuid(),
+    			], 500);
+    		}
+    	}
 
-			$status = request()->validate(['status' => 'required|in:pending,confirmed,completed,cancelled'])['status'];
+    	public function updateStatus(int $id): JsonResponse
+    	{
+    		try {
+    			$session = PhotoSession->findOrFail($id);
+    			$this->authorize('update', $session);
 
-			$this->sessionService->updateSessionStatus($session, $status);
+    			$status = request()->validate(['status' => 'required|in:pending,confirmed,completed,cancelled'])['status'];
 
-			return response()->json([
-				'success' => true,
-				'message' => 'Статус обновлен',
-				'correlation_id' => Str::uuid(),
-			]);
-		} catch (\Exception $e) {
-			return response()->json([
-				'success' => false,
-				'message' => 'Ошибка',
-				'correlation_id' => Str::uuid(),
-			], 500);
-		}
-	}
+    			$this->sessionService->updateSessionStatus($session, $status);
 
-	public function cancel(int $id): JsonResponse
-	{
-		try {
-			$session = PhotoSession->findOrFail($id);
-			$this->authorize('cancel', $session);
+    			return response()->json([
+    				'success' => true,
+    				'message' => 'Статус обновлен',
+    				'correlation_id' => Str::uuid(),
+    			]);
+    		} catch (\Exception $e) {
+    			return response()->json([
+    				'success' => false,
+    				'message' => 'Ошибка',
+    				'correlation_id' => Str::uuid(),
+    			], 500);
+    		}
+    	}
 
-			$this->sessionService->cancelSession($session);
+    	public function cancel(int $id): JsonResponse
+    	{
+    		try {
+    			$session = PhotoSession->findOrFail($id);
+    			$this->authorize('cancel', $session);
 
-			return response()->json([
-				'success' => true,
-				'message' => 'Сессия отменена',
-				'correlation_id' => Str::uuid(),
-			]);
-		} catch (\Exception $e) {
-			return response()->json([
-				'success' => false,
-				'message' => 'Отмена невозможна',
-				'correlation_id' => Str::uuid(),
-			], 403);
-		}
-	}
+    			$this->sessionService->cancelSession($session);
 
-	public function pendingSessions(): JsonResponse
-	{
-		try {
-			$sessions = PhotoSession->where('status', 'pending')->paginate(20);
+    			return response()->json([
+    				'success' => true,
+    				'message' => 'Сессия отменена',
+    				'correlation_id' => Str::uuid(),
+    			]);
+    		} catch (\Exception $e) {
+    			return response()->json([
+    				'success' => false,
+    				'message' => 'Отмена невозможна',
+    				'correlation_id' => Str::uuid(),
+    			], 403);
+    		}
+    	}
 
-			return response()->json([
-				'success' => true,
-				'data' => $sessions,
-				'correlation_id' => Str::uuid(),
-			]);
-		} catch (\Exception $e) {
-			return response()->json([
-				'success' => false,
-				'message' => 'Ошибка',
-				'correlation_id' => Str::uuid(),
-			], 500);
-		}
-	}
+    	public function pendingSessions(): JsonResponse
+    	{
+    		try {
+    			$sessions = PhotoSession->where('status', 'pending')->paginate(20);
+
+    			return response()->json([
+    				'success' => true,
+    				'data' => $sessions,
+    				'correlation_id' => Str::uuid(),
+    			]);
+    		} catch (\Exception $e) {
+    			return response()->json([
+    				'success' => false,
+    				'message' => 'Ошибка',
+    				'correlation_id' => Str::uuid(),
+    			], 500);
+    		}
+    	}
 }

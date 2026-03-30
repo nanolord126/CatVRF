@@ -1,15 +1,15 @@
 <?php declare(strict_types=1);
 
-namespace App\Modules\Beauty\Services;
+namespace Modules\Beauty\Services;
 
 use App\Modules\Beauty\Models\Appointment;
 use App\Modules\Beauty\Models\BeautySalon;
+use Carbon\Carbon;
+use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use DomainException;
 use Throwable;
-use Carbon\Carbon;
 
 /**
  * Сервис управления записями (бронированием) услуг красоты.

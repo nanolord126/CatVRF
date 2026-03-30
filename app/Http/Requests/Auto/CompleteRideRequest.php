@@ -1,35 +1,32 @@
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Http\Requests\Auto;
 
-use App\Http\Requests\BaseApiRequest;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * Complete Taxi Ride Request.
- * Валидация данных для завершения поездки.
- *
- * Rules:
- * - ride_id: required, exists
- */
-final class CompleteRideRequest extends BaseApiRequest
+final class CompleteRideRequest extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function authorize(): bool
-    {
-        return auth()->check();
-    }
+        {
+            return auth()->check();
+        }
 
-    public function rules(): array
-    {
-        return [
-            'ride_id' => ['required', 'integer', 'exists:taxi_rides,id'],
-        ];
-    }
+        public function rules(): array
+        {
+            return [
+                'ride_id' => ['required', 'integer', 'exists:taxi_rides,id'],
+            ];
+        }
 
-    public function messages(): array
-    {
-        return [
-            'ride_id.required' => 'Ride ID required',
-            'ride_id.exists' => 'Ride not found',
-        ];
-    }
+        public function messages(): array
+        {
+            return [
+                'ride_id.required' => 'Ride ID required',
+                'ride_id.exists' => 'Ride not found',
+            ];
+        }
 }

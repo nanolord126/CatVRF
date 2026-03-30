@@ -1,18 +1,19 @@
-<?php
+<?php declare(strict_types=1);
 
-declare(strict_types=1);
+namespace App\Filament\Tenant\Resources\Pages;
 
-namespace App\Filament\Tenant\Resources\DentalConsumable\Pages;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-use use App\Filament\Tenant\Resources\DentalConsumableResource;;
-use Filament\Resources\Pages\ViewRecord;
-
-final class ViewDentalConsumable extends ViewRecord
+final class ViewDentalConsumable extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = DentalConsumableResource::class;
 
-    public function getTitle(): string
-    {
-        return 'View DentalConsumable';
-    }
+        public function getTitle(): string
+        {
+            return 'View DentalConsumable';
+        }
 }

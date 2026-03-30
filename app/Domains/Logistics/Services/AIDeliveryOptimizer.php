@@ -2,71 +2,66 @@
 
 namespace App\Domains\Logistics\Services;
 
-use App\Domains\Logistics\Models\DeliveryOrder;
-use App\Domains\Logistics\Models\Route;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * AI Delivery Optimizer (Layer 3 Extension)
- * 
- * ИИ-сервис для оптимизации маршрутов и прогнозирования времени доставки.
- * Канон 2026: ML Analysis, correlation_id, audit logs.
- */
-final readonly class AIDeliveryOptimizer
+final class AIDeliveryOptimizer extends Model
 {
-    public function __construct(private string $correlationId = '') 
-    {
-        $this->correlationId = $this->correlationId ?: (string) Str::uuid();
-    }
+    use HasFactory;
 
-    /**
-     * Оптимизация маршрута для заказа (прогноз LineString).
-     */
-    public function optimizeRoute(DeliveryOrder $order): array
-    {
-        Log::channel('audit')->info('AI Route Optimization started', [
-            'order_uuid' => $order->uuid,
-            'correlation_id' => $this->correlationId
-        ]);
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    public function __construct(private string $correlationId = '')
+        {
+            $this->correlationId = $this->correlationId ?: (string) Str::uuid();
+        }
 
-        // В реальности здесь вызов к OSRM, GraphHopper или ML-модели
-        $pickup = $order->pickup_point;
-        $dropoff = $order->dropoff_point;
+        /**
+         * Оптимизация маршрута для заказа (прогноз LineString).
+         */
+        public function optimizeRoute(DeliveryOrder $order): array
+        {
+            Log::channel('audit')->info('AI Route Optimization started', [
+                'order_uuid' => $order->uuid,
+                'correlation_id' => $this->correlationId
+            ]);
 
-        // Генерация простого "пути" для теста
-        $points = [
-            $pickup,
-            ['lat' => ($pickup['lat'] + $dropoff['lat']) / 2, 'lon' => ($pickup['lon'] + $dropoff['lon']) / 2],
-            $dropoff
-        ];
+            // В реальности здесь вызов к OSRM, GraphHopper или ML-модели
+            $pickup = $order->pickup_point;
+            $dropoff = $order->dropoff_point;
 
-        $distanceMeters = 1500; // Mock
-        $durationMinutes = 15; // Mock
+            // Генерация простого "пути" для теста
+            $points = [
+                $pickup,
+                ['lat' => ($pickup['lat'] + $dropoff['lat']) / 2, 'lon' => ($pickup['lon'] + $dropoff['lon']) / 2],
+                $dropoff
+            ];
 
-        $route = Route::create([
-            'tenant_id' => $order->tenant_id,
-            'delivery_order_id' => $order->id,
-            'courier_id' => $order->courier_id,
-            'points' => $points,
-            'distance_meters' => $distanceMeters,
-            'estimated_duration_minutes' => $durationMinutes,
-            'correlation_id' => $this->correlationId
-        ]);
+            $distanceMeters = 1500; // Mock
+            $durationMinutes = 15; // Mock
 
-        return [
-            'route_uuid' => $route->uuid,
-            'distance' => $distanceMeters,
-            'eta' => $durationMinutes
-        ];
-    }
+            $route = Route::create([
+                'tenant_id' => $order->tenant_id,
+                'delivery_order_id' => $order->id,
+                'courier_id' => $order->courier_id,
+                'points' => $points,
+                'distance_meters' => $distanceMeters,
+                'estimated_duration_minutes' => $durationMinutes,
+                'correlation_id' => $this->correlationId
+            ]);
 
-    /**
-     * Прогноз спроса для активации Surge в зоне.
-     */
-    public function predictZoneDemand(int $geoZoneId): float
-    {
-        // ML-аналитика на базе исторических данных (demand_actuals)
-        return 1.25; // Прогноз: спрос будет выше на 25%
-    }
+            return [
+                'route_uuid' => $route->uuid,
+                'distance' => $distanceMeters,
+                'eta' => $durationMinutes
+            ];
+        }
+
+        /**
+         * Прогноз спроса для активации Surge в зоне.
+         */
+        public function predictZoneDemand(int $geoZoneId): float
+        {
+            // ML-аналитика на базе исторических данных (demand_actuals)
+            return 1.25; // Прогноз: спрос будет выше на 25%
+        }
 }

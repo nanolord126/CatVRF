@@ -4,7 +4,8 @@ namespace App\Filament\Tenant\Resources\EventManagement\Pages;
 
 use App\Filament\Tenant\Resources\EventManagement\EventManagementResource;
 use Filament\Resources\Pages\CreateRecord;
-use Illuminate\Support\Facades\{Log,DB};
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 final class CreateEventManagement extends CreateRecord
@@ -14,7 +15,7 @@ final class CreateEventManagement extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $correlationId = Str::uuid()->toString();
-        
+
         DB::transaction(function () use (&$data, $correlationId) {
             $data['correlation_id'] = $correlationId;
             $data['tenant_id'] = filament()->getTenant()->id;

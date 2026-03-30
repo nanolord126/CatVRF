@@ -1,126 +1,116 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Services\Consulting;
 
-use App\Models\Consulting\Consultant;
-use App\Models\Consulting\ConsultingFirm;
-use App\Models\Consulting\ConsultingService;
-use App\Services\FraudControlService;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * ConsultingMatcherService - Vertical Consulting (CAR 2026)
- * AI-driven matching of clients to experts based on industries, skills, and budget.
- * File size requirement: >60 lines.
- */
-final readonly class ConsultingMatcherService
+final class ConsultingMatcherService extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
-     * @param string $correlationId Unified audit trace.
-     */
-    public function __construct(
-        private string $correlationId = '',
-    ) {
-        $this->correlationId = $correlationId ?: (string) Str::uuid();
-    }
+         * @param string $correlationId Unified audit trace.
+         */
+        public function __construct(
+            private string $correlationId = '',
+        ) {
+            $this->correlationId = $correlationId ?: (string) Str::uuid();
+        }
 
-    /**
-     * Find best consultants matching specific requirements.
-     * Uses skills, budget, and firm reputation.
-     */
-    public function matchConsultant(array $requirements, int $tenantId): Collection
-    {
-        Log::channel('audit')->info('Consulting Matcher Initiated', [
-            'correlation_id' => $this->correlationId,
-            'tenant_id' => $tenantId,
-            'requirements' => $requirements,
-        ]);
-
-        $industry = $requirements['industry'] ?? '';
-        $maxHourlyRate = $requirements['max_hourly_rate'] ?? 2000000;
-        $minExperience = $requirements['min_experience_years'] ?? 5;
-        $skills = $requirements['skills'] ?? [];
-
-        return Consultant::query()
-            ->where('tenant_id', $tenantId)
-            ->where('is_active', true)
-            ->where('hourly_rate', '<=', $maxHourlyRate)
-            ->where('experience_years', '>=', $minExperience)
-            ->when($industry, function($query) use ($industry) {
-                return $query->whereHas('firm', function($q) use ($industry) {
-                    $q->whereJsonContains('industries', $industry);
-                });
-            })
-            ->get()
-            ->sortByDesc(function(Consultant $consultant) use ($skills) {
-                $score = $consultant->rating;
-                
-                // Skill matching logic (simulating AI vector match)
-                foreach ($skills as $skill) {
-                    if ($consultant->isExpertIn($skill)) {
-                        $score += 10;
-                    }
-                }
-                
-                // Firm prestige bonus
-                if ($consultant->firm?->is_premium) {
-                    $score += 15;
-                }
-                
-                return $score;
-            })
-            ->values();
-    }
-
-    /**
-     * Create a project proposal using matched experts.
-     */
-    public function createProjectProposal(int $clientId, int $consultantId, array $projectData): array
-    {
-        FraudControlService::check();
-
-        return DB::transaction(function() use ($clientId, $consultantId, $projectData) {
-            $consultant = Consultant::findOrFail($consultantId);
-            
-            Log::channel('audit')->info('Creating Consulting Proposal', [
+        /**
+         * Find best consultants matching specific requirements.
+         * Uses skills, budget, and firm reputation.
+         */
+        public function matchConsultant(array $requirements, int $tenantId): Collection
+        {
+            Log::channel('audit')->info('Consulting Matcher Initiated', [
                 'correlation_id' => $this->correlationId,
-                'client_id' => $clientId,
-                'consultant_id' => $consultantId,
+                'tenant_id' => $tenantId,
+                'requirements' => $requirements,
             ]);
 
-            return [
-                'proposal_id' => (string) Str::uuid(),
-                'consultant' => $consultant->full_name,
-                'estimated_budget' => $projectData['expected_budget'] ?? 0,
-                'suggested_timeline' => '3-6 months',
-                'matching_score' => 95.5,
-                'status' => 'draft',
-                'correlation_id' => $this->correlationId,
-            ];
-        });
-    }
+            $industry = $requirements['industry'] ?? '';
+            $maxHourlyRate = $requirements['max_hourly_rate'] ?? 2000000;
+            $minExperience = $requirements['min_experience_years'] ?? 5;
+            $skills = $requirements['skills'] ?? [];
 
-    /**
-     * AI-based pricing suggestion for a new consulting package.
-     */
-    public function suggestPackagePricing(int $firmId, array $features): int
-    {
-        $basePrice = 5000000; // 50,000.00 RUB base
-        
-        foreach ($features as $feature) {
-             $basePrice += 1000000; // +10,000.00 per feature
-        }
-        
-        $firm = ConsultingFirm::find($firmId);
-        if ($firm?->is_premium) {
-            $basePrice = (int) ($basePrice * 1.5);
+            return Consultant::query()
+                ->where('tenant_id', $tenantId)
+                ->where('is_active', true)
+                ->where('hourly_rate', '<=', $maxHourlyRate)
+                ->where('experience_years', '>=', $minExperience)
+                ->when($industry, function($query) use ($industry) {
+                    return $query->whereHas('firm', function($q) use ($industry) {
+                        $q->whereJsonContains('industries', $industry);
+                    });
+                })
+                ->get()
+                ->sortByDesc(function(Consultant $consultant) use ($skills) {
+                    $score = $consultant->rating;
+
+                    // Skill matching logic (simulating AI vector match)
+                    foreach ($skills as $skill) {
+                        if ($consultant->isExpertIn($skill)) {
+                            $score += 10;
+                        }
+                    }
+
+                    // Firm prestige bonus
+                    if ($consultant->firm?->is_premium) {
+                        $score += 15;
+                    }
+
+                    return $score;
+                })
+                ->values();
         }
 
-        return $basePrice;
-    }
+        /**
+         * Create a project proposal using matched experts.
+         */
+        public function createProjectProposal(int $clientId, int $consultantId, array $projectData): array
+        {
+            FraudControlService::check();
+
+            return DB::transaction(function() use ($clientId, $consultantId, $projectData) {
+                $consultant = Consultant::findOrFail($consultantId);
+
+                Log::channel('audit')->info('Creating Consulting Proposal', [
+                    'correlation_id' => $this->correlationId,
+                    'client_id' => $clientId,
+                    'consultant_id' => $consultantId,
+                ]);
+
+                return [
+                    'proposal_id' => (string) Str::uuid(),
+                    'consultant' => $consultant->full_name,
+                    'estimated_budget' => $projectData['expected_budget'] ?? 0,
+                    'suggested_timeline' => '3-6 months',
+                    'matching_score' => 95.5,
+                    'status' => 'draft',
+                    'correlation_id' => $this->correlationId,
+                ];
+            });
+        }
+
+        /**
+         * AI-based pricing suggestion for a new consulting package.
+         */
+        public function suggestPackagePricing(int $firmId, array $features): int
+        {
+            $basePrice = 5000000; // 50,000.00 RUB base
+
+            foreach ($features as $feature) {
+                 $basePrice += 1000000; // +10,000.00 per feature
+            }
+
+            $firm = ConsultingFirm::find($firmId);
+            if ($firm?->is_premium) {
+                $basePrice = (int) ($basePrice * 1.5);
+            }
+
+            return $basePrice;
+        }
 }

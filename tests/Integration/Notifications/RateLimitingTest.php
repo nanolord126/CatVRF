@@ -1,13 +1,11 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace Tests\Integration\Notifications;
 
 use App\Models\Notification;
 use App\Models\User;
-use App\Services\Notifications\SmsService;
 use App\Services\Notifications\EmailService;
+use App\Services\Notifications\SmsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\RateLimiter;

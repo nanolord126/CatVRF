@@ -1,32 +1,21 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Domains\Beauty\Events;
 
-use App\Domains\Beauty\Models\BeautySalon;
-use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final /**
- * SalonVerified
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class SalonVerified
+final class SalonVerified extends Model
 {
-    use Dispatchable;
-    use InteractsWithSockets;
-    use SerializesModels;
+    use HasFactory;
 
-    public function __construct(
-        public readonly BeautySalon $salon,
-        public readonly string $correlationId,
-    ) {}
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    use Dispatchable;
+        use InteractsWithSockets;
+        use SerializesModels;
+
+        public function __construct(
+            public readonly BeautySalon $salon,
+            public readonly string $correlationId,
+        ) {}
 }

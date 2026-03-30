@@ -1,18 +1,19 @@
-<?php
+<?php declare(strict_types=1);
 
-declare(strict_types=1);
+namespace App\Filament\Tenant\Resources\Pages;
 
-namespace App\Filament\Tenant\Resources\GardenProduct\Pages;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-use use App\Filament\Tenant\Resources\GardenProductResource;;
-use Filament\Resources\Pages\ViewRecord;
-
-final class ViewGardenProduct extends ViewRecord
+final class ViewGardenProduct extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = GardenProductResource::class;
 
-    public function getTitle(): string
-    {
-        return 'View GardenProduct';
-    }
+        public function getTitle(): string
+        {
+            return 'View GardenProduct';
+        }
 }

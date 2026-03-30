@@ -1,0 +1,1282 @@
+*** Begin Patch
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Education\Courses\Policies\CertificatePolicy.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Education\Courses\Policies\CoursePolicy.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Education\Courses\Policies\CourseReviewPolicy.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Education\Courses\Policies\EnrollmentPolicy.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Education\Courses\Policies\LessonPolicy.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Education\Courses\Services\CourseReviewService.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Education\DrivingSchools\Services\DrivingSchoolsService.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Education\KidsCenters\Services\KidsCentersService.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Education\LanguageTutoring\Services\LanguageTutoringService.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Education\Tutoring\Services\TutoringService.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\EventPlanning\Entertainment\Events\BookingCreated.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\EventPlanning\Entertainment\Events\EventCancelled.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\EventPlanning\Entertainment\Events\TicketSold.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\EventPlanning\Entertainment\Filament\Resources\BookingResource\Pages\CreateBooking.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\EventPlanning\Entertainment\Filament\Resources\BookingResource\Pages\EditBooking.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\EventPlanning\Entertainment\Filament\Resources\BookingResource\Pages\ListBookings.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\EventPlanning\Entertainment\Filament\Resources\EntertainerResource\Pages\CreateEntertainer.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\EventPlanning\Entertainment\Filament\Resources\EntertainerResource\Pages\EditEntertainer.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\EventPlanning\Entertainment\Filament\Resources\EntertainerResource\Pages\ListEntertainers.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\EventPlanning\Entertainment\Filament\Resources\EntertainmentEventResource\Pages\CreateEntertainmentEvent.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\EventPlanning\Entertainment\Filament\Resources\EntertainmentEventResource\Pages\EditEntertainmentEvent.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\EventPlanning\Entertainment\Filament\Resources\EntertainmentEventResource\Pages\ListEntertainmentEvents.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\EventPlanning\Entertainment\Filament\Resources\EntertainmentVenueResource\Pages\CreateEntertainmentVenue.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\EventPlanning\Entertainment\Filament\Resources\EntertainmentVenueResource\Pages\EditEntertainmentVenue.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\EventPlanning\Entertainment\Filament\Resources\EntertainmentVenueResource\Pages\ListEntertainmentVenues.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\EventPlanning\Entertainment\Filament\Resources\TicketSaleResource\Pages\CreateTicketSale.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\EventPlanning\Entertainment\Filament\Resources\TicketSaleResource\Pages\EditTicketSale.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\EventPlanning\Entertainment\Filament\Resources\TicketSaleResource\Pages\ListTicketSales.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\EventPlanning\Entertainment\Listeners\DeductBookingCommissionListener.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\EventPlanning\Entertainment\Listeners\RefundBookingCommissionListener.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\EventPlanning\Entertainment\Policies\BookingPolicy.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\EventPlanning\Entertainment\Policies\EntertainerPolicy.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\EventPlanning\Entertainment\Policies\EntertainmentEventPolicy.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\EventPlanning\Entertainment\Policies\EntertainmentVenuePolicy.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\EventPlanning\Entertainment\Policies\TicketSalePolicy.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\EventPlanning\EventHalls\Services\EventHallsService.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\EventPlanning\Events\Models\Event.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\EventPlanning\Events\Services\EventsService.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\EventPlanning\Karaoke\Services\KaraokeService.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\EventPlanning\Services\EventManagementService.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\EventPlanning\TeamBuilding\Services\TeamBuildingService.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\FarmDirect\Events\FarmOrderCreated.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\FarmDirect\Events\FarmOrderShipped.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\FarmDirect\FreshProduce\Events\ProduceOrderCreated.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\FarmDirect\FreshProduce\Events\QualityIssueDetected.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\FarmDirect\Http\Requests\FarmOrderStoreRequest.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Fashion\Events\OrderPlaced.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Fashion\Events\OrderShipped.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Fashion\Events\ReturnRequested.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Fashion\FashionRetail\Filament\Resources\B2BFashionStorefrontResource.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Fashion\FashionRetail\Filament\Resources\FashionRetailReviewResource.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Fashion\FashionRetail\Http\Controllers\B2BFashionController.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Fashion\FashionRetail\Models\FashionRetailCategory.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Fashion\FashionRetail\Models\FashionRetailProductVariant.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Fashion\FashionRetail\Models\FashionRetailReturn.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Fashion\Filament\Resources\FashionOrderResource.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Fashion\Filament\Resources\FashionProductResource.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Fashion\Filament\Resources\FashionReturnResource.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Fashion\Filament\Resources\FashionReviewResource.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Fashion\Filament\Resources\FashionStoreResource.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Fashion\Models\FashionCategory.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Fashion\Models\FashionProductVariant.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Fashion\Models\FashionWishlist.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Fashion\PersonalShopping\Services\PersonalShoppingService.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Fashion\PersonalStyling\Services\PersonalStylingService.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Fashion\Policies\FashionOrderPolicy.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Fashion\Policies\FashionProductPolicy.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Fashion\Policies\FashionReturnPolicy.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Fashion\Policies\FashionReviewPolicy.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Fashion\Services\FashionBrandService.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Flowers\Events\B2BFlowerOrderPlaced.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Flowers\Events\FlowerDeliveryCompleted.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Flowers\Events\FlowerOrderCancelled.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Flowers\Events\FlowerOrderCompleted.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Flowers\Events\FlowerOrderPlaced.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Flowers\Events\LowStockReached.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Flowers\Filament\Resources\B2BFlowerOrderResource.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Flowers\Filament\Resources\BouquetResource.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Flowers\Filament\Resources\BouquetResource\Pages\CreateBouquet.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Flowers\Filament\Resources\BouquetResource\Pages\EditBouquet.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Flowers\Filament\Resources\BouquetResource\Pages\ListBouquets.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Flowers\Filament\Resources\FlowerDeliveryResource.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Flowers\Filament\Resources\FlowerOrderResource.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Flowers\Filament\Resources\FlowerProductResource.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Flowers\Filament\Resources\FlowerShopResource.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Flowers\Filament\Resources\ReviewResource.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Flowers\FlowerDelivery\Services\FlowerDeliveryService.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Flowers\GiftDelivery\Services\GiftDeliveryService.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Flowers\Http\Controllers\B2BController.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Flowers\Http\Controllers\MainController.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Flowers\Jobs\CalculateFlowerShopEarningsJob.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Flowers\Jobs\ProcessFlowerOrderStatusJob.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Flowers\Listeners\DeductFlowerOrderCommission.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Flowers\Models\Bouquet.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Flowers\Models\FlowerCategory.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Flowers\Models\FlowerConsumable.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Flowers\Models\FlowerDelivery.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Flowers\Models\FlowerOrderItem.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Flowers\Models\Perfume.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Flowers\Policies\B2BFlowerOrderPolicy.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Flowers\Policies\B2BFlowerStorefrontPolicy.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Flowers\Policies\FlowerDeliveryPolicy.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Flowers\Policies\FlowerOrderPolicy.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Flowers\Policies\FlowerProductPolicy.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Flowers\Services\B2BService.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Flowers\Services\ConsumableDeductionService.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Flowers\Services\FlowerReviewService.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Food\Bars\Services\BarsService.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Food\Events\OrderCreated.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Food\Events\OrderDelivered.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Food\Filament\Resources\B2BFoodStorefrontResource.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Food\Grocery\Events\GroceryOrderCancelled.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Food\Grocery\Events\GroceryOrderCompleted.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Food\Grocery\Events\GroceryOrderCreated.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Food\Grocery\Filament\Resources\GroceryStoreResource.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Food\Grocery\Filament\Resources\GroceryStoreResource\Pages\CreateGroceryStore.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Food\Grocery\Filament\Resources\GroceryStoreResource\Pages\EditGroceryStore.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Food\Grocery\Filament\Resources\GroceryStoreResource\Pages\ListGroceryStores.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Food\Grocery\Http\Controllers\B2BController.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Food\Grocery\Http\Controllers\MainController.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Food\Grocery\Models\GroceryCategory.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Food\Grocery\Models\GroceryOrder.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Food\Grocery\Models\GroceryStore.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Food\Grocery\Services\GroceryOrderService.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Food\HealthyFood\Events\MealDelivered.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Food\HealthyFood\Events\MealOrderCreated.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Food\Listeners\NotifyRestaurantNewOrder.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Food\Listeners\ProcessOrderDeliveredCommission.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Food\Models\B2BFoodOrder.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Food\Models\B2BFoodStorefront.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Food\Policies\B2BFoodPolicy.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Freelance\Copywriting\Services\CopywritingService.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Freelance\Events\DeliverableSubmitted.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Freelance\Events\PaymentMilestoneReleased.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Freelance\Events\ProposalAccepted.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Freelance\Jobs\UpdateDeliverableStatusJob.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Freelance\Listeners\DeductProposalCommissionListener.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Freelance\Listeners\ReleaseFreelancerPaymentListener.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Freelance\Policies\FreelanceContractPolicy.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Freelance\Policies\FreelanceDeliverablePolicy.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Freelance\Policies\FreelanceJobPolicy.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Freelance\Policies\FreelanceProposalPolicy.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Freelance\Policies\FreelancerPolicy.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Freelance\SoftwareDevelopment\Services\SoftwareDevelopmentService.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Freelance\TranslationServices\Services\TranslationServicesService.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Freelance\WritingServices\Services\WritingServicesService.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\HobbyAndCraft\BoardGames\Services\BoardGamesService.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Hotels\Filament\Resources\B2BHotelStorefrontResource.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Hotels\HotelManagement\Services\HotelManagementService.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Hotels\Lodging\Services\LodgingService.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Hotels\Policies\B2BHotelPolicy.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Hotels\Policies\BookingPolicy.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Hotels\Policies\HotelPolicy.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Hotels\Policies\PricingRulePolicy.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Hotels\Policies\ReviewPolicy.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Hotels\Policies\RoomTypePolicy.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Insurance\AssuranceServices\Services\AssuranceServicesService.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Insurance\InsuranceServices\Services\InsuranceServicesService.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Insurance\RiskManagement\Services\RiskManagementService.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** Update File: C:\opt\kotvrf\CatVRF\app\Domains\Insurance\Services\InsuranceService.php
+@@
+-final /**
++/**
+@@
+- * @package %NAMESPACE%
++ * @package App\\Domains
+
+*** End Patch

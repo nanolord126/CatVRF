@@ -1,203 +1,203 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Services;
 
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final class TeamPresenceService
+final class TeamPresenceService extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     private const PRESENCE_TTL = 600; // 10 minutes
 
-    /**
-     * Регистрирует присутствие пользователя в документе
-     */
-    public function registerPresence(
-        int $userId,
-        int $tenantId,
-        string $documentType,
-        int $documentId,
-        string $correlationId = null
-    ): array {
-        $correlationId ??= Str::uuid()->toString();
+        /**
+         * Регистрирует присутствие пользователя в документе
+         */
+        public function registerPresence(
+            int $userId,
+            int $tenantId,
+            string $documentType,
+            int $documentId,
+            string $correlationId = null
+        ): array {
+            $correlationId ??= Str::uuid()->toString();
 
-        try {
-            $presenceKey = "collab:presence:{$tenantId}:{$documentType}:{$documentId}:{$userId}";
+            try {
+                $presenceKey = "collab:presence:{$tenantId}:{$documentType}:{$documentId}:{$userId}";
 
-            $presence = [
-                'user_id' => $userId,
-                'tenant_id' => $tenantId,
-                'document_type' => $documentType,
-                'document_id' => $documentId,
-                'joined_at' => now()->toIso8601String(),
-                'last_active' => now()->toIso8601String(),
-                'status' => 'active', // active, idle, away
-                'color' => $this->getUserColor($userId),
-                'correlation_id' => $correlationId,
-            ];
+                $presence = [
+                    'user_id' => $userId,
+                    'tenant_id' => $tenantId,
+                    'document_type' => $documentType,
+                    'document_id' => $documentId,
+                    'joined_at' => now()->toIso8601String(),
+                    'last_active' => now()->toIso8601String(),
+                    'status' => 'active', // active, idle, away
+                    'color' => $this->getUserColor($userId),
+                    'correlation_id' => $correlationId,
+                ];
 
-            Cache::put($presenceKey, $presence, self::PRESENCE_TTL);
+                Cache::put($presenceKey, $presence, self::PRESENCE_TTL);
 
-            // Добавляем в список присутствующих
+                // Добавляем в список присутствующих
+                $documentPresenceKey = "collab:present:{$tenantId}:{$documentType}:{$documentId}";
+                $presentUsers = Cache::get($documentPresenceKey, []);
+                $presentUsers[$userId] = now()->toIso8601String();
+                Cache::put($documentPresenceKey, $presentUsers, self::PRESENCE_TTL);
+
+                Log::channel('audit')->debug('User presence registered', [
+                    'correlation_id' => $correlationId,
+                    'user_id' => $userId,
+                    'document' => "{$documentType}:{$documentId}",
+                ]);
+
+                return $presence;
+            } catch (\Throwable $e) {
+                Log::channel('audit')->error('Failed to register presence', [
+                    'correlation_id' => $correlationId,
+                    'error' => $e->getMessage(),
+                ]);
+
+                throw $e;
+            }
+        }
+
+        /**
+         * Удаляет присутствие пользователя
+         */
+        public function unregisterPresence(
+            int $userId,
+            int $tenantId,
+            string $documentType,
+            int $documentId,
+            string $correlationId = null
+        ): bool {
+            $correlationId ??= Str::uuid()->toString();
+
+            try {
+                $presenceKey = "collab:presence:{$tenantId}:{$documentType}:{$documentId}:{$userId}";
+                Cache::forget($presenceKey);
+
+                $documentPresenceKey = "collab:present:{$tenantId}:{$documentType}:{$documentId}";
+                $presentUsers = Cache::get($documentPresenceKey, []);
+                unset($presentUsers[$userId]);
+
+                if (empty($presentUsers)) {
+                    Cache::forget($documentPresenceKey);
+                } else {
+                    Cache::put($documentPresenceKey, $presentUsers, self::PRESENCE_TTL);
+                }
+
+                Log::channel('audit')->debug('User presence unregistered', [
+                    'correlation_id' => $correlationId,
+                    'user_id' => $userId,
+                ]);
+
+                return true;
+            } catch (\Throwable $e) {
+                Log::channel('audit')->error('Failed to unregister presence', [
+                    'correlation_id' => $correlationId,
+                    'error' => $e->getMessage(),
+                ]);
+
+                throw $e;
+            }
+        }
+
+        /**
+         * Обновляет статус пользователя
+         */
+        public function updateStatus(
+            int $userId,
+            int $tenantId,
+            string $documentType,
+            int $documentId,
+            string $status,
+            string $correlationId = null
+        ): bool {
+            $correlationId ??= Str::uuid()->toString();
+
+            try {
+                $presenceKey = "collab:presence:{$tenantId}:{$documentType}:{$documentId}:{$userId}";
+                $presence = Cache::get($presenceKey);
+
+                if (!$presence) {
+                    throw new \Exception("Presence not found for user {$userId}");
+                }
+
+                $presence['status'] = $status;
+                $presence['last_active'] = now()->toIso8601String();
+
+                Cache::put($presenceKey, $presence, self::PRESENCE_TTL);
+
+                return true;
+            } catch (\Throwable $e) {
+                Log::channel('audit')->error('Failed to update status', [
+                    'correlation_id' => $correlationId,
+                    'error' => $e->getMessage(),
+                ]);
+
+                throw $e;
+            }
+        }
+
+        /**
+         * Получает список присутствующих пользователей
+         */
+        public function getPresenceList(
+            int $tenantId,
+            string $documentType,
+            int $documentId
+        ): array {
             $documentPresenceKey = "collab:present:{$tenantId}:{$documentType}:{$documentId}";
             $presentUsers = Cache::get($documentPresenceKey, []);
-            $presentUsers[$userId] = now()->toIso8601String();
-            Cache::put($documentPresenceKey, $presentUsers, self::PRESENCE_TTL);
 
-            Log::channel('audit')->debug('User presence registered', [
-                'correlation_id' => $correlationId,
-                'user_id' => $userId,
-                'document' => "{$documentType}:{$documentId}",
-            ]);
+            $presence = [];
+
+            foreach ($presentUsers as $userId => $timestamp) {
+                $presenceKey = "collab:presence:{$tenantId}:{$documentType}:{$documentId}:{$userId}";
+                $userPresence = Cache::get($presenceKey);
+
+                if ($userPresence) {
+                    $presence[] = $userPresence;
+                }
+            }
 
             return $presence;
-        } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to register presence', [
-                'correlation_id' => $correlationId,
-                'error' => $e->getMessage(),
-            ]);
-
-            throw $e;
         }
-    }
 
-    /**
-     * Удаляет присутствие пользователя
-     */
-    public function unregisterPresence(
-        int $userId,
-        int $tenantId,
-        string $documentType,
-        int $documentId,
-        string $correlationId = null
-    ): bool {
-        $correlationId ??= Str::uuid()->toString();
-
-        try {
-            $presenceKey = "collab:presence:{$tenantId}:{$documentType}:{$documentId}:{$userId}";
-            Cache::forget($presenceKey);
-
+        /**
+         * Получает количество присутствующих
+         */
+        public function getPresenceCount(
+            int $tenantId,
+            string $documentType,
+            int $documentId
+        ): int {
             $documentPresenceKey = "collab:present:{$tenantId}:{$documentType}:{$documentId}";
             $presentUsers = Cache::get($documentPresenceKey, []);
-            unset($presentUsers[$userId]);
 
-            if (empty($presentUsers)) {
-                Cache::forget($documentPresenceKey);
-            } else {
-                Cache::put($documentPresenceKey, $presentUsers, self::PRESENCE_TTL);
-            }
-
-            Log::channel('audit')->debug('User presence unregistered', [
-                'correlation_id' => $correlationId,
-                'user_id' => $userId,
-            ]);
-
-            return true;
-        } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to unregister presence', [
-                'correlation_id' => $correlationId,
-                'error' => $e->getMessage(),
-            ]);
-
-            throw $e;
-        }
-    }
-
-    /**
-     * Обновляет статус пользователя
-     */
-    public function updateStatus(
-        int $userId,
-        int $tenantId,
-        string $documentType,
-        int $documentId,
-        string $status,
-        string $correlationId = null
-    ): bool {
-        $correlationId ??= Str::uuid()->toString();
-
-        try {
-            $presenceKey = "collab:presence:{$tenantId}:{$documentType}:{$documentId}:{$userId}";
-            $presence = Cache::get($presenceKey);
-
-            if (!$presence) {
-                throw new \Exception("Presence not found for user {$userId}");
-            }
-
-            $presence['status'] = $status;
-            $presence['last_active'] = now()->toIso8601String();
-
-            Cache::put($presenceKey, $presence, self::PRESENCE_TTL);
-
-            return true;
-        } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to update status', [
-                'correlation_id' => $correlationId,
-                'error' => $e->getMessage(),
-            ]);
-
-            throw $e;
-        }
-    }
-
-    /**
-     * Получает список присутствующих пользователей
-     */
-    public function getPresenceList(
-        int $tenantId,
-        string $documentType,
-        int $documentId
-    ): array {
-        $documentPresenceKey = "collab:present:{$tenantId}:{$documentType}:{$documentId}";
-        $presentUsers = Cache::get($documentPresenceKey, []);
-
-        $presence = [];
-
-        foreach ($presentUsers as $userId => $timestamp) {
-            $presenceKey = "collab:presence:{$tenantId}:{$documentType}:{$documentId}:{$userId}";
-            $userPresence = Cache::get($presenceKey);
-
-            if ($userPresence) {
-                $presence[] = $userPresence;
-            }
+            return count($presentUsers);
         }
 
-        return $presence;
-    }
+        /**
+         * Генерирует цвет для пользователя (для визуализации курсора)
+         */
+        private function getUserColor(int $userId): string
+        {
+            $colors = [
+                '#FF6B6B', // Red
+                '#4ECDC4', // Teal
+                '#45B7D1', // Blue
+                '#FFA07A', // Light Salmon
+                '#98D8C8', // Mint
+                '#F7DC6F', // Yellow
+                '#BB8FCE', // Purple
+                '#85C1E2', // Sky Blue
+            ];
 
-    /**
-     * Получает количество присутствующих
-     */
-    public function getPresenceCount(
-        int $tenantId,
-        string $documentType,
-        int $documentId
-    ): int {
-        $documentPresenceKey = "collab:present:{$tenantId}:{$documentType}:{$documentId}";
-        $presentUsers = Cache::get($documentPresenceKey, []);
-
-        return count($presentUsers);
-    }
-
-    /**
-     * Генерирует цвет для пользователя (для визуализации курсора)
-     */
-    private function getUserColor(int $userId): string
-    {
-        $colors = [
-            '#FF6B6B', // Red
-            '#4ECDC4', // Teal
-            '#45B7D1', // Blue
-            '#FFA07A', // Light Salmon
-            '#98D8C8', // Mint
-            '#F7DC6F', // Yellow
-            '#BB8FCE', // Purple
-            '#85C1E2', // Sky Blue
-        ];
-
-        return $colors[$userId % count($colors)];
-    }
+            return $colors[$userId % count($colors)];
+        }
 }

@@ -1,23 +1,14 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Domains\HomeServices\Filament\Resources\ServiceCategoryResource\Pages;
 
-use App\Domains\HomeServices\Filament\Resources\ServiceCategoryResource;
-use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final /**
- * CreateServiceCategory
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class CreateServiceCategory extends CreateRecord
+final class CreateServiceCategory extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = ServiceCategoryResource::class;
 }

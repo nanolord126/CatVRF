@@ -2,7 +2,6 @@
 
 namespace App\Jobs\Payments;
 
-use App\Services\PaymentGatewayInterface;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;

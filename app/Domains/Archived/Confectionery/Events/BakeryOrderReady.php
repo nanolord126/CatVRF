@@ -1,0 +1,29 @@
+<?php declare(strict_types=1);
+
+namespace App\Domains\Archived\Confectionery\Events;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+final class BakeryOrderReady extends Model
+{
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    use Dispatchable, InteractsWithSockets, SerializesModels;
+
+
+        public function __construct(
+
+
+            public readonly int $bakeryOrderId,
+
+
+            public readonly int $tenantId,
+
+
+            public readonly string $correlationId,
+
+
+        ) {}
+}

@@ -2,111 +2,97 @@
 
 namespace App\Domains\Travel\Filament\Resources;
 
-use App\Domains\Travel\Models\TravelAgency;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TagsInput;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Textarea;
-use Filament\Forms\Components\Toggle;
-use Filament\Forms\Form;
-use Filament\Resources\Resource;
-use Filament\Tables\Actions\BulkActionGroup;
-use Filament\Tables\Actions\DeleteBulkAction;
-use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Actions\ViewAction;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Table;
-use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Filters\TernaryFilter;
-use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final class TravelAgencyResource extends Resource
+final class TravelAgencyResource extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static ?string $model = TravelAgency::class;
-    protected static ?string $navigationIcon = 'heroicon-o-globe-alt';
-    protected static ?string $navigationGroup = 'Travel';
+        protected static ?string $navigationIcon = 'heroicon-o-globe-alt';
+        protected static ?string $navigationGroup = 'Travel';
 
-    public static function form(Form $form): Form
-    {
-        return $form->schema([
-            Section::make('Agency Information')
-                ->columns(2)
-                ->schema([
-                    TextInput::make('name')
-                        ->required()
-                        ->maxLength(255),
-                    TextInput::make('email')
-                        ->email()
-                        ->required(),
-                    TextInput::make('phone')
-                        ->tel()
-                        ->required(),
-                    TextInput::make('address')
-                        ->required()
-                        ->columnSpanFull(),
-                    TextInput::make('website')
-                        ->url()
-                        ->nullable(),
-                    TextInput::make('license_number')
-                        ->unique()
-                        ->nullable(),
-                    TagsInput::make('specializations'),
-                    Textarea::make('description')
-                        ->columnSpanFull(),
-                ]),
-            Section::make('Settings')
-                ->columns(2)
-                ->schema([
-                    Toggle::make('is_verified')
-                        ->default(false),
-                    Toggle::make('is_active')
-                        ->default(true),
-                ]),
-        ]);
-    }
+        public static function form(Form $form): Form
+        {
+            return $form->schema([
+                Section::make('Agency Information')
+                    ->columns(2)
+                    ->schema([
+                        TextInput::make('name')
+                            ->required()
+                            ->maxLength(255),
+                        TextInput::make('email')
+                            ->email()
+                            ->required(),
+                        TextInput::make('phone')
+                            ->tel()
+                            ->required(),
+                        TextInput::make('address')
+                            ->required()
+                            ->columnSpanFull(),
+                        TextInput::make('website')
+                            ->url()
+                            ->nullable(),
+                        TextInput::make('license_number')
+                            ->unique()
+                            ->nullable(),
+                        TagsInput::make('specializations'),
+                        Textarea::make('description')
+                            ->columnSpanFull(),
+                    ]),
+                Section::make('Settings')
+                    ->columns(2)
+                    ->schema([
+                        Toggle::make('is_verified')
+                            ->default(false),
+                        Toggle::make('is_active')
+                            ->default(true),
+                    ]),
+            ]);
+        }
 
-    public static function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                TextColumn::make('name')
-                    ->searchable()
-                    ->sortable(),
-                TextColumn::make('email')
-                    ->searchable(),
-                TextColumn::make('phone'),
-                TextColumn::make('rating')
-                    ->numeric(2),
-                IconColumn::make('is_verified')
-                    ->boolean(),
-                IconColumn::make('is_active')
-                    ->boolean(),
-                TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable(),
-            ])
-            ->filters([
-                TernaryFilter::make('is_verified'),
-                TernaryFilter::make('is_active'),
-                SelectFilter::make('specializations'),
-            ])
-            ->actions([
-                ViewAction::make(),
-                EditAction::make(),
-            ])
-            ->bulkActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
-            ])
-            ->defaultSort('created_at', 'desc');
-    }
+        public static function table(Table $table): Table
+        {
+            return $table
+                ->columns([
+                    TextColumn::make('name')
+                        ->searchable()
+                        ->sortable(),
+                    TextColumn::make('email')
+                        ->searchable(),
+                    TextColumn::make('phone'),
+                    TextColumn::make('rating')
+                        ->numeric(2),
+                    IconColumn::make('is_verified')
+                        ->boolean(),
+                    IconColumn::make('is_active')
+                        ->boolean(),
+                    TextColumn::make('created_at')
+                        ->dateTime()
+                        ->sortable(),
+                ])
+                ->filters([
+                    TernaryFilter::make('is_verified'),
+                    TernaryFilter::make('is_active'),
+                    SelectFilter::make('specializations'),
+                ])
+                ->actions([
+                    ViewAction::make(),
+                    EditAction::make(),
+                ])
+                ->bulkActions([
+                    BulkActionGroup::make([
+                        DeleteBulkAction::make(),
+                    ]),
+                ])
+                ->defaultSort('created_at', 'desc');
+        }
 
-    public static function getEloquentQuery(): Builder
-    {
-        return parent::getEloquentQuery()
-            ->where('tenant_id', tenant()->id);
-    }
+        public static function getEloquentQuery(): Builder
+        {
+            return parent::getEloquentQuery()
+                ->where('tenant_id', tenant()->id);
+        }
 }

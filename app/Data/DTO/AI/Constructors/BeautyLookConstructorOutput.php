@@ -1,27 +1,30 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Data\DTO\AI\Constructors;
 
-use Spatie\LaravelData\Data;
-use Spatie\LaravelData\Attributes\DataCollectionOf;
-
-final class BeautyLookConstructorOutput extends Data
+/**
+ * @phpstan-type Analysis array<string, mixed>
+ * @phpstan-type RecommendedProducts array<int, RecommendedProductDTO>
+ * @phpstan-type RecommendedServices array<int, RecommendedServiceDTO>
+ */
+final readonly class BeautyLookConstructorOutput
 {
+    /**
+     * @param Analysis $makeupAnalysis
+     * @param Analysis $hairAnalysis
+     * @param Analysis $skinAnalysis
+     * @param RecommendedProducts $recommendedProducts
+     * @param RecommendedServices $recommendedServices
+     */
     public function __construct(
-        public readonly string $lookDescription,
-        public readonly array $makeupAnalysis,
-        public readonly array $hairAnalysis,
-        public readonly array $skinAnalysis,
-        /** @var \App\Data\DTO\AI\Constructors\RecommendedProductDTO[] */
-        #[DataCollectionOf(RecommendedProductDTO::class)]
-        public readonly array $recommendedProducts,
-        /** @var \App\Data\DTO\AI\Constructors\RecommendedServiceDTO[] */
-        #[DataCollectionOf(RecommendedServiceDTO::class)]
-        public readonly array $recommendedServices,
-        public readonly int $totalCost,
-        public readonly string $correlationId,
+        public string $lookDescription,
+        public array $makeupAnalysis,
+        public array $hairAnalysis,
+        public array $skinAnalysis,
+        public array $recommendedProducts,
+        public array $recommendedServices,
+        public int $totalCost,
+        public string $correlationId,
     ) {
     }
 }

@@ -1,36 +1,27 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Listeners\Octane;
 
-use Laravel\Octane\Events\RequestHandled;
-use Illuminate\Support\Facades\Redis;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final /**
- * ResetRedisConnectionListener
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class ResetRedisConnectionListener
+final class ResetRedisConnectionListener extends Model
 {
-    public function handle(RequestHandled $event): void
-    {
-        // Reset Redis connections to prevent stale connections
-        try {
-            Redis::connection()->ping();
-        } catch (\Exception $e) {
-            // Reconnect on failure
-            Redis::connection()->disconnect();
-            Redis::connection()->connect();
-        }
+    use HasFactory;
 
-        // Clear Redis connection pools
-        Redis::flushdb();
-    }
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    public function handle(RequestHandled $event): void
+        {
+            // Reset Redis connections to prevent stale connections
+            try {
+                Redis::connection()->ping();
+            } catch (\Exception $e) {
+                // Reconnect on failure
+                Redis::connection()->disconnect();
+                Redis::connection()->connect();
+            }
+
+            // Clear Redis connection pools
+            Redis::flushdb();
+        }
 }

@@ -1,18 +1,18 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Enums;
 
-/**
- * AppointmentCancellationPolicy (Canon 2026)
- * Политики отмены бронирований.
- */
-enum AppointmentCancellationPolicy: string
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+final class AppointmentCancellationPolicy extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     case FREE = 'free';                 // Полностью бесплатная отмена
-    case STANDARD = 'standard';         // Стандартная (48-72ч)
-    case STRICT_30D = 'strict_30d';     // Строгая 30-дневная (Свадьбы/Корп)
-    case STRICT_14D = 'strict_14d';     // Строгая 14-дневная (Фотосессии/Группы)
-    case NON_REFUNDABLE = 'non_refundable'; // Без возврата (VIP/Спец-акции)
+        case STANDARD = 'standard';         // Стандартная (48-72ч)
+        case STRICT_30D = 'strict_30d';     // Строгая 30-дневная (Свадьбы/Корп)
+        case STRICT_14D = 'strict_14d';     // Строгая 14-дневная (Фотосессии/Группы)
+        case NON_REFUNDABLE = 'non_refundable'; // Без возврата (VIP/Спец-акции)
 }

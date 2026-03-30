@@ -2,11 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\BalanceTransaction;
+use App\Models\Wallet;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use App\Models\Wallet;
-use App\Models\BalanceTransaction;
-use Illuminate\Support\Str;
 
 /**
  * Wallet & Balance Management Service

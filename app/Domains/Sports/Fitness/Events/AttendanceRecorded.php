@@ -1,36 +1,21 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Domains\Sports\Fitness\Events;
 
-use App\Domains\Sports\Fitness\Models\Attendance;
-use Illuminate\Broadcasting\Channel;
-use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Broadcasting\PresenceChannel;
-use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final /**
- * AttendanceRecorded
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class AttendanceRecorded
+final class AttendanceRecorded extends Model
 {
-    use Dispatchable;
-    use InteractsWithSockets;
-    use SerializesModels;
+    use HasFactory;
 
-    public function __construct(
-        public Attendance $attendance,
-        public string $correlationId,
-    ) {}
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    use Dispatchable;
+        use InteractsWithSockets;
+        use SerializesModels;
+
+        public function __construct(
+            public Attendance $attendance,
+            public string $correlationId,
+        ) {}
 }

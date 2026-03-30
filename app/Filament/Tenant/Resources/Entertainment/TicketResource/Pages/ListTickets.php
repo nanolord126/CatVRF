@@ -1,31 +1,27 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Entertainment\TicketResource\Pages;
 
-use App\Filament\Tenant\Resources\Entertainment\TicketResource;
-use Filament\Actions;
-use Filament\Resources\Pages\ListRecords;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * КАНОН 2026 — LIST TICKETS PAGE (Entertainment Domain)
- */
-final class ListTickets extends ListRecords
+final class ListTickets extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = TicketResource::class;
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            Actions\CreateAction::make()
-                ->after(function () {
-                    Log::channel('audit')->info('Entertainment Ticket creation via panel started', [
-                        'tenant_id' => filament()->getTenant()->id,
-                        'user_id' => auth()->id(),
-                    ]);
-                }),
-        ];
-    }
+        protected function getHeaderActions(): array
+        {
+            return [
+                Actions\CreateAction::make()
+                    ->after(function () {
+                        Log::channel('audit')->info('Entertainment Ticket creation via panel started', [
+                            'tenant_id' => filament()->getTenant()->id,
+                            'user_id' => auth()->id(),
+                        ]);
+                    }),
+            ];
+        }
 }

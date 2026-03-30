@@ -1,13 +1,16 @@
 <?php declare(strict_types=1);
+
 namespace App\Http\Controllers\Api\V1;
-use App\Services\Search\SearchService;
+
 use App\Services\Search\ElasticsearchService;
+use App\Services\Search\SearchService;
 use App\Services\Security\RateLimiterService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use OpenApi\Annotations as OA;
+
 /**
  * @OA\Tag(
  *     name="Search",

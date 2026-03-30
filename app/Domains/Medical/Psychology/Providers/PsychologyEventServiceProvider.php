@@ -1,26 +1,23 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Domains\Medical\Psychology\Providers;
 
-use App\Domains\Medical\Psychology\Events\PsychologicalBookingCreated;
-use App\Domains\Medical\Psychology\Listeners\HandlePsychologicalBookingCreated;
-use Illuminate\Foundation\Support\Providers\EventServiceProvider as ServiceProvider;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * Провайдер событий для вертикали Психологии.
- */
-final class PsychologyEventServiceProvider extends ServiceProvider
+final class PsychologyEventServiceProvider extends Model
 {
-    protected $listen = [
-        PsychologicalBookingCreated::class => [
-            HandlePsychologicalBookingCreated::class,
-        ],
-    ];
+    use HasFactory;
 
-    public function boot(): void
-    {
-        parent::boot();
-    }
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    protected $listen = [
+            PsychologicalBookingCreated::class => [
+                HandlePsychologicalBookingCreated::class,
+            ],
+        ];
+
+        public function boot(): void
+        {
+            parent::boot();
+        }
 }

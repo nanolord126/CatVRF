@@ -2,13 +2,13 @@
 
 namespace App\Filament\Tenant;
 
-use Filament\Panel;
-use Filament\PanelProvider;
-use Filament\Support\Colors\Color;
-use Filament\Navigation\NavigationGroup;
-use Filament\Navigation\NavigationItem;
 use App\Http\Middleware\TenantCRMOnly;
 use App\Http\Middleware\TenantScoping;
+use Filament\Navigation\NavigationGroup;
+use Filament\Navigation\NavigationItem;
+use Filament\PanelProvider;
+use Filament\Panel;
+use Filament\Support\Colors\Color;
 
 final class TenantPanelProvider extends PanelProvider
 {

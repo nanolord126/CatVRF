@@ -1,18 +1,19 @@
-<?php
+<?php declare(strict_types=1);
 
-declare(strict_types=1);
+namespace App\Filament\Tenant\Resources\Pages;
 
-namespace App\Filament\Tenant\Resources\MedicalDoctor\Pages;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-use use App\Filament\Tenant\Resources\MedicalDoctorResource;;
-use Filament\Resources\Pages\ViewRecord;
-
-final class ViewMedicalDoctor extends ViewRecord
+final class ViewMedicalDoctor extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = MedicalDoctorResource::class;
 
-    public function getTitle(): string
-    {
-        return 'View MedicalDoctor';
-    }
+        public function getTitle(): string
+        {
+            return 'View MedicalDoctor';
+        }
 }

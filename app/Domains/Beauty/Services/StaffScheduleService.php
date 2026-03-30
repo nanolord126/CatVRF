@@ -2,94 +2,89 @@
 
 namespace App\Domains\Beauty\Services;
 
-use App\Domains\Beauty\Models\Master;
-use App\Services\FraudControlService;
-use Carbon\Carbon;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * Сервис для управления графиком мастеров.
- * Production 2026.
- */
-final class StaffScheduleService
+final class StaffScheduleService extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-        private readonly FraudControlService $fraudControlService,
-    ) {}
-    /**
-     * Автоматически сгенерировать граф ик мастера на основе правил.
-     */
-    public function generateSchedule(Master $master, Carbon $from, Carbon $to, string $correlationId = ''): Collection
-    {
-        $correlationId = $correlationId ?: Str::uuid()->toString();
-        
-        $this->fraudControlService->check(
-            auth()->id() ?? 0,
-            __CLASS__ . '::' . __FUNCTION__,
-            0,
-            request()->ip(),
-            null,
-            $correlationId
-        );
+            private readonly FraudControlService $fraudControlService,
+        ) {}
+        /**
+         * Автоматически сгенерировать граф ик мастера на основе правил.
+         */
+        public function generateSchedule(Master $master, Carbon $from, Carbon $to, string $correlationId = ''): Collection
+        {
+            $correlationId = $correlationId ?: Str::uuid()->toString();
 
-        try {
-            Log::channel('audit')->info('Generating master schedule', [
-                'master_id' => $master->id,
-                'from' => $from->toDateString(),
-                'to' => $to->toDateString(),
-                'correlation_id' => $correlationId,
-            ]);
-            // Возвращает коллекцию доступных слотов
+            $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId
+            );
 
-            $slots = collect();
+            try {
+                Log::channel('audit')->info('Generating master schedule', [
+                    'master_id' => $master->id,
+                    'from' => $from->toDateString(),
+                    'to' => $to->toDateString(),
+                    'correlation_id' => $correlationId,
+                ]);
+                // Возвращает коллекцию доступных слотов
 
-            // Пример: генерируем слоты по 30 минут с 10:00 до 18:00
-            $current = $from->copy()->hour(10)->minute(0)->second(0);
-            $endTime = $to->copy()->hour(18)->minute(0)->second(0);
+                $slots = collect();
 
-            while ($current->lessThan($endTime)) {
-                $slots->push([
-                    'start' => $current->copy()->toDateTimeString(),
-                    'end' => $current->copy()->addMinutes(30)->toDateTimeString(),
-                    'available' => true,
+                // Пример: генерируем слоты по 30 минут с 10:00 до 18:00
+                $current = $from->copy()->hour(10)->minute(0)->second(0);
+                $endTime = $to->copy()->hour(18)->minute(0)->second(0);
+
+                while ($current->lessThan($endTime)) {
+                    $slots->push([
+                        'start' => $current->copy()->toDateTimeString(),
+                        'end' => $current->copy()->addMinutes(30)->toDateTimeString(),
+                        'available' => true,
+                    ]);
+
+                    $current->addMinutes(30);
+                }
+
+                return $slots;
+            } catch (\Throwable $e) {
+                Log::channel('audit')->error('Schedule generation failed', [
+                    'master_id' => $master->id,
+                    'error' => $e->getMessage(),
+                    'correlation_id' => $correlationId,
                 ]);
 
-                $current->addMinutes(30);
+                throw $e;
             }
-
-            return $slots;
-        } catch (\Throwable $e) {
-            Log::channel('audit')->error('Schedule generation failed', [
-                'master_id' => $master->id,
-                'error' => $e->getMessage(),
-                'correlation_id' => $correlationId,
-            ]);
-
-            throw $e;
         }
-    }
 
-    /**
-     * Получить доступные слоты мастера на дату.
-     */
-    public function getAvailableSlots(Master $master, Carbon $date, string $correlationId = ''): Collection
-    {
-        $correlationId = $correlationId ?: Str::uuid()->toString();
-        
-        $this->fraudControlService->check(
-            auth()->id() ?? 0,
-            __CLASS__ . '::' . __FUNCTION__,
-            0,
-            request()->ip(),
-            null,
-            $correlationId
-        );
+        /**
+         * Получить доступные слоты мастера на дату.
+         */
+        public function getAvailableSlots(Master $master, Carbon $date, string $correlationId = ''): Collection
+        {
+            $correlationId = $correlationId ?: Str::uuid()->toString();
 
-        $start = $date->copy()->startOfDay();
-        $end = $date->copy()->endOfDay();
+            $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId
+            );
 
-        return $this->generateSchedule($master, $start, $end, $correlationId);
-    }
+            $start = $date->copy()->startOfDay();
+            $end = $date->copy()->endOfDay();
+
+            return $this->generateSchedule($master, $start, $end, $correlationId);
+        }
 }

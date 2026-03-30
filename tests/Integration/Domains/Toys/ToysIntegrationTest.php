@@ -1,22 +1,19 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace Tests\Integration\Domains\Toys;
 
-use Tests\TestCase;
-use App\Domains\ToysAndGames\Toys\Models\Toy;
-use App\Domains\ToysAndGames\Toys\Models\ToyStore;
-use App\Domains\ToysAndGames\Toys\Models\AgeGroup;
-use App\Domains\ToysAndGames\Toys\Models\ToyCategory;
-use App\Domains\ToysAndGames\Toys\Services\ToyDomainService;
-use App\Domains\ToysAndGames\Toys\Services\AIToyConstructor;
 use App\Domains\ToysAndGames\Toys\DTOs\ToyAIRequestDto;
 use App\Domains\ToysAndGames\Toys\DTOs\VolumeToyOrderDto;
+use App\Domains\ToysAndGames\Toys\Models\AgeGroup;
+use App\Domains\ToysAndGames\Toys\Models\ToyCategory;
+use App\Domains\ToysAndGames\Toys\Models\ToyStore;
+use App\Domains\ToysAndGames\Toys\Models\Toy;
+use App\Domains\ToysAndGames\Toys\Services\AIToyConstructor;
+use App\Domains\ToysAndGames\Toys\Services\ToyDomainService;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Tests\TestCase;
 
 /**
  * ToysIntegrationTest (Layer 9/9)

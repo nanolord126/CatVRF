@@ -1,30 +1,21 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\OfficeCateringResource\Pages;
 
-use App\Filament\Tenant\Resources\OfficeCateringResource;
-use Filament\Resources\Pages\ListRecords;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final /**
- * ListOfficeCaterings
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class ListOfficeCaterings extends ListRecords
+final class ListOfficeCaterings extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = OfficeCateringResource::class;
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            \Filament\Actions\CreateAction::make(),
-        ];
-    }
+        protected function getHeaderActions(): array
+        {
+            return [
+                \Filament\Actions\CreateAction::make(),
+            ];
+        }
 }

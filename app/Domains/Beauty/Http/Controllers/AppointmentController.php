@@ -2,125 +2,114 @@
 
 namespace App\Domains\Beauty\Http\Controllers;
 
-use App\Domains\Beauty\Http\Requests\CreateAppointmentRequest;
-use App\Domains\Beauty\Models\Appointment;
-use App\Domains\Beauty\Services\AppointmentService;
-use App\Http\Controllers\Controller;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * КАНОН 2026: Beauty Appointment Controller (Layer 4)
- * 
- * Особенности:
- * - Использование Str::uuid() для correlation_id.
- * - Логирование всех API-запросов в канал audit.
- * - Обработка исключений с возвращением понятных JSON ответов.
- * - Валидация через FormRequest (Layer 4).
- */
-final class AppointmentController extends Controller
+final class AppointmentController extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-        private readonly AppointmentService $service
-    ) {}
+            private readonly AppointmentService $service
+        ) {}
 
-    /**
-     * Создать запись (POST /appointments).
-     */
-    public function store(CreateAppointmentRequest $request): JsonResponse
-    {
-        $correlationId = (string) Str::uuid();
-        
-        try {
-            Log::channel('audit')->info('API Request: Create Appointment', [
-                'correlation_id' => $correlationId,
-                'data' => $request->validated()
-            ]);
+        /**
+         * Создать запись (POST /appointments).
+         */
+        public function store(CreateAppointmentRequest $request): JsonResponse
+        {
+            $correlationId = (string) Str::uuid();
 
-            $appointment = $this->service->createAppointment(
-                data: $request->validated(),
-                correlationId: $correlationId
-            );
+            try {
+                Log::channel('audit')->info('API Request: Create Appointment', [
+                    'correlation_id' => $correlationId,
+                    'data' => $request->validated()
+                ]);
 
-            return response()->json([
-                'success' => true,
-                'data' => $appointment,
-                'correlation_id' => $correlationId
-            ], 201);
+                $appointment = $this->service->createAppointment(
+                    data: $request->validated(),
+                    correlationId: $correlationId
+                );
 
-        } catch (\Throwable $e) {
-            Log::channel('audit')->error('API Error: Create Appointment Failed', [
-                'correlation_id' => $correlationId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
+                return response()->json([
+                    'success' => true,
+                    'data' => $appointment,
+                    'correlation_id' => $correlationId
+                ], 201);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Не удалось создать запись: ' . $e->getMessage(),
-                'correlation_id' => $correlationId
-            ], 400);
+            } catch (\Throwable $e) {
+                Log::channel('audit')->error('API Error: Create Appointment Failed', [
+                    'correlation_id' => $correlationId,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Не удалось создать запись: ' . $e->getMessage(),
+                    'correlation_id' => $correlationId
+                ], 400);
+            }
         }
-    }
 
-    /**
-     * Завершить запись (PATCH /appointments/{appointment}/complete).
-     */
-    public function complete(Appointment $appointment): JsonResponse
-    {
-        $correlationId = (string) Str::uuid();
+        /**
+         * Завершить запись (PATCH /appointments/{appointment}/complete).
+         */
+        public function complete(Appointment $appointment): JsonResponse
+        {
+            $correlationId = (string) Str::uuid();
 
-        try {
-            $this->service->completeAppointment($appointment, $correlationId);
+            try {
+                $this->service->completeAppointment($appointment, $correlationId);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Запись успешно завершена и оплачена.',
-                'correlation_id' => $correlationId
-            ]);
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Запись успешно завершена и оплачена.',
+                    'correlation_id' => $correlationId
+                ]);
 
-        } catch (\Throwable $e) {
-            Log::channel('audit')->error('API Error: Complete Appointment Failed', [
-                'correlation_id' => $correlationId,
-                'error' => $e->getMessage()
-            ]);
+            } catch (\Throwable $e) {
+                Log::channel('audit')->error('API Error: Complete Appointment Failed', [
+                    'correlation_id' => $correlationId,
+                    'error' => $e->getMessage()
+                ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-                'correlation_id' => $correlationId
-            ], 400);
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                    'correlation_id' => $correlationId
+                ], 400);
+            }
         }
-    }
 
-    /**
-     * Отменить запись (POST /appointments/{appointment}/cancel).
-     */
-    public function cancel(Appointment $appointment): JsonResponse
-    {
-        $correlationId = (string) Str::uuid();
+        /**
+         * Отменить запись (POST /appointments/{appointment}/cancel).
+         */
+        public function cancel(Appointment $appointment): JsonResponse
+        {
+            $correlationId = (string) Str::uuid();
 
-        try {
-            $this->service->cancelAppointment($appointment, $correlationId);
+            try {
+                $this->service->cancelAppointment($appointment, $correlationId);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Запись успешно отменена.',
-                'correlation_id' => $correlationId
-            ]);
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Запись успешно отменена.',
+                    'correlation_id' => $correlationId
+                ]);
 
-        } catch (\Throwable $e) {
-            Log::channel('audit')->error('API Error: Cancel Appointment Failed', [
-                'correlation_id' => $correlationId,
-                'error' => $e->getMessage()
-            ]);
+            } catch (\Throwable $e) {
+                Log::channel('audit')->error('API Error: Cancel Appointment Failed', [
+                    'correlation_id' => $correlationId,
+                    'error' => $e->getMessage()
+                ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Ошибка при отмене: ' . $e->getMessage(),
-                'correlation_id' => $correlationId
-            ], 400);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Ошибка при отмене: ' . $e->getMessage(),
+                    'correlation_id' => $correlationId
+                ], 400);
+            }
         }
-    }
 }

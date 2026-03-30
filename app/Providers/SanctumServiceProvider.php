@@ -1,33 +1,24 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Providers;
 
-use Laravel\Sanctum\Sanctum;
-use Illuminate\Support\ServiceProvider;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final /**
- * SanctumServiceProvider
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class SanctumServiceProvider extends ServiceProvider
+final class SanctumServiceProvider extends Model
 {
-    public function register(): void
-    {
-        Sanctum::usePersonalAccessTokenModel(\App\Models\PersonalAccessToken::class);
-    }
+    use HasFactory;
 
-    public function boot(): void
-    {
-        Sanctum::defaultApiTokenExpiration(config('sanctum.expiration'));
-        
-        Sanctum::authenticateSessionsWith('sanctum');
-    }
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    public function register(): void
+        {
+            Sanctum::usePersonalAccessTokenModel(\App\Models\PersonalAccessToken::class);
+        }
+
+        public function boot(): void
+        {
+            Sanctum::defaultApiTokenExpiration(config('sanctum.expiration'));
+
+            Sanctum::authenticateSessionsWith('sanctum');
+        }
 }

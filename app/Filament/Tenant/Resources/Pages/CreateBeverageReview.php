@@ -1,18 +1,19 @@
-<?php
+<?php declare(strict_types=1);
 
-declare(strict_types=1);
+namespace App\Filament\Tenant\Resources\Pages;
 
-namespace App\Filament\Tenant\Resources\BeverageReview\Pages;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-use use App\Filament\Tenant\Resources\BeverageReviewResource;;
-use Filament\Resources\Pages\CreateRecord;
-
-final class CreateBeverageReview extends CreateRecord
+final class CreateBeverageReview extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = BeverageReviewResource::class;
 
-    public function getTitle(): string
-    {
-        return 'Create BeverageReview';
-    }
+        public function getTitle(): string
+        {
+            return 'Create BeverageReview';
+        }
 }

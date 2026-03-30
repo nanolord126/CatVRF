@@ -2,25 +2,20 @@
 
 namespace App\Domains\Fashion\Events;
 
-use App\Domains\Fashion\Models\FashionProduct;
-use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * ItemReservedEvent
- * 
- * Событие резервирования товара на 20 минут.
- * Канон 2026: correlation_id, типизация.
- */
-final class ItemReservedEvent
+final class ItemReservedEvent extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public function __construct(
-        public readonly FashionProduct $product,
-        public readonly int $quantity,
-        public readonly string $correlationId,
-        public readonly int $expiresInMinutes = 20
-    ) {}
+        public function __construct(
+            public readonly FashionProduct $product,
+            public readonly int $quantity,
+            public readonly string $correlationId,
+            public readonly int $expiresInMinutes = 20
+        ) {}
 }

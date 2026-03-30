@@ -1,108 +1,94 @@
-<?php
-declare(strict_types=1);
+<?php declare(strict_types=1);
+
 namespace App\Http\Controllers\Luxury;
-use App\Http\Controllers\Controller;
-use App\Domains\Luxury\Services\ConciergeService;
-use App\Domains\Luxury\Models\LuxuryProduct;
-use App\Domains\Luxury\Models\LuxuryService;
-use App\Domains\Luxury\Models\LuxuryClient;
-use App\Domains\Luxury\Models\VIPBooking;
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
-use Throwable;
-/**
- * LuxuryBookingController
- *
- * Layer 3: API Controller Layer
- * Отвечает за API бронирования VIP-товаров и услуг.
- * Все мутации внутри DB::transaction.
- *
- * @version 1.0.0
- * @author CatVRF
- */
-final class LuxuryBookingController extends Controller
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+final class LuxuryBookingController extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-        private readonly ConciergeService $conciergeService
-    ) {
-        // PRODUCTION-READY 2026 CANON: Middleware для Luxury вертикали
-         // VIP требует авторизации
-         // 20 запросов/мин для премиум операций
-         // Определение режима B2C/B2B
-         // Tenant scoping обязателен
-        // Fraud check для всех мутаций (высокая стоимость)
-        $this->middleware(
-            'fraud-check',
-            ['only' => ['store', 'update', 'cancel', 'confirmPayment']]
-        );
-    }
-    /**
-     * Запрос на VIP-бронирование
-     */
-    public function store(Request $request): JsonResponse
-    {
-        $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
-        // 1. Валидация входных данных
-        $validated = $request->validate([
-            'client_uuid' => 'required|uuid|exists:luxury_clients,uuid',
-            'bookable_type' => 'required|string|in:product,service',
-            'bookable_uuid' => 'required|uuid',
-            'booking_at' => 'required|date|after:now',
-            'duration_minutes' => 'nullable|integer|min:0',
-            'notes' => 'nullable|string|max:500',
-        ]);
-        try {
-            // 2. Инициализация сервисов и клиента
-            $concierge = new ConciergeService(app(\App\Services\FraudControlService::class), $correlationId);
-            $client = LuxuryClient::where('uuid', $validated['client_uuid'])->firstOrFail();
-            // 3. Определение объекта бронирования
-            $bookable = match ($validated['bookable_type']) {
-                'product' => LuxuryProduct::where('uuid', $validated['bookable_uuid'])->firstOrFail(),
-                'service' => LuxuryService::where('uuid', $validated['bookable_uuid'])->firstOrFail(),
-                default => abort(422, 'Invalid bookable type'),
-            };
-            // 4. Выполнение бронирования в доменном сервисе
-            $booking = $concierge->createBooking($client, $bookable, $validated);
+            private readonly ConciergeService $conciergeService
+        ) {
+            // PRODUCTION-READY 2026 CANON: Middleware для Luxury вертикали
+             // VIP требует авторизации
+             // 20 запросов/мин для премиум операций
+             // Определение режима B2C/B2B
+             // Tenant scoping обязателен
+            // Fraud check для всех мутаций (высокая стоимость)
+            $this->middleware(
+                'fraud-check',
+                ['only' => ['store', 'update', 'cancel', 'confirmPayment']]
+            );
+        }
+        /**
+         * Запрос на VIP-бронирование
+         */
+        public function store(Request $request): JsonResponse
+        {
+            $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
+            // 1. Валидация входных данных
+            $validated = $request->validate([
+                'client_uuid' => 'required|uuid|exists:luxury_clients,uuid',
+                'bookable_type' => 'required|string|in:product,service',
+                'bookable_uuid' => 'required|uuid',
+                'booking_at' => 'required|date|after:now',
+                'duration_minutes' => 'nullable|integer|min:0',
+                'notes' => 'nullable|string|max:500',
+            ]);
+            try {
+                // 2. Инициализация сервисов и клиента
+                $concierge = new ConciergeService(app(\App\Services\FraudControlService::class), $correlationId);
+                $client = LuxuryClient::where('uuid', $validated['client_uuid'])->firstOrFail();
+                // 3. Определение объекта бронирования
+                $bookable = match ($validated['bookable_type']) {
+                    'product' => LuxuryProduct::where('uuid', $validated['bookable_uuid'])->firstOrFail(),
+                    'service' => LuxuryService::where('uuid', $validated['bookable_uuid'])->firstOrFail(),
+                    default => abort(422, 'Invalid bookable type'),
+                };
+                // 4. Выполнение бронирования в доменном сервисе
+                $booking = $concierge->createBooking($client, $bookable, $validated);
+                return response()->json([
+                    'status' => 'success',
+                    'data' => [
+                        'booking_uuid' => $booking->uuid,
+                        'status' => $booking->status,
+                        'booking_at' => $booking->booking_at->toIso8601String(),
+                    ],
+                    'correlation_id' => $correlationId,
+                ], 201);
+            } catch (Throwable $e) {
+                Log::channel('audit')->error('Luxury Booking Failed', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                    'correlation_id' => $correlationId,
+                ]);
+                return response()->json([
+                    'status' => 'error',
+                    'message' => $e->getMessage(),
+                    'correlation_id' => $correlationId,
+                ], $e->getCode() ?: 500);
+            }
+        }
+        /**
+         * Список моих VIP-бронирований
+         */
+        public function index(Request $request): JsonResponse
+        {
+            $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
+            $bookings = VIPBooking::with(['client', 'bookable'])
+                ->whereHas('client', function ($q) {
+                    $q->where('user_id', auth()->id());
+                })
+                ->latest()
+                ->paginate(15);
             return response()->json([
                 'status' => 'success',
-                'data' => [
-                    'booking_uuid' => $booking->uuid,
-                    'status' => $booking->status,
-                    'booking_at' => $booking->booking_at->toIso8601String(),
-                ],
-                'correlation_id' => $correlationId,
-            ], 201);
-        } catch (Throwable $e) {
-            Log::channel('audit')->error('Luxury Booking Failed', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
+                'data' => $bookings,
                 'correlation_id' => $correlationId,
             ]);
-            return response()->json([
-                'status' => 'error',
-                'message' => $e->getMessage(),
-                'correlation_id' => $correlationId,
-            ], $e->getCode() ?: 500);
         }
-    }
-    /**
-     * Список моих VIP-бронирований
-     */
-    public function index(Request $request): JsonResponse
-    {
-        $correlationId = $request->header('X-Correlation-ID', (string) Str::uuid());
-        $bookings = VIPBooking::with(['client', 'bookable'])
-            ->whereHas('client', function ($q) {
-                $q->where('user_id', auth()->id());
-            })
-            ->latest()
-            ->paginate(15);
-        return response()->json([
-            'status' => 'success',
-            'data' => $bookings,
-            'correlation_id' => $correlationId,
-        ]);
-    }
 }

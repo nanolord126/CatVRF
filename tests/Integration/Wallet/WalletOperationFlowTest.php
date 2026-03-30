@@ -1,14 +1,12 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace Tests\Integration\Wallet;
 
-use App\Models\Wallet;
 use App\Models\BalanceTransaction;
 use App\Models\Payment;
-use App\Models\User;
 use App\Models\Tenant;
+use App\Models\User;
+use App\Models\Wallet;
 use App\Services\Payments\PaymentService;
 use App\Services\Wallet\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;

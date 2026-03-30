@@ -1,5 +1,0 @@
-PHP Warning:  foreach() argument must be of type array|object, bool given in C:\opt\kotvrf\CatVRF\final_production_audit.php on line 27
-PHP Fatal error:  Uncaught DivisionByZeroError: Division by zero in C:\opt\kotvrf\CatVRF\final_production_audit.php:88
-Stack trace:
-#0 {main}
-  thrown in C:\opt\kotvrf\CatVRF\final_production_audit.php on line 88

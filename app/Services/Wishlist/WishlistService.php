@@ -2,7 +2,6 @@
 
 namespace App\Services\Wishlist;
 
-use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;

@@ -1,106 +1,105 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
-use Illuminate\Cache\RateLimiting\Limit;
-use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final class ProductionBootstrapServiceProvider extends ServiceProvider
+final class ProductionBootstrapServiceProvider extends Model
 {
-    public function register(): void
-    {
-        // Регистрация сервисов в production-контексте
-    }
+    use HasFactory;
 
-    public function boot(): void
-    {
-        // Кэширование маршрутов и конфига в production
-        if ($this->app->environment('production')) {
-            $this->bootCaching();
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    public function register(): void
+        {
+            // Регистрация сервисов в production-контексте
         }
 
-        // RateLimiter для критичных операций
-        $this->bootRateLimiting();
+        public function boot(): void
+        {
+            // Кэширование маршрутов и конфига в production
+            if ($this->app->environment('production')) {
+                $this->bootCaching();
+            }
 
-        // Логирование
-        $this->bootLogging();
-    }
+            // RateLimiter для критичных операций
+            $this->bootRateLimiting();
 
-    /**
-     * Кэширование маршрутов и конфига в production.
-     */
-    private function bootCaching(): void
-    {
+            // Логирование
+            $this->bootLogging();
+        }
 
-        Log::info('Production caching enabled', [
-            'config_cached' => true,
-            'routes_cached' => true,
-        ]);
-    }
+        /**
+         * Кэширование маршрутов и конфига в production.
+         */
+        private function bootCaching(): void
+        {
 
-    /**
-     * Настройка RateLimiter (tenant-aware и user-aware).
-     */
-    private function bootRateLimiting(): void
-    {
-        // Лимит для публичных эндпоинтов платежей
-        RateLimiter::for('payments', function ($request) {
-            return Limit::perMinute(50)
-                ->by($request->user()?->id ?: $request->ip())
-                ->response(function ($request, $limit) {
-                    return response()->json([
-                        'error' => 'Too many payment requests',
-                        'retry_after' => $limit->secondsUntilReset,
-                    ], 429);
-                });
-        });
+            Log::info('Production caching enabled', [
+                'config_cached' => true,
+                'routes_cached' => true,
+            ]);
+        }
 
-        // Лимит для промокодов (100 попыток/мин)
-        RateLimiter::for('promo', function ($request) {
-            return Limit::perMinute(100)
-                ->by($request->user()?->id ?: $request->ip());
-        });
+        /**
+         * Настройка RateLimiter (tenant-aware и user-aware).
+         */
+        private function bootRateLimiting(): void
+        {
+            // Лимит для публичных эндпоинтов платежей
+            RateLimiter::for('payments', function ($request) {
+                return Limit::perMinute(50)
+                    ->by($request->user()?->id ?: $request->ip())
+                    ->response(function ($request, $limit) {
+                        return response()->json([
+                            'error' => 'Too many payment requests',
+                            'retry_after' => $limit->secondsUntilReset,
+                        ], 429);
+                    });
+            });
 
-        // Лимит для вишлиста (200 операций/мин)
-        RateLimiter::for('wishlist', function ($request) {
-            return Limit::perMinute(200)
-                ->by($request->user()?->id ?: $request->ip());
-        });
+            // Лимит для промокодов (100 попыток/мин)
+            RateLimiter::for('promo', function ($request) {
+                return Limit::perMinute(100)
+                    ->by($request->user()?->id ?: $request->ip());
+            });
 
-        // Лимит для рефералов (50 попыток применить код/мин)
-        RateLimiter::for('referral', function ($request) {
-            return Limit::perMinute(50)
-                ->by($request->user()?->id ?: $request->ip());
-        });
+            // Лимит для вишлиста (200 операций/мин)
+            RateLimiter::for('wishlist', function ($request) {
+                return Limit::perMinute(200)
+                    ->by($request->user()?->id ?: $request->ip());
+            });
 
-        // Лимит для B2B массовых операций (10 импортов/день)
-        RateLimiter::for('bulk_import', function ($request) {
-            $tenantId = $request->user()?->current_tenant_id ?? 0;
+            // Лимит для рефералов (50 попыток применить код/мин)
+            RateLimiter::for('referral', function ($request) {
+                return Limit::perMinute(50)
+                    ->by($request->user()?->id ?: $request->ip());
+            });
 
-            return Limit::perDay(10)
-                ->by("bulk_import_{$tenantId}");
-        });
+            // Лимит для B2B массовых операций (10 импортов/день)
+            RateLimiter::for('bulk_import', function ($request) {
+                $tenantId = $request->user()?->current_tenant_id ?? 0;
 
-        Log::info('RateLimiter configured for production', [
-            'limiters' => ['payments', 'promo', 'wishlist', 'referral', 'bulk_import'],
-        ]);
-    }
+                return Limit::perDay(10)
+                    ->by("bulk_import_{$tenantId}");
+            });
 
-    /**
-     * Настройка логирования.
-     */
-    private function bootLogging(): void
-    {
-        // Используем канал 'audit' для всех критичных действий
-        // Канал определен в config/logging.php
+            Log::info('RateLimiter configured for production', [
+                'limiters' => ['payments', 'promo', 'wishlist', 'referral', 'bulk_import'],
+            ]);
+        }
 
-        Log::info('Production logging enabled', [
-            'audit_channel' => 'audit',
-            'environment' => app()->environment(),
-        ]);
-    }
+        /**
+         * Настройка логирования.
+         */
+        private function bootLogging(): void
+        {
+            // Используем канал 'audit' для всех критичных действий
+            // Канал определен в config/logging.php
+
+            Log::info('Production logging enabled', [
+                'audit_channel' => 'audit',
+                'environment' => app()->environment(),
+            ]);
+        }
 }

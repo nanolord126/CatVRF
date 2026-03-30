@@ -2,8 +2,8 @@
 
 namespace App\Services\Marketing;
 
-use App\Models\Referral;
 use App\Models\ReferralReward;
+use App\Models\Referral;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;

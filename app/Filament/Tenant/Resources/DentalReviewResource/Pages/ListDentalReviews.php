@@ -1,21 +1,21 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\DentalReviewResource\Pages;
 
-use App\Filament\Tenant\Resources\DentalReviewResource;
-use Filament\Actions;
-use Filament\Resources\Pages\ListRecords;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final class ListDentalReviews extends ListRecords
+final class ListDentalReviews extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = DentalReviewResource::class;
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            Actions\CreateAction::make(),
-        ];
-    }
+        protected function getHeaderActions(): array
+        {
+            return [
+                Actions\CreateAction::make(),
+            ];
+        }
 }

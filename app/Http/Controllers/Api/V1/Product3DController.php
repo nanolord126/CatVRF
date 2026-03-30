@@ -1,10 +1,13 @@
 <?php declare(strict_types=1);
-namespace App\Http\Controllers\API\V1;
+
+namespace App\Http\Controllers\Api\V1;
+
 use App\Http\Controllers\Controller;
 use App\Services\ThreeD\Product3DService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+
 final class Product3DController extends Controller
 {
     public function __construct(private readonly Product3DService $service) {}

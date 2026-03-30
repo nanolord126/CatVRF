@@ -1,23 +1,14 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Food\Pages;
 
-use App\Filament\Tenant\Resources\Food\RestaurantResource;
-use Filament\Resources\Pages\EditRecord;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final /**
- * EditRestaurant
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class EditRestaurant extends EditRecord
+final class EditRestaurant extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = RestaurantResource::class;
 }

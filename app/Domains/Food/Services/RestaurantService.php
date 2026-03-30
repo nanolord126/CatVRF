@@ -1,15 +1,14 @@
 <?php declare(strict_types=1);
 
-namespace Modules\Food\Services;
+namespace App\Domains\Food\Services;
 
-use Illuminate\Support\Collection;
+use App\Services\FraudControlService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Modules\Food\Models\Restaurant;
-use Modules\Food\Models\RestaurantOrder;
-use Modules\Inventory\Services\InventoryManagementService;
 use Illuminate\Support\Str;
-use App\Services\FraudControlService;
+use Modules\Food\Models\RestaurantOrder;
+use Modules\Food\Models\Restaurant;
+use Modules\Inventory\Services\InventoryManagementService;
 
 /**
  * Restaurant Management Service

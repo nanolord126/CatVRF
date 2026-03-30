@@ -1,31 +1,14 @@
 <?php declare(strict_types=1);
-namespac
 
-/**
- * EventHall
- * 
- * Производитель: CatVRF Platform
- * Версия: 1.0.0
- * 
- * Примеры использования:
- * 
- * ```php
- * // Базовое использование
- * $instance = new EventHall();
- * ```
- * 
- * Требования:
- * - Laravel 10+
- * - PHP 8.2+
- * - Все методы должны быть явно типизированы
- * 
- * @author CatVRF
- * @package namespace App\Domains\EventPlanning\EventHalls\Models
- * @see https://github.com/iyegorovskyi_clemny/CatVRF
- */
-e App\Domains\EventPlanning\EventHalls\Models;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
+namespace App\Domains\EventPlanning\EventHalls\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Traits\TenantScoped;
-final class EventHall extends Model{use HasUuids,SoftDeletes,TenantScoped;protected $table='event_halls';protected $fillable=['uuid','tenant_id','user_id','correlation_id','name','capacity','price_kopecks_per_hour','rating','is_verified','tags'];protected $casts=['capacity'=>'integer','price_kopecks_per_hour'=>'integer','rating'=>'float','is_verified'=>'boolean','tags'=>'json'];protected static function booted(){static::addGlobalScope('tenant',fn($q)=>$q->where('event_halls.tenant_id',tenant()->id));}}
+
+final class EventHall extends Model
+{
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    use HasUuids,SoftDeletes,TenantScoped;protected $table='event_halls';protected $fillable=['uuid','tenant_id','user_id','correlation_id','name','capacity','price_kopecks_per_hour','rating','is_verified','tags'];protected $casts=['capacity'=>'integer','price_kopecks_per_hour'=>'integer','rating'=>'float','is_verified'=>'boolean','tags'=>'json'];protected static function booted(){static::addGlobalScope('tenant',fn($q)=>$q->where('event_halls.tenant_id',tenant()->id));}
+}

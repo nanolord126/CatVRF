@@ -2,14 +2,13 @@
 
 namespace App\Notifications;
 
-use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 
 /**
  * Base class for email notifications
- * 
+ *
  * Интеграция с Mailgun/SendGrid/SES через Laravel Mail
  */
 abstract class BaseMailableNotification extends BaseNotification

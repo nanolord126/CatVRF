@@ -2,11 +2,11 @@
 
 namespace App\Http\Middleware;
 
+use Carbon\Carbon;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use Carbon\Carbon;
 
 /**
  * AgeVerificationMiddleware — Проверка возраста пользователя для чувствительных вертикалей

@@ -1,23 +1,14 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Domains\HomeServices\Filament\Resources\ServiceListingResource\Pages;
 
-use App\Domains\HomeServices\Filament\Resources\ServiceListingResource;
-use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final /**
- * CreateServiceListing
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class CreateServiceListing extends CreateRecord
+final class CreateServiceListing extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = ServiceListingResource::class;
 }

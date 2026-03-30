@@ -14,7 +14,7 @@ class CreateStrProperty extends CreateRecord
     {
         $data['uuid'] = (string) Str::uuid();
         $data['correlation_id'] = request()->header('X-Correlation-ID', (string) Str::uuid());
-        
+
         return $data;
     }
 }

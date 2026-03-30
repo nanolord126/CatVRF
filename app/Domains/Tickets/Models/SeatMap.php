@@ -1,119 +1,111 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Domains\Tickets\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Spatie\Activitylog\Traits\LogsActivity;
-use Spatie\Activitylog\LogOptions;
-use Illuminate\Support\Str;
 
-/**
- * КАНОН 2026: Схема рассадки для зала.
- * Слой 2: Модели.
- */
 final class SeatMap extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use SoftDeletes, LogsActivity;
 
-    protected $table = 'seat_maps';
+        protected $table = 'seat_maps';
 
-    protected $fillable = [
-        'uuid', 'tenant_id', 'venue_id', 'title', 
-        'layout', 'description', 'capacity_info', 
-        'is_active', 'tags', 'correlation_id'
-    ];
+        protected $fillable = [
+            'uuid', 'tenant_id', 'venue_id', 'title',
+            'layout', 'description', 'capacity_info',
+            'is_active', 'tags', 'correlation_id'
+        ];
 
-    protected $casts = [
-        'layout' => 'json',
-        'capacity_info' => 'json',
-        'is_active' => 'boolean',
-        'tags' => 'json'
-    ];
+        protected $casts = [
+            'layout' => 'json',
+            'capacity_info' => 'json',
+            'is_active' => 'boolean',
+            'tags' => 'json'
+        ];
 
-    protected static function booted(): void
-    {
-        static::addGlobalScope('tenant', function ($builder) {
-            if (function_exists('tenant') && tenant('id')) {
-                $builder->where('tenant_id', tenant('id'));
+        protected static function booted(): void
+        {
+            static::addGlobalScope('tenant', function ($builder) {
+                if (function_exists('tenant') && tenant('id')) {
+                    $builder->where('tenant_id', tenant('id'));
+                }
+            });
+
+            static::creating(function ($model) {
+                $model->uuid = (string) Str::uuid();
+                if (empty($model->tenant_id) && function_exists('tenant')) {
+                    $model->tenant_id = tenant('id');
+                }
+            });
+        }
+
+        public function getActivitylogOptions(): LogOptions
+        {
+            return LogOptions::defaults()
+                ->logOnly(['title', 'layout', 'is_active'])
+                ->logOnlyDirty()
+                ->dontSubmitEmptyLogs()
+                ->useLogName('audit');
+        }
+
+        /**
+         * Площадка для схемы.
+         */
+        public function venue(): BelongsTo
+        {
+            return $this->belongsTo(Venue::class);
+        }
+
+        /**
+         * Эвенты по этой схеме.
+         */
+        public function events(): HasMany
+        {
+            return $this->hasMany(Event::class);
+        }
+
+        /**
+         * Список секторов.
+         */
+        public function getSectorsAttribute(): array
+        {
+            return array_column($this->layout['sectors'] ?? [], 'name');
+        }
+
+        /**
+         * Общий лимит по секторам.
+         */
+        public function getTotalCapacityAttribute(): int
+        {
+            $sum = 0;
+            foreach ($this->layout['sectors'] ?? [] as $sector) {
+                $sum += $sector['capacity'] ?? 0;
             }
-        });
+            return $sum;
+        }
 
-        static::creating(function ($model) {
-            $model->uuid = (string) Str::uuid();
-            if (empty($model->tenant_id) && function_exists('tenant')) {
-                $model->tenant_id = tenant('id');
+        /**
+         * Валидация места по схеме.
+         */
+        public function isValidSeat(string $sector, ?int $row, ?int $number): bool
+        {
+            $sectorData = collect($this->layout['sectors'] ?? [])
+                ->firstWhere('name', $sector);
+
+            if (!$sectorData) {
+                return false;
             }
-        });
-    }
 
-    public function getActivitylogOptions(): LogOptions
-    {
-        return LogOptions::defaults()
-            ->logOnly(['title', 'layout', 'is_active'])
-            ->logOnlyDirty()
-            ->dontSubmitEmptyLogs()
-            ->useLogName('audit');
-    }
+            if (isset($sectorData['rows']) && !is_null($row)) {
+                $rowData = collect($sectorData['rows'])->firstWhere('number', $row);
+                if (!$rowData) return false;
+                if ($number > ($rowData['seats'] ?? 0)) return false;
+            }
 
-    /**
-     * Площадка для схемы.
-     */
-    public function venue(): BelongsTo
-    {
-        return $this->belongsTo(Venue::class);
-    }
-
-    /**
-     * Эвенты по этой схеме.
-     */
-    public function events(): HasMany
-    {
-        return $this->hasMany(Event::class);
-    }
-
-    /**
-     * Список секторов.
-     */
-    public function getSectorsAttribute(): array
-    {
-        return array_column($this->layout['sectors'] ?? [], 'name');
-    }
-
-    /**
-     * Общий лимит по секторам.
-     */
-    public function getTotalCapacityAttribute(): int
-    {
-        $sum = 0;
-        foreach ($this->layout['sectors'] ?? [] as $sector) {
-            $sum += $sector['capacity'] ?? 0;
+            return true;
         }
-        return $sum;
-    }
-
-    /**
-     * Валидация места по схеме.
-     */
-    public function isValidSeat(string $sector, ?int $row, ?int $number): bool
-    {
-        $sectorData = collect($this->layout['sectors'] ?? [])
-            ->firstWhere('name', $sector);
-
-        if (!$sectorData) {
-            return false;
-        }
-
-        if (isset($sectorData['rows']) && !is_null($row)) {
-            $rowData = collect($sectorData['rows'])->firstWhere('number', $row);
-            if (!$rowData) return false;
-            if ($number > ($rowData['seats'] ?? 0)) return false;
-        }
-
-        return true;
-    }
 }

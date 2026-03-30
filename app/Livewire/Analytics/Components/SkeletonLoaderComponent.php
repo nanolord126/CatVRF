@@ -1,27 +1,22 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Livewire\Analytics\Components;
 
-use Livewire\Component;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * Компонент: Skeleton Loading для графиков
- * 
- * Отображает плейсхолдер во время загрузки данных
- * Плавное исчезновение при готовности
- */
-final class SkeletonLoaderComponent extends Component
+final class SkeletonLoaderComponent extends Model
 {
-    public bool $isLoading = true;
-    public int $lines = 5; // Количество линий в скелете
+    use HasFactory;
 
-    public function render()
-    {
-        return view('livewire.analytics.components.skeleton-loader-component', [
-            'displayedLines' => range(1, $this->lines),
-        ]);
-    }
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    public bool $isLoading = true;
+        public int $lines = 5; // Количество линий в скелете
+
+        public function render()
+        {
+            return view('livewire.analytics.components.skeleton-loader-component', [
+                'displayedLines' => range(1, $this->lines),
+            ]);
+        }
 }

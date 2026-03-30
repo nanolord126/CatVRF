@@ -1,25 +1,11 @@
-<?php
+<?php declare(strict_types=1);
 
-declare(strict_types=1);
-
-
-namespace App\Services\ThreeD;
+namespace App\Services\3D;
 
 use Illuminate\Support\Str;
 
-final /**
- * ClothingARService
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class ClothingARService
+final class ClothingARService
 {
-    // Dependencies injected via constructor
-    // Add private readonly properties here
     public function generateClothingARModel(array $clothingData): array
     {
         return [
@@ -58,4 +44,3 @@ class ClothingARService
         return "/3d-models/clothing/{$clothingData['sku']}.gltf";
     }
 }
-

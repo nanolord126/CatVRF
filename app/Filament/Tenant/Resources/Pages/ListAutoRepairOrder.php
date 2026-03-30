@@ -1,43 +1,46 @@
-<?php
+<?php declare(strict_types=1);
 
-declare(strict_types=1);
+namespace App\Filament\Tenant\Resources\Pages;
 
-namespace App\Filament\Tenant\Resources\AutoRepairOrder\Pages;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-use use App\Filament\Tenant\Resources\AutoRepairOrderResource;;
-use Filament\Resources\Pages\ListRecords;
-use Filament\Actions\CreateAction;
-use Filament\Tables\Actions\{EditAction, DeleteAction};
-use Filament\Tables\Actions\DeleteBulkAction;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-
-final class ListAutoRepairOrder extends ListRecords
+final class ListAutoRepairOrder extends Model
 {
-    protected static string $resource = AutoRepairOrderResource::class;
+    use HasFactory;
 
-    public function getTitle(): string
-    {
-        return 'List AutoRepairOrder';
-    }
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    EditAction, DeleteAction};
+    use Filament\Tables\Actions\DeleteBulkAction;
+    use Filament\Tables\Columns\TextColumn;
+    use Filament\Tables\Table;
+    use Illuminate\Database\Eloquent\Builder;
 
-    protected function getHeaderActions(): array
+    final class ListAutoRepairOrder extends ListRecords
     {
-        return [
-            CreateAction::make(),
-        ];
-    }
+        protected static string $resource = AutoRepairOrderResource::class;
 
-    public function table(Table $table): Table
-    {
-        return $table
-            ->columns([
-                TextColumn::make('id')->sortable(),
-                TextColumn::make('created_at')->dateTime()->sortable(),
-            ])
-            ->filters([])
-            ->actions([EditAction::make(), DeleteAction::make()])
-            ->bulkActions([DeleteBulkAction::make()]);
-    }
+        public function getTitle(): string
+        {
+            return 'List AutoRepairOrder';
+        }
+
+        protected function getHeaderActions(): array
+        {
+            return [
+                CreateAction::make(),
+            ];
+        }
+
+        public function table(Table $table): Table
+        {
+            return $table
+                ->columns([
+                    TextColumn::make('id')->sortable(),
+                    TextColumn::make('created_at')->dateTime()->sortable(),
+                ])
+                ->filters([])
+                ->actions([EditAction::make(), DeleteAction::make()])
+                ->bulkActions([DeleteBulkAction::make()]);
+        }
 }

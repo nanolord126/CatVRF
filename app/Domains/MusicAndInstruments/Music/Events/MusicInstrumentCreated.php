@@ -1,26 +1,22 @@
-<?php
+<?php declare(strict_types=1);
 
-declare(strict_types=1);
+namespace App\Domains\MusicAndInstruments\Music\Events;
 
-namespace App\Domains\MusicAndInstruments\MusicAndInstruments\Music\Events;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-use App\Domains\MusicAndInstruments\MusicAndInstruments\Music\Models\MusicInstrument;
-use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
-
-/**
- * Event fired when a new musical instrument is registered.
- */
-final class MusicInstrumentCreated
+final class MusicInstrumentCreated extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    /**
-     * Create a new event instance.
-     */
-    public function __construct(
-        public MusicInstrument $instrument,
-        public string $correlationId
-    ) {}
+        /**
+         * Create a new event instance.
+         */
+        public function __construct(
+            public MusicInstrument $instrument,
+            public string $correlationId
+        ) {}
 }

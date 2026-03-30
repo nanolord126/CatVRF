@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-namespace App\Services\ThreeD;
+namespace App\Services\3D;
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -63,5 +63,3 @@ final class Product3DService
         ];
     }
 }
-
-

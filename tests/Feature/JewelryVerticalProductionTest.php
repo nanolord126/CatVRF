@@ -1,21 +1,19 @@
-<?php
+<?php declare(strict_types=1);
 
-declare(strict_types=1);
+namespace Tests\Feature;
 
-namespace App\Domains\Luxury\Jewelry\Tests;
-
-use Tests\TestCase;
+use App\Domains\Luxury\Jewelry\DTOs\AIRecommendationRequest;
+use App\Domains\Luxury\Jewelry\DTOs\JewelryProductDto;
+use App\Domains\Luxury\Jewelry\Models\JewelryCategory;
 use App\Domains\Luxury\Jewelry\Models\JewelryProduct;
 use App\Domains\Luxury\Jewelry\Models\JewelryStore;
-use App\Domains\Luxury\Jewelry\Models\JewelryCategory;
-use App\Domains\Luxury\Jewelry\Services\JewelryDomainService;
-use App\Domains\Luxury\Jewelry\DTOs\JewelryProductDto;
 use App\Domains\Luxury\Jewelry\Services\AIJewelryConstructor;
-use App\Domains\Luxury\Jewelry\DTOs\AIRecommendationRequest;
+use App\Domains\Luxury\Jewelry\Services\JewelryDomainService;
+use App\Models\Tenant;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
-use App\Models\User;
-use App\Models\Tenant;
+use Tests\TestCase;
 
 /**
  * JewelryVerticalProductionTest (Layer 9/9)

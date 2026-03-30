@@ -1,22 +1,20 @@
-<?php
+<?php declare(strict_types=1);
 
-declare(strict_types=1);
+namespace App\Domains\Education\Channels\Events;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-namespace App\Domains\Content\Channels\Events;
-
-use App\Domains\Education\Channels\Models\BusinessChannel;
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
-
-/** Событие: пользователь подписался на канал */
-final class ChannelSubscribed
+final class ChannelSubscribed extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use Dispatchable, SerializesModels;
 
-    public function __construct(
-        public readonly BusinessChannel $channel,
-        public readonly int $userId,
-        public readonly string $correlationId,
-    ) {}
+        public function __construct(
+            public readonly BusinessChannel $channel,
+            public readonly int $userId,
+            public readonly string $correlationId,
+        ) {}
 }

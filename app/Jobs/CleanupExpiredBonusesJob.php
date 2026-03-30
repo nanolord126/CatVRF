@@ -7,11 +7,10 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
-use Modules\Finances\Models\Bonus;
-use Modules\Finances\Models\BalanceTransaction;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Modules\Finances\Models\Bonus;
 
 /**
  * Cleanup Expired Bonuses Job

@@ -1,24 +1,14 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Hotels\HotelResource\Pages;
 
-use App\Filament\Tenant\Resources\Hotels\HotelResource;
-use Filament\Actions;
-use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final /**
- * CreateHotel
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class CreateHotel extends CreateRecord
+final class CreateHotel extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = HotelResource::class;
 }

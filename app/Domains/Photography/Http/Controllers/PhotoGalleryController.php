@@ -1,283 +1,277 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Domains\Photography\Http\Controllers;
 
-use App\Domains\Photography\Models\PhotoGallery;
-use App\Domains\Photography\Models\Photographer;
-use App\Domains\Photography\Services\GalleryService;
-use App\Services\FraudControlService;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final class PhotoGalleryController
+final class PhotoGalleryController extends Model
 {
-	public function __construct(
-		private readonly GalleryService $galleryService,
-		private readonly FraudControlService $fraudControlService,
-	) {}
+    use HasFactory;
 
-	public function show(int $id): JsonResponse
-	{
-		try {
-			$photographer = Photographer::with('galleries')->findOrFail($id);
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    public function __construct(
+    		private readonly GalleryService $galleryService,
+    		private readonly FraudControlService $fraudControlService,
+    	) {}
 
-			return response()->json([
-				'success' => true,
-				'data' => $photographer,
-				'correlation_id' => Str::uuid(),
-			]);
-		} catch (\Exception $e) {
-			return response()->json([
-				'success' => false,
-				'message' => 'Фотограф не найден',
-				'correlation_id' => Str::uuid(),
-			], 404);
-		}
-	}
+    	public function show(int $id): JsonResponse
+    	{
+    		try {
+    			$photographer = Photographer::with('galleries')->findOrFail($id);
 
-	public function portfolio(int $id): JsonResponse
-	{
-		try {
-			$galleries = PhotoGallery::where('photographer_id', $id)
-				->where('is_public', true)
-				->latest()
-				->get();
+    			return response()->json([
+    				'success' => true,
+    				'data' => $photographer,
+    				'correlation_id' => Str::uuid(),
+    			]);
+    		} catch (\Exception $e) {
+    			return response()->json([
+    				'success' => false,
+    				'message' => 'Фотограф не найден',
+    				'correlation_id' => Str::uuid(),
+    			], 404);
+    		}
+    	}
 
-			return response()->json([
-				'success' => true,
-				'data' => $galleries,
-				'correlation_id' => Str::uuid(),
-			]);
-		} catch (\Exception $e) {
-			return response()->json([
-				'success' => false,
-				'message' => 'Ошибка',
-				'correlation_id' => Str::uuid(),
-			], 500);
-		}
-	}
+    	public function portfolio(int $id): JsonResponse
+    	{
+    		try {
+    			$galleries = PhotoGallery::where('photographer_id', $id)
+    				->where('is_public', true)
+    				->latest()
+    				->get();
 
-	public function galleries(int $id): JsonResponse
-	{
-		try {
-			$galleries = PhotoGallery::where('photographer_id', $id)
-				->latest()
-				->paginate(20);
+    			return response()->json([
+    				'success' => true,
+    				'data' => $galleries,
+    				'correlation_id' => Str::uuid(),
+    			]);
+    		} catch (\Exception $e) {
+    			return response()->json([
+    				'success' => false,
+    				'message' => 'Ошибка',
+    				'correlation_id' => Str::uuid(),
+    			], 500);
+    		}
+    	}
 
-			return response()->json([
-				'success' => true,
-				'data' => $galleries,
-				'correlation_id' => Str::uuid(),
-			]);
-		} catch (\Exception $e) {
-			return response()->json([
-				'success' => false,
-				'message' => 'Ошибка',
-				'correlation_id' => Str::uuid(),
-			], 500);
-		}
-	}
+    	public function galleries(int $id): JsonResponse
+    	{
+    		try {
+    			$galleries = PhotoGallery::where('photographer_id', $id)
+    				->latest()
+    				->paginate(20);
 
-	public function showGallery(int $id): JsonResponse
-	{
-		try {
-			$gallery = PhotoGallery::findOrFail($id);
+    			return response()->json([
+    				'success' => true,
+    				'data' => $galleries,
+    				'correlation_id' => Str::uuid(),
+    			]);
+    		} catch (\Exception $e) {
+    			return response()->json([
+    				'success' => false,
+    				'message' => 'Ошибка',
+    				'correlation_id' => Str::uuid(),
+    			], 500);
+    		}
+    	}
 
-			$gallery->increment('view_count');
+    	public function showGallery(int $id): JsonResponse
+    	{
+    		try {
+    			$gallery = PhotoGallery::findOrFail($id);
 
-			return response()->json([
-				'success' => true,
-				'data' => $gallery,
-				'correlation_id' => Str::uuid(),
-			]);
-		} catch (\Exception $e) {
-			return response()->json([
-				'success' => false,
-				'message' => 'Галерея не найдена',
-				'correlation_id' => Str::uuid(),
-			], 404);
-		}
-	}
+    			$gallery->increment('view_count');
 
-	public function photos(int $id): JsonResponse
-	{
-		try {
-			$gallery = PhotoGallery::findOrFail($id);
+    			return response()->json([
+    				'success' => true,
+    				'data' => $gallery,
+    				'correlation_id' => Str::uuid(),
+    			]);
+    		} catch (\Exception $e) {
+    			return response()->json([
+    				'success' => false,
+    				'message' => 'Галерея не найдена',
+    				'correlation_id' => Str::uuid(),
+    			], 404);
+    		}
+    	}
 
-			return response()->json([
-				'success' => true,
-				'data' => $gallery->photos_json,
-				'count' => $gallery->photo_count,
-				'correlation_id' => Str::uuid(),
-			]);
-		} catch (\Exception $e) {
-			return response()->json([
-				'success' => false,
-				'message' => 'Ошибка',
-				'correlation_id' => Str::uuid(),
-			], 500);
-		}
-	}
+    	public function photos(int $id): JsonResponse
+    	{
+    		try {
+    			$gallery = PhotoGallery::findOrFail($id);
 
-	public function store(Request $request): JsonResponse
-	{
-        $correlationId = Str::uuid()->toString();
-        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+    			return response()->json([
+    				'success' => true,
+    				'data' => $gallery->photos_json,
+    				'count' => $gallery->photo_count,
+    				'correlation_id' => Str::uuid(),
+    			]);
+    		} catch (\Exception $e) {
+    			return response()->json([
+    				'success' => false,
+    				'message' => 'Ошибка',
+    				'correlation_id' => Str::uuid(),
+    			], 500);
+    		}
+    	}
 
-		try {
-			$this->authorize('create', PhotoGallery::class);
+    	public function store(Request $request): JsonResponse
+    	{
+            $correlationId = Str::uuid()->toString();
+            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
-			$validated = $request->validate([
-				'title' => 'required|string|max:255',
-				'description' => 'nullable|string',
-				'gallery_type' => 'required|in:portfolio,session,showcase',
-				'is_public' => 'boolean',
-			]);
+    		try {
+    			$this->authorize('create', PhotoGallery::class);
 
-			$gallery = $this->galleryService->createGallery(
-				array_merge($validated, [
-					'tenant_id' => auth()->user()->tenant_id,
-					'photographer_id' => auth()->id(),
-					'correlation_id' => $correlationId,
-				])
-			);
+    			$validated = $request->validate([
+    				'title' => 'required|string|max:255',
+    				'description' => 'nullable|string',
+    				'gallery_type' => 'required|in:portfolio,session,showcase',
+    				'is_public' => 'boolean',
+    			]);
 
-			return response()->json([
-				'success' => true,
-				'data' => $gallery,
-				'correlation_id' => $correlationId,
-			], 201);
-		} catch (\Exception $e) {
-			return response()->json([
-				'success' => false,
-				'message' => 'Ошибка',
-				'correlation_id' => Str::uuid(),
-			], 500);
-		}
-	}
+    			$gallery = $this->galleryService->createGallery(
+    				array_merge($validated, [
+    					'tenant_id' => auth()->user()->tenant_id,
+    					'photographer_id' => auth()->id(),
+    					'correlation_id' => $correlationId,
+    				])
+    			);
 
-	public function update(int $id, Request $request): JsonResponse
-	{
-        $correlationId = Str::uuid()->toString();
-        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+    			return response()->json([
+    				'success' => true,
+    				'data' => $gallery,
+    				'correlation_id' => $correlationId,
+    			], 201);
+    		} catch (\Exception $e) {
+    			return response()->json([
+    				'success' => false,
+    				'message' => 'Ошибка',
+    				'correlation_id' => Str::uuid(),
+    			], 500);
+    		}
+    	}
 
-		try {
-			$gallery = PhotoGallery::findOrFail($id);
+    	public function update(int $id, Request $request): JsonResponse
+    	{
+            $correlationId = Str::uuid()->toString();
+            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
-			$validated = $request->validate([
-				'title' => 'sometimes|string|max:255',
-				'description' => 'sometimes|nullable|string',
-				'is_public' => 'sometimes|boolean',
-			]);
+    		try {
+    			$gallery = PhotoGallery::findOrFail($id);
 
-			$this->galleryService->updateGallery($gallery, $validated);
+    			$validated = $request->validate([
+    				'title' => 'sometimes|string|max:255',
+    				'description' => 'sometimes|nullable|string',
+    				'is_public' => 'sometimes|boolean',
+    			]);
 
-			return response()->json([
-				'success' => true,
-				'message' => 'Галерея обновлена',
-				'correlation_id' => Str::uuid(),
-			]);
-		} catch (\Exception $e) {
-			return response()->json([
-				'success' => false,
-				'message' => 'Ошибка',
-				'correlation_id' => Str::uuid(),
-			], 500);
-		}
-	}
+    			$this->galleryService->updateGallery($gallery, $validated);
 
-	public function destroy(int $id): JsonResponse
-	{
-        $correlationId = Str::uuid()->toString();
-        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+    			return response()->json([
+    				'success' => true,
+    				'message' => 'Галерея обновлена',
+    				'correlation_id' => Str::uuid(),
+    			]);
+    		} catch (\Exception $e) {
+    			return response()->json([
+    				'success' => false,
+    				'message' => 'Ошибка',
+    				'correlation_id' => Str::uuid(),
+    			], 500);
+    		}
+    	}
 
-		try {
-			$gallery = PhotoGallery::findOrFail($id);
+    	public function destroy(int $id): JsonResponse
+    	{
+            $correlationId = Str::uuid()->toString();
+            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
-			DB::transaction(function () use ($gallery) {
-				$gallery->delete();
+    		try {
+    			$gallery = PhotoGallery::findOrFail($id);
 
-				Log::channel('audit')->info('Photography: Gallery deleted', [
-					'gallery_id' => $gallery->id,
-					'correlation_id' => Str::uuid(),
-				]);
-			});
+    			DB::transaction(function () use ($gallery) {
+    				$gallery->delete();
 
-			return response()->json([
-				'success' => true,
-				'message' => 'Галерея удалена',
-				'correlation_id' => Str::uuid(),
-			]);
-		} catch (\Exception $e) {
-			return response()->json([
-				'success' => false,
-				'message' => 'Ошибка',
-				'correlation_id' => Str::uuid(),
-			], 500);
-		}
-	}
+    				Log::channel('audit')->info('Photography: Gallery deleted', [
+    					'gallery_id' => $gallery->id,
+    					'correlation_id' => Str::uuid(),
+    				]);
+    			});
 
-	public function addPhotos(int $id, Request $request): JsonResponse
-	{
-		try {
-			$gallery = PhotoGallery::findOrFail($id);
+    			return response()->json([
+    				'success' => true,
+    				'message' => 'Галерея удалена',
+    				'correlation_id' => Str::uuid(),
+    			]);
+    		} catch (\Exception $e) {
+    			return response()->json([
+    				'success' => false,
+    				'message' => 'Ошибка',
+    				'correlation_id' => Str::uuid(),
+    			], 500);
+    		}
+    	}
 
-			$validated = $request->validate([
-				'photos' => 'required|array',
-				'photos.*' => 'url',
-			]);
+    	public function addPhotos(int $id, Request $request): JsonResponse
+    	{
+    		try {
+    			$gallery = PhotoGallery::findOrFail($id);
 
-			DB::transaction(function () use ($gallery, $validated) {
-				$photos = array_merge($gallery->photos_json ?? [], $validated['photos']);
-				$gallery->update([
-					'photos_json' => $photos,
-					'photo_count' => count($photos),
-				]);
+    			$validated = $request->validate([
+    				'photos' => 'required|array',
+    				'photos.*' => 'url',
+    			]);
 
-				Log::channel('audit')->info('Photography: Photos added to gallery', [
-					'gallery_id' => $gallery->id,
-					'count' => count($validated['photos']),
-					'correlation_id' => Str::uuid(),
-				]);
-			});
+    			DB::transaction(function () use ($gallery, $validated) {
+    				$photos = array_merge($gallery->photos_json ?? [], $validated['photos']);
+    				$gallery->update([
+    					'photos_json' => $photos,
+    					'photo_count' => count($photos),
+    				]);
 
-			return response()->json([
-				'success' => true,
-				'message' => 'Фото добавлены',
-				'correlation_id' => Str::uuid(),
-			]);
-		} catch (\Exception $e) {
-			return response()->json([
-				'success' => false,
-				'message' => 'Ошибка',
-				'correlation_id' => Str::uuid(),
-			], 500);
-		}
-	}
+    				Log::channel('audit')->info('Photography: Photos added to gallery', [
+    					'gallery_id' => $gallery->id,
+    					'count' => count($validated['photos']),
+    					'correlation_id' => Str::uuid(),
+    				]);
+    			});
 
-	public function topPhotographers(): JsonResponse
-	{
-		try {
-			$photographers = Photographer::orderByDesc('rating')
-				->limit(10)
-				->get();
+    			return response()->json([
+    				'success' => true,
+    				'message' => 'Фото добавлены',
+    				'correlation_id' => Str::uuid(),
+    			]);
+    		} catch (\Exception $e) {
+    			return response()->json([
+    				'success' => false,
+    				'message' => 'Ошибка',
+    				'correlation_id' => Str::uuid(),
+    			], 500);
+    		}
+    	}
 
-			return response()->json([
-				'success' => true,
-				'data' => $photographers,
-				'correlation_id' => Str::uuid(),
-			]);
-		} catch (\Exception $e) {
-			return response()->json([
-				'success' => false,
-				'message' => 'Ошибка',
-				'correlation_id' => Str::uuid(),
-			], 500);
-		}
-	}
+    	public function topPhotographers(): JsonResponse
+    	{
+    		try {
+    			$photographers = Photographer::orderByDesc('rating')
+    				->limit(10)
+    				->get();
+
+    			return response()->json([
+    				'success' => true,
+    				'data' => $photographers,
+    				'correlation_id' => Str::uuid(),
+    			]);
+    		} catch (\Exception $e) {
+    			return response()->json([
+    				'success' => false,
+    				'message' => 'Ошибка',
+    				'correlation_id' => Str::uuid(),
+    			], 500);
+    		}
+    	}
 }

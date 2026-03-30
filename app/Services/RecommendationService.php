@@ -2,12 +2,11 @@
 
 namespace App\Services;
 
+use App\Models\ProductEmbedding;
 use App\Models\RecommendationLog;
 use App\Models\UserEmbedding;
-use App\Models\ProductEmbedding;
 use App\Services\FraudControl\FraudControlService;
 use App\Services\RateLimit\RateLimiterService;
-use Illuminate\Cache\CacheManager;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Log\LogManager;

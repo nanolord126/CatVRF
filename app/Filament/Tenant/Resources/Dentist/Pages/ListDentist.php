@@ -1,8 +1,14 @@
-<?php
-declare(strict_types=1);
+<?php declare(strict_types=1);
+
 namespace App\Filament\Tenant\Resources\Dentist\Pages;
-use App\Filament\Tenant\Resources\DentistResource;
-use Filament\Resources\Pages\ListRecords;
-final class ListRecordsDentist extends ListRecords {
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+final class ListRecordsDentist extends Model
+{
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = DentistResource::class;
 }

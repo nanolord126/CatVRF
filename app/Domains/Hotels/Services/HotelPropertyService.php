@@ -1,13 +1,13 @@
 <?php declare(strict_types=1);
 
-namespace Modules\Hotels\Services;
+namespace App\Domains\Hotels\Services;
 
+use App\Services\FraudControlService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Modules\Hotels\Models\Booking;
 use Modules\Hotels\Models\HotelProperty;
 use Modules\Hotels\Models\Room;
-use Modules\Hotels\Models\Booking;
-use App\Services\FraudControlService;
 
 /**
  * Hotel Property Management Service

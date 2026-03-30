@@ -1,29 +1,27 @@
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Http\Requests\Wallet;
 
-use App\Http\Requests\BaseApiRequest;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * Get Wallet Balance Request.
- * Валидация запроса информации о кошельке.
- *
- * Rules: No additional validation needed.
- */
-final class GetWalletRequest extends BaseApiRequest
+final class GetWalletRequest extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function authorize(): bool
-    {
-        return auth()->check();
-    }
+        {
+            return auth()->check();
+        }
 
-    public function rules(): array
-    {
-        return [];
-    }
+        public function rules(): array
+        {
+            return [];
+        }
 
-    public function messages(): array
-    {
-        return [];
-    }
+        public function messages(): array
+        {
+            return [];
+        }
 }

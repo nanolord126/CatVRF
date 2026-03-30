@@ -1,46 +1,39 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Domains\Beauty\Listeners;
 
-use App\Domains\Beauty\Events\LowStockReached;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Notifications\Notification;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Notification as NotificationFacade;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * Listener: отправить уведомление о низком остатке хозяину салона.
- * Production 2026.
- */
-final class LowStockNotificationListener implements ShouldQueue
+final class LowStockNotificationListener extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function handle(LowStockReached $event): void
-    {
-        try {
-            $product = $event->product;
-            $salon = $product->salon;
+        {
+            try {
+                $product = $event->product;
+                $salon = $product->salon;
 
-            // Отправить уведомление владельцу салона
+                // Отправить уведомление владельцу салона
 
-            Log::channel('audit')->warning('Low stock alert', [
-                'product_id' => $product->id,
-                'product_name' => $product->name,
-                'current_stock' => $product->current_stock,
-                'min_threshold' => $product->min_stock_threshold,
-                'salon_id' => $salon->id,
-                'correlation_id' => $event->correlationId,
-            ]);
-        } catch (\Throwable $e) {
-            Log::channel('audit')->error('LowStockNotificationListener failed', [
-                'product_id' => $event->product->id,
-                'error' => $e->getMessage(),
-                'correlation_id' => $event->correlationId,
-            ]);
+                Log::channel('audit')->warning('Low stock alert', [
+                    'product_id' => $product->id,
+                    'product_name' => $product->name,
+                    'current_stock' => $product->current_stock,
+                    'min_threshold' => $product->min_stock_threshold,
+                    'salon_id' => $salon->id,
+                    'correlation_id' => $event->correlationId,
+                ]);
+            } catch (\Throwable $e) {
+                Log::channel('audit')->error('LowStockNotificationListener failed', [
+                    'product_id' => $event->product->id,
+                    'error' => $e->getMessage(),
+                    'correlation_id' => $event->correlationId,
+                ]);
 
-            throw $e;
+                throw $e;
+            }
         }
-    }
 }

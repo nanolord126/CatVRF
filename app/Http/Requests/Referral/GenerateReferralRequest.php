@@ -1,29 +1,27 @@
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Http\Requests\Referral;
 
-use App\Http\Requests\BaseApiRequest;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * Generate Referral Request.
- * Валидация данных для создания реферальной ссылки.
- *
- * Rules: No additional validation required, uses base auth.
- */
-final class GenerateReferralRequest extends BaseApiRequest
+final class GenerateReferralRequest extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function authorize(): bool
-    {
-        return auth()->check();
-    }
+        {
+            return auth()->check();
+        }
 
-    public function rules(): array
-    {
-        return [];
-    }
+        public function rules(): array
+        {
+            return [];
+        }
 
-    public function messages(): array
-    {
-        return [];
-    }
+        public function messages(): array
+        {
+            return [];
+        }
 }

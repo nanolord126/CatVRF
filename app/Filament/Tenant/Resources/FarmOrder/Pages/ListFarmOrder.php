@@ -1,8 +1,14 @@
-<?php
-declare(strict_types=1);
+<?php declare(strict_types=1);
+
 namespace App\Filament\Tenant\Resources\FarmOrder\Pages;
-use App\Filament\Tenant\Resources\FarmOrderResource;
-use Filament\Resources\Pages\ListRecords;
-final class ListRecordsFarmOrder extends ListRecords {
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+final class ListRecordsFarmOrder extends Model
+{
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = FarmOrderResource::class;
 }

@@ -1,22 +1,21 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\StrApartmentResource\Pages;
 
-use App\Filament\Tenant\Resources\StrApartmentResource;
-use Filament\Actions;
-use Filament\Resources\Pages\ListRecords;
-use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final class ListStrApartments extends ListRecords
+final class ListStrApartments extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = StrApartmentResource::class;
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            Actions\CreateAction::make(),
-        ];
-    }
+        protected function getHeaderActions(): array
+        {
+            return [
+                Actions\CreateAction::make(),
+            ];
+        }
 }

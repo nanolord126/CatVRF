@@ -2,12 +2,12 @@
 
 namespace App\Services\Wallet;
 
-use App\Models\Wallet;
 use App\Models\BalanceTransaction;
+use App\Models\Wallet;
 use App\Services\FraudControlService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 final readonly class WalletService
@@ -19,7 +19,7 @@ final readonly class WalletService
     public function getBalance(int|string $tenantId): int
     {
         $cacheKey = "wallet:balance:tenant:{$tenantId}";
-        
+
         return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($tenantId) {
             $wallet = Wallet::where('tenant_id', (string) $tenantId)->firstOrFail();
             return $wallet->current_balance;

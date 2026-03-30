@@ -1,221 +1,212 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Domains\FarmDirect\FreshProduce\Http\Controllers;
 
-use App\Domains\FarmDirect\FreshProduce\Models\ProduceOrder;
-use App\Domains\FarmDirect\FreshProduce\Models\ProduceSubscription;
-use App\Domains\FarmDirect\FreshProduce\Services\FreshProduceService;
-use App\Services\FraudControlService;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * Заказы и подписки свежих продуктов — КАНОН 2026.
- */
-final class ProduceOrderController
+final class ProduceOrderController extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-        private readonly FreshProduceService $freshProduceService,
-        private readonly FraudControlService $fraudControlService,
-    ) {}
+            private readonly FreshProduceService $freshProduceService,
+            private readonly FraudControlService $fraudControlService,
+        ) {}
 
-    public function index(Request $request): JsonResponse
-    {
-        $correlationId = Str::uuid()->toString();
-        try {
-            $orders = ProduceOrder::where('client_id', auth()->id())
-                ->with('box')
-                ->orderByDesc('created_at')
-                ->paginate(20);
+        public function index(Request $request): JsonResponse
+        {
+            $correlationId = Str::uuid()->toString();
+            try {
+                $orders = ProduceOrder::where('client_id', auth()->id())
+                    ->with('box')
+                    ->orderByDesc('created_at')
+                    ->paginate(20);
 
-            Log::channel('audit')->info('FreshProduce: orders list', [
-                'user_id'        => auth()->id(),
-                'correlation_id' => $correlationId,
-            ]);
-
-            return response()->json(['success' => true, 'data' => $orders, 'correlation_id' => $correlationId]);
-        } catch (\Throwable $e) {
-            Log::channel('audit')->error('FreshProduce: orders index error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
-            return response()->json(['success' => false, 'message' => 'Ошибка', 'correlation_id' => $correlationId], 500);
-        }
-    }
-
-    public function store(Request $request): JsonResponse
-    {
-        $correlationId = Str::uuid()->toString();
-        try {
-            $userId = auth()->id();
-
-            $fraudResult = $this->fraudControlService->check(
-                userId: $userId,
-                operationType: 'fresh_produce_order',
-                amount: (int) $request->input('price_kopecks', 0),
-                correlationId: $correlationId,
-            );
-            if ($fraudResult['decision'] === 'block') {
-                return response()->json(['success' => false, 'message' => 'Операция заблокирована', 'correlation_id' => $correlationId], 403);
-            }
-
-            $validated = $request->validate([
-                'box_id'           => 'required|integer',
-                'delivery_address' => 'required|string|max:500',
-                'delivery_date'    => 'required|date|after:today',
-                'delivery_slot'    => 'required|string',
-                'subscription_id'  => 'nullable|integer',
-            ]);
-
-            $order = $this->freshProduceService->placeOrder(
-                clientId:       $userId,
-                boxId:          $validated['box_id'],
-                deliveryAddress: $validated['delivery_address'],
-                deliveryDate:   $validated['delivery_date'],
-                deliverySlot:   $validated['delivery_slot'],
-                subscriptionId: $validated['subscription_id'] ?? null,
-            );
-
-            return response()->json(['success' => true, 'data' => $order, 'correlation_id' => $correlationId], 201);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
-        } catch (\Throwable $e) {
-            Log::channel('audit')->error('FreshProduce: store error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString(), 'correlation_id' => $correlationId]);
-            return response()->json(['success' => false, 'message' => 'Ошибка оформления заказа', 'correlation_id' => $correlationId], 500);
-        }
-    }
-
-    public function show(int $id): JsonResponse
-    {
-        $correlationId = Str::uuid()->toString();
-        try {
-            $order = ProduceOrder::where('client_id', auth()->id())->with('box')->findOrFail($id);
-            return response()->json(['success' => true, 'data' => $order, 'correlation_id' => $correlationId]);
-        } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'message' => 'Заказ не найден', 'correlation_id' => $correlationId], 404);
-        }
-    }
-
-    public function cancel(Request $request, int $id): JsonResponse
-    {
-        $correlationId = Str::uuid()->toString();
-        try {
-            $order = ProduceOrder::where('client_id', auth()->id())->findOrFail($id);
-
-            DB::transaction(function () use ($order, $correlationId): void {
-                $order->update(['status' => 'cancelled', 'correlation_id' => $correlationId]);
-
-                Log::channel('audit')->info('FreshProduce: Order cancelled', [
-                    'order_id'       => $order->id,
+                Log::channel('audit')->info('FreshProduce: orders list', [
                     'user_id'        => auth()->id(),
                     'correlation_id' => $correlationId,
                 ]);
-            });
 
-            return response()->json(['success' => true, 'message' => 'Заказ отменён', 'correlation_id' => $correlationId]);
-        } catch (\Throwable $e) {
-            Log::channel('audit')->error('FreshProduce: cancel error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
-            return response()->json(['success' => false, 'message' => 'Ошибка отмены', 'correlation_id' => $correlationId], 500);
-        }
-    }
-
-    // ────────────────────────── Подписки ──────────────────────────────────────
-
-    public function subscriptions(): JsonResponse
-    {
-        $correlationId = Str::uuid()->toString();
-        try {
-            $subs = ProduceSubscription::where('client_id', auth()->id())
-                ->with('box')
-                ->paginate(20);
-
-            return response()->json(['success' => true, 'data' => $subs, 'correlation_id' => $correlationId]);
-        } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'message' => 'Ошибка', 'correlation_id' => $correlationId], 500);
-        }
-    }
-
-    public function subscribe(Request $request): JsonResponse
-    {
-        $correlationId = Str::uuid()->toString();
-        try {
-            $userId = auth()->id();
-
-            $fraudResult = $this->fraudControlService->check(
-                userId: $userId,
-                operationType: 'fresh_produce_subscribe',
-                amount: 0,
-                correlationId: $correlationId,
-            );
-            if ($fraudResult['decision'] === 'block') {
-                return response()->json(['success' => false, 'message' => 'Операция заблокирована', 'correlation_id' => $correlationId], 403);
+                return response()->json(['success' => true, 'data' => $orders, 'correlation_id' => $correlationId]);
+            } catch (\Throwable $e) {
+                Log::channel('audit')->error('FreshProduce: orders index error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+                return response()->json(['success' => false, 'message' => 'Ошибка', 'correlation_id' => $correlationId], 500);
             }
+        }
 
-            $validated = $request->validate([
-                'box_id'           => 'required|integer',
-                'delivery_address' => 'required|string|max:500',
-                'delivery_day'     => 'required|string|in:monday,tuesday,wednesday,thursday,friday,saturday,sunday',
-                'delivery_slot'    => 'required|string',
-            ]);
+        public function store(Request $request): JsonResponse
+        {
+            $correlationId = Str::uuid()->toString();
+            try {
+                $userId = auth()->id();
 
-            $sub = DB::transaction(function () use ($validated, $userId, $correlationId): ProduceSubscription {
-                $existing = ProduceSubscription::where('client_id', $userId)
-                    ->where('box_id', $validated['box_id'])
-                    ->where('status', 'active')
-                    ->first();
-
-                if ($existing) {
-                    throw new \RuntimeException('Подписка на этот бокс уже активна');
+                $fraudResult = $this->fraudControlService->check(
+                    userId: $userId,
+                    operationType: 'fresh_produce_order',
+                    amount: (int) $request->input('price_kopecks', 0),
+                    correlationId: $correlationId,
+                );
+                if ($fraudResult['decision'] === 'block') {
+                    return response()->json(['success' => false, 'message' => 'Операция заблокирована', 'correlation_id' => $correlationId], 403);
                 }
 
-                $sub = ProduceSubscription::create([
-                    'uuid'             => Str::uuid(),
-                    'client_id'        => $userId,
-                    'box_id'           => $validated['box_id'],
-                    'delivery_address' => $validated['delivery_address'],
-                    'delivery_day'     => $validated['delivery_day'],
-                    'delivery_slot'    => $validated['delivery_slot'],
-                    'status'           => 'active',
-                    'correlation_id'   => $correlationId,
+                $validated = $request->validate([
+                    'box_id'           => 'required|integer',
+                    'delivery_address' => 'required|string|max:500',
+                    'delivery_date'    => 'required|date|after:today',
+                    'delivery_slot'    => 'required|string',
+                    'subscription_id'  => 'nullable|integer',
                 ]);
 
-                Log::channel('audit')->info('FreshProduce: Subscription created', [
-                    'subscription_id' => $sub->id,
-                    'user_id'         => $userId,
-                    'correlation_id'  => $correlationId,
+                $order = $this->freshProduceService->placeOrder(
+                    clientId:       $userId,
+                    boxId:          $validated['box_id'],
+                    deliveryAddress: $validated['delivery_address'],
+                    deliveryDate:   $validated['delivery_date'],
+                    deliverySlot:   $validated['delivery_slot'],
+                    subscriptionId: $validated['subscription_id'] ?? null,
+                );
+
+                return response()->json(['success' => true, 'data' => $order, 'correlation_id' => $correlationId], 201);
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                return response()->json(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
+            } catch (\Throwable $e) {
+                Log::channel('audit')->error('FreshProduce: store error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString(), 'correlation_id' => $correlationId]);
+                return response()->json(['success' => false, 'message' => 'Ошибка оформления заказа', 'correlation_id' => $correlationId], 500);
+            }
+        }
+
+        public function show(int $id): JsonResponse
+        {
+            $correlationId = Str::uuid()->toString();
+            try {
+                $order = ProduceOrder::where('client_id', auth()->id())->with('box')->findOrFail($id);
+                return response()->json(['success' => true, 'data' => $order, 'correlation_id' => $correlationId]);
+            } catch (\Throwable $e) {
+                return response()->json(['success' => false, 'message' => 'Заказ не найден', 'correlation_id' => $correlationId], 404);
+            }
+        }
+
+        public function cancel(Request $request, int $id): JsonResponse
+        {
+            $correlationId = Str::uuid()->toString();
+            try {
+                $order = ProduceOrder::where('client_id', auth()->id())->findOrFail($id);
+
+                DB::transaction(function () use ($order, $correlationId): void {
+                    $order->update(['status' => 'cancelled', 'correlation_id' => $correlationId]);
+
+                    Log::channel('audit')->info('FreshProduce: Order cancelled', [
+                        'order_id'       => $order->id,
+                        'user_id'        => auth()->id(),
+                        'correlation_id' => $correlationId,
+                    ]);
+                });
+
+                return response()->json(['success' => true, 'message' => 'Заказ отменён', 'correlation_id' => $correlationId]);
+            } catch (\Throwable $e) {
+                Log::channel('audit')->error('FreshProduce: cancel error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+                return response()->json(['success' => false, 'message' => 'Ошибка отмены', 'correlation_id' => $correlationId], 500);
+            }
+        }
+
+        // ────────────────────────── Подписки ──────────────────────────────────────
+
+        public function subscriptions(): JsonResponse
+        {
+            $correlationId = Str::uuid()->toString();
+            try {
+                $subs = ProduceSubscription::where('client_id', auth()->id())
+                    ->with('box')
+                    ->paginate(20);
+
+                return response()->json(['success' => true, 'data' => $subs, 'correlation_id' => $correlationId]);
+            } catch (\Throwable $e) {
+                return response()->json(['success' => false, 'message' => 'Ошибка', 'correlation_id' => $correlationId], 500);
+            }
+        }
+
+        public function subscribe(Request $request): JsonResponse
+        {
+            $correlationId = Str::uuid()->toString();
+            try {
+                $userId = auth()->id();
+
+                $fraudResult = $this->fraudControlService->check(
+                    userId: $userId,
+                    operationType: 'fresh_produce_subscribe',
+                    amount: 0,
+                    correlationId: $correlationId,
+                );
+                if ($fraudResult['decision'] === 'block') {
+                    return response()->json(['success' => false, 'message' => 'Операция заблокирована', 'correlation_id' => $correlationId], 403);
+                }
+
+                $validated = $request->validate([
+                    'box_id'           => 'required|integer',
+                    'delivery_address' => 'required|string|max:500',
+                    'delivery_day'     => 'required|string|in:monday,tuesday,wednesday,thursday,friday,saturday,sunday',
+                    'delivery_slot'    => 'required|string',
                 ]);
 
-                return $sub;
-            });
+                $sub = DB::transaction(function () use ($validated, $userId, $correlationId): ProduceSubscription {
+                    $existing = ProduceSubscription::where('client_id', $userId)
+                        ->where('box_id', $validated['box_id'])
+                        ->where('status', 'active')
+                        ->first();
 
-            return response()->json(['success' => true, 'data' => $sub, 'correlation_id' => $correlationId], 201);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
-        } catch (\RuntimeException $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => $correlationId], 409);
-        } catch (\Throwable $e) {
-            Log::channel('audit')->error('FreshProduce: subscribe error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
-            return response()->json(['success' => false, 'message' => 'Ошибка подписки', 'correlation_id' => $correlationId], 500);
+                    if ($existing) {
+                        throw new \RuntimeException('Подписка на этот бокс уже активна');
+                    }
+
+                    $sub = ProduceSubscription::create([
+                        'uuid'             => Str::uuid(),
+                        'client_id'        => $userId,
+                        'box_id'           => $validated['box_id'],
+                        'delivery_address' => $validated['delivery_address'],
+                        'delivery_day'     => $validated['delivery_day'],
+                        'delivery_slot'    => $validated['delivery_slot'],
+                        'status'           => 'active',
+                        'correlation_id'   => $correlationId,
+                    ]);
+
+                    Log::channel('audit')->info('FreshProduce: Subscription created', [
+                        'subscription_id' => $sub->id,
+                        'user_id'         => $userId,
+                        'correlation_id'  => $correlationId,
+                    ]);
+
+                    return $sub;
+                });
+
+                return response()->json(['success' => true, 'data' => $sub, 'correlation_id' => $correlationId], 201);
+            } catch (\Illuminate\Validation\ValidationException $e) {
+                return response()->json(['success' => false, 'errors' => $e->errors(), 'correlation_id' => $correlationId], 422);
+            } catch (\RuntimeException $e) {
+                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => $correlationId], 409);
+            } catch (\Throwable $e) {
+                Log::channel('audit')->error('FreshProduce: subscribe error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+                return response()->json(['success' => false, 'message' => 'Ошибка подписки', 'correlation_id' => $correlationId], 500);
+            }
         }
-    }
 
-    public function unsubscribe(Request $request, int $id): JsonResponse
-    {
-        $correlationId = Str::uuid()->toString();
-        try {
-            $sub = ProduceSubscription::where('client_id', auth()->id())->findOrFail($id);
+        public function unsubscribe(Request $request, int $id): JsonResponse
+        {
+            $correlationId = Str::uuid()->toString();
+            try {
+                $sub = ProduceSubscription::where('client_id', auth()->id())->findOrFail($id);
 
-            DB::transaction(function () use ($sub, $correlationId): void {
-                $sub->update(['status' => 'cancelled', 'correlation_id' => $correlationId]);
-                Log::channel('audit')->info('FreshProduce: Subscription cancelled', ['sub_id' => $sub->id, 'correlation_id' => $correlationId]);
-            });
+                DB::transaction(function () use ($sub, $correlationId): void {
+                    $sub->update(['status' => 'cancelled', 'correlation_id' => $correlationId]);
+                    Log::channel('audit')->info('FreshProduce: Subscription cancelled', ['sub_id' => $sub->id, 'correlation_id' => $correlationId]);
+                });
 
-            return response()->json(['success' => true, 'message' => 'Подписка отменена', 'correlation_id' => $correlationId]);
-        } catch (\Throwable $e) {
-            Log::channel('audit')->error('FreshProduce: unsubscribe error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
-            return response()->json(['success' => false, 'message' => 'Ошибка', 'correlation_id' => $correlationId], 500);
+                return response()->json(['success' => true, 'message' => 'Подписка отменена', 'correlation_id' => $correlationId]);
+            } catch (\Throwable $e) {
+                Log::channel('audit')->error('FreshProduce: unsubscribe error', ['error' => $e->getMessage(), 'correlation_id' => $correlationId]);
+                return response()->json(['success' => false, 'message' => 'Ошибка', 'correlation_id' => $correlationId], 500);
+            }
         }
-    }
 }

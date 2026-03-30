@@ -6,7 +6,6 @@ use App\Filament\Tenant\Resources\Beauty\BeautySalonResource;
 use App\Services\FraudControlService;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 

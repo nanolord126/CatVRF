@@ -1,183 +1,173 @@
-<?php
+<?php declare(strict_types=1);
 
-declare(strict_types=1);
+namespace App\Domains\HobbyAndCraft\Hobby\Models;
 
-namespace App\Domains\HobbyAndCraft\HobbyAndCraft\Hobby\Models;
-
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\MorphMany;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Str;
-use App\Models\User;
 
-/**
- * Trait HobbyDomainTrait (Layer 1/9)
- * Automated UUID, correlation ID and multi-tenant scoping for all Hobby domain models.
- * Used to ensure 2026 production isolation.
- * Exceeds 60 lines with scoping logic and boot methods.
- */
-trait HobbyDomainTrait
+final class HobbyDomainTrait extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public static function bootHobbyDomainTrait(): void
-    {
-        static::creating(function (Model $model) {
-            if (!$model->uuid) {
-                $model->uuid = (string) Str::uuid();
-            }
-            if (!$model->correlation_id && request()) {
-                $model->correlation_id = request()->header('X-Correlation-ID') ?: (string) Str::uuid();
-            }
-            if (!$model->tenant_id && auth()->check()) {
-                // Assuming existence of current tenant global helper/context
-                $model->tenant_id = auth()->user()->tenant_id ?? 1;
-            }
-        });
+        {
+            static::creating(function (Model $model) {
+                if (!$model->uuid) {
+                    $model->uuid = (string) Str::uuid();
+                }
+                if (!$model->correlation_id && request()) {
+                    $model->correlation_id = request()->header('X-Correlation-ID') ?: (string) Str::uuid();
+                }
+                if (!$model->tenant_id && auth()->check()) {
+                    // Assuming existence of current tenant global helper/context
+                    $model->tenant_id = auth()->user()->tenant_id ?? 1;
+                }
+            });
 
-        static::addGlobalScope('hobby_tenant_scope', function ($builder) {
-            if (auth()->check()) {
-                $builder->where('tenant_id', auth()->user()->tenant_id ?? 1);
-            }
-        });
-    }
-}
-
-/**
- * HobbyStore Model
- * Represents a business entity (store) within the Hobby & Craft domain.
- */
-final class HobbyStore extends Model
-{
-    use SoftDeletes, HobbyDomainTrait;
-
-    protected $table = 'hobby_stores';
-
-    protected $fillable = [
-        'uuid', 'tenant_id', 'name', 'slug', 'description', 
-        'contact_email', 'website_url', 'settings', 'is_active', 'correlation_id'
-    ];
-
-    protected $casts = [
-        'settings' => 'json',
-        'is_active' => 'boolean',
-    ];
-
-    public function products(): HasMany
-    {
-        return $this->hasMany(HobbyProduct::class, 'store_id');
+            static::addGlobalScope('hobby_tenant_scope', function ($builder) {
+                if (auth()->check()) {
+                    $builder->where('tenant_id', auth()->user()->tenant_id ?? 1);
+                }
+            });
+        }
     }
 
-    public function tutorials(): HasMany
+    /**
+     * HobbyStore Model
+     * Represents a business entity (store) within the Hobby & Craft domain.
+     */
+    final class HobbyStore extends Model
     {
-        return $this->hasMany(HobbyTutorial::class, 'store_id');
-    }
-}
+        use SoftDeletes, HobbyDomainTrait;
 
-/**
- * HobbyCategory Model
- */
-final class HobbyCategory extends Model
-{
-    use HobbyDomainTrait;
+        protected $table = 'hobby_stores';
 
-    protected $table = 'hobby_categories';
+        protected $fillable = [
+            'uuid', 'tenant_id', 'name', 'slug', 'description',
+            'contact_email', 'website_url', 'settings', 'is_active', 'correlation_id'
+        ];
 
-    protected $fillable = ['uuid', 'tenant_id', 'name', 'slug', 'icon', 'meta'];
+        protected $casts = [
+            'settings' => 'json',
+            'is_active' => 'boolean',
+        ];
 
-    protected $casts = ['meta' => 'json'];
+        public function products(): HasMany
+        {
+            return $this->hasMany(HobbyProduct::class, 'store_id');
+        }
 
-    public function products(): HasMany
-    {
-        return $this->hasMany(HobbyProduct::class, 'category_id');
-    }
-}
-
-/**
- * HobbyProduct Model
- */
-final class HobbyProduct extends Model
-{
-    use SoftDeletes, HobbyDomainTrait;
-
-    protected $table = 'hobby_products';
-
-    protected $fillable = [
-        'uuid', 'tenant_id', 'store_id', 'category_id', 'title', 'sku', 'description',
-        'price_b2c', 'price_b2b', 'stock_quantity', 'skill_level', 'images', 'tags',
-        'is_active', 'correlation_id'
-    ];
-
-    protected $casts = [
-        'images' => 'json',
-        'tags' => 'json',
-        'is_active' => 'boolean',
-    ];
-
-    public function store(): BelongsTo
-    {
-        return $this->belongsTo(HobbyStore::class, 'store_id');
+        public function tutorials(): HasMany
+        {
+            return $this->hasMany(HobbyTutorial::class, 'store_id');
+        }
     }
 
-    public function category(): BelongsTo
+    /**
+     * HobbyCategory Model
+     */
+    final class HobbyCategory extends Model
     {
-        return $this->belongsTo(HobbyCategory::class, 'category_id');
+        use HobbyDomainTrait;
+
+        protected $table = 'hobby_categories';
+
+        protected $fillable = ['uuid', 'tenant_id', 'name', 'slug', 'icon', 'meta'];
+
+        protected $casts = ['meta' => 'json'];
+
+        public function products(): HasMany
+        {
+            return $this->hasMany(HobbyProduct::class, 'category_id');
+        }
     }
 
-    public function reviews(): MorphMany
+    /**
+     * HobbyProduct Model
+     */
+    final class HobbyProduct extends Model
     {
-        return $this->morphMany(HobbyReview::class, 'reviewable');
-    }
-}
+        use SoftDeletes, HobbyDomainTrait;
 
-/**
- * HobbyTutorial Model
- */
-final class HobbyTutorial extends Model
-{
-    use HobbyDomainTrait;
+        protected $table = 'hobby_products';
 
-    protected $table = 'hobby_tutorials';
+        protected $fillable = [
+            'uuid', 'tenant_id', 'store_id', 'category_id', 'title', 'sku', 'description',
+            'price_b2c', 'price_b2b', 'stock_quantity', 'skill_level', 'images', 'tags',
+            'is_active', 'correlation_id'
+        ];
 
-    protected $fillable = [
-        'uuid', 'tenant_id', 'store_id', 'title', 'content_html', 'video_url',
-        'price', 'skill_level', 'required_product_ids', 'is_published', 'correlation_id'
-    ];
+        protected $casts = [
+            'images' => 'json',
+            'tags' => 'json',
+            'is_active' => 'boolean',
+        ];
 
-    protected $casts = [
-        'required_product_ids' => 'json',
-        'is_published' => 'boolean',
-    ];
+        public function store(): BelongsTo
+        {
+            return $this->belongsTo(HobbyStore::class, 'store_id');
+        }
 
-    public function store(): BelongsTo
-    {
-        return $this->belongsTo(HobbyStore::class, 'store_id');
-    }
-}
+        public function category(): BelongsTo
+        {
+            return $this->belongsTo(HobbyCategory::class, 'category_id');
+        }
 
-/**
- * HobbyReview Model
- */
-final class HobbyReview extends Model
-{
-    use HobbyDomainTrait;
-
-    protected $table = 'hobby_reviews';
-
-    protected $fillable = [
-        'uuid', 'tenant_id', 'user_id', 'reviewable_type', 'reviewable_id',
-        'rating', 'comment', 'media', 'correlation_id'
-    ];
-
-    protected $casts = ['media' => 'json'];
-
-    public function user(): BelongsTo
-    {
-        return $this->belongsTo(User::class);
+        public function reviews(): MorphMany
+        {
+            return $this->morphMany(HobbyReview::class, 'reviewable');
+        }
     }
 
-    public function reviewable(): \Illuminate\Database\Eloquent\Relations\MorphTo
+    /**
+     * HobbyTutorial Model
+     */
+    final class HobbyTutorial extends Model
     {
-        return $this->morphTo();
+        use HobbyDomainTrait;
+
+        protected $table = 'hobby_tutorials';
+
+        protected $fillable = [
+            'uuid', 'tenant_id', 'store_id', 'title', 'content_html', 'video_url',
+            'price', 'skill_level', 'required_product_ids', 'is_published', 'correlation_id'
+        ];
+
+        protected $casts = [
+            'required_product_ids' => 'json',
+            'is_published' => 'boolean',
+        ];
+
+        public function store(): BelongsTo
+        {
+            return $this->belongsTo(HobbyStore::class, 'store_id');
+        }
     }
+
+    /**
+     * HobbyReview Model
+     */
+    final class HobbyReview extends Model
+    {
+        use HobbyDomainTrait;
+
+        protected $table = 'hobby_reviews';
+
+        protected $fillable = [
+            'uuid', 'tenant_id', 'user_id', 'reviewable_type', 'reviewable_id',
+            'rating', 'comment', 'media', 'correlation_id'
+        ];
+
+        protected $casts = ['media' => 'json'];
+
+        public function user(): BelongsTo
+        {
+            return $this->belongsTo(User::class);
+        }
+
+        public function reviewable(): \Illuminate\Database\Eloquent\Relations\MorphTo
+        {
+            return $this->morphTo();
+        }
 }

@@ -2,68 +2,61 @@
 
 namespace App\Domains\Tickets\Jobs;
 
-use App\Domains\Tickets\Models\TicketSale;
-use App\Domains\Tickets\Services\TicketGenerationService;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
-use Throwable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final class TicketGenerationJob implements ShouldQueue
+final class TicketGenerationJob extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    private ?int $ticketSaleId;
-    private ?string $correlationId;
+        private ?int $ticketSaleId;
+        private ?string $correlationId;
 
-    public function __construct(int $ticketSaleId = null, string $correlationId = '')
-    {
-        $this->ticketSaleId = $ticketSaleId;
-        $this->correlationId = $correlationId;
-        $this->onQueue('tickets');
+        public function __construct(int $ticketSaleId = null, string $correlationId = '')
+        {
+            $this->ticketSaleId = $ticketSaleId;
+            $this->correlationId = $correlationId;
+            $this->onQueue('tickets');
 
-    }
-
-    public function handle(TicketGenerationService $service): void
-    {
-        try {
-            Log::channel('audit')->info('Starting ticket generation job', [
-                'sale_id' => $this->ticketSaleId,
-                'correlation_id' => $this->correlationId,
-            ]);
-
-            $sale = TicketSale::findOrFail($this->ticketSaleId);
-
-            $service->generateTickets(
-                $sale->event_id,
-                $sale->event->ticketTypes()->first()->id,
-                $sale->quantity,
-                $sale->buyer_id,
-                $this->correlationId
-            );
-
-            Log::channel('audit')->info('Ticket generation completed', [
-                'sale_id' => $this->ticketSaleId,
-                'correlation_id' => $this->correlationId,
-            ]);
-        } catch (Throwable $e) {
-            Log::channel('audit')->error('Ticket generation failed', [
-                'sale_id' => $this->ticketSaleId,
-                'error' => $e->getMessage(),
-                'correlation_id' => $this->correlationId,
-            ]);
-            $this->fail($e);
         }
-    }
 
-    public function retryUntil(): \DateTime
-    {
-        return now()->addHours(1);
-    }
+        public function handle(TicketGenerationService $service): void
+        {
+            try {
+                Log::channel('audit')->info('Starting ticket generation job', [
+                    'sale_id' => $this->ticketSaleId,
+                    'correlation_id' => $this->correlationId,
+                ]);
+
+                $sale = TicketSale::findOrFail($this->ticketSaleId);
+
+                $service->generateTickets(
+                    $sale->event_id,
+                    $sale->event->ticketTypes()->first()->id,
+                    $sale->quantity,
+                    $sale->buyer_id,
+                    $this->correlationId
+                );
+
+                Log::channel('audit')->info('Ticket generation completed', [
+                    'sale_id' => $this->ticketSaleId,
+                    'correlation_id' => $this->correlationId,
+                ]);
+            } catch (Throwable $e) {
+                Log::channel('audit')->error('Ticket generation failed', [
+                    'sale_id' => $this->ticketSaleId,
+                    'error' => $e->getMessage(),
+                    'correlation_id' => $this->correlationId,
+                ]);
+                $this->fail($e);
+            }
+        }
+
+        public function retryUntil(): \DateTime
+        {
+            return now()->addHours(1);
+        }
 }
-
-
-

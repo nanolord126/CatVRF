@@ -2,18 +2,17 @@
 
 namespace App\Jobs;
 
+use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
-use Modules\AI\Services\RecommendationService;
-use Modules\Marketplace\Models\Product;
-use Modules\Marketplace\Models\Order;
-use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Modules\AI\Services\RecommendationService;
+use Modules\Marketplace\Models\Order;
 
 /**
  * Recommendation Quality Check Job
@@ -220,5 +219,3 @@ final class RecommendationQualityJob implements ShouldQueue
         ]);
     }
 }
-
-

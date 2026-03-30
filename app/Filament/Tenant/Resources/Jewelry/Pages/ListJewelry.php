@@ -3,11 +3,12 @@
 namespace App\Filament\Tenant\Resources\Jewelry\Pages;
 
 use App\Filament\Tenant\Resources\Jewelry\JewelryResource;
-use Filament\Actions\{CreateAction,DeleteBulkAction};
+use Filament\Actions\CreateAction;
+use Filament\Actions\DeleteBulkAction;
 use Filament\Resources\Pages\ListRecords;
-use Illuminate\Support\Facades\{Log,DB};
-use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 final class ListJewelry extends ListRecords
 {

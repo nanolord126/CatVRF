@@ -2,8 +2,8 @@
 
 namespace App\Notifications\Verticals\Hotels;
 
-use App\Notifications\BaseMailableNotification;
 use App\Notifications\BaseInAppNotification;
+use App\Notifications\BaseMailableNotification;
 
 /**
  * Booking Confirmed Notification - бронирование подтверждено
@@ -42,7 +42,7 @@ class CheckInReminderNotification extends BaseInAppNotification
     public function __construct(int $userId, int $tenantId, array $bookingData)
     {
         parent::__construct($userId, $tenantId, $bookingData, channels: ['push', 'database']);
-        
+
         $this->title('Завтра вы приезжаете в ' . ($bookingData['hotel_name'] ?? 'отель'))
              ->message('Не забудьте свой паспорт и бронь-номер ' . ($bookingData['booking_number'] ?? ''))
              ->type('info')
@@ -76,7 +76,7 @@ class ReviewRequestNotification extends BaseInAppNotification
     public function __construct(int $userId, int $tenantId, array $bookingData)
     {
         parent::__construct($userId, $tenantId, $bookingData, channels: ['database', 'push']);
-        
+
         $this->title('Спасибо за остановку!')
              ->message('Поделитесь впечатлениями о ' . ($bookingData['hotel_name'] ?? 'отеле'))
              ->type('success')

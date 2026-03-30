@@ -1,33 +1,29 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Domains\Marketplace\Shop\Policies;
 
-use App\Models\User;
-use App\Domains\Marketplace\Shop\Models\ShopProduct;
-use Illuminate\Auth\Access\HandlesAuthorization;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * Канон 2026: Изоляция доступа по tenant_id (Section 2: Shop)
- */
-final class ShopProductPolicy
+final class ShopProductPolicy extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use HandlesAuthorization;
 
-    public function view(User $user, ShopProduct $product): bool
-    {
-        return $user->tenant_id === $product->tenant_id;
-    }
+        public function view(User $user, ShopProduct $product): bool
+        {
+            return $user->tenant_id === $product->tenant_id;
+        }
 
-    public function update(User $user, ShopProduct $product): bool
-    {
-        return $user->tenant_id === $product->tenant_id && $user->hasRole(['business_owner', 'manager']);
-    }
+        public function update(User $user, ShopProduct $product): bool
+        {
+            return $user->tenant_id === $product->tenant_id && $user->hasRole(['business_owner', 'manager']);
+        }
 
-    public function delete(User $user, ShopProduct $product): bool
-    {
-        return $user->tenant_id === $product->tenant_id && $user->hasRole('business_owner');
-    }
+        public function delete(User $user, ShopProduct $product): bool
+        {
+            return $user->tenant_id === $product->tenant_id && $user->hasRole('business_owner');
+        }
 }

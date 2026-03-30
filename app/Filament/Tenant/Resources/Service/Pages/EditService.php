@@ -1,8 +1,14 @@
-<?php
-declare(strict_types=1);
+<?php declare(strict_types=1);
+
 namespace App\Filament\Tenant\Resources\Service\Pages;
-use App\Filament\Tenant\Resources\ServiceResource;
-use Filament\Resources\Pages\EditRecord;
-final class EditRecordService extends EditRecord {
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+final class EditRecordService extends Model
+{
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = ServiceResource::class;
 }

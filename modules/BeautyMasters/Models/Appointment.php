@@ -1,26 +1,19 @@
-declare(strict_types=1);
-
-<?php
+<?php declare(strict_types=1);
 
 namespace Modules\BeautyMasters\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-/**
- * Appointment
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class Appointment extends Model
+final class Appointment extends Model
 {
-    protected $fillable = ['master_id', 'service_name', 'client_name', 'start_time', 'end_time', 'status'];
+    use HasFactory;
 
-    public function master()
-    {
-        return $this->belongsTo(Master::class);
-    }
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    protected $fillable = ['master_id', 'service_name', 'client_name', 'start_time', 'end_time', 'status'];
+    
+        public function master()
+        {
+            return $this->belongsTo(Master::class);
+        }
 }

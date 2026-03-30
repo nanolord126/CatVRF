@@ -1,31 +1,21 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Jewelry\JewelryItemResource\Pages;
 
-use App\Filament\Tenant\Resources\Jewelry\JewelryItemResource;
-use Filament\Actions;
-use Filament\Resources\Pages\EditRecord;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final /**
- * EditJewelryItem
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class EditJewelryItem extends EditRecord
+final class EditJewelryItem extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = JewelryItemResource::class;
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            Actions\DeleteAction::make(),
-        ];
-    }
+        protected function getHeaderActions(): array
+        {
+            return [
+                Actions\DeleteAction::make(),
+            ];
+        }
 }

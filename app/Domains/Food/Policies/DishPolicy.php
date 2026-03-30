@@ -1,54 +1,49 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Domains\Food\Policies;
 
-use App\Models\User;
-use App\Domains\Food\Models\Dish;
-use Illuminate\Auth\Access\Response;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * Policy для Dish (Блюдо).
- * Production 2026.
- */
-final class DishPolicy
+final class DishPolicy extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function viewAny(User $user): bool
-    {
-        return true; // Все могут видеть меню
-    }
-
-    public function view(User $user, Dish $dish): bool
-    {
-        return true; // Блюдо публичное
-    }
-
-    public function create(User $user): Response
-    {
-        if (!$user->isStaff()) {
-            return $this->response->deny('Только персонал может создавать блюда');
+        {
+            return true; // Все могут видеть меню
         }
 
-        return $this->response->allow();
-    }
-
-    public function update(User $user, Dish $dish): Response
-    {
-        if (!$user->isStaff()) {
-            return $this->response->deny('Только персонал может редактировать блюда');
+        public function view(User $user, Dish $dish): bool
+        {
+            return true; // Блюдо публичное
         }
 
-        return $this->response->allow();
-    }
+        public function create(User $user): Response
+        {
+            if (!$user->isStaff()) {
+                return $this->response->deny('Только персонал может создавать блюда');
+            }
 
-    public function delete(User $user, Dish $dish): Response
-    {
-        if (!$user->isAdmin()) {
-            return $this->response->deny('Только администратор может удалять блюда');
+            return $this->response->allow();
         }
 
-        return $this->response->allow();
-    }
+        public function update(User $user, Dish $dish): Response
+        {
+            if (!$user->isStaff()) {
+                return $this->response->deny('Только персонал может редактировать блюда');
+            }
+
+            return $this->response->allow();
+        }
+
+        public function delete(User $user, Dish $dish): Response
+        {
+            if (!$user->isAdmin()) {
+                return $this->response->deny('Только администратор может удалять блюда');
+            }
+
+            return $this->response->allow();
+        }
 }

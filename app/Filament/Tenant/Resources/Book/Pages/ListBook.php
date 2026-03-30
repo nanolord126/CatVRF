@@ -1,8 +1,14 @@
-<?php
-declare(strict_types=1);
+<?php declare(strict_types=1);
+
 namespace App\Filament\Tenant\Resources\Book\Pages;
-use App\Filament\Tenant\Resources\BookResource;
-use Filament\Resources\Pages\ListRecords;
-final class ListRecordsBook extends ListRecords {
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+final class ListRecordsBook extends Model
+{
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = BookResource::class;
 }

@@ -1,21 +1,21 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\BookingResource\Pages;
 
-use App\Filament\Tenant\Resources\BookingResource;
-use Filament\Actions;
-use Filament\Resources\Pages\EditRecord;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-class EditBooking extends EditRecord
+final class EditBooking extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = BookingResource::class;
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            Actions\DeleteAction::make(),
-        ];
-    }
+        protected function getHeaderActions(): array
+        {
+            return [
+                Actions\DeleteAction::make(),
+            ];
+        }
 }

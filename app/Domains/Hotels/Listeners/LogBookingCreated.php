@@ -2,23 +2,20 @@
 
 namespace App\Domains\Hotels\Listeners;
 
-use App\Domains\Hotels\Events\BookingCreated;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * КАНОН 2026: Booking Created Listener (Layer 4)
- * 
- * Логирование и аудит.
- */
-final class LogBookingCreated implements ShouldQueue
+final class LogBookingCreated extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function handle(BookingCreated $event): void
-    {
-        Log::channel('audit')->info('Hotel Booking Created Audit', [
-            'booking_uuid' => $event->booking->uuid,
-            'correlation_id' => $event->correlationId,
-            'tenant_id' => $event->booking->tenant_id,
-        ]);
-    }
+        {
+            Log::channel('audit')->info('Hotel Booking Created Audit', [
+                'booking_uuid' => $event->booking->uuid,
+                'correlation_id' => $event->correlationId,
+                'tenant_id' => $event->booking->tenant_id,
+            ]);
+        }
 }

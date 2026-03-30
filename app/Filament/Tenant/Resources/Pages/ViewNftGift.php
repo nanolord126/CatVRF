@@ -1,18 +1,19 @@
-<?php
+<?php declare(strict_types=1);
 
-declare(strict_types=1);
+namespace App\Filament\Tenant\Resources\Pages;
 
-namespace App\Filament\Tenant\Resources\NftGift\Pages;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-use use App\Filament\Tenant\Resources\NftGiftResource;;
-use Filament\Resources\Pages\ViewRecord;
-
-final class ViewNftGift extends ViewRecord
+final class ViewNftGift extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = NftGiftResource::class;
 
-    public function getTitle(): string
-    {
-        return 'View NftGift';
-    }
+        public function getTitle(): string
+        {
+            return 'View NftGift';
+        }
 }

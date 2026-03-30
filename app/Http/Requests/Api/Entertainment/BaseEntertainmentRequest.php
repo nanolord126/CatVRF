@@ -1,25 +1,24 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Http\Requests\Api\Entertainment;
 
-use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * КАНОН 2026 — BASE ENTERTAINMENT API REQUEST
- */
-class BaseEntertainmentRequest extends FormRequest
+final class BaseEntertainmentRequest extends Model
 {
-    public function authorize(): bool
-    {
-        return true;
-    }
+    use HasFactory;
 
-    public function rules(): array
-    {
-        return [
-            'correlation_id' => ['nullable', 'string', 'uuid'],
-        ];
-    }
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    public function authorize(): bool
+        {
+            return true;
+        }
+
+        public function rules(): array
+        {
+            return [
+                'correlation_id' => ['nullable', 'string', 'uuid'],
+            ];
+        }
 }

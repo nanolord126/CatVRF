@@ -1,23 +1,14 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\ShortTermRentals\ApartmentResource\Pages;
 
-use App\Filament\Tenant\Resources\ShortTermRentals\ApartmentResource;
-use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final /**
- * CreateApartment
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class CreateApartment extends CreateRecord
+final class CreateApartment extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = ApartmentResource::class;
 }

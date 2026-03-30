@@ -1,18 +1,14 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace Tests\Feature\Domains\WeddingPlanning;
 
-use Tests\TestCase;
-use App\Domains\WeddingPlanning\Models\WeddingEvent;
 use App\Domains\WeddingPlanning\Models\WeddingVendor;
-use App\Domains\WeddingPlanning\Services\WeddingService;
 use App\Domains\WeddingPlanning\Services\AIWeddingPlannerConstructor;
+use App\Domains\WeddingPlanning\Services\WeddingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Tests\TestCase;
 
 /**
  * WeddingIntegrationTest

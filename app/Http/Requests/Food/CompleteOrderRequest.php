@@ -1,35 +1,32 @@
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Http\Requests\Food;
 
-use App\Http\Requests\BaseApiRequest;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * Complete Food Order Request.
- * Валидация данных для завершения доставки.
- *
- * Rules:
- * - order_id: required, exists
- */
-final class CompleteOrderRequest extends BaseApiRequest
+final class CompleteOrderRequest extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function authorize(): bool
-    {
-        return auth()->check();
-    }
+        {
+            return auth()->check();
+        }
 
-    public function rules(): array
-    {
-        return [
-            'order_id' => ['required', 'integer', 'exists:restaurant_orders,id'],
-        ];
-    }
+        public function rules(): array
+        {
+            return [
+                'order_id' => ['required', 'integer', 'exists:restaurant_orders,id'],
+            ];
+        }
 
-    public function messages(): array
-    {
-        return [
-            'order_id.required' => 'Order ID required',
-            'order_id.exists' => 'Order not found',
-        ];
-    }
+        public function messages(): array
+        {
+            return [
+                'order_id.required' => 'Order ID required',
+                'order_id.exists' => 'Order not found',
+            ];
+        }
 }

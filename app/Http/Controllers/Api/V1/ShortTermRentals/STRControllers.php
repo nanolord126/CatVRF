@@ -1,476 +1,464 @@
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1\ShortTermRentals;
 
-use App\Domains\ShortTermRentals\Models\Property;
-use App\Domains\ShortTermRentals\Models\PropertyBooking;
-use App\Domains\ShortTermRentals\Services\PropertyService;
-use App\Domains\ShortTermRentals\Services\BookingService;
-use App\Domains\ShortTermRentals\Services\PayoutService;
-use App\Http\Controllers\Controller;
-use App\Http\Requests\ShortTermRentals\CreateBookingRequest;
-use App\Http\Requests\ShortTermRentals\UpdatePropertyRequest;
-use App\Http\Resources\ShortTermRentals\PropertyResource;
-use App\Http\Resources\ShortTermRentals\BookingResource;
-use App\Services\FraudControlService;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
-use Throwable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final class PropertyController extends Controller
+final class PropertyController extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-        private readonly PropertyService $propertyService,
-        private readonly FraudControlService $fraudService,
-    ) {}
+            private readonly PropertyService $propertyService,
+            private readonly FraudControlService $fraudService,
+        ) {}
 
-    /**
-     * Получить список доступных квартир с фильтрацией
-     */
-    public function index(Request $request): JsonResponse
-    {
-        try {
-            $correlationId = $request->header('X-Correlation-ID') ?? Str::uuid()->toString();
+        /**
+         * Получить список доступных квартир с фильтрацией
+         */
+        public function index(Request $request): JsonResponse
+        {
+            try {
+                $correlationId = $request->header('X-Correlation-ID') ?? Str::uuid()->toString();
 
-            // Базовая фильтрация
-            $query = Property::where('is_active', true);
+                // Базовая фильтрация
+                $query = Property::where('is_active', true);
 
-            // Гео-фильтрация если передали координаты
-            if ($request->has(['lat', 'lon'])) {
-                $lat = (float)$request->get('lat');
-                $lon = (float)$request->get('lon');
-                $radius = (float)$request->get('radius_km', 5);
+                // Гео-фильтрация если передали координаты
+                if ($request->has(['lat', 'lon'])) {
+                    $lat = (float)$request->get('lat');
+                    $lon = (float)$request->get('lon');
+                    $radius = (float)$request->get('radius_km', 5);
 
-                $query = $query->selectRaw(
-                    '*, (6371 * acos(cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude)))) AS distance',
-                    [$lat, $lon, $lat]
-                )->having('distance', '<=', $radius)
-                    ->orderBy('distance');
-            }
-
-            // Фильтры по цене
-            if ($request->has('price_min') || $request->has('price_max')) {
-                $minPrice = $request->get('price_min') ? (int)($request->get('price_min') * 100) : 0;
-                $maxPrice = $request->get('price_max') ? (int)($request->get('price_max') * 100) : 999999999;
-                $query = $query->whereBetween('price_per_night', [$minPrice, $maxPrice]);
-            }
-
-            // Фильтры по датам доступности
-            if ($request->has(['check_in', 'check_out'])) {
-                $checkIn = $request->get('check_in');
-                $checkOut = $request->get('check_out');
-
-                // Исключаем забронированные периоды
-                $query = $query->whereDoesntHave('bookings', function ($q) use ($checkIn, $checkOut) {
-                    $q->where('status', '!=', 'cancelled')
-                        ->where(function ($q) use ($checkIn, $checkOut) {
-                            $q->whereBetween('check_in_date', [$checkIn, $checkOut])
-                                ->orWhereBetween('check_out_date', [$checkIn, $checkOut])
-                                ->orWhere([
-                                    ['check_in_date', '<=', $checkIn],
-                                    ['check_out_date', '>=', $checkOut],
-                                ]);
-                        });
-                });
-            }
-
-            // B2C vs B2B фильтрация
-            if ($request->get('b2b') === true) {
-                $query = $query->where('is_b2b_available', true);
-            } else {
-                $query = $query->where('is_b2c_available', true);
-            }
-
-            // Фильтры по удобствам
-            if ($request->has('amenities')) {
-                $amenities = (array)$request->get('amenities');
-                foreach ($amenities as $amenity) {
-                    $query = $query->whereJsonContains('amenities', $amenity);
+                    $query = $query->selectRaw(
+                        '*, (6371 * acos(cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude)))) AS distance',
+                        [$lat, $lon, $lat]
+                    )->having('distance', '<=', $radius)
+                        ->orderBy('distance');
                 }
-            }
 
-            $properties = $query->paginate(20);
+                // Фильтры по цене
+                if ($request->has('price_min') || $request->has('price_max')) {
+                    $minPrice = $request->get('price_min') ? (int)($request->get('price_min') * 100) : 0;
+                    $maxPrice = $request->get('price_max') ? (int)($request->get('price_max') * 100) : 999999999;
+                    $query = $query->whereBetween('price_per_night', [$minPrice, $maxPrice]);
+                }
 
-            Log::channel('audit')->info('Properties list requested', [
-                'count' => count($properties),
-                'filters' => $request->only(['lat', 'lon', 'price_min', 'price_max', 'check_in', 'check_out']),
-                'correlation_id' => $correlationId,
-            ]);
+                // Фильтры по датам доступности
+                if ($request->has(['check_in', 'check_out'])) {
+                    $checkIn = $request->get('check_in');
+                    $checkOut = $request->get('check_out');
 
-            return response()->json([
-                'success' => true,
-                'data' => PropertyResource::collection($properties),
-                'meta' => [
-                    'pagination' => [
-                        'total' => $properties->total(),
-                        'count' => count($properties),
-                        'per_page' => $properties->perPage(),
-                        'current_page' => $properties->currentPage(),
+                    // Исключаем забронированные периоды
+                    $query = $query->whereDoesntHave('bookings', function ($q) use ($checkIn, $checkOut) {
+                        $q->where('status', '!=', 'cancelled')
+                            ->where(function ($q) use ($checkIn, $checkOut) {
+                                $q->whereBetween('check_in_date', [$checkIn, $checkOut])
+                                    ->orWhereBetween('check_out_date', [$checkIn, $checkOut])
+                                    ->orWhere([
+                                        ['check_in_date', '<=', $checkIn],
+                                        ['check_out_date', '>=', $checkOut],
+                                    ]);
+                            });
+                    });
+                }
+
+                // B2C vs B2B фильтрация
+                if ($request->get('b2b') === true) {
+                    $query = $query->where('is_b2b_available', true);
+                } else {
+                    $query = $query->where('is_b2c_available', true);
+                }
+
+                // Фильтры по удобствам
+                if ($request->has('amenities')) {
+                    $amenities = (array)$request->get('amenities');
+                    foreach ($amenities as $amenity) {
+                        $query = $query->whereJsonContains('amenities', $amenity);
+                    }
+                }
+
+                $properties = $query->paginate(20);
+
+                Log::channel('audit')->info('Properties list requested', [
+                    'count' => count($properties),
+                    'filters' => $request->only(['lat', 'lon', 'price_min', 'price_max', 'check_in', 'check_out']),
+                    'correlation_id' => $correlationId,
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'data' => PropertyResource::collection($properties),
+                    'meta' => [
+                        'pagination' => [
+                            'total' => $properties->total(),
+                            'count' => count($properties),
+                            'per_page' => $properties->perPage(),
+                            'current_page' => $properties->currentPage(),
+                        ],
                     ],
-                ],
-                'correlation_id' => $correlationId,
-            ]);
-        } catch (Throwable $e) {
-            Log::channel('audit')->error('Properties list failed', [
-                'error' => $e->getMessage(),
-                'correlation_id' => $correlationId ?? 'unknown',
-            ]);
+                    'correlation_id' => $correlationId,
+                ]);
+            } catch (Throwable $e) {
+                Log::channel('audit')->error('Properties list failed', [
+                    'error' => $e->getMessage(),
+                    'correlation_id' => $correlationId ?? 'unknown',
+                ]);
 
-            return response()->json([
-                'success' => false,
-                'error' => 'Failed to fetch properties',
-                'correlation_id' => $correlationId ?? 'unknown',
-            ], 500);
-        }
-    }
-
-    /**
-     * Получить детали квартиры с расписанием
-     */
-    public function show(Property $property, Request $request): JsonResponse
-    {
-        try {
-            $correlationId = $request->header('X-Correlation-ID') ?? Str::uuid()->toString();
-
-            // Загружаем отношения
-            $property->load([
-                'owner',
-                'bookings' => function ($q) {
-                    $q->where('status', '!=', 'cancelled')
-                        ->where('check_out_date', '>=', now()->toDateString())
-                        ->orderBy('check_in_date');
-                },
-                'reviews' => function ($q) {
-                    $q->where('is_approved', true)->orderBy('created_at', 'desc')->limit(10);
-                },
-            ]);
-
-            // Проверяем доступность для B2C/B2B
-            $isB2B = $request->get('b2b') === true;
-            if ($isB2B && !$property->is_b2b_available) {
                 return response()->json([
                     'success' => false,
-                    'error' => 'Property not available for B2B',
-                    'correlation_id' => $correlationId,
-                ], 403);
+                    'error' => 'Failed to fetch properties',
+                    'correlation_id' => $correlationId ?? 'unknown',
+                ], 500);
             }
-            if (!$isB2B && !$property->is_b2c_available) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Property not available for B2C',
-                    'correlation_id' => $correlationId,
-                ], 403);
-            }
-
-            Log::channel('audit')->info('Property details viewed', [
-                'property_id' => $property->id,
-                'user_id' => auth()->id(),
-                'correlation_id' => $correlationId,
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'data' => new PropertyResource($property),
-                'correlation_id' => $correlationId,
-            ]);
-        } catch (Throwable $e) {
-            Log::channel('audit')->error('Property details failed', [
-                'property_id' => $property->id,
-                'error' => $e->getMessage(),
-                'correlation_id' => $correlationId ?? 'unknown',
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'error' => 'Failed to fetch property',
-                'correlation_id' => $correlationId ?? 'unknown',
-            ], 500);
         }
-    }
 
-    /**
-     * Обновить информацию о квартире (только для владельца)
-     */
-    public function update(UpdatePropertyRequest $request, Property $property): JsonResponse
-    {
-        try {
-            $correlationId = $request->header('X-Correlation-ID') ?? Str::uuid()->toString();
+        /**
+         * Получить детали квартиры с расписанием
+         */
+        public function show(Property $property, Request $request): JsonResponse
+        {
+            try {
+                $correlationId = $request->header('X-Correlation-ID') ?? Str::uuid()->toString();
 
-            // Проверяем авторизацию
-            $this->authorize('update', $property);
+                // Загружаем отношения
+                $property->load([
+                    'owner',
+                    'bookings' => function ($q) {
+                        $q->where('status', '!=', 'cancelled')
+                            ->where('check_out_date', '>=', now()->toDateString())
+                            ->orderBy('check_in_date');
+                    },
+                    'reviews' => function ($q) {
+                        $q->where('is_approved', true)->orderBy('created_at', 'desc')->limit(10);
+                    },
+                ]);
 
-            DB::transaction(function () use ($request, $property, $correlationId) {
-                $this->propertyService->updateProperty($property, $request->validated(), $correlationId);
-            });
-
-            Log::channel('audit')->info('Property updated', [
-                'property_id' => $property->id,
-                'user_id' => auth()->id(),
-                'fields' => array_keys($request->validated()),
-                'correlation_id' => $correlationId,
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'data' => new PropertyResource($property),
-                'correlation_id' => $correlationId,
-            ]);
-        } catch (Throwable $e) {
-            Log::channel('audit')->error('Property update failed', [
-                'property_id' => $property->id,
-                'error' => $e->getMessage(),
-                'correlation_id' => $correlationId ?? 'unknown',
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'error' => 'Failed to update property',
-                'correlation_id' => $correlationId ?? 'unknown',
-            ], 500);
-        }
-    }
-}
-
-final class BookingController extends Controller
-{
-    public function __construct(
-        private readonly BookingService $bookingService,
-        private readonly FraudControlService $fraudService,
-    ) {}
-
-    /**
-     * Создать новое бронирование (с холдом депозита)
-     */
-    public function store(CreateBookingRequest $request): JsonResponse
-    {
-        try {
-            $correlationId = $request->header('X-Correlation-ID') ?? Str::uuid()->toString();
-
-            DB::transaction(function () use ($request, $correlationId) {
-                // Фрод-проверка перед бронированием
-                $fraudScore = $this->fraudService->scoreOperation(
-                    operationType: 'property_booking',
-                    userId: auth()->id(),
-                    amount: (int)($request->total_price * 100),
-                    correlationId: $correlationId
-                );
-
-                if ($fraudScore > 0.85) {
-                    throw new \Exception('Booking blocked by fraud detection');
+                // Проверяем доступность для B2C/B2B
+                $isB2B = $request->get('b2b') === true;
+                if ($isB2B && !$property->is_b2b_available) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Property not available for B2B',
+                        'correlation_id' => $correlationId,
+                    ], 403);
+                }
+                if (!$isB2B && !$property->is_b2c_available) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Property not available for B2C',
+                        'correlation_id' => $correlationId,
+                    ], 403);
                 }
 
-                // Создаём бронирование
-                $booking = $this->bookingService->createBooking(
-                    propertyId: $request->property_id,
-                    userId: auth()->id(),
-                    checkIn: $request->check_in_date,
-                    checkOut: $request->check_out_date,
-                    guests: $request->guests_count,
-                    totalPrice: $request->total_price,
-                    correlationId: $correlationId
-                );
-            });
+                Log::channel('audit')->info('Property details viewed', [
+                    'property_id' => $property->id,
+                    'user_id' => auth()->id(),
+                    'correlation_id' => $correlationId,
+                ]);
 
-            Log::channel('audit')->info('Booking created', [
-                'booking_id' => $booking->id ?? null,
-                'property_id' => $request->property_id,
-                'user_id' => auth()->id(),
-                'total_price' => $request->total_price,
-                'correlation_id' => $correlationId,
-            ]);
+                return response()->json([
+                    'success' => true,
+                    'data' => new PropertyResource($property),
+                    'correlation_id' => $correlationId,
+                ]);
+            } catch (Throwable $e) {
+                Log::channel('audit')->error('Property details failed', [
+                    'property_id' => $property->id,
+                    'error' => $e->getMessage(),
+                    'correlation_id' => $correlationId ?? 'unknown',
+                ]);
 
-            return response()->json([
-                'success' => true,
-                'data' => new BookingResource($booking),
-                'correlation_id' => $correlationId,
-            ], 201);
-        } catch (Throwable $e) {
-            Log::channel('audit')->error('Booking creation failed', [
-                'error' => $e->getMessage(),
-                'correlation_id' => $correlationId ?? 'unknown',
-            ]);
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Failed to fetch property',
+                    'correlation_id' => $correlationId ?? 'unknown',
+                ], 500);
+            }
+        }
 
-            return response()->json([
-                'success' => false,
-                'error' => 'Failed to create booking',
-                'correlation_id' => $correlationId ?? 'unknown',
-            ], 400);
+        /**
+         * Обновить информацию о квартире (только для владельца)
+         */
+        public function update(UpdatePropertyRequest $request, Property $property): JsonResponse
+        {
+            try {
+                $correlationId = $request->header('X-Correlation-ID') ?? Str::uuid()->toString();
+
+                // Проверяем авторизацию
+                $this->authorize('update', $property);
+
+                DB::transaction(function () use ($request, $property, $correlationId) {
+                    $this->propertyService->updateProperty($property, $request->validated(), $correlationId);
+                });
+
+                Log::channel('audit')->info('Property updated', [
+                    'property_id' => $property->id,
+                    'user_id' => auth()->id(),
+                    'fields' => array_keys($request->validated()),
+                    'correlation_id' => $correlationId,
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'data' => new PropertyResource($property),
+                    'correlation_id' => $correlationId,
+                ]);
+            } catch (Throwable $e) {
+                Log::channel('audit')->error('Property update failed', [
+                    'property_id' => $property->id,
+                    'error' => $e->getMessage(),
+                    'correlation_id' => $correlationId ?? 'unknown',
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Failed to update property',
+                    'correlation_id' => $correlationId ?? 'unknown',
+                ], 500);
+            }
         }
     }
 
-    /**
-     * Получить детали бронирования
-     */
-    public function show(PropertyBooking $booking, Request $request): JsonResponse
+    final class BookingController extends Controller
     {
-        try {
-            $correlationId = $request->header('X-Correlation-ID') ?? Str::uuid()->toString();
+        public function __construct(
+            private readonly BookingService $bookingService,
+            private readonly FraudControlService $fraudService,
+        ) {}
 
-            $this->authorize('view', $booking);
+        /**
+         * Создать новое бронирование (с холдом депозита)
+         */
+        public function store(CreateBookingRequest $request): JsonResponse
+        {
+            try {
+                $correlationId = $request->header('X-Correlation-ID') ?? Str::uuid()->toString();
 
-            Log::channel('audit')->info('Booking details viewed', [
-                'booking_id' => $booking->id,
-                'user_id' => auth()->id(),
-                'correlation_id' => $correlationId,
-            ]);
+                DB::transaction(function () use ($request, $correlationId) {
+                    // Фрод-проверка перед бронированием
+                    $fraudScore = $this->fraudService->scoreOperation(
+                        operationType: 'property_booking',
+                        userId: auth()->id(),
+                        amount: (int)($request->total_price * 100),
+                        correlationId: $correlationId
+                    );
 
-            return response()->json([
-                'success' => true,
-                'data' => new BookingResource($booking),
-                'correlation_id' => $correlationId,
-            ]);
-        } catch (Throwable $e) {
-            Log::channel('audit')->error('Booking details failed', [
-                'booking_id' => $booking->id,
-                'error' => $e->getMessage(),
-                'correlation_id' => $correlationId ?? 'unknown',
-            ]);
+                    if ($fraudScore > 0.85) {
+                        throw new \Exception('Booking blocked by fraud detection');
+                    }
 
-            return response()->json([
-                'success' => false,
-                'error' => 'Failed to fetch booking',
-                'correlation_id' => $correlationId ?? 'unknown',
-            ], 500);
+                    // Создаём бронирование
+                    $booking = $this->bookingService->createBooking(
+                        propertyId: $request->property_id,
+                        userId: auth()->id(),
+                        checkIn: $request->check_in_date,
+                        checkOut: $request->check_out_date,
+                        guests: $request->guests_count,
+                        totalPrice: $request->total_price,
+                        correlationId: $correlationId
+                    );
+                });
+
+                Log::channel('audit')->info('Booking created', [
+                    'booking_id' => $booking->id ?? null,
+                    'property_id' => $request->property_id,
+                    'user_id' => auth()->id(),
+                    'total_price' => $request->total_price,
+                    'correlation_id' => $correlationId,
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'data' => new BookingResource($booking),
+                    'correlation_id' => $correlationId,
+                ], 201);
+            } catch (Throwable $e) {
+                Log::channel('audit')->error('Booking creation failed', [
+                    'error' => $e->getMessage(),
+                    'correlation_id' => $correlationId ?? 'unknown',
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Failed to create booking',
+                    'correlation_id' => $correlationId ?? 'unknown',
+                ], 400);
+            }
+        }
+
+        /**
+         * Получить детали бронирования
+         */
+        public function show(PropertyBooking $booking, Request $request): JsonResponse
+        {
+            try {
+                $correlationId = $request->header('X-Correlation-ID') ?? Str::uuid()->toString();
+
+                $this->authorize('view', $booking);
+
+                Log::channel('audit')->info('Booking details viewed', [
+                    'booking_id' => $booking->id,
+                    'user_id' => auth()->id(),
+                    'correlation_id' => $correlationId,
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'data' => new BookingResource($booking),
+                    'correlation_id' => $correlationId,
+                ]);
+            } catch (Throwable $e) {
+                Log::channel('audit')->error('Booking details failed', [
+                    'booking_id' => $booking->id,
+                    'error' => $e->getMessage(),
+                    'correlation_id' => $correlationId ?? 'unknown',
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Failed to fetch booking',
+                    'correlation_id' => $correlationId ?? 'unknown',
+                ], 500);
+            }
+        }
+
+        /**
+         * Отменить бронирование (с возвратом депозита)
+         */
+        public function cancel(PropertyBooking $booking, Request $request): JsonResponse
+        {
+            try {
+                $correlationId = $request->header('X-Correlation-ID') ?? Str::uuid()->toString();
+
+                $this->authorize('cancel', $booking);
+
+                DB::transaction(function () use ($booking, $correlationId, $request) {
+                    $this->bookingService->cancelBooking(
+                        booking: $booking,
+                        reason: $request->get('reason', 'user_requested'),
+                        correlationId: $correlationId
+                    );
+                });
+
+                Log::channel('audit')->info('Booking cancelled', [
+                    'booking_id' => $booking->id,
+                    'user_id' => auth()->id(),
+                    'correlation_id' => $correlationId,
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'data' => new BookingResource($booking),
+                    'correlation_id' => $correlationId,
+                ]);
+            } catch (Throwable $e) {
+                Log::channel('audit')->error('Booking cancellation failed', [
+                    'booking_id' => $booking->id,
+                    'error' => $e->getMessage(),
+                    'correlation_id' => $correlationId ?? 'unknown',
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Failed to cancel booking',
+                    'correlation_id' => $correlationId ?? 'unknown',
+                ], 400);
+            }
         }
     }
 
-    /**
-     * Отменить бронирование (с возвратом депозита)
-     */
-    public function cancel(PropertyBooking $booking, Request $request): JsonResponse
+    final class PayoutController extends Controller
     {
-        try {
-            $correlationId = $request->header('X-Correlation-ID') ?? Str::uuid()->toString();
+        public function __construct(
+            private readonly PayoutService $payoutService,
+        ) {}
 
-            $this->authorize('cancel', $booking);
+        /**
+         * Получить историю выплат для владельца
+         */
+        public function index(Request $request): JsonResponse
+        {
+            try {
+                $correlationId = $request->header('X-Correlation-ID') ?? Str::uuid()->toString();
 
-            DB::transaction(function () use ($booking, $correlationId, $request) {
-                $this->bookingService->cancelBooking(
-                    booking: $booking,
-                    reason: $request->get('reason', 'user_requested'),
-                    correlationId: $correlationId
-                );
-            });
-
-            Log::channel('audit')->info('Booking cancelled', [
-                'booking_id' => $booking->id,
-                'user_id' => auth()->id(),
-                'correlation_id' => $correlationId,
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'data' => new BookingResource($booking),
-                'correlation_id' => $correlationId,
-            ]);
-        } catch (Throwable $e) {
-            Log::channel('audit')->error('Booking cancellation failed', [
-                'booking_id' => $booking->id,
-                'error' => $e->getMessage(),
-                'correlation_id' => $correlationId ?? 'unknown',
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'error' => 'Failed to cancel booking',
-                'correlation_id' => $correlationId ?? 'unknown',
-            ], 400);
-        }
-    }
-}
-
-final class PayoutController extends Controller
-{
-    public function __construct(
-        private readonly PayoutService $payoutService,
-    ) {}
-
-    /**
-     * Получить историю выплат для владельца
-     */
-    public function index(Request $request): JsonResponse
-    {
-        try {
-            $correlationId = $request->header('X-Correlation-ID') ?? Str::uuid()->toString();
-
-            $payouts = $this->payoutService->getPayoutHistory(
-                tenantId: auth()->user()->current_tenant_id,
-                page: $request->get('page', 1),
-                perPage: $request->get('per_page', 20)
-            );
-
-            Log::channel('audit')->info('Payouts list requested', [
-                'tenant_id' => auth()->user()->current_tenant_id,
-                'count' => count($payouts),
-                'correlation_id' => $correlationId,
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'data' => $payouts,
-                'correlation_id' => $correlationId,
-            ]);
-        } catch (Throwable $e) {
-            Log::channel('audit')->error('Payouts list failed', [
-                'error' => $e->getMessage(),
-                'correlation_id' => $correlationId ?? 'unknown',
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'error' => 'Failed to fetch payouts',
-                'correlation_id' => $correlationId ?? 'unknown',
-            ], 500);
-        }
-    }
-
-    /**
-     * Запросить выплату (для B2B)
-     */
-    public function requestPayout(Request $request): JsonResponse
-    {
-        try {
-            $correlationId = $request->header('X-Correlation-ID') ?? Str::uuid()->toString();
-
-            $request->validate([
-                'amount' => 'required|numeric|min:500',
-                'bank_account' => 'required|string',
-            ]);
-
-            DB::transaction(function () use ($request, $correlationId) {
-                $this->payoutService->requestPayout(
+                $payouts = $this->payoutService->getPayoutHistory(
                     tenantId: auth()->user()->current_tenant_id,
-                    amount: (int)($request->amount * 100),
-                    bankAccount: $request->bank_account,
-                    correlationId: $correlationId
+                    page: $request->get('page', 1),
+                    perPage: $request->get('per_page', 20)
                 );
-            });
 
-            Log::channel('audit')->info('Payout requested', [
-                'tenant_id' => auth()->user()->current_tenant_id,
-                'amount' => $request->amount,
-                'correlation_id' => $correlationId,
-            ]);
+                Log::channel('audit')->info('Payouts list requested', [
+                    'tenant_id' => auth()->user()->current_tenant_id,
+                    'count' => count($payouts),
+                    'correlation_id' => $correlationId,
+                ]);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Payout request created',
-                'correlation_id' => $correlationId,
-            ]);
-        } catch (Throwable $e) {
-            Log::channel('audit')->error('Payout request failed', [
-                'error' => $e->getMessage(),
-                'correlation_id' => $correlationId ?? 'unknown',
-            ]);
+                return response()->json([
+                    'success' => true,
+                    'data' => $payouts,
+                    'correlation_id' => $correlationId,
+                ]);
+            } catch (Throwable $e) {
+                Log::channel('audit')->error('Payouts list failed', [
+                    'error' => $e->getMessage(),
+                    'correlation_id' => $correlationId ?? 'unknown',
+                ]);
 
-            return response()->json([
-                'success' => false,
-                'error' => 'Failed to request payout',
-                'correlation_id' => $correlationId ?? 'unknown',
-            ], 400);
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Failed to fetch payouts',
+                    'correlation_id' => $correlationId ?? 'unknown',
+                ], 500);
+            }
         }
-    }
+
+        /**
+         * Запросить выплату (для B2B)
+         */
+        public function requestPayout(Request $request): JsonResponse
+        {
+            try {
+                $correlationId = $request->header('X-Correlation-ID') ?? Str::uuid()->toString();
+
+                $request->validate([
+                    'amount' => 'required|numeric|min:500',
+                    'bank_account' => 'required|string',
+                ]);
+
+                DB::transaction(function () use ($request, $correlationId) {
+                    $this->payoutService->requestPayout(
+                        tenantId: auth()->user()->current_tenant_id,
+                        amount: (int)($request->amount * 100),
+                        bankAccount: $request->bank_account,
+                        correlationId: $correlationId
+                    );
+                });
+
+                Log::channel('audit')->info('Payout requested', [
+                    'tenant_id' => auth()->user()->current_tenant_id,
+                    'amount' => $request->amount,
+                    'correlation_id' => $correlationId,
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Payout request created',
+                    'correlation_id' => $correlationId,
+                ]);
+            } catch (Throwable $e) {
+                Log::channel('audit')->error('Payout request failed', [
+                    'error' => $e->getMessage(),
+                    'correlation_id' => $correlationId ?? 'unknown',
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Failed to request payout',
+                    'correlation_id' => $correlationId ?? 'unknown',
+                ], 400);
+            }
+        }
 }

@@ -1,33 +1,25 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Listeners\Octane;
 
-use Laravel\Octane\Events\RequestHandled;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final /**
- * FlushCacheListener
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class FlushCacheListener
+final class FlushCacheListener extends Model
 {
-    public function handle(RequestHandled $event): void
-    {
-        // Flush non-persistent caches to avoid memory leaks
-        if (config('octane.flush_views', false)) {
-            view()->flushViewsCache();
-        }
+    use HasFactory;
 
-        // Reset stateful services
-        if (config('octane.isolation', false)) {
-            app('cache')->flush();
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    public function handle(RequestHandled $event): void
+        {
+            // Flush non-persistent caches to avoid memory leaks
+            if (config('octane.flush_views', false)) {
+                view()->flushViewsCache();
+            }
+
+            // Reset stateful services
+            if (config('octane.isolation', false)) {
+                app('cache')->flush();
+            }
         }
-    }
 }

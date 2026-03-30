@@ -1,145 +1,137 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Domains\Photography\Services;
 
-use App\Domains\Photography\Models\Booking;
-use App\Domains\Photography\Models\PhotoSession;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * КАНОН 2026 — PHOTOGRAPHY BOOKING SERVICE
- * 1. DB::transaction() для всех мутаций
- * 2. FraudControlService::check()
- * 3. correlation_id everywhere
- */
-final readonly class BookingService
+final class BookingService extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-        // private readonly FraudControlService $fraudControl,
-        // private readonly WalletService $walletService
-    ) {}
+            // private readonly FraudControlService $fraudControl,
+            // private readonly WalletService $walletService
+        ) {}
 
-    /**
-     * Создание бронирования
-     * Минимум 60 строк (авто-формирование + логика)
-     */
-    public function createBooking(
-        int $clientId,
-        int $sessionId,
-        string $startsAt,
-        ?int $photographerId = null,
-        ?int $studioId = null,
-        ?string $correlationId = null
-    ): Booking {
-        $correlationId ??= (string) Str::uuid();
+        /**
+         * Создание бронирования
+         * Минимум 60 строк (авто-формирование + логика)
+         */
+        public function createBooking(
+            int $clientId,
+            int $sessionId,
+            string $startsAt,
+            ?int $photographerId = null,
+            ?int $studioId = null,
+            ?string $correlationId = null
+        ): Booking {
+            $correlationId ??= (string) Str::uuid();
 
-        return DB::transaction(function () use ($clientId, $sessionId, $startsAt, $photographerId, $studioId, $correlationId) {
-            $session = PhotoSession::findOrFail($sessionId);
-            
-            // 1. Имитация FraudControlService::check()
-            Log::channel('audit')->info('Photography booking validation (Correlation: '.$correlationId.')', [
-                'client_id' => $clientId,
-                'session_type' => $session->name,
-                'starts_at' => $startsAt,
-            ]);
+            return DB::transaction(function () use ($clientId, $sessionId, $startsAt, $photographerId, $studioId, $correlationId) {
+                $session = PhotoSession::findOrFail($sessionId);
 
-            // 2. Расчет и проверка временных рамок
-            $starts = \Carbon\Carbon::parse($startsAt);
-            if ($starts->isPast()) {
-                throw new \InvalidArgumentException('Нельзя забронировать сессию в прошлом времени.');
-            }
+                // 1. Имитация FraudControlService::check()
+                Log::channel('audit')->info('Photography booking validation (Correlation: '.$correlationId.')', [
+                    'client_id' => $clientId,
+                    'session_type' => $session->name,
+                    'starts_at' => $startsAt,
+                ]);
 
-            $ends = $starts->copy()->addMinutes($session->duration_minutes);
+                // 2. Расчет и проверка временных рамок
+                $starts = \Carbon\Carbon::parse($startsAt);
+                if ($starts->isPast()) {
+                    throw new \InvalidArgumentException('Нельзя забронировать сессию в прошлом времени.');
+                }
 
-            // 3. Проверка доступности ресурсов (фотографа/студии)
-            if ($photographerId) {
-                $isBusy = Booking::where('photographer_id', $photographerId)
-                    ->where('status', '!=', 'cancelled')
-                    ->where(fn($q) => $q->whereBetween('starts_at', [$starts, $ends])
-                                       ->orWhereBetween('ends_at', [$starts, $ends]))
-                    ->exists();
-                if ($isBusy) throw new \Exception('Выбранный фотограф занят в это время.');
-            }
+                $ends = $starts->copy()->addMinutes($session->duration_minutes);
 
-            // 4. Отражение в базе данных (мутация)
-            $booking = Booking::create([
-                'uuid' => (string) Str::uuid(),
-                'client_id' => $clientId,
-                'session_id' => $sessionId,
-                'photographer_id' => $photographerId,
-                'studio_id' => $studioId,
-                'starts_at' => $starts,
-                'ends_at' => $ends,
-                'status' => 'pending',
-                'total_amount_kopecks' => $session->price_kopecks,
-                'correlation_id' => $correlationId
-            ]);
+                // 3. Проверка доступности ресурсов (фотографа/студии)
+                if ($photographerId) {
+                    $isBusy = Booking::where('photographer_id', $photographerId)
+                        ->where('status', '!=', 'cancelled')
+                        ->where(fn($q) => $q->whereBetween('starts_at', [$starts, $ends])
+                                           ->orWhereBetween('ends_at', [$starts, $ends]))
+                        ->exists();
+                    if ($isBusy) throw new \Exception('Выбранный фотограф занят в это время.');
+                }
 
-            Log::channel('audit')->info('Photography booking successfully stored (UUID: '.$booking->uuid.')', [
-                'correlation_id' => $correlationId,
-                'total_amount' => $booking->total_amount_kopecks
-            ]);
+                // 4. Отражение в базе данных (мутация)
+                $booking = Booking::create([
+                    'uuid' => (string) Str::uuid(),
+                    'client_id' => $clientId,
+                    'session_id' => $sessionId,
+                    'photographer_id' => $photographerId,
+                    'studio_id' => $studioId,
+                    'starts_at' => $starts,
+                    'ends_at' => $ends,
+                    'status' => 'pending',
+                    'total_amount_kopecks' => $session->price_kopecks,
+                    'correlation_id' => $correlationId
+                ]);
 
-            return $booking;
-        });
-    }
+                Log::channel('audit')->info('Photography booking successfully stored (UUID: '.$booking->uuid.')', [
+                    'correlation_id' => $correlationId,
+                    'total_amount' => $booking->total_amount_kopecks
+                ]);
 
-    /**
-     * Перенос фотосессии (Reschedule)
-     */
-    public function reschedule(int $bookingId, string $newStartsAt, ?string $correlationId = null): bool
-    {
-        $correlationId ??= (string) Str::uuid();
+                return $booking;
+            });
+        }
 
-        return DB::transaction(function () use ($bookingId, $newStartsAt, $correlationId) {
-            $booking = Booking::findOrFail($bookingId);
-            
-            $duration = $booking->starts_at->diffInMinutes($booking->ends_at);
-            $newStarts = \Carbon\Carbon::parse($newStartsAt);
-            $newEnds = $newStarts->copy()->addMinutes((int)$duration);
+        /**
+         * Перенос фотосессии (Reschedule)
+         */
+        public function reschedule(int $bookingId, string $newStartsAt, ?string $correlationId = null): bool
+        {
+            $correlationId ??= (string) Str::uuid();
 
-            $booking->update([
-                'starts_at' => $newStarts,
-                'ends_at' => $newEnds,
-                'status' => 'rescheduled',
-                'correlation_id' => $correlationId
-            ]);
+            return DB::transaction(function () use ($bookingId, $newStartsAt, $correlationId) {
+                $booking = Booking::findOrFail($bookingId);
 
-            Log::channel('audit')->info('Photography booking rescheduling audit completed', [
-                'booking_id' => $bookingId,
-                'new_starts_at' => $newStartsAt,
-                'correlation_id' => $correlationId
-            ]);
+                $duration = $booking->starts_at->diffInMinutes($booking->ends_at);
+                $newStarts = \Carbon\Carbon::parse($newStartsAt);
+                $newEnds = $newStarts->copy()->addMinutes((int)$duration);
 
-            return true;
-        });
-    }
+                $booking->update([
+                    'starts_at' => $newStarts,
+                    'ends_at' => $newEnds,
+                    'status' => 'rescheduled',
+                    'correlation_id' => $correlationId
+                ]);
 
-    /**
-     * Отмена бронирования (Cancellation)
-     */
-    public function cancel(int $bookingId, string $reason, ?string $correlationId = null): bool
-    {
-        $correlationId ??= (string) Str::uuid();
+                Log::channel('audit')->info('Photography booking rescheduling audit completed', [
+                    'booking_id' => $bookingId,
+                    'new_starts_at' => $newStartsAt,
+                    'correlation_id' => $correlationId
+                ]);
 
-        return DB::transaction(function () use ($bookingId, $reason, $correlationId) {
-            $booking = Booking::findOrFail($bookingId);
-            
-            $booking->update([
-                'status' => 'cancelled',
-                'correlation_id' => $correlationId
-            ]);
+                return true;
+            });
+        }
 
-            Log::channel('audit')->warning('Photography session cancellation triggered: '.$reason, [
-                'booking_uuid' => $booking->uuid,
-                'correlation_id' => $correlationId
-            ]);
+        /**
+         * Отмена бронирования (Cancellation)
+         */
+        public function cancel(int $bookingId, string $reason, ?string $correlationId = null): bool
+        {
+            $correlationId ??= (string) Str::uuid();
 
-            return true;
-        });
-    }
+            return DB::transaction(function () use ($bookingId, $reason, $correlationId) {
+                $booking = Booking::findOrFail($bookingId);
+
+                $booking->update([
+                    'status' => 'cancelled',
+                    'correlation_id' => $correlationId
+                ]);
+
+                Log::channel('audit')->warning('Photography session cancellation triggered: '.$reason, [
+                    'booking_uuid' => $booking->uuid,
+                    'correlation_id' => $correlationId
+                ]);
+
+                return true;
+            });
+        }
 }

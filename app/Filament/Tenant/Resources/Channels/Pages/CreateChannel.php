@@ -1,39 +1,29 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Channels\Pages;
 
-use App\Filament\Tenant\Resources\Channels\ChannelResource;
-use Filament\Resources\Pages\CreateRecord;
-use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final /**
- * CreateChannel
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class CreateChannel extends CreateRecord
+final class CreateChannel extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = ChannelResource::class;
 
-    protected function mutateFormDataBeforeCreate(array $data): array
-    {
-        $data['uuid']           = Str::uuid()->toString();
-        $data['correlation_id'] = Str::uuid()->toString();
-        $data['tenant_id']      = filament()->getTenant()?->id ?? '0';
-        $data['slug']           = Str::slug($data['name'] ?? 'channel') . '-' . Str::random(6);
+        protected function mutateFormDataBeforeCreate(array $data): array
+        {
+            $data['uuid']           = Str::uuid()->toString();
+            $data['correlation_id'] = Str::uuid()->toString();
+            $data['tenant_id']      = filament()->getTenant()?->id ?? '0';
+            $data['slug']           = Str::slug($data['name'] ?? 'channel') . '-' . Str::random(6);
 
-        return $data;
-    }
+            return $data;
+        }
 
-    protected function getRedirectUrl(): string
-    {
-        return $this->getResource()::getUrl('index');
-    }
+        protected function getRedirectUrl(): string
+        {
+            return $this->getResource()::getUrl('index');
+        }
 }

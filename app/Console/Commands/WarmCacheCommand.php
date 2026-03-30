@@ -1,45 +1,69 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Jobs\CacheWarmers\WarmUserTasteProfileJob;
 use App\Jobs\CacheWarmers\WarmPopularProductsJob;
+use App\Jobs\CacheWarmers\WarmUserTasteProfileJob;
 use App\Jobs\CacheWarmers\WarmVerticalStatsJob;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 final class WarmCacheCommand extends Command
 {
-    protected $signature = 'cache:warm {--vertical=} {--user-id=}';
-    protected $description = 'Warm up cache for improved performance';
+    protected $signature = 'cache:warm
+        {--vertical= : Warm cache for a specific vertical}
+        {--user-id= : Warm user-specific taste profile cache}
+        {--correlation-id= : Correlation identifier for audit logs}';
+
+    protected $description = 'Warm application cache for users or verticals to improve performance';
 
     public function handle(): int
     {
-        if ($userId = $this->option('user-id')) {
-            dispatch(new WarmUserTasteProfileJob((int)$userId));
+        $userId = $this->option('user-id');
+        $vertical = $this->option('vertical');
+        $correlationId = $this->option('correlation-id') ?: (string) Str::uuid();
+
+        if ($userId) {
+            WarmUserTasteProfileJob::dispatch((int) $userId);
+
+            Log::channel('audit')->info('Cache warming queued for user taste profile', [
+                'user_id' => (int) $userId,
+                'correlation_id' => $correlationId,
+            ]);
+
             $this->info("Queued cache warming for user {$userId}");
         }
 
-        if ($vertical = $this->option('vertical')) {
-            dispatch(new WarmPopularProductsJob($vertical));
-            dispatch(new WarmVerticalStatsJob($vertical));
+        if ($vertical) {
+            WarmPopularProductsJob::dispatch((string) $vertical);
+            WarmVerticalStatsJob::dispatch((string) $vertical);
+
+            Log::channel('audit')->info('Cache warming queued for vertical', [
+                'vertical' => $vertical,
+                'correlation_id' => $correlationId,
+            ]);
+
             $this->info("Queued cache warming for vertical: {$vertical}");
         }
 
         if (!$userId && !$vertical) {
-            // Warm all verticals
-            $verticals = DB::table('verticals')->distinct()->pluck('code');
+            $verticals = DB::table('verticals')->distinct()->pluck('code')->all();
 
             foreach ($verticals as $v) {
-                dispatch(new WarmPopularProductsJob($v));
-                dispatch(new WarmVerticalStatsJob($v));
+                WarmPopularProductsJob::dispatch($v);
+                WarmVerticalStatsJob::dispatch($v);
             }
 
-            $this->info("Queued cache warming for " . count($verticals) . " verticals");
+            Log::channel('audit')->info('Cache warming queued for all verticals', [
+                'count' => count($verticals),
+                'correlation_id' => $correlationId,
+            ]);
+
+            $this->info('Queued cache warming for ' . count($verticals) . ' verticals');
         }
 
-        return self::SUCCESS;
+        return Command::SUCCESS;
     }
 }

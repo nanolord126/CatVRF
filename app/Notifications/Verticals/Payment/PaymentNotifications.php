@@ -3,12 +3,10 @@
 namespace App\Notifications\Verticals\Payment;
 
 use App\Notifications\BaseMailableNotification;
-use App\Notifications\BasePushNotification;
-use App\Notifications\BaseInAppNotification;
 
 /**
  * Payment Initiated Notification - когда платёж создан
- * 
+ *
  * Отправляется пользователю когда он инициировал платёж
  * Каналы: Email, Push, In-app
  */

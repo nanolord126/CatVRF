@@ -6,7 +6,6 @@ use App\Models\DemandForecast;
 use App\Models\DemandModelVersion;
 use App\Services\FraudControl\FraudControlService;
 use Carbon\Carbon;
-use Illuminate\Cache\CacheManager;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Log\LogManager;

@@ -1,21 +1,18 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Data\DTO\AI\Constructors;
 
-use Spatie\LaravelData\Data;
-
-final class RecommendedServiceDTO extends Data
+/** @phpstan-type AvailableSlots array<int, string> */
+final readonly class RecommendedServiceDTO
 {
+    /** @param AvailableSlots $availableSlots */
     public function __construct(
-        public readonly int $serviceId,
-        public readonly int $masterId,
-        public readonly string $serviceName,
-        public readonly string $masterName,
-        public readonly int $price,
-        /** @var array<string> */
-        public readonly array $availableSlots,
+        public int $serviceId,
+        public int $masterId,
+        public string $serviceName,
+        public string $masterName,
+        public int $price,
+        public array $availableSlots,
     ) {
     }
 }

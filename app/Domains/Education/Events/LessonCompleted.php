@@ -1,29 +1,24 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Domains\Education\Events;
 
-use App\Domains\Education\Models\Lesson;
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * КАНОН 2026: LessonCompleted (Education).
- * Событие завершения урока студентом.
- */
-final class LessonCompleted
+final class LessonCompleted extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use Dispatchable, SerializesModels;
 
-    public string $correlation_id;
+        public string $correlation_id;
 
-    public function __construct(
-        public readonly int $userId,
-        public readonly Lesson $lesson,
-        ?string $correlationId = null
-    ) {
-        $this->correlation_id = $correlationId ?? (string) Str::uuid();
-    }
+        public function __construct(
+            public readonly int $userId,
+            public readonly Lesson $lesson,
+            ?string $correlationId = null
+        ) {
+            $this->correlation_id = $correlationId ?? (string) Str::uuid();
+        }
 }

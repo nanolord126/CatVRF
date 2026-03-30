@@ -1,94 +1,82 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources;
 
-use App\Domains\Medical\Models\Doctor;
-use Filament\Forms;
-use Filament\Forms\Form;
-use Filament\Resources\Resource;
-use Filament\Tables;
-use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * РЕЖИМ ЛЮТЫЙ 2026: DOCTOR RESOURCE
- * 
- * Управление штатом врачей клиники.
- * Обязательная привязка к tenant_id.
- * 
- * @package App\Filament\Tenant\Resources
- */
-final class MedicalDoctorResource extends Resource
+final class MedicalDoctorResource extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static ?string $model = \App\Domains\Medical\Models\Doctor::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-user-plus';
-    protected static ?string $navigationGroup = 'Medical Platform';
-    protected static ?string $slug = 'medical-doctors';
+        protected static ?string $navigationIcon = 'heroicon-o-user-plus';
+        protected static ?string $navigationGroup = 'Medical Platform';
+        protected static ?string $slug = 'medical-doctors';
 
-    public static function form(Form $form): Form
-    {
-        return $form->schema([
-            Forms\Components\Section::make('Professional Profile')
-                ->schema([
-                    Forms\Components\TextInput::make('full_name')
-                        ->required()
-                        ->maxLength(255),
+        public static function form(Form $form): Form
+        {
+            return $form->schema([
+                Forms\Components\Section::make('Professional Profile')
+                    ->schema([
+                        Forms\Components\TextInput::make('full_name')
+                            ->required()
+                            ->maxLength(255),
 
-                    Forms\Components\Select::make('clinic_id')
-                        ->relationship('clinic', 'name')
-                        ->required(),
+                        Forms\Components\Select::make('clinic_id')
+                            ->relationship('clinic', 'name')
+                            ->required(),
 
-                    Forms\Components\TextInput::make('specialization')
-                        ->required(),
+                        Forms\Components\TextInput::make('specialization')
+                            ->required(),
 
-                    Forms\Components\TagsInput::make('sub_specializations'),
+                        Forms\Components\TagsInput::make('sub_specializations'),
 
-                    Forms\Components\TextInput::make('experience_years')
-                        ->numeric()
-                        ->minValue(1)
-                        ->maxValue(60)
-                        ->required(),
+                        Forms\Components\TextInput::make('experience_years')
+                            ->numeric()
+                            ->minValue(1)
+                            ->maxValue(60)
+                            ->required(),
 
-                    Forms\Components\Toggle::make('is_active')
-                        ->default(true)
-                        ->label('Active in Schedule'),
-                ])->columns(2),
+                        Forms\Components\Toggle::make('is_active')
+                            ->default(true)
+                            ->label('Active in Schedule'),
+                    ])->columns(2),
 
-            Forms\Components\Section::make('Analytics & Tags')
-                ->schema([
-                    Forms\Components\TextInput::make('rating')
-                        ->numeric()
-                        ->default(5.0)
-                        ->disabled(),
+                Forms\Components\Section::make('Analytics & Tags')
+                    ->schema([
+                        Forms\Components\TextInput::make('rating')
+                            ->numeric()
+                            ->default(5.0)
+                            ->disabled(),
 
-                    Forms\Components\TagsInput::make('tags')
-                        ->placeholder('Add tags for AI analysis'),
-                ])->columns(2),
+                        Forms\Components\TagsInput::make('tags')
+                            ->placeholder('Add tags for AI analysis'),
+                    ])->columns(2),
 
-            Forms\Components\RichEditor::make('bio')
-                ->label('Public Biography')
-                ->columnSpanFull(),
-        ]);
+                Forms\Components\RichEditor::make('bio')
+                    ->label('Public Biography')
+                    ->columnSpanFull(),
+            ]);
 
-    public static function getPages(): array
-    {
-        return [
-            'index' => Pages\\ListMedicalDoctor::route('/'),
-            'create' => Pages\\CreateMedicalDoctor::route('/create'),
-            'edit' => Pages\\EditMedicalDoctor::route('/{record}/edit'),
-            'view' => Pages\\ViewMedicalDoctor::route('/{record}'),
-        ];
+        public static function getPages(): array
+        {
+            return [
+                'index' => Pages\\ListMedicalDoctor::route('/'),
+                'create' => Pages\\CreateMedicalDoctor::route('/create'),
+                'edit' => Pages\\EditMedicalDoctor::route('/{record}/edit'),
+                'view' => Pages\\ViewMedicalDoctor::route('/{record}'),
+            ];
 
-    public static function getPages(): array
-    {
-        return [
-            'index' => Pages\\ListMedicalDoctor::route('/'),
-            'create' => Pages\\CreateMedicalDoctor::route('/create'),
-            'edit' => Pages\\EditMedicalDoctor::route('/{record}/edit'),
-            'view' => Pages\\ViewMedicalDoctor::route('/{record}'),
-        ];
-    }
+        public static function getPages(): array
+        {
+            return [
+                'index' => Pages\\ListMedicalDoctor::route('/'),
+                'create' => Pages\\CreateMedicalDoctor::route('/create'),
+                'edit' => Pages\\EditMedicalDoctor::route('/{record}/edit'),
+                'view' => Pages\\ViewMedicalDoctor::route('/{record}'),
+            ];
+        }
 }

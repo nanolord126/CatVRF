@@ -1,21 +1,22 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\View\Components\Configurators;
 
-use Illuminate\View\Component;
-use Illuminate\View\View;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final class IrrigationConfigurator extends Component
+final class IrrigationConfigurator extends Model
 {
-    public function __construct(
-        public string $uuid = 'irrigation-x-flow',
-        public array $options = []
-    ) {}
+    use HasFactory;
 
-    public function render(): View
-    {
-        return view('components.configurators.irrigation-configurator');
-    }
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    public function __construct(
+            public string $uuid = 'irrigation-x-flow',
+            public array $options = []
+        ) {}
+
+        public function render(): View
+        {
+            return view('components.configurators.irrigation-configurator');
+        }
 }

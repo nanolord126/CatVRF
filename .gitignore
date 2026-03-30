@@ -15,3 +15,27 @@ yarn-error.log
 /.vscode
 *.zip
 !Beauty_Module_*.zip
+
+# === SENSEY PRODUCTION MODE — NO SCRIPTS EVER AGAIN ===
+.archive/
+*.7z
+*.exe
+*.ps1
+*.bat
+fix_*.php
+FINAL_*.php
+ULTRA_*.php
+massive_fixer*
+mega_fixer*
+ETAP*
+AUDIT_*
+CLEANUP_*
+PHASE*
+SENSEI_*
+REPORT*
+*.log
+test-results*
+getpages*
+doppler.*
+scripts/fix_*
+scripts/cleanup_*

@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-namespace App\Http\Controllers\API\V1;
+namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Services\ThreeD\Room3DVisualizerService;
@@ -10,9 +10,9 @@ use Illuminate\Support\Str;
 
 /**
  * Room3DController
- * 
+ *
  * Основной класс для работы с платформой CatVRF.
- * 
+ *
  * @author CatVRF
  * @package App\Http\Controllers\API\V1
  * @version 1.0.0

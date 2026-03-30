@@ -1,49 +1,45 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Http\Requests\Api\Tickets;
 
-use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Contracts\Validation\Validator;
-use Illuminate\Http\Exceptions\HttpResponseException;
-use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * КАНОН 2026: Базовый класс реквеста с поддержкой correlation_id и адекватным JSON ответом.
- */
-class BaseApiRequest extends FormRequest
+final class BaseApiRequest extends Model
 {
-    /**
-     * По умолчанию авторизован, проверяется в подклассах.
-     */
-    public function authorize(): bool
-    {
-        return true;
-    }
+    use HasFactory;
 
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
-     * Возвращает correlation_id из заголовка или генерирует новый.
-     */
-    public function getCorrelationId(): string
-    {
-        return $this->header('X-Correlation-ID', (string) Str::uuid());
-    }
+         * По умолчанию авторизован, проверяется в подклассах.
+         */
+        public function authorize(): bool
+        {
+            return true;
+        }
 
-    /**
-     * Форматированный ответ при ошибке валидации (API Канон 2026).
-     */
-    protected function failedValidation(Validator $validator)
-    {
-        $correlationId = $this->getCorrelationId();
+        /**
+         * Возвращает correlation_id из заголовка или генерирует новый.
+         */
+        public function getCorrelationId(): string
+        {
+            return $this->header('X-Correlation-ID', (string) Str::uuid());
+        }
 
-        throw new HttpResponseException(
-            response()->json([
-                'success' => false,
-                'correlation_id' => $correlationId,
-                'error' => 'Ошибка валидации данных',
-                'details' => $validator->errors(),
-            ], 422)
-        );
-    }
+        /**
+         * Форматированный ответ при ошибке валидации (API Канон 2026).
+         */
+        protected function failedValidation(Validator $validator)
+        {
+            $correlationId = $this->getCorrelationId();
+
+            throw new HttpResponseException(
+                response()->json([
+                    'success' => false,
+                    'correlation_id' => $correlationId,
+                    'error' => 'Ошибка валидации данных',
+                    'details' => $validator->errors(),
+                ], 422)
+            );
+        }
 }

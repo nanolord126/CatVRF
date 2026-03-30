@@ -1,29 +1,19 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Domains\Sports\Fitness\Filament\Resources\PerformanceMetricResource\Pages;
 
-use App\Domains\Sports\Fitness\Filament\Resources\PerformanceMetricResource;
-use Filament\Actions;
-use Filament\Resources\Pages\ListRecords;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final /**
- * ListPerformanceMetrics
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class ListPerformanceMetrics extends ListRecords
+final class ListPerformanceMetrics extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = PerformanceMetricResource::class;
 
-    protected function getHeaderActions(): array
-    {
-        return [Actions\CreateAction::make()];
-    }
+        protected function getHeaderActions(): array
+        {
+            return [Actions\CreateAction::make()];
+        }
 }

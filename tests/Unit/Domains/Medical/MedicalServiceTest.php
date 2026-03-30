@@ -1,14 +1,12 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace Tests\Unit\Domains\Medical;
 
 use App\Domains\Medical\Models\MedicalClinic;
 use App\Domains\Medical\Models\MedicalDoctor;
 use App\Domains\Medical\Models\MedicalService;
-use App\Domains\Medical\Services\MedicalService as DomainMedicalService;
 use App\Domains\Medical\Services\AIMedicalTriageService;
+use App\Domains\Medical\Services\MedicalService as DomainMedicalService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\TestCase;

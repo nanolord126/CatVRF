@@ -1,67 +1,51 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Domains\Photography\Jobs;
 
-use App\Domains\Photography\Models\PhotoStudio;
-use App\Domains\Photography\Models\Photographer;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * CalculateRatingsJob
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class CalculateRatingsJob implements ShouldQueue
+final class CalculateRatingsJob extends Model
 {
-	use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use HasFactory;
 
-	public int $tries = 1;
-	public int $timeout = 120;
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-	public function handle(): void
-	{
-		try {
-			DB::transaction(function () {
-				$studios = PhotoStudio::all();
-				foreach ($studios as $studio) {
-					$avgRating = $studio->reviews()->avg('rating') ?? 0;
-					$reviewCount = $studio->reviews()->count();
+    	public int $tries = 1;
+    	public int $timeout = 120;
 
-					$studio->update([
-						'rating' => $avgRating,
-						'review_count' => $reviewCount,
-					]);
-				}
+    	public function handle(): void
+    	{
+    		try {
+    			DB::transaction(function () {
+    				$studios = PhotoStudio::all();
+    				foreach ($studios as $studio) {
+    					$avgRating = $studio->reviews()->avg('rating') ?? 0;
+    					$reviewCount = $studio->reviews()->count();
 
-				$photographers = Photographer::all();
-				foreach ($photographers as $photographer) {
-					$avgRating = $photographer->reviews()->avg('rating') ?? 0;
-					$photographer->update(['rating' => $avgRating]);
-				}
+    					$studio->update([
+    						'rating' => $avgRating,
+    						'review_count' => $reviewCount,
+    					]);
+    				}
 
-				Log::channel('audit')->info('Photography: Batch ratings calculated', [
-					'studios_count' => $studios->count(),
-					'photographers_count' => $photographers->count(),
-				]);
-			});
-		} catch (\Exception $e) {
-			Log::channel('audit')->error('Photography: Ratings calculation failed', [
-				'error' => $e->getMessage(),
-			]);
-			throw $e;
-		}
-	}
+    				$photographers = Photographer::all();
+    				foreach ($photographers as $photographer) {
+    					$avgRating = $photographer->reviews()->avg('rating') ?? 0;
+    					$photographer->update(['rating' => $avgRating]);
+    				}
+
+    				Log::channel('audit')->info('Photography: Batch ratings calculated', [
+    					'studios_count' => $studios->count(),
+    					'photographers_count' => $photographers->count(),
+    				]);
+    			});
+    		} catch (\Exception $e) {
+    			Log::channel('audit')->error('Photography: Ratings calculation failed', [
+    				'error' => $e->getMessage(),
+    			]);
+    			throw $e;
+    		}
+    	}
 }

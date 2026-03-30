@@ -1,39 +1,34 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\DentalClinicResource\Pages;
 
-use App\Filament\Tenant\Resources\DentalClinicResource;
-use Filament\Actions;
-use Filament\Resources\Pages\ListRecords;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * List Page for Dental Clinics.
- * Implements CANON 2026 Audit Logging.
- */
-final class ListDentalClinics extends ListRecords
+final class ListDentalClinics extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = DentalClinicResource::class;
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            Actions\CreateAction::make()
-                ->icon('heroicon-o-plus-circle')
-                ->label('Register New Clinic'),
-        ];
-    }
+        protected function getHeaderActions(): array
+        {
+            return [
+                Actions\CreateAction::make()
+                    ->icon('heroicon-o-plus-circle')
+                    ->label('Register New Clinic'),
+            ];
+        }
 
-    public function mount(): void
-    {
-        parent::mount();
+        public function mount(): void
+        {
+            parent::mount();
 
-        Log::channel('audit')->info('Dental Clinic Directory accessed', [
-            'tenant_id' => tenant()->id ?? 'system',
-            'user_id' => auth()->id(),
-            'correlation_id' => request()->header('X-Correlation-ID')
-        ]);
-    }
+            Log::channel('audit')->info('Dental Clinic Directory accessed', [
+                'tenant_id' => tenant()->id ?? 'system',
+                'user_id' => auth()->id(),
+                'correlation_id' => request()->header('X-Correlation-ID')
+            ]);
+        }
 }

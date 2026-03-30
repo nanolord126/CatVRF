@@ -1,15 +1,13 @@
-<?php
+<?php declare(strict_types=1);
 
-declare(strict_types=1);
+namespace Tests\Feature;
 
-namespace App\Domains\Medical\Psychology\Tests;
-
-use App\Domains\Medical\Psychology\Models\Psychologist;
 use App\Domains\Medical\Psychology\Models\PsychologicalClinic;
+use App\Domains\Medical\Psychology\Models\Psychologist;
 use App\Domains\Medical\Psychology\Services\PsychologicalService;
-use Tests\TestCase;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
+use Tests\TestCase;
 
 /**
  * Тест реализации вертикали Психологии.

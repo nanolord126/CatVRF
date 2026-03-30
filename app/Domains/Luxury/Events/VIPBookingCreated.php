@@ -1,28 +1,19 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Domains\Luxury\Events;
 
-use App\Domains\Luxury\Models\VIPBooking;
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * VIPBookingCreated
- *
- * Layer 6: Events & Listeners
- * Сообщает другим слоям (уведомления, почта, аналитика) о создании бронирования.
- *
- * @version 1.0.0
- * @author CatVRF
- */
-final class VIPBookingCreated
+final class VIPBookingCreated extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use Dispatchable, SerializesModels;
 
-    public function __construct(
-        public VIPBooking $booking,
-        public string $correlationId
-    ) {}
+        public function __construct(
+            public VIPBooking $booking,
+            public string $correlationId
+        ) {}
 }

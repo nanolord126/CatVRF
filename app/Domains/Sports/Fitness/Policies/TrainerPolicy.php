@@ -1,50 +1,39 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Domains\Sports\Fitness\Policies;
 
-use App\Domains\Sports\Fitness\Models\Trainer;
-use App\Models\User;
-use Illuminate\Auth\Access\HandlesAuthorization;
-use Illuminate\Auth\Access\Response;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final /**
- * TrainerPolicy
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class TrainerPolicy
+final class TrainerPolicy extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use HandlesAuthorization;
 
-    public function viewAny(User $user): Response
-    {
-        return $this->response->allow();
-    }
+        public function viewAny(User $user): Response
+        {
+            return $this->response->allow();
+        }
 
-    public function view(User $user, Trainer $trainer): Response
-    {
-        return $this->response->allow();
-    }
+        public function view(User $user, Trainer $trainer): Response
+        {
+            return $this->response->allow();
+        }
 
-    public function create(User $user): Response
-    {
-        return $user->hasPermissionTo('create_trainers') ? $this->response->allow() : $this->response->deny();
-    }
+        public function create(User $user): Response
+        {
+            return $user->hasPermissionTo('create_trainers') ? $this->response->allow() : $this->response->deny();
+        }
 
-    public function update(User $user, Trainer $trainer): Response
-    {
-        return $user->id === $trainer->user_id || $user->hasPermissionTo('update_trainers') ? $this->response->allow() : $this->response->deny();
-    }
+        public function update(User $user, Trainer $trainer): Response
+        {
+            return $user->id === $trainer->user_id || $user->hasPermissionTo('update_trainers') ? $this->response->allow() : $this->response->deny();
+        }
 
-    public function delete(User $user, Trainer $trainer): Response
-    {
-        return $user->hasPermissionTo('delete_trainers') ? $this->response->allow() : $this->response->deny();
-    }
+        public function delete(User $user, Trainer $trainer): Response
+        {
+            return $user->hasPermissionTo('delete_trainers') ? $this->response->allow() : $this->response->deny();
+        }
 }

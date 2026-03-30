@@ -1,9 +1,9 @@
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace Tests\Feature\Api\ShortTermRentals;
 
-use App\Domains\ShortTermRentals\Models\Property;
 use App\Domains\ShortTermRentals\Models\PropertyBooking;
+use App\Domains\ShortTermRentals\Models\Property;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;

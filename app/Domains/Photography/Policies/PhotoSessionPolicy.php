@@ -1,46 +1,36 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Domains\Photography\Policies;
 
-use App\Models\User;
-use App\Domains\Photography\Models\PhotoSession;
-use Illuminate\Auth\Access\Response;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final /**
- * PhotoSessionPolicy
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class PhotoSessionPolicy
+final class PhotoSessionPolicy extends Model
 {
-	public function viewAny(User $user): Response
-	{
-		return $this->response->allow();
-	}
+    use HasFactory;
 
-	public function view(User $user, PhotoSession $session): Response
-	{
-		return $user->id === $session->user_id || $user->is_admin
-			? $this->response->allow()
-			: $this->response->deny('Нет доступа');
-	}
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    public function viewAny(User $user): Response
+    	{
+    		return $this->response->allow();
+    	}
 
-	public function create(User $user): Response
-	{
-		return $user->tenant_id ? $this->response->allow() : $this->response->deny('Требуется tenant');
-	}
+    	public function view(User $user, PhotoSession $session): Response
+    	{
+    		return $user->id === $session->user_id || $user->is_admin
+    			? $this->response->allow()
+    			: $this->response->deny('Нет доступа');
+    	}
 
-	public function cancel(User $user, PhotoSession $session): Response
-	{
-		return ($user->id === $session->user_id || $user->is_admin) && in_array($session->status, ['pending', 'confirmed'])
-			? $this->response->allow()
-			: $this->response->deny('Отмена невозможна');
-	}
+    	public function create(User $user): Response
+    	{
+    		return $user->tenant_id ? $this->response->allow() : $this->response->deny('Требуется tenant');
+    	}
+
+    	public function cancel(User $user, PhotoSession $session): Response
+    	{
+    		return ($user->id === $session->user_id || $user->is_admin) && in_array($session->status, ['pending', 'confirmed'])
+    			? $this->response->allow()
+    			: $this->response->deny('Отмена невозможна');
+    	}
 }

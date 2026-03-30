@@ -7,12 +7,12 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
-use Modules\Finances\Models\WithdrawalRequest;
-use Modules\Finances\Services\PaymentGateway\PaymentGatewayInterface;
-use Modules\Finances\Services\FraudMLService;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Modules\Finances\Models\WithdrawalRequest;
+use Modules\Finances\Services\FraudMLService;
+use Modules\Finances\Services\PaymentGateway\PaymentGatewayInterface;
 
 /**
  * Payout Processing Job

@@ -1,27 +1,31 @@
-<?php
+<?php declare(strict_types=1);
 
-declare(strict_types=1);
+namespace App\Filament\Tenant\Resources\Pages;
 
-namespace App\Filament\Tenant\Resources\JewelryCustomOrder\Pages;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-use use App\Filament\Tenant\Resources\JewelryCustomOrderResource;;
-use Filament\Resources\Pages\EditRecord;
-use Filament\Actions\{ViewAction, DeleteAction};
-
-final class EditJewelryCustomOrder extends EditRecord
+final class EditJewelryCustomOrder extends Model
 {
-    protected static string $resource = JewelryCustomOrderResource::class;
+    use HasFactory;
 
-    public function getTitle(): string
-    {
-        return 'Edit JewelryCustomOrder';
-    }
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    ViewAction, DeleteAction};
 
-    protected function getHeaderActions(): array
+    final class EditJewelryCustomOrder extends EditRecord
     {
-        return [
-            ViewAction::make(),
-            DeleteAction::make(),
-        ];
-    }
+        protected static string $resource = JewelryCustomOrderResource::class;
+
+        public function getTitle(): string
+        {
+            return 'Edit JewelryCustomOrder';
+        }
+
+        protected function getHeaderActions(): array
+        {
+            return [
+                ViewAction::make(),
+                DeleteAction::make(),
+            ];
+        }
 }

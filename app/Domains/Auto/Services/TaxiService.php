@@ -1,123 +1,116 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Domains\Auto\Services;
 
-use App\Domains\Auto\Models\TaxiRide;
-use App\Domains\Auto\Models\Vehicle;
-use App\Models\User;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * КАНОН 2026: TaxiService.
- * Управление поездками.
- */
-final readonly class TaxiService
+final class TaxiService extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
-     * Создание поездки (Booking).
-     */
-    public function createRide(int $passengerId, array $data, string $correlationId): TaxiRide
-    {
-        return DB::transaction(function () use ($passengerId, $data, $correlationId) {
-            $data['uuid'] = (string) Str::uuid();
-            $data['tenant_id'] = tenant()->id;
-            $data['passenger_id'] = $passengerId;
-            $data['status'] = 'searching';
-            $data['correlation_id'] = $correlationId;
+         * Создание поездки (Booking).
+         */
+        public function createRide(int $passengerId, array $data, string $correlationId): TaxiRide
+        {
+            return DB::transaction(function () use ($passengerId, $data, $correlationId) {
+                $data['uuid'] = (string) Str::uuid();
+                $data['tenant_id'] = tenant()->id;
+                $data['passenger_id'] = $passengerId;
+                $data['status'] = 'searching';
+                $data['correlation_id'] = $correlationId;
 
-            $ride = TaxiRide::create($data);
+                $ride = TaxiRide::create($data);
 
-            Log::channel('audit')->info('Taxi ride searching driver', [
-                'ride_uuid' => $ride->uuid,
-                'passenger_id' => $passengerId,
-                'pickup' => $data['pickup_point'] ?? 'N/A',
-                'correlation_id' => $correlationId,
-            ]);
+                Log::channel('audit')->info('Taxi ride searching driver', [
+                    'ride_uuid' => $ride->uuid,
+                    'passenger_id' => $passengerId,
+                    'pickup' => $data['pickup_point'] ?? 'N/A',
+                    'correlation_id' => $correlationId,
+                ]);
 
-            return $ride;
-        });
-    }
+                return $ride;
+            });
+        }
 
-    /**
-     * Назначение водителя (Accepting).
-     */
-    public function assignDriver(TaxiRide $ride, Vehicle $vehicle, int $driverId, string $correlationId): void
-    {
-        DB::transaction(function () use ($ride, $vehicle, $driverId, $correlationId) {
-            $ride->update([
-                'driver_id' => $driverId,
-                'vehicle_id' => $vehicle->id,
-                'status' => 'accepted',
-                'correlation_id' => $correlationId,
-                'accepted_at' => now(),
-            ]);
+        /**
+         * Назначение водителя (Accepting).
+         */
+        public function assignDriver(TaxiRide $ride, Vehicle $vehicle, int $driverId, string $correlationId): void
+        {
+            DB::transaction(function () use ($ride, $vehicle, $driverId, $correlationId) {
+                $ride->update([
+                    'driver_id' => $driverId,
+                    'vehicle_id' => $vehicle->id,
+                    'status' => 'accepted',
+                    'correlation_id' => $correlationId,
+                    'accepted_at' => now(),
+                ]);
 
-            // Резервация автомобиля под поездку
-            $vehicle->update(['status' => 'busy']);
+                // Резервация автомобиля под поездку
+                $vehicle->update(['status' => 'busy']);
 
-            Log::channel('audit')->info('Taxi ride accepted', [
-                'ride_uuid' => $ride->uuid,
-                'vehicle_uuid' => $vehicle->uuid,
-                'driver_id' => $driverId,
-                'correlation_id' => $correlationId,
-            ]);
-        });
-    }
+                Log::channel('audit')->info('Taxi ride accepted', [
+                    'ride_uuid' => $ride->uuid,
+                    'vehicle_uuid' => $vehicle->uuid,
+                    'driver_id' => $driverId,
+                    'correlation_id' => $correlationId,
+                ]);
+            });
+        }
 
-    /**
-     * Завершение поездки.
-     */
-    public function completeRide(TaxiRide $ride, string $correlationId): void
-    {
-        DB::transaction(function () use ($ride, $correlationId) {
-            $ride->update([
-                'status' => 'finished',
-                'finished_at' => now(),
-                'correlation_id' => $correlationId,
-            ]);
+        /**
+         * Завершение поездки.
+         */
+        public function completeRide(TaxiRide $ride, string $correlationId): void
+        {
+            DB::transaction(function () use ($ride, $correlationId) {
+                $ride->update([
+                    'status' => 'finished',
+                    'finished_at' => now(),
+                    'correlation_id' => $correlationId,
+                ]);
 
-            // Освобождение автомобиля
-            if ($ride->vehicle) {
-                $ride->vehicle->update(['status' => 'active']);
-            }
+                // Освобождение автомобиля
+                if ($ride->vehicle) {
+                    $ride->vehicle->update(['status' => 'active']);
+                }
 
-            Log::channel('audit')->info('Taxi ride completed', [
-                'ride_uuid' => $ride->uuid,
-                'final_cost' => $ride->total_cost_kopecks,
-                'correlation_id' => $correlationId,
-            ]);
-        });
-    }
+                Log::channel('audit')->info('Taxi ride completed', [
+                    'ride_uuid' => $ride->uuid,
+                    'final_cost' => $ride->total_cost_kopecks,
+                    'correlation_id' => $correlationId,
+                ]);
+            });
+        }
 
-    /**
-     * Отмена заказа такси (idempotent).
-     */
-    public function cancelRide(TaxiRide $ride, string $reason, string $correlationId): void
-    {
-        DB::transaction(function () use ($ride, $reason, $correlationId) {
-            if (in_array($ride->status, ['finished', 'cancelled'])) {
-                return;
-            }
+        /**
+         * Отмена заказа такси (idempotent).
+         */
+        public function cancelRide(TaxiRide $ride, string $reason, string $correlationId): void
+        {
+            DB::transaction(function () use ($ride, $reason, $correlationId) {
+                if (in_array($ride->status, ['finished', 'cancelled'])) {
+                    return;
+                }
 
-            $ride->update([
-                'status' => 'cancelled',
-                'cancel_reason' => $reason,
-                'correlation_id' => $correlationId,
-            ]);
+                $ride->update([
+                    'status' => 'cancelled',
+                    'cancel_reason' => $reason,
+                    'correlation_id' => $correlationId,
+                ]);
 
-            if ($ride->vehicle) {
-                $ride->vehicle->update(['status' => 'active']);
-            }
+                if ($ride->vehicle) {
+                    $ride->vehicle->update(['status' => 'active']);
+                }
 
-            Log::channel('audit')->warning('Taxi ride cancelled', [
-                'ride_uuid' => $ride->uuid,
-                'reason' => $reason,
-                'correlation_id' => $correlationId,
-            ]);
-        });
-    }
+                Log::channel('audit')->warning('Taxi ride cancelled', [
+                    'ride_uuid' => $ride->uuid,
+                    'reason' => $reason,
+                    'correlation_id' => $correlationId,
+                ]);
+            });
+        }
 }

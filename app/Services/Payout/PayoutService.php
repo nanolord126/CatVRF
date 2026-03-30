@@ -5,11 +5,10 @@ namespace App\Services\Payout;
 use App\Models\PaymentTransaction;
 use App\Services\FraudControlService;
 use App\Services\Payment\PaymentGatewayService;
+use DomainException;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Log\LogManager;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
-use DomainException;
 use Throwable;
 
 /**
@@ -275,7 +274,7 @@ final class PayoutService
             foreach ($payoutRequestIds as $payoutRequestId) {
                 try {
                     $itemCorrelationId = Str::uuid()->toString();
-                    
+
                     $paymentTransaction = $this->processPayout(
                         $payoutRequestId,
                         $itemCorrelationId

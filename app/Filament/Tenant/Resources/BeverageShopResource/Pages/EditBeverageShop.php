@@ -1,45 +1,43 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\BeverageShopResource\Pages;
 
-use App\Filament\Tenant\Resources\BeverageShopResource;
-use Filament\Actions;
-use Filament\Resources\Pages\EditRecord;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final class EditBeverageShop extends EditRecord
+final class EditBeverageShop extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = BeverageShopResource::class;
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            Actions\ViewAction::make(),
-            Actions\DeleteAction::make(),
-        ];
-    }
+        protected function getHeaderActions(): array
+        {
+            return [
+                Actions\ViewAction::make(),
+                Actions\DeleteAction::make(),
+            ];
+        }
 
-    protected function mutateFormDataBeforeSave(array $data): array
-    {
-        $data['correlation_id'] = request()->header('X-Correlation-ID', (string) Str::uuid());
-        return $data;
-    }
+        protected function mutateFormDataBeforeSave(array $data): array
+        {
+            $data['correlation_id'] = request()->header('X-Correlation-ID', (string) Str::uuid());
+            return $data;
+        }
 
-    protected function afterSave(): void
-    {
-        Log::channel('audit')->info('Beverage Shop Updated', [
-            'shop_id' => $this->record->id,
-            'tenant_id' => $this->record->tenant_id,
-            'correlation_id' => $this->record->correlation_id,
-            'user_id' => auth()->id(),
-        ]);
-    }
+        protected function afterSave(): void
+        {
+            Log::channel('audit')->info('Beverage Shop Updated', [
+                'shop_id' => $this->record->id,
+                'tenant_id' => $this->record->tenant_id,
+                'correlation_id' => $this->record->correlation_id,
+                'user_id' => auth()->id(),
+            ]);
+        }
 
-    protected function getRedirectUrl(): string
-    {
-        return $this->getResource()::getUrl('index');
-    }
+        protected function getRedirectUrl(): string
+        {
+            return $this->getResource()::getUrl('index');
+        }
 }

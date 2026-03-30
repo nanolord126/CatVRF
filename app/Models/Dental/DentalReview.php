@@ -1,103 +1,97 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Models\Dental;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Str;
 
-/**
- * Model for Dental Review.
- * Strictly follows CANON 2026: Verified reviews and Professional rating impact.
- */
 final class DentalReview extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use HasFactory, SoftDeletes;
 
-    protected $table = 'dental_reviews';
+        protected $table = 'dental_reviews';
 
-    protected $fillable = [
-        'uuid',
-        'tenant_id',
-        'clinic_id',
-        'dentist_id',
-        'client_id',
-        'rating',
-        'comment',
-        'is_verified',
-        'correlation_id',
-        'tags',
-    ];
+        protected $fillable = [
+            'uuid',
+            'tenant_id',
+            'clinic_id',
+            'dentist_id',
+            'client_id',
+            'rating',
+            'comment',
+            'is_verified',
+            'correlation_id',
+            'tags',
+        ];
 
-    protected $casts = [
-        'tags' => 'json',
-        'rating' => 'integer',
-        'is_verified' => 'boolean',
-        'tenant_id' => 'integer',
-    ];
+        protected $casts = [
+            'tags' => 'json',
+            'rating' => 'integer',
+            'is_verified' => 'boolean',
+            'tenant_id' => 'integer',
+        ];
 
-    /**
-     * Boot logic for automatic UUID and tenant scoping.
-     */
-    protected static function booted(): void
-    {
-        static::creating(function (self $model) {
-            $model->uuid = $model->uuid ?? (string) Str::uuid();
-            $model->correlation_id = $model->correlation_id ?? request()->header('X-Correlation-ID', (string) Str::uuid());
-            
-            if (empty($model->tenant_id) && function_exists('tenant') && tenant()) {
-                $model->tenant_id = tenant()->id;
-            }
-        });
+        /**
+         * Boot logic for automatic UUID and tenant scoping.
+         */
+        protected static function booted(): void
+        {
+            static::creating(function (self $model) {
+                $model->uuid = $model->uuid ?? (string) Str::uuid();
+                $model->correlation_id = $model->correlation_id ?? request()->header('X-Correlation-ID', (string) Str::uuid());
 
-        static::created(function (self $model) {
-            // Re-calculate dentist and clinic ratings
-            $model->recalculateRatings();
-        });
+                if (empty($model->tenant_id) && function_exists('tenant') && tenant()) {
+                    $model->tenant_id = tenant()->id;
+                }
+            });
 
-        static::addGlobalScope('tenant', function ($builder) {
-            if (function_exists('tenant') && tenant()) {
-                $builder->where('tenant_id', tenant()->id);
-            }
-        });
-    }
+            static::created(function (self $model) {
+                // Re-calculate dentist and clinic ratings
+                $model->recalculateRatings();
+            });
 
-    /**
-     * Relations: Clinic being reviewed.
-     */
-    public function clinic(): BelongsTo
-    {
-        return $this->belongsTo(DentalClinic::class, 'clinic_id');
-    }
+            static::addGlobalScope('tenant', function ($builder) {
+                if (function_exists('tenant') && tenant()) {
+                    $builder->where('tenant_id', tenant()->id);
+                }
+            });
+        }
 
-    /**
-     * Relations: Dentist being reviewed.
-     */
-    public function dentist(): BelongsTo
-    {
-        return $this->belongsTo(Dentist::class, 'dentist_id');
-    }
+        /**
+         * Relations: Clinic being reviewed.
+         */
+        public function clinic(): BelongsTo
+        {
+            return $this->belongsTo(DentalClinic::class, 'clinic_id');
+        }
 
-    /**
-     * Recalculate clinic and dentist ratings on review creation.
-     */
-    public function recalculateRatings(): void
-    {
-        $clinicReviews = self::where('clinic_id', $this->clinic_id)->where('is_verified', true)->avg('rating');
-        $this->clinic()->update(['rating' => (int) ($clinicReviews * 100)]);
+        /**
+         * Relations: Dentist being reviewed.
+         */
+        public function dentist(): BelongsTo
+        {
+            return $this->belongsTo(Dentist::class, 'dentist_id');
+        }
 
-        $dentistReviews = self::where('dentist_id', $this->dentist_id)->where('is_verified', true)->avg('rating');
-        $this->dentist()->update(['rating' => (int) ($dentistReviews * 100)]);
+        /**
+         * Recalculate clinic and dentist ratings on review creation.
+         */
+        public function recalculateRatings(): void
+        {
+            $clinicReviews = self::where('clinic_id', $this->clinic_id)->where('is_verified', true)->avg('rating');
+            $this->clinic()->update(['rating' => (int) ($clinicReviews * 100)]);
 
-        \Illuminate\Support\Facades\Log::channel('audit')->info('Professional ratings recalculated', [
-            'clinic_id' => $this->clinic_id,
-            'dentist_id' => $this->dentist_id,
-            'review_id' => $this->id,
-            'correlation_id' => $this->correlation_id,
-        ]);
-    }
+            $dentistReviews = self::where('dentist_id', $this->dentist_id)->where('is_verified', true)->avg('rating');
+            $this->dentist()->update(['rating' => (int) ($dentistReviews * 100)]);
+
+            \Illuminate\Support\Facades\Log::channel('audit')->info('Professional ratings recalculated', [
+                'clinic_id' => $this->clinic_id,
+                'dentist_id' => $this->dentist_id,
+                'review_id' => $this->id,
+                'correlation_id' => $this->correlation_id,
+            ]);
+        }
 }

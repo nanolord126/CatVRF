@@ -1,11 +1,9 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace Tests\Unit\ML;
 
-use App\Models\User;
 use App\Models\UserTasteProfile;
+use App\Models\User;
 use App\Services\ML\TasteMLService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;

@@ -1,17 +1,14 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace Tests\Feature\Domains\Books;
 
-use App\Domains\BooksAndLiterature\Books\Models\Book;
+use App\Domains\BooksAndLiterature\Books\DTOs\BookAIRequestDto;
 use App\Domains\BooksAndLiterature\Books\Models\BookAuthor;
 use App\Domains\BooksAndLiterature\Books\Models\BookGenre;
 use App\Domains\BooksAndLiterature\Books\Models\BookStore;
-use App\Domains\BooksAndLiterature\Books\Models\BookOrder;
-use App\Domains\BooksAndLiterature\Books\Services\BooksDomainService;
+use App\Domains\BooksAndLiterature\Books\Models\Book;
 use App\Domains\BooksAndLiterature\Books\Services\AIBookConstructor;
-use App\Domains\BooksAndLiterature\Books\DTOs\BookAIRequestDto;
+use App\Domains\BooksAndLiterature\Books\Services\BooksDomainService;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Log;

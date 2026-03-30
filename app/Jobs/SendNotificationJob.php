@@ -2,23 +2,23 @@
 
 namespace App\Jobs;
 
+use App\Models\Notification as NotificationModel;
+use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
-use App\Models\Notification as NotificationModel;
-use App\Models\User;
 
 /**
  * SendNotificationJob - асинхронная отправка уведомлений через Queue
- * 
+ *
  * Обязательные поля:
  * - notification_id: ID уведомления из БД
  * - correlation_id: UUID для трейсинга
  * - tenant_id: ID тенанта
- * 
+ *
  * Повторы: максимум 3 попытки с задержкой 5 минут
  */
 class SendNotificationJob implements ShouldQueue

@@ -1,31 +1,14 @@
 <?php declare(strict_types=1);
-namespace Ap
 
-/**
- * GardenJob
- * 
- * Производитель: CatVRF Platform
- * Версия: 1.0.0
- * 
- * Примеры использования:
- * 
- * ```php
- * // Базовое использование
- * $instance = new GardenJob();
- * ```
- * 
- * Требования:
- * - Laravel 10+
- * - PHP 8.2+
- * - Все методы должны быть явно типизированы
- * 
- * @author CatVRF
- * @package namespace App\Domains\Gardening\GardenServices\Models
- * @see https://github.com/iyegorovskyi_clemny/CatVRF
- */
-p\Domains\GardenServices\Models;
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
+namespace App\Domains\Gardening\GardenServices\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Traits\TenantScoped;
-final class GardenJob extends Model{use HasUuids,SoftDeletes,TenantScoped;protected $table='garden_jobs';protected $fillable=['uuid','tenant_id','professional_id','customer_id','correlation_id','status','total_kopecks','payout_kopecks','payment_status','job_date','duration_hours','job_type','tags'];protected $casts=['total_kopecks'=>'integer','payout_kopecks'=>'integer','job_date'=>'datetime','duration_hours'=>'integer','tags'=>'json'];protected static function booted(){static::addGlobalScope('tenant',fn($q)=>$q->where('garden_jobs.tenant_id',tenant()->id));}}
+
+final class GardenJob extends Model
+{
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    use HasUuids,SoftDeletes,TenantScoped;protected $table='garden_jobs';protected $fillable=['uuid','tenant_id','professional_id','customer_id','correlation_id','status','total_kopecks','payout_kopecks','payment_status','job_date','duration_hours','job_type','tags'];protected $casts=['total_kopecks'=>'integer','payout_kopecks'=>'integer','job_date'=>'datetime','duration_hours'=>'integer','tags'=>'json'];protected static function booted(){static::addGlobalScope('tenant',fn($q)=>$q->where('garden_jobs.tenant_id',tenant()->id));}
+}

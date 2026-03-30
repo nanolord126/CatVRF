@@ -1,16 +1,13 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace Tests\Unit\Furniture;
 
 use App\Domains\Furniture\Models\FurnitureProduct;
 use App\Domains\Furniture\Models\FurnitureStore;
 use App\Domains\Furniture\Services\FurnitureDomainService;
-use Tests\TestCase;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use App\Services\FraudControlService;
 use Exception;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
 
 /**
  * FurnitureDomainTest (Layer 9/9)

@@ -1,25 +1,20 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Domains\Food\Events;
 
-use App\Domains\Food\Models\DeliveryOrder;
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * Event при начале доставки.
- * Production 2026.
- */
-final class DeliveryStarted
+final class DeliveryStarted extends Model
 {
-    use Dispatchable;
-    use SerializesModels;
+    use HasFactory;
 
-    public function __construct(
-        public DeliveryOrder $delivery,
-        public string $correlationId = '',
-    ) {}
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    use Dispatchable;
+        use SerializesModels;
+
+        public function __construct(
+            public DeliveryOrder $delivery,
+            public string $correlationId = '',
+        ) {}
 }

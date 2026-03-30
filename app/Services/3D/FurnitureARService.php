@@ -1,6 +1,6 @@
 <?php declare(strict_types=1);
 
-namespace App\Services\ThreeD;
+namespace App\Services\3D;
 
 use Illuminate\Support\Str;
 
@@ -60,4 +60,3 @@ final class FurnitureARService
         return "/3d-models/furniture/{$furnitureData['type']}/{$furnitureData['sku']}.glb";
     }
 }
-

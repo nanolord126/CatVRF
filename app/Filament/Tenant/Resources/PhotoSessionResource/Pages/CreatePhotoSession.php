@@ -1,13 +1,14 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\PhotoSessionResource\Pages;
 
-use App\Filament\Tenant\Resources\PhotoSessionResource;
-use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-class CreatePhotoSession extends CreateRecord
+final class CreatePhotoSession extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = PhotoSessionResource::class;
 }

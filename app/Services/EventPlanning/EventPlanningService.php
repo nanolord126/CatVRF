@@ -1,108 +1,100 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Services\EventPlanning;
 
-use App\Models\EventPlanning\EventProject;
-use App\Models\EventPlanning\EventBooking;
-use App\Models\EventPlanning\EventPackage;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * EventPlanningService (Core Business Logic).
- * Implementation: Layer 4 (Service Logic Layer).
- * Handles Project creation, status transitions, and audit.
- */
-final readonly class EventPlanningService
+final class EventPlanningService extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
-     * Create a new event project with full audit and transactional safety.
-     * Includes: Initial data, correlation tracking, and fraud check.
-     */
-    public function createProject(array $data, string $correlationId = null): EventProject
-    {
-        $correlationId = $correlationId ?? (string) Str::uuid();
+         * Create a new event project with full audit and transactional safety.
+         * Includes: Initial data, correlation tracking, and fraud check.
+         */
+        public function createProject(array $data, string $correlationId = null): EventProject
+        {
+            $correlationId = $correlationId ?? (string) Str::uuid();
 
-        // 1. Audit Start
-        Log::channel('audit')->info('[EventPlanning] Project Creation Initiated', [
-            'correlation_id' => $correlationId,
-            'client_id' => $data['client_id'] ?? null,
-            'title' => $data['title'] ?? 'Untitled',
-        ]);
-
-        // 2. Fraud Control (Canon 2026 Rule)
-        // FraudControlService::check($data); // Supposed globally available
-
-        return DB::transaction(function () use ($data, $correlationId) {
-            // 3. Entity Creation
-            $project = EventProject::create([
-                'planner_id' => $data['planner_id'],
-                'client_id' => $data['client_id'],
-                'title' => $data['title'],
-                'theme' => $data['theme'] ?? 'Standard',
-                'event_date' => $data['event_date'],
-                'guest_count' => $data['guest_count'] ?? 10,
-                'status' => 'planning',
-                'type' => $data['type'] ?? 'b2c',
-                'metadata' => $data['metadata'] ?? [],
+            // 1. Audit Start
+            Log::channel('audit')->info('[EventPlanning] Project Creation Initiated', [
                 'correlation_id' => $correlationId,
+                'client_id' => $data['client_id'] ?? null,
+                'title' => $data['title'] ?? 'Untitled',
             ]);
 
-            Log::channel('audit')->info('[EventPlanning] Project Created Successfully', [
-                'project_uuid' => $project->uuid,
-                'correlation_id' => $correlationId,
-            ]);
+            // 2. Fraud Control (Canon 2026 Rule)
+            // FraudControlService::check($data); // Supposed globally available
 
-            return $project;
-        });
-    }
+            return DB::transaction(function () use ($data, $correlationId) {
+                // 3. Entity Creation
+                $project = EventProject::create([
+                    'planner_id' => $data['planner_id'],
+                    'client_id' => $data['client_id'],
+                    'title' => $data['title'],
+                    'theme' => $data['theme'] ?? 'Standard',
+                    'event_date' => $data['event_date'],
+                    'guest_count' => $data['guest_count'] ?? 10,
+                    'status' => 'planning',
+                    'type' => $data['type'] ?? 'b2c',
+                    'metadata' => $data['metadata'] ?? [],
+                    'correlation_id' => $correlationId,
+                ]);
 
-    /**
-     * Finalize and confirm a project (transition to 'confirmed').
-     */
-    public function confirmProject(int $projectId, string $correlationId): bool
-    {
-        return DB::transaction(function () use ($projectId, $correlationId) {
-            $project = EventProject::findOrFail($projectId);
+                Log::channel('audit')->info('[EventPlanning] Project Created Successfully', [
+                    'project_uuid' => $project->uuid,
+                    'correlation_id' => $correlationId,
+                ]);
 
-            if ($project->status !== 'planning') {
-                throw new \Exception("Only projects in 'planning' status can be confirmed.");
-            }
+                return $project;
+            });
+        }
 
-            // check if booking exists
-            if ($project->bookings()->count() === 0) {
-                 throw new \Exception("Cannot confirm project without an active booking.");
-            }
+        /**
+         * Finalize and confirm a project (transition to 'confirmed').
+         */
+        public function confirmProject(int $projectId, string $correlationId): bool
+        {
+            return DB::transaction(function () use ($projectId, $correlationId) {
+                $project = EventProject::findOrFail($projectId);
 
-            $project->update([
-                'status' => 'confirmed',
-                'correlation_id' => $correlationId,
-            ]);
+                if ($project->status !== 'planning') {
+                    throw new \Exception("Only projects in 'planning' status can be confirmed.");
+                }
 
-            Log::channel('audit')->info('[EventPlanning] Project Confirmed', [
-                'project_uuid' => $project->uuid,
-                'correlation_id' => $correlationId,
-            ]);
+                // check if booking exists
+                if ($project->bookings()->count() === 0) {
+                     throw new \Exception("Cannot confirm project without an active booking.");
+                }
 
-            return true;
-        });
-    }
+                $project->update([
+                    'status' => 'confirmed',
+                    'correlation_id' => $correlationId,
+                ]);
 
-    /**
-     * Calculate Project Statistics across tenant (B2B/B2C ratio, budgets).
-     */
-    public function getPlannerStatistics(int $plannerId): array
-    {
-        return [
-            'total_projects' => EventProject::where('planner_id', $plannerId)->count(),
-            'active_bookings' => EventBooking::whereHas('event', fn($q) => $q->where('planner_id', $plannerId))
-                ->where('payment_status', 'paid')
-                ->sum('total_amount'),
-            'b2b_percentage' => EventProject::where('planner_id', $plannerId)->where('type', 'b2b')->count() / 
-                               (EventProject::where('planner_id', $plannerId)->count() ?: 1) * 100,
-        ];
-    }
+                Log::channel('audit')->info('[EventPlanning] Project Confirmed', [
+                    'project_uuid' => $project->uuid,
+                    'correlation_id' => $correlationId,
+                ]);
+
+                return true;
+            });
+        }
+
+        /**
+         * Calculate Project Statistics across tenant (B2B/B2C ratio, budgets).
+         */
+        public function getPlannerStatistics(int $plannerId): array
+        {
+            return [
+                'total_projects' => EventProject::where('planner_id', $plannerId)->count(),
+                'active_bookings' => EventBooking::whereHas('event', fn($q) => $q->where('planner_id', $plannerId))
+                    ->where('payment_status', 'paid')
+                    ->sum('total_amount'),
+                'b2b_percentage' => EventProject::where('planner_id', $plannerId)->where('type', 'b2b')->count() /
+                                   (EventProject::where('planner_id', $plannerId)->count() ?: 1) * 100,
+            ];
+        }
 }

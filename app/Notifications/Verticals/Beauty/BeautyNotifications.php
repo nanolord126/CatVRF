@@ -2,9 +2,9 @@
 
 namespace App\Notifications\Verticals\Beauty;
 
+use App\Notifications\BaseInAppNotification;
 use App\Notifications\BaseMailableNotification;
 use App\Notifications\BaseSmsNotification;
-use App\Notifications\BaseInAppNotification;
 
 /**
  * Appointment Confirmed Notification - запись на процедуру подтверждена
@@ -64,7 +64,7 @@ class AppointmentFinalReminderNotification extends BaseInAppNotification
     public function __construct(int $userId, int $tenantId, array $appointmentData)
     {
         parent::__construct($userId, $tenantId, $appointmentData, channels: ['push', 'database']);
-        
+
         $this->title('Визит в салон через 2 часа')
              ->message("{$appointmentData['master_name']} ждёт вас в {$appointmentData['salon_name']}")
              ->type('warning')
@@ -108,7 +108,7 @@ class ReviewRequestNotification extends BaseInAppNotification
     public function __construct(int $userId, int $tenantId, array $appointmentData)
     {
         parent::__construct($userId, $tenantId, $appointmentData, channels: ['database', 'push']);
-        
+
         $this->title('Помогите другим клиентам')
              ->message("Оцените работу {$appointmentData['master_name']} в {$appointmentData['salon_name']}")
              ->type('info')

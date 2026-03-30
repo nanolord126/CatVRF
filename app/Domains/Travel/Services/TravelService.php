@@ -1,63 +1,50 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Domains\Travel\Services;
 
-use Illuminate\Support\Facades\Log;
-use App\Services\FraudControlService;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-use App\Domains\Travel\Models\TravelTour;
-use Illuminate\Support\Str;
-use Illuminate\Support\Facades\DB;
-
-final /**
- * TravelService
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class TravelService
+final class TravelService extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-        private readonly FraudControlService $fraudControlService,
-        private readonly string $correlationId = '',
-    ) {
-        $this->correlationId = $correlationId ?: Str::uuid()->toString();
-    }
+            private readonly FraudControlService $fraudControlService,
+            private readonly string $correlationId = '',
+        ) {
+            $this->correlationId = $correlationId ?: Str::uuid()->toString();
+        }
 
-    public function bookTour(int $tourId, int $seats): array
-    {
+        public function bookTour(int $tourId, int $seats): array
+        {
 
 
-        $this->fraudControlService->check(
-            auth()->id() ?? 0,
-            __CLASS__ . '::' . __FUNCTION__,
-            0,
-            request()->ip(),
-            null,
-            $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
-        );
-DB::transaction(function () use ($tourId, $seats) {
-            $tour = TravelTour::lockForUpdate()->find($tourId);
+            $this->fraudControlService->check(
+                auth()->id() ?? 0,
+                __CLASS__ . '::' . __FUNCTION__,
+                0,
+                request()->ip(),
+                null,
+                $correlationId ?? \Illuminate\Support\Str::uuid()->toString()
+            );
+    DB::transaction(function () use ($tourId, $seats) {
+                $tour = TravelTour::lockForUpdate()->find($tourId);
 
-            if (!$tour || ($tour->booked + $seats) > $tour->capacity) {
-                throw new \Exception('Tour is fully booked');
-            }
+                if (!$tour || ($tour->booked + $seats) > $tour->capacity) {
+                    throw new \Exception('Tour is fully booked');
+                }
 
-            $tour->update(['booked' => $tour->booked + $seats]);
+                $tour->update(['booked' => $tour->booked + $seats]);
 
-            Log::channel('audit')->info('Tour booked', [
-                'correlation_id' => $this->correlationId,
-                'tour_id' => $tourId,
-                'seats' => $seats,
-            ]);
+                Log::channel('audit')->info('Tour booked', [
+                    'correlation_id' => $this->correlationId,
+                    'tour_id' => $tourId,
+                    'seats' => $seats,
+                ]);
 
-            return ['success' => true, 'tour' => $tour];
-        });
-    }
+                return ['success' => true, 'tour' => $tour];
+            });
+        }
 }

@@ -1,31 +1,27 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Entertainment\VenueResource\Pages;
 
-use App\Filament\Tenant\Resources\Entertainment\VenueResource;
-use Filament\Actions;
-use Filament\Resources\Pages\ListRecords;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * КАНОН 2026 — LIST VENUES PAGE (Entertainment Domain)
- */
-final class ListVenues extends ListRecords
+final class ListVenues extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = VenueResource::class;
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            Actions\CreateAction::make()
-                ->after(function () {
-                    Log::channel('audit')->info('Venue creation started', [
-                        'tenant_id' => filament()->getTenant()->id,
-                        'user_id' => auth()->id(),
-                    ]);
-                }),
-        ];
-    }
+        protected function getHeaderActions(): array
+        {
+            return [
+                Actions\CreateAction::make()
+                    ->after(function () {
+                        Log::channel('audit')->info('Venue creation started', [
+                            'tenant_id' => filament()->getTenant()->id,
+                            'user_id' => auth()->id(),
+                        ]);
+                    }),
+            ];
+        }
 }

@@ -4,7 +4,7 @@ namespace App\Notifications;
 
 /**
  * Base class for in-app notifications (Database channel + WebSocket delivery)
- * 
+ *
  * Хранится в БД и отправляется пользователю через WebSocket real-time
  */
 abstract class BaseInAppNotification extends BaseNotification

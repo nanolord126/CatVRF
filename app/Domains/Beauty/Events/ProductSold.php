@@ -1,33 +1,22 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Domains\Beauty\Events;
 
-use App\Domains\Beauty\Models\BeautyProduct;
-use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final /**
- * ProductSold
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class ProductSold
+final class ProductSold extends Model
 {
-    use Dispatchable;
-    use InteractsWithSockets;
-    use SerializesModels;
+    use HasFactory;
 
-    public function __construct(
-        public readonly BeautyProduct $product,
-        public readonly int $quantity,
-        public readonly string $correlationId,
-    ) {}
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    use Dispatchable;
+        use InteractsWithSockets;
+        use SerializesModels;
+
+        public function __construct(
+            public readonly BeautyProduct $product,
+            public readonly int $quantity,
+            public readonly string $correlationId,
+        ) {}
 }

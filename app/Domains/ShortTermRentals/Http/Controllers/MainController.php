@@ -1,53 +1,40 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Domains\ShortTermRentals\Http\Controllers;
 
-use App\Domains\ShortTermRentals\Services\ApartmentService;
-use App\Http\Controllers\Controller;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Str;
-use App\Services\FraudControlService;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final /**
- * MainController
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class MainController extends Controller
+final class MainController extends Model
 {
-    public function __construct(
-        private readonly ApartmentService $apartmentService,
-        private readonly FraudControlService $fraudControl
-    ) {}
+    use HasFactory;
 
-    public function index(Request $request): JsonResponse
-    {
-        $correlationId = (string) Str::uuid();
-        
-        try {
-            $isB2B = $request->has('inn') && $request->has('business_card_id');
-            $this->fraudControl->check($request->all(), 'index_apartments');
-            
-            $apartments = $this->apartmentService->getActiveApartments(['is_b2b' => $isB2B]);
-            
-            return response()->json([
-                'success' => true,
-                'data' => $apartments,
-                'correlation_id' => $correlationId
-            ]);
-        } catch (\Throwable $e) {
-            return response()->json([
-                'error' => $e->getMessage(),
-                'correlation_id' => $correlationId
-            ], 403);
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    public function __construct(
+            private readonly ApartmentService $apartmentService,
+            private readonly FraudControlService $fraudControl
+        ) {}
+
+        public function index(Request $request): JsonResponse
+        {
+            $correlationId = (string) Str::uuid();
+
+            try {
+                $isB2B = $request->has('inn') && $request->has('business_card_id');
+                $this->fraudControl->check($request->all(), 'index_apartments');
+
+                $apartments = $this->apartmentService->getActiveApartments(['is_b2b' => $isB2B]);
+
+                return response()->json([
+                    'success' => true,
+                    'data' => $apartments,
+                    'correlation_id' => $correlationId
+                ]);
+            } catch (\Throwable $e) {
+                return response()->json([
+                    'error' => $e->getMessage(),
+                    'correlation_id' => $correlationId
+                ], 403);
+            }
         }
-    }
 }

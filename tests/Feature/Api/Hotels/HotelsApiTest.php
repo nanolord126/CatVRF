@@ -1,10 +1,10 @@
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace Tests\Feature\Api\Hotels;
 
+use App\Domains\Hotels\Models\Booking;
 use App\Domains\Hotels\Models\Hotel;
 use App\Domains\Hotels\Models\Room;
-use App\Domains\Hotels\Models\Booking;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;

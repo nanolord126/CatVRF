@@ -1,22 +1,18 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace Tests\Feature\Gardening;
 
+use App\Domains\Gardening\DTOs\GardenAIRequestDto;
+use App\Domains\Gardening\DTOs\ProductSaveDto;
+use App\Domains\Gardening\Models\GardenCategory;
 use App\Domains\Gardening\Models\GardenProduct;
 use App\Domains\Gardening\Models\GardenStore;
-use App\Domains\Gardening\Models\GardenCategory;
-use App\Domains\Gardening\Models\GardenPlant;
-use App\Domains\Gardening\Services\GardeningDomainService;
-use App\Domains\Gardening\DTOs\ProductSaveDto;
 use App\Domains\Gardening\Services\AIPlantGardenConstructor;
-use App\Domains\Gardening\DTOs\GardenAIRequestDto;
+use App\Domains\Gardening\Services\GardeningDomainService;
 use App\Services\FraudControlService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Tests\TestCase;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\Log;
+use Tests\TestCase;
 
 /**
  * GardeningDomainTest (Layer 9/9)

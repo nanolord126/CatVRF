@@ -2,156 +2,154 @@
 
 namespace App\Domains\Fashion\Http\Controllers;
 
-use App\Domains\Fashion\Models\FashionOrder;
-use App\Domains\Fashion\Services\OrderService;
-use App\Services\FraudControlService;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final class FashionOrderController
+final class FashionOrderController extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function __construct(
-        private readonly OrderService $orderService,
-        private readonly FraudControlService $fraudControlService,
-    ) {}
+            private readonly OrderService $orderService,
+            private readonly FraudControlService $fraudControlService,
+        ) {}
 
-    public function myOrders(): JsonResponse
-    {
-        try {
-            $orders = FashionOrder::where('customer_id', auth()->id())
-                ->with('store')
-                ->paginate(20);
+        public function myOrders(): JsonResponse
+        {
+            try {
+                $orders = FashionOrder::where('customer_id', auth()->id())
+                    ->with('store')
+                    ->paginate(20);
 
-            return response()->json(['success' => true, 'data' => $orders, 'correlation_id' => Str::uuid()]);
-        } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                return response()->json(['success' => true, 'data' => $orders, 'correlation_id' => Str::uuid()]);
+            } catch (\Throwable $e) {
+                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+            }
         }
-    }
 
-    public function store(): JsonResponse
-    {
-        $correlationId = Str::uuid()->toString();
-        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+        public function store(): JsonResponse
+        {
+            $correlationId = Str::uuid()->toString();
+            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
-        try {
-            $order = $this->orderService->createOrder(
-                tenant('id'),
-                request('store_id'),
-                auth()->id(),
-                request('items', []),
-                request('subtotal'),
-                request('shipping_cost'),
-                request('shipping_address'),
-                $correlationId,
-            );
+            try {
+                $order = $this->orderService->createOrder(
+                    tenant('id'),
+                    request('store_id'),
+                    auth()->id(),
+                    request('items', []),
+                    request('subtotal'),
+                    request('shipping_cost'),
+                    request('shipping_address'),
+                    $correlationId,
+                );
 
-            return response()->json(['success' => true, 'data' => $order, 'correlation_id' => $correlationId], 201);
-        } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 400);
+                return response()->json(['success' => true, 'data' => $order, 'correlation_id' => $correlationId], 201);
+            } catch (\Throwable $e) {
+                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 400);
+            }
         }
-    }
 
-    public function show(int $id): JsonResponse
-    {
-        try {
-            $order = FashionOrder::with('store')->findOrFail($id);
-            return response()->json(['success' => true, 'data' => $order, 'correlation_id' => Str::uuid()]);
-        } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'message' => 'Order not found', 'correlation_id' => Str::uuid()], 404);
+        public function show(int $id): JsonResponse
+        {
+            try {
+                $order = FashionOrder::with('store')->findOrFail($id);
+                return response()->json(['success' => true, 'data' => $order, 'correlation_id' => Str::uuid()]);
+            } catch (\Throwable $e) {
+                return response()->json(['success' => false, 'message' => 'Order not found', 'correlation_id' => Str::uuid()], 404);
+            }
         }
-    }
 
-    public function update(int $id): JsonResponse
-    {
-        $correlationId = Str::uuid()->toString();
-        $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
+        public function update(int $id): JsonResponse
+        {
+            $correlationId = Str::uuid()->toString();
+            $this->fraudControlService->check(auth()->id() ?? 0, 'operation', 0, request()->ip(), null, $correlationId);
 
-        try {
-            $order = FashionOrder::findOrFail($id);
+            try {
+                $order = FashionOrder::findOrFail($id);
 
-            DB::transaction(function () use ($order, $correlationId) {
-                $order->update([...request()->except(['id', 'tenant_id', 'business_group_id', 'correlation_id']), 'correlation_id' => $correlationId]);
-                Log::channel('audit')->info('Fashion order updated', ['order_id' => $id, 'correlation_id' => $correlationId]);
-            });
+                DB::transaction(function () use ($order, $correlationId) {
+                    $order->update([...request()->except(['id', 'tenant_id', 'business_group_id', 'correlation_id']), 'correlation_id' => $correlationId]);
+                    Log::channel('audit')->info('Fashion order updated', ['order_id' => $id, 'correlation_id' => $correlationId]);
+                });
 
-            return response()->json(['success' => true, 'data' => $order, 'correlation_id' => $correlationId]);
-        } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                return response()->json(['success' => true, 'data' => $order, 'correlation_id' => $correlationId]);
+            } catch (\Throwable $e) {
+                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+            }
         }
-    }
 
-    public function cancel(int $id): JsonResponse
-    {
-        $correlationId = Str::uuid()->toString();
+        public function cancel(int $id): JsonResponse
+        {
+            $correlationId = Str::uuid()->toString();
 
-        try {
-            $order = FashionOrder::findOrFail($id);
+            try {
+                $order = FashionOrder::findOrFail($id);
 
-            $this->orderService->cancelOrder($order, request('reason'), $correlationId);
+                $this->orderService->cancelOrder($order, request('reason'), $correlationId);
 
-            return response()->json(['success' => true, 'data' => null, 'correlation_id' => $correlationId]);
-        } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                return response()->json(['success' => true, 'data' => null, 'correlation_id' => $correlationId]);
+            } catch (\Throwable $e) {
+                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+            }
         }
-    }
 
-    public function history(int $id): JsonResponse
-    {
-        try {
-            $order = FashionOrder::findOrFail($id);
-            return response()->json(['success' => true, 'data' => $order->fresh(), 'correlation_id' => Str::uuid()]);
-        } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+        public function history(int $id): JsonResponse
+        {
+            try {
+                $order = FashionOrder::findOrFail($id);
+                return response()->json(['success' => true, 'data' => $order->fresh(), 'correlation_id' => Str::uuid()]);
+            } catch (\Throwable $e) {
+                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+            }
         }
-    }
 
-    public function all(): JsonResponse
-    {
-        try {
-            $orders = FashionOrder::with('store', 'customer')->paginate(50);
-            return response()->json(['success' => true, 'data' => $orders, 'correlation_id' => Str::uuid()]);
-        } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+        public function all(): JsonResponse
+        {
+            try {
+                $orders = FashionOrder::with('store', 'customer')->paginate(50);
+                return response()->json(['success' => true, 'data' => $orders, 'correlation_id' => Str::uuid()]);
+            } catch (\Throwable $e) {
+                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+            }
         }
-    }
 
-    public function updateStatus(int $id): JsonResponse
-    {
-        $correlationId = Str::uuid()->toString();
+        public function updateStatus(int $id): JsonResponse
+        {
+            $correlationId = Str::uuid()->toString();
 
-        try {
-            $order = FashionOrder::findOrFail($id);
+            try {
+                $order = FashionOrder::findOrFail($id);
 
-            $this->orderService->updateOrderStatus($order, request('status'), $correlationId);
+                $this->orderService->updateOrderStatus($order, request('status'), $correlationId);
 
-            return response()->json(['success' => true, 'data' => $order, 'correlation_id' => $correlationId]);
-        } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                return response()->json(['success' => true, 'data' => $order, 'correlation_id' => $correlationId]);
+            } catch (\Throwable $e) {
+                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+            }
         }
-    }
 
-    public function analytics(): JsonResponse
-    {
-        try {
-            $totalOrders = FashionOrder::count();
-            $deliveredOrders = FashionOrder::where('status', 'delivered')->count();
-            $totalRevenue = FashionOrder::sum('total_amount');
-            $avgOrderValue = FashionOrder::avg('total_amount');
+        public function analytics(): JsonResponse
+        {
+            try {
+                $totalOrders = FashionOrder::count();
+                $deliveredOrders = FashionOrder::where('status', 'delivered')->count();
+                $totalRevenue = FashionOrder::sum('total_amount');
+                $avgOrderValue = FashionOrder::avg('total_amount');
 
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'total_orders' => $totalOrders,
-                    'delivered' => $deliveredOrders,
-                    'total_revenue' => round($totalRevenue, 2),
-                    'avg_order_value' => round($avgOrderValue, 2),
-                ],
-                'correlation_id' => Str::uuid(),
-            ]);
-        } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+                return response()->json([
+                    'success' => true,
+                    'data' => [
+                        'total_orders' => $totalOrders,
+                        'delivered' => $deliveredOrders,
+                        'total_revenue' => round($totalRevenue, 2),
+                        'avg_order_value' => round($avgOrderValue, 2),
+                    ],
+                    'correlation_id' => Str::uuid(),
+                ]);
+            } catch (\Throwable $e) {
+                return response()->json(['success' => false, 'message' => $e->getMessage(), 'correlation_id' => Str::uuid()], 500);
+            }
         }
-    }
 }

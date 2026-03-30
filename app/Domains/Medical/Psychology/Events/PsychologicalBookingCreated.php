@@ -1,22 +1,19 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Domains\Medical\Psychology\Events;
 
-use App\Domains\Medical\Psychology\Models\PsychologicalBooking;
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * Событие создания записи на психологическую сессию.
- */
-final class PsychologicalBookingCreated
+final class PsychologicalBookingCreated extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use Dispatchable, SerializesModels;
 
-    public function __construct(
-        public PsychologicalBooking $booking,
-        public string $correlationId
-    ) {}
+        public function __construct(
+            public PsychologicalBooking $booking,
+            public string $correlationId
+        ) {}
 }

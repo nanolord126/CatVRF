@@ -2,10 +2,10 @@
 
 namespace App\Services\Fraud;
 
-use App\Models\User;
 use App\Models\PaymentTransaction;
-use Illuminate\Database\Connection;
+use App\Models\User;
 use Illuminate\Contracts\Cache\Repository;
+use Illuminate\Database\Connection;
 use Illuminate\Log\LogManager;
 use Illuminate\Support\Str;
 
@@ -19,7 +19,7 @@ final readonly class FraudMLService
     /**
      * Score a user operation for fraud risk (0 = safe, 1 = certain fraud)
      * Combines rule-based scoring with ML model predictions
-     * 
+     *
      * @param int $userId
      * @param string $operationType payment_init, card_bind, payout, rating_submit, referral_claim
      * @param int $amount Amount in kopeks
@@ -267,7 +267,7 @@ final readonly class FraudMLService
     /**
      * Get ML model score from trained model (if available)
      * Currently returns 0 (no model) - will be updated when model is trained
-     * 
+     *
      * @return float Score 0-1
      */
     private function getMLModelScore(array $features): float
@@ -276,7 +276,7 @@ final readonly class FraudMLService
         // For now, return 0 (model not yet available)
         // In production: load joblib/pickle model from storage/models/fraud/
         // Run feature extraction through model
-        
+
         return 0.0;
     }
 
@@ -622,7 +622,7 @@ final readonly class FraudMLService
     /**
      * Get accuracy metrics of the current ML model
      * Compares predictions vs actual outcomes
-     * 
+     *
      * @return array ['mae' => float, 'rmse' => float, 'mape' => float, 'auc_roc' => float, ...]
      */
     public function getModelAccuracy(int $days = 30): array

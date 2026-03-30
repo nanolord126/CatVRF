@@ -2,8 +2,8 @@
 
 namespace App\Livewire\Jewelry;
 
-use Livewire\Component;
 use Illuminate\View\View;
+use Livewire\Component;
 
 final class Jewelry3DViewer extends Component
 {

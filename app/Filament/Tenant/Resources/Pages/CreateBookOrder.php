@@ -1,18 +1,19 @@
-<?php
+<?php declare(strict_types=1);
 
-declare(strict_types=1);
+namespace App\Filament\Tenant\Resources\Pages;
 
-namespace App\Filament\Tenant\Resources\BookOrder\Pages;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-use use App\Filament\Tenant\Resources\BookOrderResource;;
-use Filament\Resources\Pages\CreateRecord;
-
-final class CreateBookOrder extends CreateRecord
+final class CreateBookOrder extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = BookOrderResource::class;
 
-    public function getTitle(): string
-    {
-        return 'Create BookOrder';
-    }
+        public function getTitle(): string
+        {
+            return 'Create BookOrder';
+        }
 }

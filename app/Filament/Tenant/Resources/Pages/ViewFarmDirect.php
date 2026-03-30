@@ -1,18 +1,19 @@
-<?php
+<?php declare(strict_types=1);
 
-declare(strict_types=1);
+namespace App\Filament\Tenant\Resources\Pages;
 
-namespace App\Filament\Tenant\Resources\FarmDirect\Pages;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-use use App\Filament\Tenant\Resources\FarmDirectResource;;
-use Filament\Resources\Pages\ViewRecord;
-
-final class ViewFarmDirect extends ViewRecord
+final class ViewFarmDirect extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = FarmDirectResource::class;
 
-    public function getTitle(): string
-    {
-        return 'View FarmDirect';
-    }
+        public function getTitle(): string
+        {
+            return 'View FarmDirect';
+        }
 }

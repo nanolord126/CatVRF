@@ -1,24 +1,19 @@
-<?php
+<?php declare(strict_types=1);
 
-declare(strict_types=1);
+namespace App\Domains\Education\Channels\Events;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-namespace App\Domains\Content\Channels\Events;
-
-use App\Domains\Education\Channels\Models\Post;
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
-
-/**
- * Событие: пост опубликован.
- * Запускает уведомления подписчикам канала.
- */
-final class PostPublished
+final class PostPublished extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use Dispatchable, SerializesModels;
 
-    public function __construct(
-        public readonly Post $post,
-        public readonly string $correlationId,
-    ) {}
+        public function __construct(
+            public readonly Post $post,
+            public readonly string $correlationId,
+        ) {}
 }

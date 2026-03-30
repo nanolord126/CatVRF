@@ -1,8 +1,14 @@
-<?php
-declare(strict_types=1);
+<?php declare(strict_types=1);
+
 namespace App\Filament\Tenant\Resources\UserCrm\Pages;
-use App\Filament\Tenant\Resources\UserCrmResource;
-use Filament\Resources\Pages\CreateRecord;
-final class CreateRecordUserCrm extends CreateRecord {
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+final class CreateRecordUserCrm extends Model
+{
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = UserCrmResource::class;
 }

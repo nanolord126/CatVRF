@@ -103,7 +103,7 @@ class SmsService
     {
         // Удалить всё кроме цифр и +
         $phone = preg_replace('/[^\d+]/', '', $phone);
-        
+
         // Добавить + если нет
         if (!str_starts_with($phone, '+')) {
             $phone = '+' . $phone;

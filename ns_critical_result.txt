@@ -1,0 +1,132 @@
+╨Э╨░╨╣╨┤╨╡╨╜╨╛: 5243 PHP-╤Д╨░╨╣╨╗╨╛╨▓
+FIX [1ns 0use 0dupe] app\Http\Controllers\Api\V1\Furniture3DController.php
+FIX [1ns 0use 0dupe] app\Http\Controllers\Api\V1\Product3DController.php
+FIX [1ns 0use 0dupe] app\Http\Controllers\Api\V1\Room3DController.php
+FIX [1ns 0use 0dupe] app\Http\Controllers\Api\V1\Vehicle3DController.php
+
+тФАтФА ╨Я╤А╨╛╨▓╨╡╤А╨║╨░ ╨╛╤Б╤В╨░╤В╨║╨╛╨▓ тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Domains\Consulting\BusinessConsultingV2\Services\BusinessConsultingServiceV2.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Filament\Tenant\Resources\B2BDeal\Pages\CreateB2BDeal.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Filament\Tenant\Resources\B2BDeal\Pages\EditB2BDeal.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Filament\Tenant\Resources\B2BDeal\Pages\ListB2BDeal.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Filament\Tenant\Resources\B2BDeal\Pages\ViewB2BDeal.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Filament\Tenant\Resources\B2BDealResource\Pages\CreateB2BDeal.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Filament\Tenant\Resources\B2BDealResource\Pages\EditB2BDeal.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Filament\Tenant\Resources\B2BDealResource\Pages\ListB2BDeals.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Filament\Tenant\Resources\Jewelry3DModel\Pages\CreateJewelry3DModel.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Filament\Tenant\Resources\Jewelry3DModel\Pages\EditJewelry3DModel.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Filament\Tenant\Resources\Jewelry3DModel\Pages\ListJewelry3DModel.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Filament\Tenant\Resources\Jewelry3DModel\Pages\ViewJewelry3DModel.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V1\Admin\CacheWarmerController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V1\AI\AIConstructorController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V1\AuthController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V1\Auto\RideController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V1\BaseApiController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V1\BaseApiV1Controller.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V1\Beauty\AppointmentController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V1\Channels\ChannelController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V1\Channels\PostController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V1\Channels\ReactionController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V1\Channels\SubscriberController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V1\Fashion\FashionB2BController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V1\Fashion\FashionB2CController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V1\Food\OrderController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V1\GroceryAndDelivery\OrderController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V1\HealthCheckController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V1\Hotels\BookingController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V1\Jewelry\JewelryApiController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V1\Kids\KidsCenterController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V1\Kids\KidsProductController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V1\Payment\PaymentController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V1\PaymentController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V1\Promo\PromoController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V1\PromoController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V1\Referral\ReferralController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V1\Ritual\RitualApiController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V1\ShortTermRentals\STRControllers.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V1\SportsNutritionApiController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V1\SystemController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V1\WalletController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V1\WeddingPlanning\WeddingPublicController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V2\ActivityController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V2\Analytics\AnalyticsController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V2\Analytics\ExportController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V2\Analytics\FraudDetectionController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V2\Analytics\MLAnalyticsController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V2\Analytics\RecommendationController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V2\Analytics\ReportingController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V2\BaseApiV2Controller.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V2\Chat\ChatController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V2\Collaboration\CollaborationController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V2\Notifications\PreferencesController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V2\PaymentController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V2\Realtime\PresenceController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V2\Realtime\SubscriptionController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Controllers\Api\V2\Search\SearchController.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Requests\Api\V1\TokenCreateRequest.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Http\Requests\Api\V1\TokenRefreshRequest.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\Auto3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\AutoParts3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\Beauty3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\Books3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\ClothingARService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\Confectionery3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\ConstructionMaterials3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\Cosmetics3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\Courses3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\Electronics3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\Entertainment3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\FarmDirect3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\Fashion3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\FashionRetail3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\Fitness3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\Flowers3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\Food3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\Freelance3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\FreshProduce3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\Furniture3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\Gifts3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\HealthyFood3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\HomeServices3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\Hotels3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\Jewelry3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\Logistics3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\MeatShops3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\Medical3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\MedicalHealthcare3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\MedicalSupplies3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\OfficeCatering3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\Pet3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\PetServices3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\Pharmacy3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\Photography3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\RealEstate3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\SportingGoods3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\Sports3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\Tickets3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\ToysKids3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\Travel3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\TravelTourism3DService.php
+  STILL BROKEN: C:\opt\kotvrf\CatVRF\app\Services\3D\VehicleVisualizerService.php
+
+тХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХРтХР
+╨Ш╨в╨Ю╨У╨Ю:
+  ╨Я╤А╨╛╤Б╨║╨░╨╜╨╕╤А╨╛╨▓╨░╨╜╨╛ ╤Д╨░╨╣╨╗╨╛╨▓:     5243
+  ╨Ш╤Б╨┐╤А╨░╨▓╨╗╨╡╨╜╨╛ ╤Д╨░╨╣╨╗╨╛╨▓:         622
+  ╨Ш╤Б╨┐╤А╨░╨▓╨╗╨╡╨╜╨╛ namespace:      4
+  ╨Ш╤Б╨┐╤А╨░╨▓╨╗╨╡╨╜╨╛ use statements: 0
+  ╨г╨┤╨░╨╗╨╡╨╜╨╛ ╨┤╤Г╨▒╨╗╨╡╨╣ use:        0
+  ╨Ю╤Б╤В╨░╤В╨╛╨║ ╨▒╨╕╤В╤Л╤Е namespace:   103
+  ╨Ю╤И╨╕╨▒╨╛╨║:                    0
+
+╨в╨Ю╨Я-20 ╨б╨Р╨Ь╨л╨е ╨б╨Ы╨Ю╨Ь╨Р╨Э╨Э╨л╨е ╨д╨Р╨Щ╨Ы╨Ю╨Т:
+  1. app\Http\Controllers\Api\V1\Furniture3DController.php
+     ns=1 use=0 dupes=0
+  2. app\Http\Controllers\Api\V1\Product3DController.php
+     ns=1 use=0 dupes=0
+  3. app\Http\Controllers\Api\V1\Room3DController.php
+     ns=1 use=0 dupes=0
+  4. app\Http\Controllers\Api\V1\Vehicle3DController.php
+     ns=1 use=0 dupes=0
+
+╨У╨╛╤В╨╛╨▓╨╛!

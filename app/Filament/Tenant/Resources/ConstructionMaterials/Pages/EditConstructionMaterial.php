@@ -5,7 +5,8 @@ namespace App\Filament\Tenant\Resources\ConstructionMaterials\Pages;
 use App\Filament\Tenant\Resources\ConstructionMaterials\ConstructionMaterialsResource;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
-use Illuminate\Support\Facades\{Log,DB};
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 final class EditConstructionMaterial extends EditRecord
@@ -26,7 +27,7 @@ final class EditConstructionMaterial extends EditRecord
         DB::transaction(function () use (&$data) {
             $data['correlation_id'] = Str::uuid()->toString();
             $data['tenant_id'] = filament()->getTenant()->id;
-            
+
             Log::channel('audit')->info('ConstructionMaterials updated', [
                 'user_id' => auth()->id(),
                 'correlation_id' => $data['correlation_id'],

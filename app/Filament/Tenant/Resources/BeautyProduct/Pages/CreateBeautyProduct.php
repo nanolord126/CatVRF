@@ -1,8 +1,14 @@
-<?php
-declare(strict_types=1);
+<?php declare(strict_types=1);
+
 namespace App\Filament\Tenant\Resources\BeautyProduct\Pages;
-use App\Filament\Tenant\Resources\BeautyProductResource;
-use Filament\Resources\Pages\CreateRecord;
-final class CreateRecordBeautyProduct extends CreateRecord {
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+final class CreateRecordBeautyProduct extends Model
+{
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = BeautyProductResource::class;
 }

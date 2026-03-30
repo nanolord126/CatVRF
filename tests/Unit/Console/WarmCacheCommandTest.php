@@ -1,10 +1,7 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace Tests\Unit\Console;
 
-use App\Console\Commands\WarmCacheCommand;
 use Tests\TestCase;
 
 final class WarmCacheCommandTest extends TestCase

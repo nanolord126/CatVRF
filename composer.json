@@ -41,6 +41,7 @@
     "autoload": {
         "psr-4": {
             "App\\": "app/",
+            "App\\Services\\ThreeD\\": "app/Services/3D/",
             "Modules\\": ["modules/", "app/Domains/"],
             "Database\\Factories\\": "database/factories/",
             "Database\\Seeders\\": "database/seeders/"

@@ -4,8 +4,8 @@ namespace App\Filament\Tenant\Resources\UserCrmResource\RelationManagers;
 
 use Filament\Forms;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Tables;
 use Filament\Tables\Table;
+use Filament\Tables;
 use Illuminate\Database\Eloquent\Builder;
 
 final class WalletTransactionsRelationManager extends RelationManager

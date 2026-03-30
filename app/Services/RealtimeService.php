@@ -1,155 +1,145 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * Service: Real-Time Updates & WebSocket Management
- * 
- * Функции:
- * - Track user connections
- * - Manage presence
- * - Broadcast events
- * - Handle subscriptions
- * 
- * @package App\Services
- */
-final class RealtimeService
+final class RealtimeService extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
-     * Track user presence
-     * @param int $userId
-     * @param int $tenantId
-     * @param array $data
-     * @return bool
-     */
-    public function trackPresence(int $userId, int $tenantId, array $data = []): bool
-    {
-        $correlationId = Str::uuid()->toString();
+         * Track user presence
+         * @param int $userId
+         * @param int $tenantId
+         * @param array $data
+         * @return bool
+         */
+        public function trackPresence(int $userId, int $tenantId, array $data = []): bool
+        {
+            $correlationId = Str::uuid()->toString();
 
-        try {
-            $key = "presence:tenant.{$tenantId}:user.{$userId}";
-            $payload = array_merge($data, [
-                'user_id' => $userId,
-                'tenant_id' => $tenantId,
-                'online_at' => now()->toIso8601String(),
-            ]);
+            try {
+                $key = "presence:tenant.{$tenantId}:user.{$userId}";
+                $payload = array_merge($data, [
+                    'user_id' => $userId,
+                    'tenant_id' => $tenantId,
+                    'online_at' => now()->toIso8601String(),
+                ]);
 
-            cache()->put($key, $payload, 3600); // 1 hour TTL
+                cache()->put($key, $payload, 3600); // 1 hour TTL
 
-            Log::channel('audit')->info('User presence tracked', [
-                'user_id' => $userId,
-                'tenant_id' => $tenantId,
-                'correlation_id' => $correlationId,
-            ]);
+                Log::channel('audit')->info('User presence tracked', [
+                    'user_id' => $userId,
+                    'tenant_id' => $tenantId,
+                    'correlation_id' => $correlationId,
+                ]);
 
-            return true;
-        } catch (\Throwable $e) {
-            Log::channel('audit')->error('Failed to track presence', [
-                'error' => $e->getMessage(),
-                'correlation_id' => $correlationId,
-            ]);
+                return true;
+            } catch (\Throwable $e) {
+                Log::channel('audit')->error('Failed to track presence', [
+                    'error' => $e->getMessage(),
+                    'correlation_id' => $correlationId,
+                ]);
 
-            return false;
+                return false;
+            }
         }
-    }
 
-    /**
-     * Get online users for tenant
-     * @param int $tenantId
-     * @return array
-     */
-    public function getOnlineUsers(int $tenantId): array
-    {
-        $pattern = "presence:tenant.{$tenantId}:user.*";
-        $keys = cache()->getMultiple(
-            glob(storage_path("cache/{$pattern}"))
-        );
+        /**
+         * Get online users for tenant
+         * @param int $tenantId
+         * @return array
+         */
+        public function getOnlineUsers(int $tenantId): array
+        {
+            $pattern = "presence:tenant.{$tenantId}:user.*";
+            $keys = cache()->getMultiple(
+                glob(storage_path("cache/{$pattern}"))
+            );
 
-        return array_filter($keys);
-    }
+            return array_filter($keys);
+        }
 
-    /**
-     * Broadcast live update
-     * @param string $channel
-     * @param string $event
-     * @param array $data
-     * @param string $correlationId
-     * @return bool
-     */
-    public function broadcast(
-        string $channel,
-        string $event,
-        array $data,
-        string $correlationId
-    ): bool {
-        try {
-            // In production: use Pusher/Ably/Laravel Echo
-            // For now: store in cache for testing
-            $key = "broadcast:{$channel}:{$event}";
-            cache()->put($key, [
-                'event' => $event,
-                'data' => $data,
-                'correlation_id' => $correlationId,
-                'timestamp' => now(),
-            ], 300); // 5 minute TTL
+        /**
+         * Broadcast live update
+         * @param string $channel
+         * @param string $event
+         * @param array $data
+         * @param string $correlationId
+         * @return bool
+         */
+        public function broadcast(
+            string $channel,
+            string $event,
+            array $data,
+            string $correlationId
+        ): bool {
+            try {
+                // In production: use Pusher/Ably/Laravel Echo
+                // For now: store in cache for testing
+                $key = "broadcast:{$channel}:{$event}";
+                cache()->put($key, [
+                    'event' => $event,
+                    'data' => $data,
+                    'correlation_id' => $correlationId,
+                    'timestamp' => now(),
+                ], 300); // 5 minute TTL
 
-            Log::channel('audit')->info('Broadcast sent', [
+                Log::channel('audit')->info('Broadcast sent', [
+                    'channel' => $channel,
+                    'event' => $event,
+                    'correlation_id' => $correlationId,
+                ]);
+
+                return true;
+            } catch (\Throwable $e) {
+                Log::channel('audit')->error('Broadcast failed', [
+                    'error' => $e->getMessage(),
+                    'correlation_id' => $correlationId,
+                ]);
+
+                return false;
+            }
+        }
+
+        /**
+         * Subscribe user to channel
+         * @param int $userId
+         * @param string $channel
+         * @return bool
+         */
+        public function subscribe(int $userId, string $channel): bool
+        {
+            $key = "subscription:user.{$userId}:{$channel}";
+            cache()->put($key, true, 3600);
+
+            Log::channel('audit')->info('User subscribed to channel', [
+                'user_id' => $userId,
                 'channel' => $channel,
-                'event' => $event,
-                'correlation_id' => $correlationId,
             ]);
 
             return true;
-        } catch (\Throwable $e) {
-            Log::channel('audit')->error('Broadcast failed', [
-                'error' => $e->getMessage(),
-                'correlation_id' => $correlationId,
+        }
+
+        /**
+         * Unsubscribe user from channel
+         * @param int $userId
+         * @param string $channel
+         * @return bool
+         */
+        public function unsubscribe(int $userId, string $channel): bool
+        {
+            $key = "subscription:user.{$userId}:{$channel}";
+            cache()->forget($key);
+
+            Log::channel('audit')->info('User unsubscribed from channel', [
+                'user_id' => $userId,
+                'channel' => $channel,
             ]);
 
-            return false;
+            return true;
         }
-    }
-
-    /**
-     * Subscribe user to channel
-     * @param int $userId
-     * @param string $channel
-     * @return bool
-     */
-    public function subscribe(int $userId, string $channel): bool
-    {
-        $key = "subscription:user.{$userId}:{$channel}";
-        cache()->put($key, true, 3600);
-
-        Log::channel('audit')->info('User subscribed to channel', [
-            'user_id' => $userId,
-            'channel' => $channel,
-        ]);
-
-        return true;
-    }
-
-    /**
-     * Unsubscribe user from channel
-     * @param int $userId
-     * @param string $channel
-     * @return bool
-     */
-    public function unsubscribe(int $userId, string $channel): bool
-    {
-        $key = "subscription:user.{$userId}:{$channel}";
-        cache()->forget($key);
-
-        Log::channel('audit')->info('User unsubscribed from channel', [
-            'user_id' => $userId,
-            'channel' => $channel,
-        ]);
-
-        return true;
-    }
 }

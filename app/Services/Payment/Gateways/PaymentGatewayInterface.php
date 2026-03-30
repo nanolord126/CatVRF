@@ -2,88 +2,88 @@
 
 namespace App\Services\Payment\Gateways;
 
-use App\Models\PaymentTransaction;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-/**
- * Единый интерфейс платёжного шлюза (КАНОН 2026).
- * Все реализации (Tinkoff, Tochka, Sber, SBP) обязаны имплементировать все методы.
- */
-interface PaymentGatewayInterface
+final class PaymentGatewayInterface extends Model
 {
-    /**
-     * Инициирует платёж (с холдом или без).
-     */
-    /**
-     * Выполнить операцию
-     * 
-     * @return mixed
-     * @throws \Exception
-     */
-    public function initPayment(array $data): array;
+    use HasFactory;
 
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     /**
-     * Возвращает статус платежа у провайдера.
-     */
-    /**
-     * Выполнить операцию
-     * 
-     * @return mixed
-     * @throws \Exception
-     */
-    public function getStatus(string $providerPaymentId): array;
+         * Инициирует платёж (с холдом или без).
+         */
+        /**
+         * Выполнить операцию
+         *
+         * @return mixed
+         * @throws \Exception
+         */
+        public function initPayment(array $data): array;
 
-    /**
-     * Подтверждает холд (Capture).
-     */
-    /**
-     * Выполнить операцию
-     * 
-     * @return mixed
-     * @throws \Exception
-     */
-    public function capture(PaymentTransaction $transaction): bool;
+        /**
+         * Возвращает статус платежа у провайдера.
+         */
+        /**
+         * Выполнить операцию
+         *
+         * @return mixed
+         * @throws \Exception
+         */
+        public function getStatus(string $providerPaymentId): array;
 
-    /**
-     * Возврат средств.
-     */
-    /**
-     * Выполнить операцию
-     * 
-     * @return mixed
-     * @throws \Exception
-     */
-    public function refund(PaymentTransaction $transaction, int $amount): bool;
+        /**
+         * Подтверждает холд (Capture).
+         */
+        /**
+         * Выполнить операцию
+         *
+         * @return mixed
+         * @throws \Exception
+         */
+        public function capture(PaymentTransaction $transaction): bool;
 
-    /**
-     * Массовая выплата (payout). Для B2B-выплат бизнесу.
-     */
-    /**
-     * Выполнить операцию
-     * 
-     * @return mixed
-     * @throws \Exception
-     */
-    public function createPayout(array $data): array;
+        /**
+         * Возврат средств.
+         */
+        /**
+         * Выполнить операцию
+         *
+         * @return mixed
+         * @throws \Exception
+         */
+        public function refund(PaymentTransaction $transaction, int $amount): bool;
 
-    /**
-     * Обработка webhook от провайдера. Возвращает распознанный статус.
-     */
-    /**
-     * Выполнить операцию
-     * 
-     * @return mixed
-     * @throws \Exception
-     */
-    public function handleWebhook(array $payload): array;
+        /**
+         * Массовая выплата (payout). Для B2B-выплат бизнесу.
+         */
+        /**
+         * Выполнить операцию
+         *
+         * @return mixed
+         * @throws \Exception
+         */
+        public function createPayout(array $data): array;
 
-    /**
-     * ОФД-фискализация (54-ФЗ). Вызывается только после captured.
-     */
-    /**
-     * Выполнить операцию
-     * 
-     * @return mixed
-     * @throws \Exception
-     */
-    public function fiscalize(PaymentTransaction $transaction): bool;
+        /**
+         * Обработка webhook от провайдера. Возвращает распознанный статус.
+         */
+        /**
+         * Выполнить операцию
+         *
+         * @return mixed
+         * @throws \Exception
+         */
+        public function handleWebhook(array $payload): array;
+
+        /**
+         * ОФД-фискализация (54-ФЗ). Вызывается только после captured.
+         */
+        /**
+         * Выполнить операцию
+         *
+         * @return mixed
+         * @throws \Exception
+         */
+        public function fiscalize(PaymentTransaction $transaction): bool;
 }

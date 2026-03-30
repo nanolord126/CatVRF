@@ -3,15 +3,14 @@
 namespace App\Models;
 
 use App\Enums\Role;
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-
-use Filament\Panel;
-use Filament\Models\Contracts\FilamentUser;
 
 final class User extends Authenticatable implements FilamentUser
 {
@@ -187,11 +186,11 @@ final class User extends Authenticatable implements FilamentUser
             ->first();
 
         $roleValue = $tenant?->pivot->role;
-        
+
         if ($roleValue) {
             return $roleValue instanceof Role ? $roleValue : Role::tryFrom($roleValue);
         }
-        
+
         return null;
     }
 
@@ -221,7 +220,7 @@ final class User extends Authenticatable implements FilamentUser
     public function getActiveTenant(): ?Tenant
     {
         $tenantId = session('active_tenant_id');
-        
+
         if (!$tenantId) {
             return $this->tenants()
                 ->where('tenant_user.is_active', true)
@@ -265,5 +264,3 @@ final class User extends Authenticatable implements FilamentUser
         });
     }
 }
-
-

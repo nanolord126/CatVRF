@@ -1,31 +1,22 @@
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
-<?php
+namespace Modules\Beauty\Http\Resources;
 
-declare(strict_types=1);
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-namespace App\Domains\Beauty\Http\Resources;
-
-use Illuminate\Http\Resources\Json\JsonResource;
-
-/**
- * SalonResource
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class SalonResource extends JsonResource
+final class SalonResource extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function toArray($request): array
-    {
-        return [
-            'id' => $this->id,
-            'name' => $this->name,
-            'address' => $this->address,
-            'phone' => $this->phone,
-        ];
-    }
+        {
+            return [
+                'id' => $this->id,
+                'name' => $this->name,
+                'address' => $this->address,
+                'phone' => $this->phone,
+            ];
+        }
 }

@@ -1,29 +1,19 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Domains\Taxi\Filament\Resources\TaxiVehicleResource\Pages;
 
-use App\Domains\Taxi\Filament\Resources\TaxiVehicleResource;
-use Filament\Actions;
-use Filament\Resources\Pages\ListRecords;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final /**
- * ListTaxiVehicles
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class ListTaxiVehicles extends ListRecords
+final class ListTaxiVehicles extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = TaxiVehicleResource::class;
 
-    protected function getHeaderActions(): array
-    {
-        return [Actions\CreateAction::make()];
-    }
+        protected function getHeaderActions(): array
+        {
+            return [Actions\CreateAction::make()];
+        }
 }

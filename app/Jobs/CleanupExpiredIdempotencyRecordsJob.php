@@ -1,55 +1,41 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Jobs;
 
-use App\Services\Security\IdempotencyService;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final /**
- * CleanupExpiredIdempotencyRecordsJob
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class CleanupExpiredIdempotencyRecordsJob implements ShouldQueue
+final class CleanupExpiredIdempotencyRecordsJob extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-    
-    public int $tries = 3;
-    public int $timeout = 300;  // 5 минут
-    
-    /**
-     * Выполнить job.
-     *
-     * @param IdempotencyService $service
-     * @return void
-     */
-    public function handle(IdempotencyService $service): void
-    {
-        try {
-            $deletedCount = $service->cleanup();
-            
-            Log::channel('audit')->info('Idempotency cleanup job completed', [
-                'deleted_records' => $deletedCount,
-                'job_id' => $this->job->getJobId(),
-            ]);
-        } catch (\Throwable $e) {
-            Log::channel('audit')->error('Idempotency cleanup job failed', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-            throw $e;
+
+        public int $tries = 3;
+        public int $timeout = 300;  // 5 минут
+
+        /**
+         * Выполнить job.
+         *
+         * @param IdempotencyService $service
+         * @return void
+         */
+        public function handle(IdempotencyService $service): void
+        {
+            try {
+                $deletedCount = $service->cleanup();
+
+                Log::channel('audit')->info('Idempotency cleanup job completed', [
+                    'deleted_records' => $deletedCount,
+                    'job_id' => $this->job->getJobId(),
+                ]);
+            } catch (\Throwable $e) {
+                Log::channel('audit')->error('Idempotency cleanup job failed', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+                throw $e;
+            }
         }
-    }
 }

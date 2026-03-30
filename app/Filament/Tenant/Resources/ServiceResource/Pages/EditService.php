@@ -1,29 +1,19 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\ServiceResource\Pages;
 
-use App\Filament\Tenant\Resources\ServiceResource;
-use Filament\Actions;
-use Filament\Resources\Pages\EditRecord;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final /**
- * EditService
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class EditService extends EditRecord
+final class EditService extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = ServiceResource::class;
 
-    protected function getHeaderActions(): array
-    {
-        return [Actions\ViewAction::make(), Actions\DeleteAction::make()];
-    }
+        protected function getHeaderActions(): array
+        {
+            return [Actions\ViewAction::make(), Actions\DeleteAction::make()];
+        }
 }

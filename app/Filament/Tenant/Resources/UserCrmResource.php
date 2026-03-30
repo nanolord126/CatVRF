@@ -3,14 +3,9 @@
 namespace App\Filament\Tenant\Resources;
 
 use App\Filament\Tenant\Resources\UserCrmResource\Pages;
-use App\Filament\Tenant\Resources\UserCrmResource\RelationManagers;
 use App\Models\User;
 use Filament\Forms;
 use Filament\Resources\Resource;
-use Filament\Tables;
-use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Log;
 
 /**
  * CRM клиентов арендатора (КАНОН 2026).

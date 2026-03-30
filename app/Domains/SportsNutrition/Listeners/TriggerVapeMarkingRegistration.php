@@ -1,44 +1,36 @@
-<?php
+<?php declare(strict_types=1);
 
-declare(strict_types=1);
+namespace App\Domains\SportsNutrition\Listeners;
 
-namespace App\Domains\Vapes\Listeners;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-use App\Domains\SportsNutrition\Events\VapeOrderPaidEvent;
-use App\Domains\SportsNutrition\Jobs\VapeMarkingRegistrationJob;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Support\Facades\Log;
-
-/**
- * TriggerVapeMarkingRegistration — Production Ready 2026
- * 
- * Слушатель события оплаты заказа. Автоматически запускает 
- * Job регистрации выбытия в системе "Честный ЗНАК".
- */
-class TriggerVapeMarkingRegistration implements ShouldQueue
+final class TriggerVapeMarkingRegistration extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use InteractsWithQueue;
 
-    /**
-     * Создание слушателя.
-     */
-    public function __construct() {}
+        /**
+         * Создание слушателя.
+         */
+        public function __construct() {}
 
-    /**
-     * Обработка события оплаты.
-     */
-    public function handle(VapeOrderPaidEvent $event): void
-    {
-        Log::channel('audit')->info('Vape order paid listener: sending to marking job', [
-            'order_id' => $event->orderId,
-            'correlation_id' => $event->correlationId,
-        ]);
+        /**
+         * Обработка события оплаты.
+         */
+        public function handle(VapeOrderPaidEvent $event): void
+        {
+            Log::channel('audit')->info('Vape order paid listener: sending to marking job', [
+                'order_id' => $event->orderId,
+                'correlation_id' => $event->correlationId,
+            ]);
 
-        // Диспетчеризация задачи на регистрацию выбытия
-        VapeMarkingRegistrationJob::dispatch(
-            orderId: $event->orderId,
-            correlationId: $event->correlationId,
-        )->onQueue('low_stock'); // Очередь низкого приоритета (ГИС МТ)
-    }
+            // Диспетчеризация задачи на регистрацию выбытия
+            VapeMarkingRegistrationJob::dispatch(
+                orderId: $event->orderId,
+                correlationId: $event->correlationId,
+            )->onQueue('low_stock'); // Очередь низкого приоритета (ГИС МТ)
+        }
 }

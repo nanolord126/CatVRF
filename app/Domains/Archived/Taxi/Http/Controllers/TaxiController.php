@@ -1,0 +1,347 @@
+<?php declare(strict_types=1);
+
+namespace App\Domains\Archived\Taxi\Http\Controllers;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+final class TaxiController extends Model
+{
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
+    public function __construct(private readonly TaxiService $service,
+
+
+            private readonly FraudControlService $fraudControlService,) {}
+
+
+        public function index(): JsonResponse
+
+
+        {
+
+
+            $taxis = Taxi::where('tenant_id', tenant()->id)->paginate();
+
+
+            return response()->json(['data' => $taxis]);
+
+
+        }
+
+
+        public function show(Taxi $taxi): JsonResponse
+
+
+        {
+
+
+            $this->authorize('view', $taxi);
+
+
+            return response()->json(['data' => $taxi]);
+
+
+        }
+
+
+        public function store(Request $request): JsonResponse
+
+
+        {
+
+
+            $fraudResult = $this->fraudControlService->check(
+
+
+                auth()->id() ?? 0,
+
+
+                'operation',
+
+
+                0,
+
+
+                request()->ip(),
+
+
+                request()->header('X-Device-Fingerprint'),
+
+
+                $correlationId,
+
+
+            );
+
+
+            if ($fraudResult['decision'] === 'block') {
+
+
+                Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+
+
+                    'correlation_id' => $correlationId,
+
+
+                    'user_id'        => auth()->id(),
+
+
+                    'score'          => $fraudResult['score'],
+
+
+                ]);
+
+
+                return response()->json([
+
+
+                    'success'        => false,
+
+
+                    'error'          => 'Операция заблокирована.',
+
+
+                    'correlation_id' => $correlationId,
+
+
+                ], 403);
+
+
+            }
+
+
+            $this->authorize('create', Taxi::class);
+
+
+            $correlationId = Str::uuid()->toString();
+
+
+            try {
+
+
+                $taxi = $this->service->createDriver([
+
+
+                    'name' => $request->input('name'),
+
+
+                    'phone' => $request->input('phone'),
+
+
+                    'license' => $request->input('license'),
+
+
+                ], tenant()->id, $correlationId);
+
+
+                return response()->json(['data' => $taxi], 201);
+
+
+            } catch (\Exception $e) {
+
+
+                \Log::channel('audit')->error('Taxi creation failed', ['correlation_id' => $correlationId, 'error' => $e->getMessage()]);
+
+
+                return response()->json(['error' => 'Failed to create taxi'], 422);
+
+
+            }
+
+
+        }
+
+
+        public function update(Request $request, Taxi $taxi): JsonResponse
+
+
+        {
+
+
+            $fraudResult = $this->fraudControlService->check(
+
+
+                auth()->id() ?? 0,
+
+
+                'operation',
+
+
+                0,
+
+
+                request()->ip(),
+
+
+                request()->header('X-Device-Fingerprint'),
+
+
+                $correlationId,
+
+
+            );
+
+
+            if ($fraudResult['decision'] === 'block') {
+
+
+                Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+
+
+                    'correlation_id' => $correlationId,
+
+
+                    'user_id'        => auth()->id(),
+
+
+                    'score'          => $fraudResult['score'],
+
+
+                ]);
+
+
+                return response()->json([
+
+
+                    'success'        => false,
+
+
+                    'error'          => 'Операция заблокирована.',
+
+
+                    'correlation_id' => $correlationId,
+
+
+                ], 403);
+
+
+            }
+
+
+            $this->authorize('update', $taxi);
+
+
+            $correlationId = Str::uuid()->toString();
+
+
+            try {
+
+
+                $taxi->update($request->only(['name', 'phone', 'status']));
+
+
+                \Log::channel('audit')->info('Taxi updated', ['correlation_id' => $correlationId, 'taxi_id' => $taxi->id]);
+
+
+                return response()->json(['data' => $taxi]);
+
+
+            } catch (\Exception $e) {
+
+
+                return response()->json(['error' => 'Failed to update taxi'], 422);
+
+
+            }
+
+
+        }
+
+
+        public function destroy(Taxi $taxi): JsonResponse
+
+
+        {
+
+
+            $fraudResult = $this->fraudControlService->check(
+
+
+                auth()->id() ?? 0,
+
+
+                'operation',
+
+
+                0,
+
+
+                request()->ip(),
+
+
+                request()->header('X-Device-Fingerprint'),
+
+
+                $correlationId,
+
+
+            );
+
+
+            if ($fraudResult['decision'] === 'block') {
+
+
+                Log::channel('fraud_alert')->warning('Operation blocked by fraud control', [
+
+
+                    'correlation_id' => $correlationId,
+
+
+                    'user_id'        => auth()->id(),
+
+
+                    'score'          => $fraudResult['score'],
+
+
+                ]);
+
+
+                return response()->json([
+
+
+                    'success'        => false,
+
+
+                    'error'          => 'Операция заблокирована.',
+
+
+                    'correlation_id' => $correlationId,
+
+
+                ], 403);
+
+
+            }
+
+
+            $this->authorize('delete', $taxi);
+
+
+            $correlationId = Str::uuid()->toString();
+
+
+            try {
+
+
+                $taxi->delete();
+
+
+                \Log::channel('audit')->info('Taxi deleted', ['correlation_id' => $correlationId, 'taxi_id' => $taxi->id]);
+
+
+                return response()->json(null, 204);
+
+
+            } catch (\Exception $e) {
+
+
+                return response()->json(['error' => 'Failed to delete taxi'], 422);
+
+
+            }
+
+
+        }
+}

@@ -2,138 +2,140 @@
 
 namespace App\Policies\Domains;
 
-use App\Domains\Taxi\Models\TaxiRide;
-use App\Models\User;
-use Illuminate\Auth\Access\HandlesAuthorization;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final class TaxiRidePolicy
+final class TaxiRidePolicy extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     use HandlesAuthorization;
 
-    /**
-     * Admins can do anything
-     */
-    public function before(User $user, string $ability): bool|null
-    {
-        if ($user->hasRole('admin')) {
-            return true;
+        /**
+         * Admins can do anything
+         */
+        public function before(User $user, string $ability): bool|null
+        {
+            if ($user->hasRole('admin')) {
+                return true;
+            }
+
+            return null;
         }
 
-        return null;
-    }
+        /**
+         * View ride (driver, passenger, dispatcher, manager, admin)
+         */
+        public function view(User $user, TaxiRide $ride): bool
+        {
+            // Tenant scoping
+            if ($ride->tenant_id !== $user->tenant_id) {
+                return false;
+            }
 
-    /**
-     * View ride (driver, passenger, dispatcher, manager, admin)
-     */
-    public function view(User $user, TaxiRide $ride): bool
-    {
-        // Tenant scoping
-        if ($ride->tenant_id !== $user->tenant_id) {
-            return false;
+            // Driver can view their own rides
+            if ($user->id === $ride->driver_id) {
+                return true;
+            }
+
+            // Passenger can view their own rides
+            if ($user->id === $ride->passenger_id) {
+                return true;
+            }
+
+            // Manager/accountant can view all rides
+            return $user->hasRole(['manager', 'accountant']);
         }
 
-        // Driver can view their own rides
-        if ($user->id === $ride->driver_id) {
-            return true;
+        /**
+         * Create ride (passenger)
+         */
+        public function create(User $user): bool
+        {
+            return $user->hasRole(['passenger', 'business_owner', 'manager']);
         }
 
-        // Passenger can view their own rides
-        if ($user->id === $ride->passenger_id) {
-            return true;
+        /**
+         * Accept ride (driver)
+         */
+        public function accept(User $user, TaxiRide $ride): bool
+        {
+            if ($ride->tenant_id !== $user->tenant_id) {
+                return false;
+            }
+
+            return $user->hasRole('driver') && $user->id === $ride->driver_id;
         }
 
-        // Manager/accountant can view all rides
-        return $user->hasRole(['manager', 'accountant']);
-    }
+        /**
+         * Complete ride (driver)
+         */
+        public function complete(User $user, TaxiRide $ride): bool
+        {
+            if ($ride->tenant_id !== $user->tenant_id) {
+                return false;
+            }
 
-    /**
-     * Create ride (passenger)
-     */
-    public function create(User $user): bool
-    {
-        return $user->hasRole(['passenger', 'business_owner', 'manager']);
-    }
-
-    /**
-     * Accept ride (driver)
-     */
-    public function accept(User $user, TaxiRide $ride): bool
-    {
-        if ($ride->tenant_id !== $user->tenant_id) {
-            return false;
+            return $user->hasRole('driver') && $user->id === $ride->driver_id;
         }
 
-        return $user->hasRole('driver') && $user->id === $ride->driver_id;
-    }
+        /**
+         * Rate ride (passenger after completion)
+         */
+        public function rate(User $user, TaxiRide $ride): bool
+        {
+            if ($ride->tenant_id !== $user->tenant_id) {
+                return false;
+            }
 
-    /**
-     * Complete ride (driver)
-     */
-    public function complete(User $user, TaxiRide $ride): bool
-    {
-        if ($ride->tenant_id !== $user->tenant_id) {
-            return false;
+            return $user->id === $ride->passenger_id && $ride->status === 'completed';
         }
 
-        return $user->hasRole('driver') && $user->id === $ride->driver_id;
-    }
+        /**
+         * Cancel ride
+         */
+        public function cancel(User $user, TaxiRide $ride): bool
+        {
+            if ($ride->tenant_id !== $user->tenant_id) {
+                return false;
+            }
 
-    /**
-     * Rate ride (passenger after completion)
-     */
-    public function rate(User $user, TaxiRide $ride): bool
-    {
-        if ($ride->tenant_id !== $user->tenant_id) {
-            return false;
+            // Passenger can cancel before driver acceptance
+            if ($user->id === $ride->passenger_id && $ride->status === 'pending') {
+                return true;
+            }
+
+            // Driver can cancel with reason if emergency
+            if ($user->id === $ride->driver_id && $ride->status === 'accepted') {
+                return true;
+            }
+
+            // Admin/manager can cancel
+            return $user->hasRole(['admin', 'manager']);
         }
 
-        return $user->id === $ride->passenger_id && $ride->status === 'completed';
-    }
+        /**
+         * Update ride (manager/admin only)
+         */
+        public function update(User $user, TaxiRide $ride): bool
+        {
+            if ($ride->tenant_id !== $user->tenant_id) {
+                return false;
+            }
 
-    /**
-     * Cancel ride
-     */
-    public function cancel(User $user, TaxiRide $ride): bool
-    {
-        if ($ride->tenant_id !== $user->tenant_id) {
-            return false;
+            return $user->hasRole(['admin', 'manager']);
         }
 
-        // Passenger can cancel before driver acceptance
-        if ($user->id === $ride->passenger_id && $ride->status === 'pending') {
-            return true;
+        /**
+         * Delete ride (admin only)
+         */
+        public function delete(User $user, TaxiRide $ride): bool
+        {
+            if ($ride->tenant_id !== $user->tenant_id) {
+                return false;
+            }
+
+            return $user->hasRole('admin');
         }
-
-        // Driver can cancel with reason if emergency
-        if ($user->id === $ride->driver_id && $ride->status === 'accepted') {
-            return true;
-        }
-
-        // Admin/manager can cancel
-        return $user->hasRole(['admin', 'manager']);
-    }
-
-    /**
-     * Update ride (manager/admin only)
-     */
-    public function update(User $user, TaxiRide $ride): bool
-    {
-        if ($ride->tenant_id !== $user->tenant_id) {
-            return false;
-        }
-
-        return $user->hasRole(['admin', 'manager']);
-    }
-
-    /**
-     * Delete ride (admin only)
-     */
-    public function delete(User $user, TaxiRide $ride): bool
-    {
-        if ($ride->tenant_id !== $user->tenant_id) {
-            return false;
-        }
-
-        return $user->hasRole('admin');
-    }
 }

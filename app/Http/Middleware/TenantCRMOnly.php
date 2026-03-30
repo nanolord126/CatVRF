@@ -2,7 +2,6 @@
 
 namespace App\Http\Middleware;
 
-use App\Models\Tenant;
 use App\Enums\Role;
 use Closure;
 use Illuminate\Http\Request;

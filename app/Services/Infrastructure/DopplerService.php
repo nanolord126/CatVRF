@@ -2,8 +2,6 @@
 
 namespace App\Services\Infrastructure;
 
-use Illuminate\Support\Facades\Cache;
-
 final class DopplerService
 {
     /**

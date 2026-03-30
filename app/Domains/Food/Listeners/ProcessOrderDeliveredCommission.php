@@ -1,44 +1,34 @@
-<?php
-
-declare(strict_types=1);
-
+<?php declare(strict_types=1);
 
 namespace App\Domains\Food\Listeners;
 
-use App\Domains\Food\Events\OrderDelivered;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 
-final /**
- * ProcessOrderDeliveredCommission
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class ProcessOrderDeliveredCommission
+final class ProcessOrderDeliveredCommission extends Model
 {
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     public function handle(OrderDelivered $event): void
-    {
-        try {
-            DB::transaction(function () use ($event) {
-                Log::channel('audit')->info('Order delivery commission processed', [
-                    'order_id' => $event->orderId,
-                    'restaurant_id' => $event->restaurantId,
-                    'delivery_amount' => $event->deliveryAmount,
+        {
+            try {
+                DB::transaction(function () use ($event) {
+                    Log::channel('audit')->info('Order delivery commission processed', [
+                        'order_id' => $event->orderId,
+                        'restaurant_id' => $event->restaurantId,
+                        'delivery_amount' => $event->deliveryAmount,
+                        'correlation_id' => $event->correlationId,
+                        'action' => 'order_delivered_commission',
+                    ]);
+                    // PayoutService::process($restaurant_id, $event->deliveryAmount);
+                });
+            } catch (\Exception $e) {
+                Log::channel('audit')->error('Failed to process order delivery commission', [
                     'correlation_id' => $event->correlationId,
-                    'action' => 'order_delivered_commission',
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
                 ]);
-                // PayoutService::process($restaurant_id, $event->deliveryAmount);
-            });
-        } catch (\Exception $e) {
-            Log::channel('audit')->error('Failed to process order delivery commission', [
-                'correlation_id' => $event->correlationId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+            }
         }
-    }
 }

@@ -1,25 +1,11 @@
-<?php
+<?php declare(strict_types=1);
 
-declare(strict_types=1);
-
-
-namespace App\Services\ThreeD;
+namespace App\Services\3D;
 
 use Illuminate\Support\Str;
 
-final /**
- * VehicleVisualizerService
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class VehicleVisualizerService
+final class VehicleVisualizerService
 {
-    // Dependencies injected via constructor
-    // Add private readonly properties here
     public function generateVehicleVisualization(array $vehicleData): array
     {
         return [
@@ -52,4 +38,3 @@ class VehicleVisualizerService
         return "/3d-models/vehicles/{$vehicleData['brand']}-{$vehicleData['model']}.glb";
     }
 }
-

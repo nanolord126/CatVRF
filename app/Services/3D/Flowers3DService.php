@@ -1,25 +1,11 @@
-<?php
+<?php declare(strict_types=1);
 
-declare(strict_types=1);
-
-
-namespace App\Services\ThreeD;
+namespace App\Services\3D;
 
 use Illuminate\Support\Str;
 
-final /**
- * Flowers3DService
- * 
- * Основной класс для работы с платформой CatVRF.
- * 
- * @author CatVRF
- * @package %NAMESPACE%
- * @version 1.0.0
- */
-class Flowers3DService
+final class Flowers3DService
 {
-    // Dependencies injected via constructor
-    // Add private readonly properties here
     public function generateProductVisualization(array $productData): array
     {
         return [

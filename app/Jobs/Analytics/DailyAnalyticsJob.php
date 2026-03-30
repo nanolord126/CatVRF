@@ -4,6 +4,7 @@ namespace App\Jobs\Analytics;
 
 use App\Services\DemandForecastService;
 use App\Services\RecommendationService;
+use Carbon\Carbon;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -12,7 +13,6 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use Carbon\Carbon;
 
 final class DailyAnalyticsJob implements ShouldQueue
 {

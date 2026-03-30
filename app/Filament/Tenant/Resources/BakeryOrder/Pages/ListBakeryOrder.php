@@ -1,8 +1,14 @@
-<?php
-declare(strict_types=1);
+<?php declare(strict_types=1);
+
 namespace App\Filament\Tenant\Resources\BakeryOrder\Pages;
-use App\Filament\Tenant\Resources\BakeryOrderResource;
-use Filament\Resources\Pages\ListRecords;
-final class ListRecordsBakeryOrder extends ListRecords {
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+final class ListRecordsBakeryOrder extends Model
+{
+    use HasFactory;
+
+    // TODO: Проверить и восстановить содержимое класса, если оно было утеряно
     protected static string $resource = BakeryOrderResource::class;
 }

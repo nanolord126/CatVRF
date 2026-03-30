@@ -1,21 +1,17 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace Tests\Feature\Party;
 
-use Tests\TestCase;
-use App\Models\Party\PartyStore;
 use App\Models\Party\PartyProduct;
-use App\Models\Party\PartyOrder;
+use App\Models\Party\PartyStore;
 use App\Models\User;
-use App\Services\Party\PartySuppliesService;
 use App\Services\FraudControlService;
+use App\Services\Party\PartySuppliesService;
 use App\Services\WalletService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\DB;
 use Mockery;
+use Tests\TestCase;
 
 /**
  * PartySuppliesTest.

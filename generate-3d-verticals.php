@@ -43,7 +43,7 @@ foreach ($verticals as $vertical) {
     $serviceContent = <<<PHP
 <?php declare(strict_types=1);
 
-namespace App\Services\3D;
+namespace App\Services\ThreeD;
 
 use Illuminate\Support\Str;
 

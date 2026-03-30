@@ -1,6 +1,4 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace App\Broadcasting;
 
@@ -23,7 +21,7 @@ final class EditStarted implements ShouldBroadcast
         public readonly string $documentType,
         public readonly int $documentId,
         public readonly string $userName,
-        public readonly string $correlationId
+        public readonly string $correlationId,
     ) {
         Log::channel('audit')->info('EditStarted event broadcasted', [
             'user_id' => $this->userId,
@@ -34,27 +32,17 @@ final class EditStarted implements ShouldBroadcast
         ]);
     }
 
-    /**
-     * Get the channels the event should broadcast on.
-     *
-     * @return \Illuminate\Broadcasting\Channel
-     */
     public function broadcastOn(): PrivateChannel
     {
         return new PrivateChannel("collab.{$this->tenantId}.{$this->documentType}.{$this->documentId}");
     }
 
-    /**
-     * The event's broadcast name.
-     */
     public function broadcastAs(): string
     {
         return 'edit.started';
     }
 
     /**
-     * Get the data to broadcast.
-     *
      * @return array<string, mixed>
      */
     public function broadcastWith(): array
@@ -70,10 +58,7 @@ final class EditStarted implements ShouldBroadcast
         ];
     }
 
-    /**
-     * Determine if this event should be broadcast.
-     */
-    public function shouldBroadcast(): bool
+    public function broadcastWhen(): bool
     {
         return config('broadcasting.connections.pusher.enabled', true);
     }

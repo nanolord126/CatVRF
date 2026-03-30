@@ -120,6 +120,22 @@ require __DIR__ . '/courses.api.php';
 // Medical & Healthcare
 require __DIR__ . '/medical.api.php';
 
+// Archived Art Artistic Services (legacy vertical, tenant + auth)
+Route::prefix('archived/artistic-services')
+    ->middleware(['auth:sanctum', 'tenant'])
+    ->group(function (): void {
+        Route::get('/', [\App\Domains\Archived\Art\ArtisticServices\Http\Controllers\ArtisticProjectController::class, 'index'])
+            ->name('archived.artistic-services.index');
+        Route::post('/', [\App\Domains\Archived\Art\ArtisticServices\Http\Controllers\ArtisticProjectController::class, 'store'])
+            ->name('archived.artistic-services.store');
+        Route::get('{projectId}', [\App\Domains\Archived\Art\ArtisticServices\Http\Controllers\ArtisticProjectController::class, 'show'])
+            ->name('archived.artistic-services.show');
+        Route::post('{projectId}/complete', [\App\Domains\Archived\Art\ArtisticServices\Http\Controllers\ArtisticProjectController::class, 'complete'])
+            ->name('archived.artistic-services.complete');
+        Route::post('{projectId}/cancel', [\App\Domains\Archived\Art\ArtisticServices\Http\Controllers\ArtisticProjectController::class, 'cancel'])
+            ->name('archived.artistic-services.cancel');
+    });
+
 // Pet Services & Clinics
 require __DIR__ . '/pet.api.php';
 

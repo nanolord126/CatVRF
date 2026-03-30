@@ -2,10 +2,9 @@
 
 namespace Tests\E2E;
 
-use App\Models\User;
 use App\Models\Tenant;
+use App\Models\User;
 use App\Models\Wallet;
-use App\Models\PaymentTransaction;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 

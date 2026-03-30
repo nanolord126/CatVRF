@@ -2,9 +2,9 @@
 
 namespace App\Notifications\Verticals\Food;
 
+use App\Notifications\BaseInAppNotification;
 use App\Notifications\BaseMailableNotification;
 use App\Notifications\BaseSmsNotification;
-use App\Notifications\BaseInAppNotification;
 
 /**
  * Order Confirmed Notification - заказ подтверждён рестораном
@@ -37,7 +37,7 @@ class OrderReadyNotification extends BaseInAppNotification
     public function __construct(int $userId, int $tenantId, array $orderData)
     {
         parent::__construct($userId, $tenantId, $orderData, channels: ['push', 'database']);
-        
+
         $this->title('Ваш заказ готов!')
              ->message("{$orderData['restaurant_name']}: Заказ #{$orderData['order_id']} готов к получению")
              ->type('success')
@@ -56,7 +56,7 @@ class OrderDeliveringNotification extends BaseInAppNotification
     public function __construct(int $userId, int $tenantId, array $orderData)
     {
         parent::__construct($userId, $tenantId, $orderData, channels: ['push', 'database']);
-        
+
         $this->title('Курьер едет к вам')
              ->message("Курьер #{$orderData['courier_id']} доставит ваш заказ")
              ->type('info')
@@ -124,7 +124,7 @@ class RatingRequestNotification extends BaseInAppNotification
     public function __construct(int $userId, int $tenantId, array $orderData)
     {
         parent::__construct($userId, $tenantId, $orderData, channels: ['database', 'push']);
-        
+
         $this->title('Как вам заказ?')
              ->message("Оцените блюда из {$orderData['restaurant_name']}")
              ->type('info')

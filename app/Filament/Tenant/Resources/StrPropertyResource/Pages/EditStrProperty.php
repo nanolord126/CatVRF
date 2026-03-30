@@ -21,7 +21,7 @@ class EditStrProperty extends EditRecord
     protected function mutateFormDataBeforeSave(array $data): array
     {
         $data['correlation_id'] = request()->header('X-Correlation-ID', (string) Str::uuid());
-        
+
         return $data;
     }
 }

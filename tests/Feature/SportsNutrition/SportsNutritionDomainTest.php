@@ -1,18 +1,15 @@
-<?php
-
-declare(strict_types=1);
+<?php declare(strict_types=1);
 
 namespace Tests\Feature\SportsNutrition;
 
-use App\Domains\SportsNutrition\Models\SportsNutritionProduct;
-use App\Domains\SportsNutrition\Models\SportsNutritionStore;
-use App\Domains\SportsNutrition\Models\SportsNutritionCategory;
-use App\Domains\SportsNutrition\Services\SportsNutritionDomainService;
-use App\Domains\SportsNutrition\Services\AISupplementConstructor;
 use App\Domains\SportsNutrition\DTOs\AIStackRequestDto;
 use App\Domains\SportsNutrition\DTOs\ProductSaveDto;
+use App\Domains\SportsNutrition\Models\SportsNutritionCategory;
+use App\Domains\SportsNutrition\Models\SportsNutritionProduct;
+use App\Domains\SportsNutrition\Models\SportsNutritionStore;
+use App\Domains\SportsNutrition\Services\AISupplementConstructor;
+use App\Domains\SportsNutrition\Services\SportsNutritionDomainService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
