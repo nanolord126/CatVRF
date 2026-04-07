@@ -1,66 +1,46 @@
-<?php declare(strict_types=1);
+<?php
+declare(strict_types=1);
 
 namespace App\Domains\RealEstate\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use Spatie\Activitylog\Traits\LogsActivity;
-use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Builder;
+use App\Models\Tenant;
+use App\Models\BusinessGroup;
 
 final class Property extends Model
 {
-    use HasFactory;
-    use SoftDeletes;
-    use LogsActivity;
-
-    protected $table = 'properties';
+    protected $table = "real_estate_properties";
 
     protected $fillable = [
-        'uuid',
-        'tenant_id',
-        'business_group_id',
-        'correlation_id',
-        'name',
-        'address',
-        'lat',
-        'lon',
-        'type',
-        'area',
-        'rooms',
-        'floor',
-        'features',
-        'status',
-        'tags',
+        "tenant_id", "business_group_id", "uuid", "correlation_id", "title",
+        "description", "address", "lat", "lon", "price", "type", "status",
+        "photos", "documents", "features", "area_sqm", "is_active"
     ];
 
     protected $casts = [
-        'features' => 'array',
-        'tags' => 'array',
-        'lat' => 'float',
-        'lon' => 'float',
-        'area' => 'float',
+        "photos" => "json", "documents" => "json", "features" => "json",
+        "is_active" => "boolean", "price" => "decimal:2", "lat" => "decimal:8",
+        "lon" => "decimal:8", "area_sqm" => "decimal:2"
     ];
 
     protected static function booted(): void
     {
-        static::creating(function (Property $model) {
-             if (empty($model->uuid)) {
-                $model->uuid = (string) Str::uuid();
-             }
+        static::addGlobalScope("tenant", function (Builder $query): void {
+            if (app()->bound("tenant") && app("tenant") instanceof Tenant) {
+                $query->where("tenant_id", app("tenant")->id);
+            }
+        });
+
+        static::creating(function (Model $model): void {
+            if (!$model->uuid) { $model->uuid = (string) \Illuminate\Support\Str::uuid(); }
+            if (!$model->correlation_id) {
+                $model->correlation_id = request()->header("X-Correlation-ID", (string) \Illuminate\Support\Str::uuid());
+            }
         });
     }
 
-    public function listings(): \Illuminate\Database\Eloquent\Relations\HasMany
-    {
-        return $this->hasMany(Listing::class);
-    }
-
-    public function getActivitylogOptions(): LogOptions
-    {
-        return LogOptions::defaults()
-            ->logFillable()
-            ->useLogName('real_estate')
-            ->logOnlyDirty();
-    }
+    public function tenant(): BelongsTo { return $this->belongsTo(Tenant::class); }
+    public function businessGroup(): BelongsTo { return $this->belongsTo(BusinessGroup::class); }
 }

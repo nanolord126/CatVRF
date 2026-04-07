@@ -1,55 +1,32 @@
 <?php
-
 declare(strict_types=1);
 
 namespace App\Domains\RealEstate\DTOs;
 
 use Illuminate\Http\Request;
 
-/**
- * Class SearchPropertyDto
- *
- * Part of the RealEstate vertical domain.
- * Follows CatVRF 9-layer architecture.
- *
- * Data Transfer Object (immutable).
- * Used for type-safe data passing between layers.
- *
- * All DTOs in CatVRF are final readonly classes.
- * Properties are set via constructor and cannot be modified.
- *
- * @see https://www.php.net/manual/en/language.oop5.basic.php#language.oop5.basic.class.readonly
- * @package App\Domains\RealEstate\DTOs
- */
 final readonly class SearchPropertyDto
 {
     public function __construct(
-        private readonly int     $tenantId,
-        private readonly ?int    $businessGroupId,
-        private readonly int     $userId,
-        private readonly string  $correlationId,
-        private ?string $query = null,
-        private ?string $status = null,
-        private ?string $sortBy = 'created_at',
-        private string $sortDir = 'desc',
-        public int $perPage = 20,
-        private int $page = 1,
-        private bool $isB2B = false) {}
+        public float $lat,
+        public float $lon,
+        public float $radiusKm,
+        public ?string $type,
+        public ?float $minPrice,
+        public ?float $maxPrice,
+        public string $correlationId
+    ) {}
 
-    public static function from(Request $request): self
+    public static function fromRequest(Request $request): self
     {
         return new self(
-            tenantId:        (int) tenant()?->id,
-            businessGroupId: $request->input('business_group_id') ? (int) $request->input('business_group_id') : null,
-            userId:          (int) $request->user()?->id,
-            correlationId:   $request->header('X-Correlation-ID', \Illuminate\Support\Str::uuid()->toString()),
-            query:           $request->input('q'),
-            status:          $request->input('status'),
-            sortBy:          $request->input('sort_by', 'created_at'),
-            sortDir:         $request->input('sort_dir', 'desc'),
-            perPage:         (int) $request->input('per_page', 20),
-            page:            (int) $request->input('page', 1),
-            isB2B:           $request->has('inn') && $request->has('business_card_id'),
+            lat: (float) $request->input("lat", 0.0),
+            lon: (float) $request->input("lon", 0.0),
+            radiusKm: (float) $request->input("radius_km", 10.0),
+            type: $request->input("type"),
+            minPrice: $request->has("min_price") ? (float) $request->input("min_price") : null,
+            maxPrice: $request->has("max_price") ? (float) $request->input("max_price") : null,
+            correlationId: (string) $request->header("X-Correlation-ID", (string) \Illuminate\Support\Str::uuid())
         );
     }
 }
