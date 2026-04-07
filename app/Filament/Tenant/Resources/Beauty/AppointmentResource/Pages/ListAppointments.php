@@ -1,39 +1,18 @@
-<?php declare(strict_types=1);
+<?php
 
-/**
- * ListAppointments — CatVRF 2026 Component.
- *
- * Part of the CatVRF multi-vertical marketplace platform.
- * Implements tenant-aware, fraud-checked business logic
- * with full correlation_id tracing and audit logging.
- *
- * @package CatVRF
- * @version 2026.1
- * @author CatVRF Team
- * @license Proprietary
-
- * @see https://catvrf.ru/docs/listappointments
- * @see https://catvrf.ru/docs/listappointments
- * @see https://catvrf.ru/docs/listappointments
- * @see https://catvrf.ru/docs/listappointments
- * @see https://catvrf.ru/docs/listappointments
- */
-
+declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Beauty\AppointmentResource\Pages;
 
+use App\Domains\Beauty\Models\Appointment;
 use App\Filament\Tenant\Resources\Beauty\AppointmentResource;
-use Filament\Actions;
 use Filament\Resources\Pages\ListRecords;
 
 /**
- * Class ListAppointments
+ * Страница списка записей в Tenant Panel.
  *
- * Filament admin panel component.
- * Tenant-scoped: all data filtered by current tenant.
- * Follows CatVRF 9-layer architecture (Layer 9: Filament).
- *
- * @package App\Filament\Tenant\Resources\Beauty\AppointmentResource\Pages
+ * Записи создаются только через B2C API, поэтому кнопка «Create» отсутствует.
+ * Показываем только записи салонов текущего tenant'а.
  */
 final class ListAppointments extends ListRecords
 {
@@ -41,34 +20,52 @@ final class ListAppointments extends ListRecords
 
     protected function getHeaderActions(): array
     {
+        return [];
+    }
+
+    protected function getHeaderWidgets(): array
+    {
+        return [];
+    }
+
+    /**
+     * Заголовок страницы со счётчиком сегодняшних записей.
+     */
+    public function getTitle(): string
+    {
+        $todayCount = Appointment::query()
+            ->whereDate('starts_at', today())
+            ->whereIn('status', [
+                Appointment::STATUS_PENDING,
+                Appointment::STATUS_CONFIRMED,
+                Appointment::STATUS_IN_PROGRESS,
+            ])
+            ->count();
+
+        return "Записи (сегодня: {$todayCount})";
+    }
+
+    /**
+     * Хлебные крошки для навигации.
+     */
+    public function getBreadcrumbs(): array
+    {
         return [
-            Actions\CreateAction::make(),
+            'Beauty'  => null,
+            'Записи'  => route('filament.tenant.resources.beauty.appointments.index'),
         ];
     }
 
     /**
-     * Get the string representation of this object.
-     *
-     * @return string
+     * Подсказка на пустом состоянии.
      */
-    public function __toString(): string
+    protected function getEmptyStateHeading(): ?string
     {
-        return static::class . '::' . ($this->id ?? 'new');
+        return 'Записей пока нет';
     }
 
-    /**
-     * Determine if this instance is valid for the current context.
-     *
-     * @return bool
-     */
-    public function isValid(): bool
+    protected function getEmptyStateDescription(): ?string
     {
-        return true;
+        return 'Записи создаются клиентами через публичный API или мобильное приложение.';
     }
-
-    /**
-     * Version identifier for this component.
-     */
-    private const VERSION = '1.0.0';
-
 }

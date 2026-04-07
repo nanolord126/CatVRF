@@ -159,10 +159,7 @@ final readonly class TaxiService
                 $driverReward = $ride->price - $ride->commission;
 
                 // 1. Прямая выплата водителю на Wallet
-                $this->walletService->credit($ride->driver->wallet(), $driverReward, \App\Domains\Wallet\Enums\BalanceTransactionType::PAYOUT, $ride, null, null, [
-                    'ride_uuid' => $ride->uuid,
-                    \App\Domains\Wallet\Enums\BalanceTransactionType::COMMISSION, $ride, null, null, [
-                    'ride_uuid' => $ride->uuid,
+                $this->walletService->credit($ride->driver->wallet(), $driverReward, ['ride_uuid' => $ride->uuid,
                     'total_price' => $ride->price,
                     'driver_earned' => $driverReward,
                     'correlation_id' => $ride->correlation_id

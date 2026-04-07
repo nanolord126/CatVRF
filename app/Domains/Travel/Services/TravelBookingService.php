@@ -3,14 +3,13 @@
 namespace App\Domains\Travel\Services;
 
 
-
-
 use Illuminate\Cache\RateLimiter;
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
 final readonly class TravelBookingService
 {
-
+
+
     public function __construct(private readonly FraudControlService $fraud,
             private readonly PaymentService $payment,
             private readonly WalletService $wallet,
@@ -94,11 +93,7 @@ final readonly class TravelBookingService
                     correlationId: $correlationId
                 );
 
-                $this->logger->info("Travel: payout processed", ["booking_id" => $booking->id, \App\Domains\Wallet\Enums\BalanceTransactionType::PAYOUT, $correlationId, null, null, ["agency" => $agencyId]);
-
-            // Вызов DemandForecastService для планирования сезонов и акций
-            return [
-                "summer_2026_turkey" => $this->forecast->forecastBulk([404, 405], now(), now()->addMonths(6)),
-                \App\Domains\Wallet\Enums\BalanceTransactionType::PAYOUT, $correlationId, null, null, ["guide_id" => $guideId, "booking" => $bookingId]);
+                $this->logger->info("Travel: payout processed", ["booking_id" => $booking->id, "agency" => $booking->tour->agency->id]);
+            });
         }
 }

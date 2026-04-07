@@ -8,7 +8,8 @@ use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
 final readonly class VeganProductService
 {
-
+
+
     public function __construct(private readonly FraudControlService $fraud,
             private readonly WalletService $wallet,
         private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard) {}
@@ -113,7 +114,11 @@ final readonly class VeganProductService
                 // 6. Create Meta Order Object (Mocked here for brevity, assume real Order model exists)
                 $order = \App\Models\Order::create([
                     'user_id' => $dto->userId,
-                    \App\Domains\Wallet\Enums\BalanceTransactionType::WITHDRAWAL, $correlationId, null, null, ['id' => $order->id, 'correlation_id' => $correlationId]);
+                    'product_id' => $dto->productId,
+                    'quantity' => $dto->quantity,
+                    'total_amount' => $totalAmount,
+                    'correlation_id' => $correlationId,
+                ]);
 
                 return $order;
             });

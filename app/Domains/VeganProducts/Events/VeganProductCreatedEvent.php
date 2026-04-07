@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domains\VeganProducts\Events;
 
-use Dispatchable, InteractsWithSockets, SerializesModels;
-use Dispatchable, SerializesModels;
+
+
 
 /**
  * VeganProductCreatedEvent — CatVRF 2026 Component.

@@ -17,8 +17,6 @@ final readonly class CustomMetricService
 
     }
 
-        string $correlationId = '';
-
         /**
          * Получить кастомную метрику для геоданных
          *

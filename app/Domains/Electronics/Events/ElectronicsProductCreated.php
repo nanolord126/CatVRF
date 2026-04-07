@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domains\Electronics\Events;
 
-use Dispatchable, InteractsWithSockets, SerializesModels;
-use Dispatchable;
+
+
 use Psr\Log\LoggerInterface;
 
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Queue\SerializesModels;
 /**
  * ElectronicsProductCreated — CatVRF 2026 Component.
  *

@@ -3,14 +3,13 @@
 namespace App\Domains\OfficeCatering\Services;
 
 
-
-
 use Illuminate\Cache\RateLimiter;
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
 final readonly class OfficeCateringService
 {
-
+
+
     public function __construct(private readonly FraudControlService $fraud,
             private readonly InventoryManagementService $inventory,
             private readonly WalletService $wallet,
@@ -110,14 +109,12 @@ final readonly class OfficeCateringService
                 $company = $order->company;
                 $payout = $order->payout_kopecks;
 
-                $this->wallet->credit(tenant()->id, $payout, \App\Domains\Wallet\Enums\BalanceTransactionType::PAYOUT, $correlationId, null, null, [
-                    'correlation_id' => $correlationId,
-                    \App\Domains\Wallet\Enums\BalanceTransactionType::PAYOUT, $correlationId, null, null, [
-                    'order_id' => $order->id,
-                    'company_id' => $company->id,
-                    'payout_kopecks' => $payout,
-                    'correlation_id' => $correlationId,
-                ]);
+                $this->wallet->credit(
+                    tenantId: tenant()->id,
+                    amount: $payout,
+                    type: 'catering_payout',
+                    meta: ['correlation_id' => $correlationId, 'order_id' => $order->id],
+                );
 
                 return $order;
             });
@@ -142,13 +139,13 @@ final readonly class OfficeCateringService
                 ]);
 
                 if ($order->payment_status === 'completed') {
-                    $this->wallet->credit(tenant()->id, $order->total_kopecks, \App\Domains\Wallet\Enums\BalanceTransactionType::REFUND, $correlationId, null, null, [
-                        'correlation_id' => $correlationId,
-                        \App\Domains\Wallet\Enums\BalanceTransactionType::REFUND, $correlationId, null, null, [
-                    'order_id' => $order->id,
-                    'company_id' => $order->catering_company_id,
-                    'correlation_id' => $correlationId,
-                ]);
+                    $this->wallet->credit(
+                        tenantId: tenant()->id,
+                        amount: $order->total_kopecks,
+                        type: 'catering_refund',
+                        meta: ['correlation_id' => $correlationId, 'order_id' => $order->id],
+                    );
+                }
 
                 return $order;
             });

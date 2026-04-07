@@ -121,10 +121,22 @@ final readonly class ShopRentalsService
                 tenantId: tenant()->id,
                 amount: $rental->payout_kopecks,
                 type: 'shop_payout',
-                meta: ['correlation_id' => $correlationId, \App\Domains\Wallet\Enums\BalanceTransactionType::PAYOUT, $correlationId, null, null, [
-                'rental_id'      => $rental->id,
-                \App\Domains\Wallet\Enums\BalanceTransactionType::REFUND, 400, null, null, null);
-            }
+                meta: ['correlation_id' => $correlationId, 'rental_id' => $rental->id],
+            );
+
+            return $rental;
+        });
+    }
+
+    /**
+     * Отменить аренду и вернуть средства.
+     */
+    public function cancelRental(int $rentalId, string $correlationId = ''): StorefrontRental
+    {
+        $correlationId = $correlationId ?: Uuid::uuid4()->toString();
+
+        return $this->db->transaction(function () use ($rentalId, $correlationId): StorefrontRental {
+            $rental = StorefrontRental::findOrFail($rentalId);
 
             $rental->update([
                 'status'         => 'cancelled',
@@ -137,9 +149,20 @@ final readonly class ShopRentalsService
                     tenantId: tenant()->id,
                     amount: $rental->total_kopecks,
                     type: 'shop_refund',
-                    meta: ['correlation_id' => $correlationId, \App\Domains\Wallet\Enums\BalanceTransactionType::REFUND, $correlationId, null, null, [
-                'rental_id'      => $rental->id,
-                \App\Domains\Wallet\Enums\BalanceTransactionType::PAYOUT, $tenantBusinessId, null, null, null)
+                    meta: ['correlation_id' => $correlationId, 'rental_id' => $rental->id],
+                );
+            }
+
+            return $rental;
+        });
+    }
+
+    /**
+     * Получить список аренд по ID бизнеса.
+     */
+    public function getMyRentals(int $tenantBusinessId): \Illuminate\Support\Collection
+    {
+        return StorefrontRental::where('tenant_business_id', $tenantBusinessId)
             ->orderByDesc('created_at')
             ->limit(10)
             ->get();

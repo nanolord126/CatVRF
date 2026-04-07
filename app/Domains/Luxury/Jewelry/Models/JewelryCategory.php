@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domains\Luxury\Jewelry\Models;
 
-use HasFactory;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use JewelryDomainTrait, SoftDeletes;
-use JewelryDomainTrait;
+
+
 
 /**
      * JewelryCategory (Layer 1/9)

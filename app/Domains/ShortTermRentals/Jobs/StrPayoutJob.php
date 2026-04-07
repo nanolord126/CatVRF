@@ -8,6 +8,10 @@ namespace App\Domains\ShortTermRentals\Jobs;
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
 use Illuminate\Http\Request;
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Contracts\Queue\InteractsWithQueue;
+use Illuminate\Bus\Queueable;
 final class StrPayoutJob
 {
 
@@ -44,7 +48,6 @@ final class StrPayoutJob
                 $walletService->credit([
                     'tenant_id' => $booking->tenant_id,
                     'business_group_id' => $booking->business_group_id,
-                    \App\Domains\Wallet\Enums\BalanceTransactionType::PAYOUT, $correlationId, null, null, [
                     'booking_id' => $booking->id,
                     'payout_amount' => $payoutAmount,
                     'commission' => $commission,

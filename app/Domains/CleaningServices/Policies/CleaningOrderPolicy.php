@@ -13,7 +13,7 @@ use Illuminate\Auth\Access\HandlesAuthorization;
 final class CleaningOrderPolicy
 {
     public function __construct(
-        private readonly FraudControlService $fraud,,
+        private readonly FraudControlService $fraud,
         private readonly Request $request,) {}
 
     use HandlesAuthorization;

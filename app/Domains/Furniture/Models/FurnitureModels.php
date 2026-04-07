@@ -92,10 +92,7 @@ final class FurnitureItem extends Model
             'style_presets' => 'json',
         ];
 
-        protected static function booted(): void
-        {
-            static::creating(fn ($model) => $model->uuid = (string) Str::uuid());
-        }
+        
     }
 
     /**

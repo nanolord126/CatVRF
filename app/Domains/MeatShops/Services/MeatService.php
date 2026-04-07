@@ -120,7 +120,7 @@ final readonly class MeatService
                     correlationId: $correlationId
                 );
 
-                $order->update(["status" => "completed", \App\Domains\Wallet\Enums\BalanceTransactionType::PAYOUT, $correlationId, null, null, ["order_id" => $order->id, "payout" => $payout]);
+                $order->update(["status" => "completed"]);
             });
         }
 }

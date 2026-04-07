@@ -11,7 +11,7 @@ use App\Services\FraudControlService;
 final class ContractorPolicy
 {
     public function __construct(
-        private readonly FraudControlService $fraud,,
+        private readonly FraudControlService $fraud,
         private readonly Request $request,) {}
 
 

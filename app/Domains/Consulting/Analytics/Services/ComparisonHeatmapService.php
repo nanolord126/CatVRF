@@ -17,8 +17,6 @@ final readonly class ComparisonHeatmapService
 
     }
 
-        string $correlationId = '';
-
         /**
          * Сравнить два периода по геоданным
          *

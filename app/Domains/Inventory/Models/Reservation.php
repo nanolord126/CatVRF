@@ -11,6 +11,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
+final class Reservation extends Model
+{
+    use HasFactory;
+
+
 /** @param \Illuminate\Database\Eloquent\Builder<self> $query */
     public function scopeExpired($query): void
     {
@@ -31,3 +36,4 @@ use Illuminate\Support\Str;
         return $this->belongsTo(\App\Models\Tenant::class, 'tenant_id');
     }
 }
+

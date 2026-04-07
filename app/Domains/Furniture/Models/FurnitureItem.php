@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\Furniture\Models;
 
-use FurnitureDomainTrait, SoftDeletes;
-use FurnitureDomainTrait;
-use HasFactory;
+
+
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 

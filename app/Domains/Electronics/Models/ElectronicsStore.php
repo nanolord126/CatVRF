@@ -5,11 +5,12 @@ declare(strict_types=1);
 namespace App\Domains\Electronics\Models;
 
 use Carbon\Carbon;
-use HasFactory, SoftDeletes;
-use HasFactory;
+
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+use Illuminate\Database\Eloquent\SoftDeletes;
 final class ElectronicsStore extends Model
 {
     use HasFactory, SoftDeletes;

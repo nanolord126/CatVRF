@@ -10,7 +10,7 @@ use Psr\Log\LoggerInterface;
 use Illuminate\Http\Request;
 use Illuminate\Config\Repository as ConfigRepository;
 
-final readonly class ScreenshotService
+final class ScreenshotService
 {
 
 

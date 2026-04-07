@@ -53,13 +53,7 @@ final class Lesson extends Model
         /**
          * КАНОН 2026: Инициализация UUID
          */
-        protected static function booted(): void
-        {
-            static::creating(function (Lesson $lesson) {
-                $lesson->uuid = $lesson->uuid ?? (string) Str::uuid();
-                $lesson->correlation_id = $lesson->correlation_id ?? (string) Str::uuid();
-            });
-        }
+        
 
         /**
          * Модуль курса, к которому относится урок

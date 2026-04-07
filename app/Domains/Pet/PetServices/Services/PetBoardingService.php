@@ -105,15 +105,38 @@ final readonly class PetBoardingService
 
         public function getAvailableRooms(string $checkInDate, string $checkOutDate): Collection
         {
-            $roomTypes = ['standard', \App\Domains\Wallet\Enums\BalanceTransactionType::PAYOUT, $correlationId, null, null, [$checkInDate, $checkOutDate])
-                    ->where('status', \App\Domains\Wallet\Enums\BalanceTransactionType::REFUND, $reservation, null, null, [
+            $roomTypes = ['standard', 'premium', 'vip'];
+            $available = collect();
+
+            foreach ($roomTypes as $type) {
+                $bookedCount = PetBoarding::where('room_type', $type)
+                    ->where('status', '!=', 'cancelled')
+                    ->where('check_in_date', '<=', $checkOutDate)
+                    ->where('check_out_date', '>=', $checkInDate)
+                    ->count();
+
+                $available->push([
+                    'room_type' => $type,
+                    'booked' => $bookedCount,
+                ]);
+            }
+
+            return $available;
+        }
+
+        public function cancelReservation(int $reservationId, string $reason = ''): bool
+        {
+            $reservation = PetBoarding::findOrFail($reservationId);
+
+            $this->logger->info('PetBoardingService: Cancelling reservation', [
                 'correlation_id' => $reservation->correlation_id,
                 'reservation_id' => $reservationId,
                 'reason' => $reason,
             ]);
 
-            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $correlationId ?? '');
-    $this->db->transaction(function () use ($reservation, $reason) {
+            $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'mutation', amount: 0, correlationId: $reservation->correlation_id ?? '');
+
+            return $this->db->transaction(function () use ($reservation, $reason) {
                 $reservation->update([
                     'status' => 'cancelled',
                     'cancellation_reason' => $reason,

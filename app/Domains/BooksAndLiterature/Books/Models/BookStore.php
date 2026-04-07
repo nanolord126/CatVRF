@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domains\BooksAndLiterature\Books\Models;
 
-use BooksDomainTrait, SoftDeletes;
-use BooksDomainTrait;
-use HasFactory;
+
+
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 

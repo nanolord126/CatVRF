@@ -19,14 +19,13 @@
 namespace App\Domains\PartySupplies\Gifts\Services;
 
 
-
-
 use Illuminate\Cache\RateLimiter;
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
 final readonly class GiftsService
 {
-
+
+
     public function __construct(private readonly FraudControlService $fraud,private readonly WalletService $wallet,
         private readonly \Illuminate\Database\DatabaseManager $db, private readonly LoggerInterface $logger, private readonly Guard $guard,
         private readonly RateLimiter $rateLimiter,) {}
@@ -36,8 +35,8 @@ final readonly class GiftsService
                 $this->fraud->check(userId: $this->guard->id() ?? 0, operationType: 'gift_order', amount: 0, correlationId: $correlationId ?? '');if($fraud['decision']==='block'){$this->logger->error('Gift order blocked',['user_id'=>$this->guard->id(),'correlation_id'=>$correlationId]);throw new \RuntimeException("Security block",403);}
                 $o=GiftOrder::create(['uuid'=>Str::uuid(),'tenant_id'=>tenant()->id,'seller_id'=>$sellerId,'client_id'=>$this->guard->id()??0,'correlation_id'=>$correlationId,'status'=>'pending_payment','total_kopecks'=>$total,'payout_kopecks'=>$total-(int)($total*0.14),'payment_status'=>'pending','items_json'=>$items,'tags'=>['gifts'=>true]]);$this->logger->info('Gift order created',['order_id'=>$o->id,'correlation_id'=>$correlationId]);return $o;});
         }
-        public function completeOrder(int $orderId,string $correlationId=""):GiftOrder{$correlationId=$correlationId?:(string)Str::uuid();return $this->db->transaction(function()use($orderId,$correlationId){$o=GiftOrder::findOrFail($orderId);if($o->payment_status!=='completed')throw new \RuntimeException("Not paid",400);foreach($o->items_json as $i){GiftProduct::findOrFail($i['product_id'])->decrement('stock',$i['quantity']);}$o->update(['status'=>'completed','correlation_id'=>$correlationId]);$this->wallet->credit(tenant()->id,$o->payout_kopecks,\App\Domains\Wallet\Enums\BalanceTransactionType::PAYOUT,$correlationId, null, null, ['correlation_id'=>$correlationId,\App\Domains\Wallet\Enums\BalanceTransactionType::PAYOUT, $correlationId, null, null, ['order_id'=>$o->id,'correlation_id'=>$correlationId]);return $o;});}
-        public function cancelOrder(int $orderId,string $correlationId=""):GiftOrder{$correlationId=$correlationId?:(string)Str::uuid();return $this->db->transaction(function()use($orderId,$correlationId){$o=GiftOrder::findOrFail($orderId);if($o->status==='completed')throw new \RuntimeException("Cannot cancel",400);$o->update(['status'=>'cancelled','payment_status'=>'refunded','correlation_id'=>$correlationId]);if($o->payment_status==='completed'){$this->wallet->credit(tenant()->id,$o->total_kopecks,\App\Domains\Wallet\Enums\BalanceTransactionType::REFUND,$correlationId, null, null, ['correlation_id'=>$correlationId,\App\Domains\Wallet\Enums\BalanceTransactionType::REFUND, $correlationId, null, null, ['order_id'=>$o->id,'correlation_id'=>$correlationId]);return $o;});}
+        public function completeOrder(int $orderId,string $correlationId=""):GiftOrder{$correlationId=$correlationId?:(string)Str::uuid();return $this->db->transaction(function()use($orderId,$correlationId){$o=GiftOrder::findOrFail($orderId);if($o->payment_status!=='completed')throw new \RuntimeException("Not paid",400);foreach($o->items_json as $i){GiftProduct::findOrFail($i['product_id'])->decrement('stock',$i['quantity']);}$o->update(['status'=>'completed','correlation_id'=>$correlationId]);$this->wallet->credit(tenant()->id,$o->payout_kopecks, ['correlation_id'=>$correlationId,'order_id'=>$o->id,'correlation_id'=>$correlationId]);return $o;});}
+        public function cancelOrder(int $orderId,string $correlationId=""):GiftOrder{$correlationId=$correlationId?:(string)Str::uuid();return $this->db->transaction(function()use($orderId,$correlationId){$o=GiftOrder::findOrFail($orderId);if($o->status==='completed')throw new \RuntimeException("Cannot cancel",400);$o->update(['status'=>'cancelled','payment_status'=>'refunded','correlation_id'=>$correlationId]);if($o->payment_status==='completed'){$this->wallet->credit(tenant()->id,$o->total_kopecks, ['correlation_id'=>$correlationId,'order_id'=>$o->id,'correlation_id'=>$correlationId]);}return $o;});}
         public function getOrder(int $orderId):GiftOrder{return GiftOrder::findOrFail($orderId);}
         public function getUserOrders(int $clientId){return GiftOrder::where('client_id',$clientId)->orderBy('created_at','desc')->take(10)->get();}
 

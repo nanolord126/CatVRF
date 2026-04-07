@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domains\HobbyAndCraft\Hobby\Models;
 
-use HasFactory;
-use HobbyDomainTrait;
+
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use SoftDeletes, HobbyDomainTrait;
 
+
+use Illuminate\Database\Eloquent\SoftDeletes;
 /**
      * HobbyProduct Model
      */

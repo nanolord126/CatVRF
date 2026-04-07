@@ -9,7 +9,7 @@ use Carbon\Carbon;
 use Psr\Log\LoggerInterface;
 use Illuminate\Filesystem\FilesystemManager;
 use Illuminate\Http\Request;
-final readonly class HeatmapExportService
+final class HeatmapExportService
 {
 
     /**

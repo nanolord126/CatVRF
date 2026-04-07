@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace App\Domains\Electronics\Events;
 
-use Dispatchable, InteractsWithSockets, SerializesModels;
-use Dispatchable;
+
+
 use Psr\Log\LoggerInterface;
 
+use Illuminate\Foundation\Events\Dispatchable;
 /**
      * ElectronicsOrderProcessed - Event triggered after a successful gadget sale and stock lock.
      */

@@ -8,7 +8,6 @@ namespace App\Domains\Finances\Presentation\Filament\Widgets;
 use Carbon\Carbon;
 use App\Domains\Finances\Models\FinanceRecord;
 use Filament\Widgets\ChartWidget;
-use Illuminate\Support\Carbon;
 
 /**
  * График выручки, выплат и комиссий за последние 30 дней.

@@ -3,14 +3,13 @@
 namespace App\Domains\Medical\Services;
 
 
-
-
 use Illuminate\Cache\RateLimiter;
 use Illuminate\Contracts\Auth\Guard;
 use Psr\Log\LoggerInterface;
 final readonly class MedicalAppointmentService
 {
-
+
+
     public function __construct(private readonly FraudControlService $fraud,
             private readonly InventoryManagementService $inventory,
             private readonly PaymentService $payment,
@@ -128,7 +127,8 @@ final readonly class MedicalAppointmentService
                     correlationId: $correlationId
                 );
 
-                $this->logger->info("Medical: appointment finished + payout", ["app_id" => $appointment->id, \App\Domains\Wallet\Enums\BalanceTransactionType::PAYOUT, $correlationId, null, null, ["user" => $userId]);
-            return true;
+                $this->logger->info("Medical: appointment finished + payout", ["app_id" => $appointment->id, "user" => $this->guard->id()]);
+                return true;
+            });
         }
 }

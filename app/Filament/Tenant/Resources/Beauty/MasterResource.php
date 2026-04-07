@@ -4,100 +4,99 @@ declare(strict_types=1);
 
 namespace App\Filament\Tenant\Resources\Beauty;
 
-use App\Domains\Beauty\Infrastructure\Persistence\Eloquent\Models\BeautyMaster;
-use App\Domains\Beauty\Infrastructure\Persistence\Eloquent\Models\BeautySalon;
-use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Section;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
+use App\Domains\Beauty\Models\Master;
+use App\Filament\Tenant\Resources\Beauty\MasterResource\Pages;
+use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
-use Filament\Tables\Actions\BulkActionGroup;
-use Filament\Tables\Actions\DeleteBulkAction;
-use Filament\Tables\Actions\EditAction;
-use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Filters\TernaryFilter;
+use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Str;
 
+/**
+ * MasterResource — Filament-ресурс мастеров (B2B Tenant Panel).
+ */
 final class MasterResource extends Resource
 {
-    protected static ?string $model = BeautyMaster::class;
+    protected static ?string $model = Master::class;
 
-    protected static ?string $navigationIcon   = 'heroicon-o-user';
-    protected static ?string $navigationGroup  = 'Beauty';
-    protected static ?string $navigationLabel  = 'Мастера';
-    protected static ?string $modelLabel       = 'Мастер';
-    protected static ?string $pluralModelLabel = 'Мастера';
-    protected static ?int    $navigationSort   = 20;
+    protected static ?string $navigationIcon = 'heroicon-o-user-circle';
+
+    protected static ?string $navigationGroup = 'Beauty';
+
+    protected static ?string $navigationLabel = 'Мастера';
+
+    protected static ?int $navigationSort = 2;
 
     public static function form(Form $form): Form
     {
         return $form->schema([
-            Hidden::make('uuid')
-                ->default(fn () => Str::uuid()->toString()),
-            Hidden::make('correlation_id')
-                ->default(fn () => Str::uuid()->toString()),
-
-            Section::make('Основная информация')
+            Forms\Components\Section::make('Основная информация')
                 ->columns(2)
                 ->schema([
-                    Select::make('salon_id')
+                    Forms\Components\Select::make('salon_id')
                         ->label('Салон')
-                        ->options(function () {
-                            return BeautySalon::query()
-                                ->where('tenant_id', filament()->getTenant()?->id)
-                                ->where('is_active', true)
-                                ->pluck('name', 'id');
-                        })
+                        ->relationship('salon', 'name')
                         ->required()
                         ->searchable()
-                        ->columnSpan(2),
-                    TextInput::make('name')
-                        ->label('ФИО мастера')
+                        ->preload(),
+
+                    Forms\Components\TextInput::make('full_name')
+                        ->label('ФИО')
                         ->required()
-                        ->maxLength(255)
-                        ->columnSpan(2),
-                    TextInput::make('specialization')
+                        ->maxLength(255),
+
+                    Forms\Components\TextInput::make('specialization')
                         ->label('Специализация')
                         ->required()
-                        ->maxLength(255)
-                        ->placeholder('Например: парикмахер, мастер маникюра'),
-                    TextInput::make('experience_years')
-                        ->label('Опыт работы (лет)')
+                        ->maxLength(255),
+
+                    Forms\Components\TextInput::make('experience_years')
+                        ->label('Опыт (лет)')
                         ->numeric()
                         ->minValue(0)
-                        ->maxValue(50)
-                        ->default(0),
-                    TextInput::make('phone')
+                        ->maxValue(60),
+
+                    Forms\Components\Textarea::make('bio')
+                        ->label('О мастере')
+                        ->maxLength(3000)
+                        ->rows(4)
+                        ->columnSpan(2),
+                ]),
+
+            Forms\Components\Section::make('Контакты')
+                ->columns(2)
+                ->schema([
+                    Forms\Components\TextInput::make('phone')
                         ->label('Телефон')
                         ->tel()
-                        ->maxLength(20),
-                    TextInput::make('email')
+                        ->maxLength(30),
+
+                    Forms\Components\TextInput::make('email')
                         ->label('Email')
                         ->email()
                         ->maxLength(255),
                 ]),
 
-            Section::make('Настройки')
-                ->columns(2)
+            Forms\Components\Section::make('Фото и услуги')
                 ->schema([
-                    TextInput::make('rating')
-                        ->label('Рейтинг')
-                        ->numeric()
-                        ->minValue(0)
-                        ->maxValue(5)
-                        ->step(0.1)
-                        ->default(0),
-                    TextInput::make('review_count')
-                        ->label('Количество отзывов')
-                        ->numeric()
-                        ->default(0),
-                    Toggle::make('is_active')
+                    Forms\Components\FileUpload::make('avatar_url')
+                        ->label('Аватар')
+                        ->image()
+                        ->disk('s3')
+                        ->directory('beauty/masters/avatars')
+                        ->maxSize(3072),
+
+                    Forms\Components\Select::make('services')
+                        ->label('Услуги')
+                        ->relationship('services', 'name')
+                        ->multiple()
+                        ->searchable()
+                        ->preload(),
+                ]),
+
+            Forms\Components\Section::make('Статус')
+                ->schema([
+                    Forms\Components\Toggle::make('is_active')
                         ->label('Активен')
                         ->default(true),
                 ]),
@@ -108,64 +107,57 @@ final class MasterResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('name')
+                Tables\Columns\ImageColumn::make('avatar_url')
+                    ->label('')
+                    ->circular()
+                    ->size(40),
+
+                Tables\Columns\TextColumn::make('full_name')
                     ->label('ФИО')
                     ->searchable()
                     ->sortable(),
-                TextColumn::make('salon.name')
+
+                Tables\Columns\TextColumn::make('salon.name')
                     ->label('Салон')
-                    ->searchable(),
-                TextColumn::make('specialization')
+                    ->sortable(),
+
+                Tables\Columns\TextColumn::make('specialization')
                     ->label('Специализация')
                     ->searchable(),
-                TextColumn::make('experience_years')
-                    ->label('Опыт (лет)')
-                    ->sortable(),
-                TextColumn::make('rating')
+
+                Tables\Columns\TextColumn::make('rating')
                     ->label('Рейтинг')
                     ->sortable()
-                    ->badge()
-                    ->color(fn (float $state): string => match (true) {
-                        $state >= 4.5 => 'success',
-                        $state >= 3.5 => 'warning',
-                        default       => 'danger',
-                    }),
-                IconColumn::make('is_active')
+                    ->formatStateUsing(fn ($state) => number_format((float) $state, 2)),
+
+                Tables\Columns\TextColumn::make('services_count')
+                    ->label('Услуги')
+                    ->counts('services'),
+
+                Tables\Columns\IconColumn::make('is_active')
                     ->label('Активен')
-                    ->boolean(),
-                TextColumn::make('created_at')
-                    ->label('Создан')
-                    ->dateTime('d.m.Y H:i')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->boolean()
+                    ->sortable(),
             ])
+            ->defaultSort('full_name')
             ->filters([
-                SelectFilter::make('salon_id')
-                    ->label('Салон')
-                    ->options(function () {
-                        return BeautySalon::query()
-                            ->where('tenant_id', filament()->getTenant()?->id)
-                            ->pluck('name', 'id');
-                    }),
-                TernaryFilter::make('is_active')->label('Активность'),
+                Tables\Filters\TernaryFilter::make('is_active')
+                    ->label('Активен'),
             ])
             ->actions([
-                EditAction::make(),
+                Tables\Actions\EditAction::make(),
+                Tables\Actions\ViewAction::make(),
             ])
             ->bulkActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                Tables\Actions\BulkActionGroup::make([
+                    Tables\Actions\DeleteBulkAction::make(),
                 ]),
-            ])
-            ->defaultSort('created_at', 'desc');
+            ]);
     }
 
-    public static function getEloquentQuery(): Builder
+    public static function getRelations(): array
     {
-        return parent::getEloquentQuery()
-            ->whereHas('salon', function (Builder $query) {
-                $query->where('tenant_id', filament()->getTenant()?->id);
-            });
+        return [];
     }
 
     public static function getPages(): array

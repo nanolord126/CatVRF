@@ -4,11 +4,12 @@ declare(strict_types=1);
 
 namespace App\Domains\Logistics\Models;
 
-use HasFactory;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use SoftDeletes;
 
+
+use Illuminate\Database\Eloquent\SoftDeletes;
 final class B2BLogisticsStorefront extends Model
 {
 
